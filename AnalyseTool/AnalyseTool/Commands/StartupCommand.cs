@@ -1,10 +1,11 @@
-﻿using AnalyseTool.Utils;
+﻿using AnalyseTool.Models;
+using AnalyseTool.Utils;
 using AnalyseTool.ViewModels;
 using AnalyseTool.Views;
 using Autodesk.Revit.Attributes;
 using Nice3point.Revit.Toolkit.External;
 
-namespace AnalyseTool.Commands
+namespace AnalyseTool
 {
     /// <summary>
     ///     External command entry point invoked from the Revit interface
@@ -17,9 +18,10 @@ namespace AnalyseTool.Commands
         {
             if (WindowController.Focus<AnalyseToolView>()) return;
 
-            var viewModel = new AnalyseToolViewModel();
-            var view = new AnalyseToolView(viewModel);
-            WindowController.Show(view, UiApplication.MainWindowHandle);
+            ProgramContex.Init(UiApplication);
+
+
+
         }
     }
 }

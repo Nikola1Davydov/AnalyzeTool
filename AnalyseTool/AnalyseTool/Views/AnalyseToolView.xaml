@@ -5,18 +5,32 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:viewModel="clr-namespace:AnalyseTool.ViewModels"
+    xmlns:view="clr-namespace:AnalyseTool.Views"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:AnalyseToolViewModel}"
-    ResizeMode="NoResize"
+    ResizeMode="CanResize"
+    Background="White"
     WindowStartupLocation="CenterScreen"
     Title="AnalyseTool"
     Height="450"
     Width="800">
     <Grid>
-        <TextBlock
-            Text="AnalyseTool"
-            FontSize="60"
-            VerticalAlignment="Center"
-            HorizontalAlignment="Center" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" 
+                   VerticalAlignment="Center"
+                   Margin="30,0,0,0"
+                   Text="Parameter Check" 
+                   FontFamily="Impact" 
+                   FontSize="30"
+                   FontWeight="Bold"/>
+        <ContentControl Grid.Row="1">
+            <Grid Margin="30">
+                <view:SubViewAnalyseTool/>
+            </Grid>
+        </ContentControl>
+
     </Grid>
 </Window>
