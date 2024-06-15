@@ -22,7 +22,8 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 
 ## Installation - in progress...
 
-1. **place it in folder**: C:\ProgramData\Autodesk\Revit\Addins\202X
+1. **build it**
+2. **place dll in folder**: C:\ProgramData\Autodesk\Revit\Addins\202X
 
 ## Usage
 
