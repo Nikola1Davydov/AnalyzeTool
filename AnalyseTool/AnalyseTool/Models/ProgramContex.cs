@@ -5,6 +5,8 @@ using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,6 +21,7 @@ namespace AnalyseTool.Models
         public static Application app;
         public static AnalyseToolViewModel viewModel;
         public static AnalyseToolView view;
+
         public static void Init(UIApplication uIApplication)
         {
             uiapp = uIApplication;
@@ -31,6 +34,5 @@ namespace AnalyseTool.Models
 
             WindowController.Show(view, uiapp.MainWindowHandle);
         }
-
     }
 }

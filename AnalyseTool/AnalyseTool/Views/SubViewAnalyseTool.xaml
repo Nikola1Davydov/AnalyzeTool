@@ -1,46 +1,122 @@
 ﻿<UserControl x:Class="AnalyseTool.Views.SubViewAnalyseTool"
             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-            xmlns:local="clr-namespace:AnalyseTool.Views"
+            xmlns:view="clr-namespace:AnalyseTool.Views"
             xmlns:viewModel="clr-namespace:AnalyseTool.ViewModels"
+            xmlns:model="clr-namespace:AnalyseTool.Models"
             mc:Ignorable="d"
             d:DataContext="{d:DesignInstance Type=viewModel:AnalyseToolViewModel}"
             d:Height="450" 
             d:Width="800">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition/>
             <RowDefinition Height="60"/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
-
-        <DataGrid ItemsSource="{Binding ParameterDefinitions}"
-                  AutoGenerateColumns="False"
-                  CanUserReorderColumns="False"
-                  CanUserDeleteRows="False"
-                  CanUserAddRows="False"
-                  CanUserResizeRows="True"
-                  x:Name="dataGridData">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                <DataGridTextColumn Header="Guid" Binding="{Binding GUID}"/>
-                <DataGridTextColumn Header="Param" Binding="{Binding BuiltInParameter}"/>
-            </DataGrid.Columns>
-        </DataGrid>
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="0" >
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" 
-                    Content="Cancel" 
+            <Button Grid.Column="1"
+                    Margin="10"
+                    Content="Export to CSV"
+                    Command="{Binding ExportToExcelCommand}"
                     x:Name="btn_Cancel"/>
-            <Button Grid.Column="3" 
-                    Content="Start" 
-                    x:Name="btn_Start"/>
+            <!--<Button Grid.Column="3" 
+                    Margin="10,10,0,10"
+                    Content="Export PDF" 
+                    Command="{Binding ExportToPdfCommand}"
+                    x:Name="btn_Start"/>-->
+            <TextBox  
+                 Grid.Row="0"
+                Margin="0,10,10,10"
+                 VerticalContentAlignment="Center"
+                 Text="{Binding ParameterFilter, UpdateSourceTrigger=PropertyChanged}">
+
+            </TextBox>
         </Grid>
+
+
+
+        <ListView ItemsSource="{Binding ParameterDefinitions}"
+                  d:ItemsSource="{d:SampleData ItemCount=2}"
+                  Grid.Row="1"
+                  x:Name="dataGridData">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Category&#10;Name"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding CategoriesString}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Parameter&#10;Name"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Parameter&#10;Count"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ParameterCount}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Parameter&#10;Empty"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ParameterEmpty}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Parameter&#10;Filled"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ParameterFilled}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Parameter&#10;Filled in %"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Rectangle Width="{Binding ParameterFilledProzent}" Height="18" Fill="Pink" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="{Binding ParameterFilledProzent}" HorizontalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Select Emtpy&#10;Elements"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Width="40"
+                                        Height="18" 
+                                        Command="{Binding DataContext.SelectElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                        CommandParameter="{Binding}"
+                                        Content="Select" 
+                                        VerticalContentAlignment="Center"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
         
+
 
     </Grid>
 </UserControl>

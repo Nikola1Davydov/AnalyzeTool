@@ -19,9 +19,6 @@ namespace AnalyseTool
             if (WindowController.Focus<AnalyseToolView>()) return;
 
             ProgramContex.Init(UiApplication);
-
-
-
         }
     }
 }

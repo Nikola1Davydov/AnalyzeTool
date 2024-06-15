@@ -12,8 +12,8 @@
     Background="White"
     WindowStartupLocation="CenterScreen"
     Title="AnalyseTool"
-    Height="450"
-    Width="800">
+    Height="650"
+    Width="850">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
@@ -27,7 +27,7 @@
                    FontSize="30"
                    FontWeight="Bold"/>
         <ContentControl Grid.Row="1">
-            <Grid Margin="30">
+            <Grid Margin="30,0,30,30">
                 <view:SubViewAnalyseTool/>
             </Grid>
         </ContentControl>

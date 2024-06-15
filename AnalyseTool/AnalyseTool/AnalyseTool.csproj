@@ -33,14 +33,27 @@
         <RevitVersion>2025</RevitVersion>
         <TargetFramework>net8.0-windows</TargetFramework>
     </PropertyGroup>
+    <ItemGroup>
+      <None Remove="Resources\Icons\icons8-analyse-34.png" />
+    </ItemGroup>
+    <ItemGroup>
+      <Content Include="RevitAddIns.addin">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="itext7" Version="8.0.4" />
         <PackageReference Include="Nice3point.Revit.Build.Tasks" Version="1.*" />
         <PackageReference Include="Nice3point.Revit.Toolkit" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Extensions" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Resource Include="Resources\Icons\icons8-analyse-34.png" />
     </ItemGroup>
 
 </Project>
