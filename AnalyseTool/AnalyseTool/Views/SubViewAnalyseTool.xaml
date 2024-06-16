@@ -22,7 +22,7 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Button Grid.Column="1"
-                    Margin="10"
+                    Margin="10,10,0,10"
                     Content="Export to CSV"
                     Command="{Binding ExportToExcelCommand}"
                     x:Name="btn_Cancel"/>
@@ -36,11 +36,8 @@
                 Margin="0,10,10,10"
                  VerticalContentAlignment="Center"
                  Text="{Binding ParameterFilter, UpdateSourceTrigger=PropertyChanged}">
-
             </TextBox>
         </Grid>
-
-
 
         <ListView ItemsSource="{Binding ParameterDefinitions}"
                   d:ItemsSource="{d:SampleData ItemCount=2}"
@@ -115,8 +112,5 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        
-
-
     </Grid>
 </UserControl>
