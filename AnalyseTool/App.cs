@@ -23,8 +23,7 @@ namespace AnalyseTool
             var panel = Application.CreatePanel("Davydov", "Analyse");
 
             panel.AddPushButton<StartupCommand>("Execute")
-                .SetImage("/RevitAddIn;component/Resources/Icons/icons8-analyse-34.png")
-                .SetLargeImage("/RevitAddIn;component/Resources/Icons/icons8-analyse-34.png");
+                .SetLargeImage("/AnalyseTool;component/Resources/Icons/icons8-analyse-34.ico");
         }
     }
 }

@@ -34,6 +34,7 @@
         <TargetFramework>net8.0-windows</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+      <None Remove="Resources\Icons\icons8-analyse-34.ico" />
       <None Remove="Resources\Icons\icons8-analyse-34.png" />
     </ItemGroup>
     <ItemGroup>
@@ -53,7 +54,12 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Resource Include="Resources\Icons\icons8-analyse-34.png" />
+      <Resource Include="Resources\Icons\icons8-analyse-34.ico">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Resources\Icons\icons8-analyse-34.png">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </Resource>
     </ItemGroup>
 
 </Project>
