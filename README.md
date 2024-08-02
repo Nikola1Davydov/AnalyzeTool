@@ -1,31 +1,24 @@
 # AnalyseTool Plugin for Revit
 
-<!-- PROJECT SHIELDS -->
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+> Powerful tool to analyze and export parameter data in Revit projects
 
-<!-- PROJECT LOGO -->
-<br />
-<p align="center">
+[![github release version](https://img.shields.io/github/v/release/nhn/tui.editor.svg?include_prereleases)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/releases/latest) [![npm version](https://img.shields.io/npm/v/@toast-ui/editor.svg)](https://www.npmjs.com/package/@toast-ui/editor) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/blob/master/LICENSE) [![my text](https://img.shields.io/badge/revitVersion-2023--2025-8A2BE2)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-ff1414.svg)](www.linkedin.com/in/nikolai-davydov-4359bba1)
 
-  <h3 align="center"><strong>AnalyseTool Plugin for Revit</strong></h3>
-
-  <p align="center">
- <strong>Powerful tool to analyze and export parameter data in Revit projects</strong>
-    <br />
-    <a href="https://github.com/Nikola1Davydov"><strong>See other projects »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/Nikola1Davydov/AnalyzeTool/issues">Report a Bug</a>
-  </p>
-</p>
 
 ## Overview
 
 ![AnalyseTool Screenshot](img/Overview.png)
 
 The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users to analyze and export parameter data of elements within a Revit project. With this plugin, you can easily export data to CSV formats, making it easier to manage and share project information.
+## Installation
+
+1. **build it**
+2. **place dll in folder**: C:\ProgramData\Autodesk\Revit\Addins\202X
+
+## Requirements
+
+- Autodesk Revit 2023 or higher
+- .NET Framework 4.8 or higher
 
 ## Features
 
@@ -36,15 +29,8 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 
 ![Filter in AnalyzeTool](img/filter.png)
 
-## Requirements
 
-- Autodesk Revit 2023 or higher
-- .NET Framework 4.8 or higher
 
-## Installation - in progress...
-
-1. **build it**
-2. **place dll in folder**: C:\ProgramData\Autodesk\Revit\Addins\202X
 
 ## Usage
 
