@@ -40,7 +40,7 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 
 ## 🔧 Development
 
-### Prerequisites
+#### Prerequisites
 
 - Visual Studio 2019 or higher
 - .NET Framework 4.8 & .NET Core 8.0
@@ -48,7 +48,7 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 - Nice3point.Revit.Api.RevitAPI
 - Nice3point.Revit.Api.RevitAPIUI
 
-### For Developers
+#### For Developers
 
 1. Clone the repository:
    ```sh
@@ -71,7 +71,3 @@ If you have a suggestion that would make this better, please fork the repo and c
 3. **Commit your Changes** (`git commit -m 'Add some AmazingFeature'`)
 4. **Push to the Branch** (`git push origin feature/AmazingFeature`)
 5. **Open a Pull Request**
-
-## 👥 Visitor Count
-
-![VisitorCount](https://visitor-badge.laobi.icu/badge?page_id=Nikola1Davydov.AnalyzeTool)
