@@ -85,6 +85,6 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 [issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=flat-square
 [issues-url]: https://github.com/Nikola1Davydov/AnalyzeTool/issues
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=flat-square
-[license-url]: https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/LICENSE.txt
+[license-url]: https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
 [linkedin-url]: www.linkedin.com/in/nikolai-davydov-4359bba1
