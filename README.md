@@ -2,8 +2,7 @@
 
 > Powerful tool to analyze and export parameter data in Revit projects
 
-[![github release version](https://img.shields.io/github/v/release/nhn/tui.editor.svg?include_prereleases)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/releases/latest) [![npm version](https://img.shields.io/npm/v/@toast-ui/editor.svg)](https://www.npmjs.com/package/@toast-ui/editor) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/blob/master/LICENSE) [![my text](https://img.shields.io/badge/revitVersion-2023--2025-8A2BE2)](https://github.com/NICKNAME_DO_SEU_GITHUB/NOME_DESSE_REPOSITORIO/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-ff1414.svg)](www.linkedin.com/in/nikolai-davydov-4359bba1)
-
+[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2023--2025-orange) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
 ## Overview
 
