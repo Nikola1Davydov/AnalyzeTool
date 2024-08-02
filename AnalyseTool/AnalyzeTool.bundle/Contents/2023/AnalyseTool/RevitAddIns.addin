@@ -1,0 +1,11 @@
+﻿<RevitAddIns>
+    <AddIn Type="Application">
+        <Name>RevitAddIn</Name>
+        <Assembly>AnalyseTool/AnalyseTool.dll</Assembly>
+        <AddInId>8F8F151B-8E8A-492A-B68C-736B9C385BFE</AddInId>
+        <FullClassName>AnalyseTool.App</FullClassName>
+        <VendorId>DavydovDevelopment</VendorId>
+        <VendorDescription>Nikolai Davydov</VendorDescription>
+        <VendorEmail>nik_davydov_1992@outlook.com</VendorEmail>
+    </AddIn>
+</RevitAddIns>
