@@ -3,33 +3,34 @@
                     AutodeskProduct="Revit"
                     ProductType="Application"
                     Name="File Upgrader"
-                    AppVersion="2.0.0"
-                    Description="ADN Plugin of the Month: File Upgrader"
-                    Author="Saikat Bhattacharya"
-                    Icon="./Contents/2014/Resources/FileUpgrader_Thumbnail.png"
-                    OnlineDocumentation="http://labs.autodesk.com/utilities/ADN_Plugins"
-                    HelpFile="./Contents/2014/Resources/ADNFileUpgraderHelp.htm"
+                    AppVersion="1.0.0"
+                    Description="check shared parameter values. Show the percent of empty values by category. Empty elements is possible to select"
+                    Author="Nikolai Davydov"
+                    Icon="./Content/Resources/icon.ico"
+                    OnlineDocumentation="https://github.com/Nikola1Davydov/AnalyzeTool"
+                    HelpFile="./Contents/Resources/help.htm"
                     ProductCode="{F23B85C8-D5DE-45B9-977E-D860120D27B1}"
                     UpgradeCode="{5D9F89AD-3CC0-4769-B90D-60BFB4EE90DB}"
-                    FriendlyVersion="2.0.0"
+                    FriendlyVersion="1.0.0"
                     SupportedLocales="Enu"
                     AppNameSpace="appstore.exchange.autodesk.com">
-    <CompanyDetails Name="Autodesk"
-                    Url="http://labs.autodesk.com/utilities/ADN_Plugins"
-                    Email="adn.apps@autodesk.com"
-                    Phone=" " />
-    <RuntimeRequirements OS="Win32|Win64"
-                        Platform="Revit|Revit Architecture|Revit Structure|Revit MEP"
-                        SeriesMin="R2014"
-                        SeriesMax="R2014" />
-    <Components Description="2014 parts">
-    <RuntimeRequirements OS="Win32|Win64"
-                        Platform="Revit|Revit Architecture|Revit Structure|Revit MEP"
-                        SeriesMin="R2014"
-                        SeriesMax="R2014" />
-    <ComponentEntry AppName="FileUpgrader"
-                    Version="2.0.0"
-                    ModuleName="./Contents/2014/ADNPlugin-FileUpgrader.addin"
-                    AppDescription="FileUpgrader" />
+    <CompanyDetails Name="Davydov"
+                    Url="https://github.com/Nikola1Davydov/AnalyzeTool"
+                    Email="nikolai.davydov@outlook.de"/>
+    <RuntimeRequirements OS="Win64"
+                        Platform="Revit"
+                        SeriesMin="R2023"
+                        SeriesMax="R2025" />
+    <Components Description="2023 parts">
+        <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2023" SeriesMax="R2023" />
+        <ComponentEntry AppName="AnalyzeTool" Version="1.0.0" ModuleName="./Contents/2023/AnalyzeTool.addin" AppDescription="check shared parameter values. Show the percent of empty values by category. Empty elements is possible to select" />
+    </Components>
+    <Components Description="2024 parts">
+        <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2024" SeriesMax="R2024" />
+        <ComponentEntry AppName="AnalyzeTool" Version="1.0.0" ModuleName="./Contents/2024/AnalyzeTool.addin" AppDescription="check shared parameter values. Show the percent of empty values by category. Empty elements is possible to select" />
+    </Components>
+    <Components Description="2025 parts">
+        <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2025" SeriesMax="R2025" />
+        <ComponentEntry AppName="AnalyzeTool" Version="1.0.0" ModuleName="./Contents/2025/AnalyzeTool.addin" AppDescription="check shared parameter values. Show the percent of empty values by category. Empty elements is possible to select" />
     </Components>
 </ApplicationPackage>
