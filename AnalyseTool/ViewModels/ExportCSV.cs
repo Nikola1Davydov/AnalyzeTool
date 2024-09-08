@@ -13,7 +13,7 @@ namespace AnalyseTool.ViewModels
 {
     public static class ExportCSV
     {
-        public static void ExportToExcel()
+        public static void ExportToCSV()
         {
             var saveFileDialog = new SaveFileDialog
             {
@@ -27,10 +27,10 @@ namespace AnalyseTool.ViewModels
                 var filePath = saveFileDialog.FileName;
                 using (var writer = new StreamWriter(filePath))
                 {
-                    // Заголовки столбцов
+                    // Titels
                     writer.WriteLine("Parameter Name,Category,Parameter Count,Parameter Empty,Parameter Filled");
 
-                    // Заполнение данными
+                    // data
                     foreach (var paramDef in ProgramContex.viewModel.ParameterDefinitions)
                     {
                         writer.WriteLine($"{paramDef.Name},{paramDef.CategoriesString},{paramDef.ParameterCount},{paramDef.ParameterEmpty},{paramDef.ParameterFilled}");
@@ -39,7 +39,7 @@ namespace AnalyseTool.ViewModels
             }
 
 
-            MessageBox.Show("Export to PDF completed!", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Export to CSV completed!", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

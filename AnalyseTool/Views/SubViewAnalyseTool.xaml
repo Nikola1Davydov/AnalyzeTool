@@ -11,6 +11,17 @@
             d:DataContext="{d:DesignInstance Type=viewModel:AnalyseToolViewModel}"
             d:Height="450" 
             d:Width="800">
+    
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/AnalyseTool;component/Helper/wpfLibrary.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Конвертер для отступов на основе уровня вложенности --><!--
+            <helper:LevelToMarginConverter x:Key="LevelToMarginConverter"/>-->
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="60"/>
@@ -39,7 +50,160 @@
             </TextBox>
         </Grid>
 
-        <ListView ItemsSource="{Binding ParameterDefinitions}"
+        <DataGrid ItemsSource="{Binding ParameterDefinitions}"
+                  d:ItemsSource="{d:SampleData}"
+                  AutoGenerateColumns="False"
+                  RowDetailsVisibilityMode="VisibleWhenSelected"
+                  SelectionMode="Single"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  x:Name="dataGridData"
+                  GridLinesVisibility="None"
+                  Grid.Row="1">
+
+            <DataGrid.Columns>
+
+                <!-- Column for displaying the category -->
+                <DataGridTemplateColumn Header="Category Name">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding CategoriesString}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column for displaying the parameter name -->
+                <DataGridTemplateColumn Header="Parameter Name">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column for displaying the parameter count -->
+                <DataGridTemplateColumn Header="Parameter&#10;Count" Width="65">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ParameterCount}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column for displaying the count of empty parameters -->
+                <DataGridTemplateColumn Header="Parameter&#10;Empty" Width="65">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ParameterEmpty}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column for displaying the count of filled parameters -->
+                <DataGridTemplateColumn Header="Parameter&#10;Filled" Width="65">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ParameterFilled}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column for displaying the percentage of filled parameters -->
+                <DataGridTemplateColumn Header="Parameter&#10;Filled in %" Width="65">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <!-- Rectangle visualizing the percentage -->
+                                <Rectangle Width="{Binding ParameterFilledProzent}" Height="18" Fill="Pink" HorizontalAlignment="Left" />
+                                <!-- Text displaying the percentage -->
+                                <TextBlock Text="{Binding ParameterFilledProzent}" HorizontalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column with a button to select empty elements -->
+                <DataGridTemplateColumn Header="Select Empty&#10;Elements" Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Height="18"
+                                    Command="{Binding DataContext.SelectElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                    CommandParameter="{Binding}"
+                                    Content="Select"
+                                    VerticalContentAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Column with a button to select filled elements -->
+                <DataGridTemplateColumn Header="Select Filled&#10;Elements" Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Height="18"
+                                    Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                    CommandParameter="{Binding}"
+                                    Content="Select"
+                                    VerticalContentAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+            </DataGrid.Columns>
+
+            <!-- RowDetailsTemplate to display child elements -->
+            <DataGrid.RowDetailsTemplate>
+                <DataTemplate>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
+                        <DataGrid ItemsSource="{Binding ChildParameters}"
+                                  d:ItemsSource="{d:SampleData}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  GridLinesVisibility="None"
+                                  BorderBrush="Transparent"
+                                  BorderThickness="0"
+                                  MaxHeight="200"
+                                  HorizontalAlignment="Left"
+                                  Margin="40,0,0,0"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Parameter Value" MaxWidth="150">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" HorizontalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="Elements Count" MaxWidth="150">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ParameterFilled}" HorizontalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="Select Filled Elements" MaxWidth="250">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Height="18"
+                                                    Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="Select"
+                                                    VerticalContentAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+                </DataTemplate>
+               
+            </DataGrid.RowDetailsTemplate>
+
+        </DataGrid>
+
+
+        <!--<ListView ItemsSource="{Binding ParameterDefinitions}"
                   d:ItemsSource="{d:SampleData ItemCount=2}"
                   Grid.Row="1"
                   x:Name="dataGridData">
@@ -109,8 +273,22 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
+                    <GridViewColumn>
+                        <GridViewColumnHeader Content="Select Filled&#10;Elements"/>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Width="40"
+                                        Height="18" 
+                                        Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                        CommandParameter="{Binding}"
+                                        Content="Select" 
+                                        VerticalContentAlignment="Center"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                 </GridView>
             </ListView.View>
-        </ListView>
+        </ListView>-->
+        
     </Grid>
 </UserControl>

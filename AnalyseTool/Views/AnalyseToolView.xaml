@@ -14,6 +14,7 @@
     Title="AnalyseTool"
     Height="650"
     Width="850">
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>

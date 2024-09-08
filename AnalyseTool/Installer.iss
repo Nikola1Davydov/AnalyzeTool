@@ -22,17 +22,17 @@ OutputBaseFilename=AnalyseToolPluginSetup
 LicenseFile=license.txt
 
 [Languages]
-; Указание языка установки
+; set language
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-; Определение задач для установки в разные версии Revit
+; revit version
 Name: "install2023"; Description: "Install for Revit 2023"; GroupDescription: "Revit versions:"; Flags: unchecked
 Name: "install2024"; Description: "Install for Revit 2024"; GroupDescription: "Revit versions:"; Flags: unchecked
 Name: "install2025"; Description: "Install for Revit 2025"; GroupDescription: "Revit versions:"; Flags: unchecked
 
 [Files]
-; Копирование файлов плагина в соответствующие папки Addins для выбранных версий Revit
+; copy files to defined revit version folders 
 Source: "D:\12_Code\C# Lernen\RevitPlugins\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\*"; DestDir: "{code:GetAddinsDir|2023}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: install2023
 Source: "D:\12_Code\C# Lernen\RevitPlugins\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\*"; DestDir: "{code:GetAddinsDir|2024}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: install2024
 Source: "D:\12_Code\C# Lernen\RevitPlugins\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\*"; DestDir: "{code:GetAddinsDir|2025}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: install2025

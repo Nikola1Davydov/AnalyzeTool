@@ -1,4 +1,6 @@
-﻿namespace AnalyseTool.Models
+﻿using System.Collections.ObjectModel;
+
+namespace AnalyseTool.Models
 {
     public class ParameterDefinition : ObservableObject
     {
@@ -50,13 +52,26 @@
             get => parameterFilledProzent;
             private set => SetProperty(ref parameterFilledProzent, value);
         }
-        private IList<ElementId> _elements;
-        public IList<ElementId> Elements
+        private IList<ElementId> _emptyElements;
+        public IList<ElementId> EmptyElements
         {
-            get => _elements;
-            private set => SetProperty(ref _elements, value);
+            get => _emptyElements;
+            private set => SetProperty(ref _emptyElements, value);
         }
-        public ParameterDefinition(string Name, Category categories, int parameterCount, int parameterFilled, int parameterEmpty, IList<ElementId> Elements)
+        private IList<ElementId> _filledElements;
+        public IList<ElementId> FilledElements
+        {
+            get => _filledElements;
+            private set => SetProperty(ref _filledElements, value);
+        }
+        private ObservableCollection<ParameterDefinition> _childParameters;
+        public ObservableCollection<ParameterDefinition> ChildParameters
+        {
+            get => _childParameters;
+            set => SetProperty(ref _childParameters, value);
+        }
+
+        public ParameterDefinition(string Name, Category categories, int parameterCount, int parameterFilled, int parameterEmpty, IList<ElementId> emptyElements, IList<ElementId> filledElements)
         {
             this.Name = Name;
             this.Categories = categories;
@@ -65,7 +80,9 @@
             this.ParameterFilled = parameterFilled;
             this.ParameterEmpty = parameterEmpty;
             UpdateParameterFilledProzent();
-            this.Elements = Elements;
+            this.EmptyElements = emptyElements;
+            this.FilledElements = filledElements;
+            this.ChildParameters = new ObservableCollection<ParameterDefinition>();
         }
         private void UpdateParameterFilledProzent()
         {
@@ -77,6 +94,10 @@
             {
                 ParameterFilledProzent = 0;
             }
+        }
+        public void AddChild(ParameterDefinition child)
+        {
+            ChildParameters.Add(child);
         }
     }
 }

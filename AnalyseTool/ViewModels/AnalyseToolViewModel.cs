@@ -12,6 +12,7 @@ namespace AnalyseTool.ViewModels
     {
         public ICollectionView ParameterCollectionView { get; set; }
         public ICommand SelectElementsCommand { get; }
+        public ICommand SelectFilledElementsCommand { get; }
         public ICommand ExportToExcelCommand { get; }
         public ICommand ExportToPdfCommand { get; }
 
@@ -41,8 +42,11 @@ namespace AnalyseTool.ViewModels
             CategoryParameterMap = new List<KeyValuePair<string, Category>>();
             dataElements = new List<DataElement> { };
             GetAllParametersInProject();
+
+            // commands
             SelectElementsCommand = new RelayCommand<ParameterDefinition>(SelectElements);
-            ExportToExcelCommand = new RelayCommand(ExportCSV.ExportToExcel);
+            SelectFilledElementsCommand = new RelayCommand<ParameterDefinition>(SelectFilledElements);
+            ExportToExcelCommand = new RelayCommand(ExportCSV.ExportToCSV);
             ExportToPdfCommand = new RelayCommand(ExportPDF.ExportToPdf);
         }
 
@@ -163,7 +167,6 @@ namespace AnalyseTool.ViewModels
                 }
             }
         }
-
         private void AnalyzeData()
         {
             var groupedByCategory = dataElements.GroupBy(x => x.Category);
@@ -185,7 +188,12 @@ namespace AnalyseTool.ViewModels
                     int parameterCount = parameterGroup.Count();
                     int parameterEmpty = parameterGroup.Count(x => string.IsNullOrEmpty(x.ParameterValue));
                     int parameterFilled = parameterCount - parameterEmpty;
-                    var emptyElements = parameterGroup.Where(x => string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
+
+                    // list of empty elements
+                    List<ElementId> emptyElements = parameterGroup.Where(x => string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
+
+                    // list if filled elements
+                    List<ElementId> filledElements = parameterGroup.Where(x => !string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
 
                     // Assuming ParameterDefinition has a constructor that accepts these parameters
                     var parameterDefinition = new ParameterDefinition(
@@ -194,9 +202,41 @@ namespace AnalyseTool.ViewModels
                                                                 parameterCount,
                                                                 parameterFilled,
                                                                 parameterEmpty,
-                                                                emptyElements);
+                                                                emptyElements,
+                                                                filledElements);
 
+                    var groupedByParameterValue = parameterGroup
+                        .Where(x => !string.IsNullOrEmpty(x.ParameterValue)) // get filled parameter
+                        .GroupBy(x => x.ParameterValue); // group by value parameter
+
+                    foreach (var valueGroup in groupedByParameterValue)
+                    {
+                        int childParameterCount = valueGroup.Count();
+                        int childParameterEmpty = 0;
+                        int childParameterFilled = childParameterCount;
+
+                        // Список пустых элементов для дочерних параметров
+                        List<ElementId> childEmptyElements = new List<ElementId>();
+
+                        // Список заполненных элементов для дочерних параметров
+                        List<ElementId> childFilledElements = valueGroup.Where(x => !string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
+
+                        // Создаем дочерний параметр (childDefinition) для каждого значения параметра
+                        ParameterDefinition childDefinition = new ParameterDefinition(
+                                                                valueGroup.Key, // Значение параметра становится ключом для дочернего элемента
+                                                                categoryGroup.Key,
+                                                                childParameterCount,
+                                                                childParameterFilled,
+                                                                childParameterEmpty,
+                                                                childEmptyElements,
+                                                                childFilledElements);
+
+                        // Добавляем дочерний параметр в родительский
+                        parameterDefinition.AddChild(childDefinition);
+                        //FlattenParameterHierarchy(parameterDefinition);
+                    }
                     parameterDefinitions.Add(parameterDefinition);
+                    
                 }
             }
         }
@@ -209,12 +249,18 @@ namespace AnalyseTool.ViewModels
             }
             return false;
         }
-
         private void SelectElements(ParameterDefinition parameterDefinition)
         {
-            if (parameterDefinition != null && parameterDefinition.Elements != null)
+            if (parameterDefinition != null && parameterDefinition.EmptyElements != null)
             {
-                ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.Elements);
+                ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.EmptyElements);
+            }
+        }
+        private void SelectFilledElements(ParameterDefinition parameterDefinition)
+        {
+            if (parameterDefinition != null && parameterDefinition.FilledElements != null)
+            {
+                ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.FilledElements);
             }
         }
         private void getAllElementsParameters()
@@ -256,7 +302,6 @@ namespace AnalyseTool.ViewModels
                         ParameterType = parameter.GetType(),
                     });
                 }
-
             }
         }
         private string GetParameterValue(Parameter parameter)
@@ -277,6 +322,15 @@ namespace AnalyseTool.ViewModels
             }
         }
 
+        //private void FlattenParameterHierarchy(ParameterDefinition parameter)
+        //{
+        //    ParameterDefinitions.Add(parameter);
 
+        //    // add child elements
+        //    foreach (var child in parameter.ChildParameters)
+        //    {
+        //        FlattenParameterHierarchy(child);
+        //    }
+        //}
     }
 }
