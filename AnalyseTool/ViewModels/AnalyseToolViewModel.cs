@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Models;
+﻿using AnalyseTool;
 using Autodesk.Revit.UI;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -6,7 +6,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using Binding = Autodesk.Revit.DB.Binding;
 
-namespace AnalyseTool.ViewModels
+namespace AnalyseTool
 {
     public class AnalyseToolViewModel : ObservableObject
     {

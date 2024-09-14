@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace AnalyseTool.Models
+namespace AnalyseTool
 {
     public class ParameterDefinition : ObservableObject
     {

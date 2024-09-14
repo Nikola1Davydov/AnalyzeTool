@@ -1,6 +1,6 @@
-﻿using AnalyseTool.ViewModels;
+﻿using AnalyseTool;
 
-namespace AnalyseTool.Views
+namespace AnalyseTool
 {
     public sealed partial class AnalyseToolView
     {

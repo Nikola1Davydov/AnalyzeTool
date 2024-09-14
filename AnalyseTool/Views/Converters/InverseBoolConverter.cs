@@ -2,7 +2,7 @@
 using System.Windows.Data;
 using System.Windows.Markup;
 
-namespace AnalyseTool.Views.Converters
+namespace AnalyseTool.Converters
 {
     public class InverseBoolConverter : MarkupExtension, IValueConverter
     {

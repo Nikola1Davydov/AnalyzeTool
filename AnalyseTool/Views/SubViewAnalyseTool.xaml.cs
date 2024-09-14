@@ -12,10 +12,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using AnalyseTool.ViewModels;
-using AnalyseTool.Models;
 
-namespace AnalyseTool.Views
+namespace AnalyseTool
 {
     /// <summary>
     /// Interaktionslogik für SubViewAnalyseTool.xaml
@@ -27,5 +25,35 @@ namespace AnalyseTool.Views
             DataContext = ProgramContex.viewModel;
             InitializeComponent();
         }
+
+        private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            DataGridRow row = sender as DataGridRow;
+
+            if (row != null)
+            {
+                // Проверяем, открыта ли строка, и переключаем видимость RowDetails
+                if (row.DetailsVisibility == System.Windows.Visibility.Collapsed)
+                {
+                    row.DetailsVisibility = System.Windows.Visibility.Visible;
+                }
+                else
+                {
+                    row.DetailsVisibility = System.Windows.Visibility.Collapsed;
+                }
+
+                // Отмена стандартного выбора строки, если нужно
+                e.Handled = true;
+            }
+        }
+        // Обработчик события LoadingRow для DataGrid
+        private void DataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        {
+            // Ваша логика для обработки загрузки строки
+            // Например, вы можете настроить или стилизовать строку
+            var row = e.Row;
+            // Пример: можно настроить цвет строки или применить другие действия
+        }
+
     }
 }

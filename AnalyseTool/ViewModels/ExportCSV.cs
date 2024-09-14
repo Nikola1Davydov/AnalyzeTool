@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Models;
+﻿using AnalyseTool;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ using System.Windows;
 using System.IO;
 using Microsoft.Win32;
 
-namespace AnalyseTool.ViewModels
+namespace AnalyseTool
 {
     public static class ExportCSV
     {

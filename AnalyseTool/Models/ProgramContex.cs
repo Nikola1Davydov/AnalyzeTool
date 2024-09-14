@@ -1,6 +1,6 @@
 ﻿using AnalyseTool.Utils;
-using AnalyseTool.ViewModels;
-using AnalyseTool.Views;
+using AnalyseTool;
+using AnalyseTool;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.UI;
 using System;
@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AnalyseTool.Models
+namespace AnalyseTool
 {
     public static class ProgramContex
     {

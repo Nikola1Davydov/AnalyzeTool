@@ -8,23 +8,23 @@
     ".NETCoreApp,Version=v8.0": {
       "AnalyseTool/1.0.0": {
         "dependencies": {
-          "CommunityToolkit.Mvvm": "8.2.2",
+          "CommunityToolkit.Mvvm": "8.3.1",
           "Nice3point.Revit.Api.RevitAPI": "2025.2.0",
           "Nice3point.Revit.Api.RevitAPIUI": "2025.2.0",
           "Nice3point.Revit.Build.Tasks": "1.1.2",
           "Nice3point.Revit.Extensions": "2025.0.0",
-          "Nice3point.Revit.Toolkit": "2025.0.1",
+          "Nice3point.Revit.Toolkit": "2025.0.2",
           "itext7": "8.0.4"
         },
         "runtime": {
           "AnalyseTool.dll": {}
         }
       },
-      "CommunityToolkit.Mvvm/8.2.2": {
+      "CommunityToolkit.Mvvm/8.3.1": {
         "runtime": {
-          "lib/net6.0/CommunityToolkit.Mvvm.dll": {
-            "assemblyVersion": "8.2.0.0",
-            "fileVersion": "8.2.2.1"
+          "lib/net8.0/CommunityToolkit.Mvvm.dll": {
+            "assemblyVersion": "8.3.0.0",
+            "fileVersion": "8.3.1.1"
           }
         }
       },
@@ -255,14 +255,14 @@
           }
         }
       },
-      "Nice3point.Revit.Toolkit/2025.0.1": {
+      "Nice3point.Revit.Toolkit/2025.0.2": {
         "dependencies": {
           "JetBrains.Annotations": "2023.3.0"
         },
         "runtime": {
           "lib/net8.0-windows7.0/Nice3point.Revit.Toolkit.dll": {
-            "assemblyVersion": "2025.0.1.0",
-            "fileVersion": "2025.0.1.0"
+            "assemblyVersion": "2025.0.2.0",
+            "fileVersion": "2025.0.2.0"
           }
         }
       },
@@ -782,12 +782,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "CommunityToolkit.Mvvm/8.2.2": {
+    "CommunityToolkit.Mvvm/8.3.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-r0g0k9tGYdrnz8R7T3x5UiokDffeevzK/2P/9SBL6fqLgN8B157MIi/bVUWI1KAz6ZorZrK9AdABCWUeXZZsvA==",
-      "path": "communitytoolkit.mvvm/8.2.2",
-      "hashPath": "communitytoolkit.mvvm.8.2.2.nupkg.sha512"
+      "sha512": "sha512-Fuqjp5uYzHEdrRxsZlY0EqvFX9pF2v0cZN+zfso44lVLI3wZa8Nb9jdcBoXbHxiRSU3hEDhHUqh2fM8znzodzg==",
+      "path": "communitytoolkit.mvvm/8.3.1",
+      "hashPath": "communitytoolkit.mvvm.8.3.1.nupkg.sha512"
     },
     "itext/8.0.4": {
       "type": "package",
@@ -936,12 +936,12 @@
       "path": "nice3point.revit.extensions/2025.0.0",
       "hashPath": "nice3point.revit.extensions.2025.0.0.nupkg.sha512"
     },
-    "Nice3point.Revit.Toolkit/2025.0.1": {
+    "Nice3point.Revit.Toolkit/2025.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-dNcgb43lO/bQrfjQJ/RzTfQSI45jV/BGPukzdtRNh/Nj1DO9LWZNo1YShEx234H7JsI80WEAZyAhqXXc9VgxRg==",
-      "path": "nice3point.revit.toolkit/2025.0.1",
-      "hashPath": "nice3point.revit.toolkit.2025.0.1.nupkg.sha512"
+      "sha512": "sha512-K2qqMana1sQqSp1q5W3EhW5ObRYGrNJwLb6MacQ4tHLHWzeD53EJPF2g0wnM6l89b5poCxG5MC1kbUy8YcfkNQ==",
+      "path": "nice3point.revit.toolkit/2025.0.2",
+      "hashPath": "nice3point.revit.toolkit.2025.0.2.nupkg.sha512"
     },
     "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.0": {
       "type": "package",

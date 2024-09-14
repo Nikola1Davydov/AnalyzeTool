@@ -1,7 +1,7 @@
-﻿using AnalyseTool.Models;
+﻿using AnalyseTool;
 using AnalyseTool.Utils;
-using AnalyseTool.ViewModels;
-using AnalyseTool.Views;
+using AnalyseTool;
+using AnalyseTool;
 using Autodesk.Revit.Attributes;
 using Nice3point.Revit.Toolkit.External;
 

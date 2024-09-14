@@ -20,9 +20,9 @@ namespace AnalyseTool
 
         private void CreateRibbon()
         {
-            var panel = Application.CreatePanel("Davydov", "Analyse");
+            var panel = Application.CreatePanel("Data Check", "Analyse");
 
-            panel.AddPushButton<StartupCommand>("Execute")
+            panel.AddPushButton<StartupCommand>("Parameter Check")
                 .SetLargeImage("/AnalyseTool;component/Resources/Icons/icons8-analyse-34.ico");
         }
     }

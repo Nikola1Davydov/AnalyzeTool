@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Models;
+﻿using AnalyseTool;
 using iText.Kernel.Pdf;
 using iText.Layout.Element;
 using iText.Layout.Properties;
@@ -8,7 +8,7 @@ using Document = iText.Layout.Document;
 using Paragraph = iText.Layout.Element.Paragraph;
 using Table = iText.Layout.Element.Table;
 
-namespace AnalyseTool.ViewModels
+namespace AnalyseTool
 {
     public static class ExportPDF
     {

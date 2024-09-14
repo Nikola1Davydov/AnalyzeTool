@@ -49,4 +49,8 @@
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </Resource>
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Helper\" />
+    </ItemGroup>
 </Project>
