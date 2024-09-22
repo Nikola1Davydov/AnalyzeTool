@@ -62,8 +62,7 @@
                   CanUserDeleteRows="False"
                   x:Name="dataGridData"
                   GridLinesVisibility="None"
-                  Grid.Row="1"
-                  LoadingRow="DataGrid_LoadingRow">
+                  Grid.Row="1">
             
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
@@ -163,8 +162,58 @@
              <!--RowDetailsTemplate to display child elements--> 
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
-                        <DataGrid ItemsSource="{Binding ChildParameters}"
+                    <Grid MaxHeight="200">
+
+                    <ListView ItemsSource="{Binding ChildParameters}"
+                                  d:ItemsSource="{d:SampleData ItemCount=2}"
+                                  Grid.Row="1"
+                                  x:Name="dataGridData">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn>
+                                        <GridViewColumnHeader Content="Parameter&#10;Name"/>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn>
+                                        <GridViewColumnHeader Content="Parameter&#10;Filled"/>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ParameterFilled}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn>
+                                        <GridViewColumnHeader Content="Parameter&#10;Filled in %"/>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Rectangle Width="{Binding ParameterFilledProzent}" Height="18" Fill="Pink" HorizontalAlignment="Left"/>
+                                                    <TextBlock Text="{Binding ParameterFilledProzent}" HorizontalAlignment="Center"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn>
+                                        <GridViewColumnHeader Content="Select Filled&#10;Elements"/>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Width="40"
+                                            Height="18" 
+                                            Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                            CommandParameter="{Binding}"
+                                            Content="Select" 
+                                            VerticalContentAlignment="Center"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                        <!--<DataGrid ItemsSource="{Binding ChildParameters}"
                                   d:ItemsSource="{d:SampleData}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
@@ -174,7 +223,8 @@
                                   MaxHeight="200"
                                   HorizontalAlignment="Left"
                                   Margin="40,0,0,0"
-                                  HeadersVisibility="Column">
+                                  HeadersVisibility="Column"
+                                  PreviewMouseLeftButtonDown="OnDetailsClick">
 
                             
                             <DataGrid.Columns>
@@ -206,8 +256,8 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
-                        </DataGrid>
-                    </ScrollViewer>
+                        </DataGrid>-->
+                    </Grid>
                 </DataTemplate>
                
             </DataGrid.RowDetailsTemplate>

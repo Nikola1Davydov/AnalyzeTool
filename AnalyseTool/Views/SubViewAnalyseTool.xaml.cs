@@ -25,35 +25,61 @@ namespace AnalyseTool
             DataContext = ProgramContex.viewModel;
             InitializeComponent();
         }
-
         private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DataGridRow row = sender as DataGridRow;
+            // Получаем объект DataGridRow, на который кликнули
+            var clickedRow = sender as DataGridRow;
+            if (clickedRow == null) return;
 
-            if (row != null)
+            // Получаем DataGrid, в котором находится эта строка
+            DataGrid dataGrid = FindVisualParent<DataGrid>(clickedRow);
+            if (dataGrid == null) return;
+
+            // Проходим через все строки DataGrid
+            foreach (var item in dataGrid.Items)
             {
-                // Проверяем, открыта ли строка, и переключаем видимость RowDetails
-                if (row.DetailsVisibility == System.Windows.Visibility.Collapsed)
-                {
-                    row.DetailsVisibility = System.Windows.Visibility.Visible;
-                }
-                else
-                {
-                    row.DetailsVisibility = System.Windows.Visibility.Collapsed;
-                }
+                // Получаем строку для текущего элемента
+                DataGridRow row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
 
-                // Отмена стандартного выбора строки, если нужно
-                e.Handled = true;
+                if (row != null)
+                {
+                    // Проверяем контекст данных строки
+                    var parameterDefinition = row.DataContext as ParameterDefinition;
+
+                    // Если это та строка, по которой кликнули
+                    if (row == clickedRow)
+                    {
+                        // Проверяем, есть ли элементы в ChildParameters
+                        if (parameterDefinition != null && parameterDefinition.ParameterFilled > 0)
+                        {
+                            row.DetailsVisibility = System.Windows.Visibility.Visible;
+                        }
+                    }
+                    else
+                    {
+                        // Сворачиваем все остальные строки
+                        row.DetailsVisibility = System.Windows.Visibility.Collapsed;
+                    }
+                }
             }
         }
-        // Обработчик события LoadingRow для DataGrid
-        private void DataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        // Вспомогательный метод для нахождения родительского элемента
+        private static T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
         {
-            // Ваша логика для обработки загрузки строки
-            // Например, вы можете настроить или стилизовать строку
-            var row = e.Row;
-            // Пример: можно настроить цвет строки или применить другие действия
-        }
+            // Получаем родителя
+            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
 
+            // Если нет родителя, возвращаем null
+            if (parentObject == null) return null;
+
+            // Если родитель нужного типа, возвращаем его
+            if (parentObject is T parent)
+            {
+                return parent;
+            }
+
+            // Если родитель не нужного типа, повторяем поиск
+            return FindVisualParent<T>(parentObject);
+        }
     }
 }
