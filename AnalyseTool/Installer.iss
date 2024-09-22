@@ -4,7 +4,7 @@
 [Setup]
 ; Имя вашего инсталлятора
 AppName=AnalyseTool Plugin for Revit
-AppVersion=0.4
+AppVersion=1.0.0
 ; Папка установки. Используйте {autopf} для автоматического выбора Program Files
 DefaultDirName={autopf}\AnalyseTool Plugin for Revit
 ; Папка в меню "Пуск"
