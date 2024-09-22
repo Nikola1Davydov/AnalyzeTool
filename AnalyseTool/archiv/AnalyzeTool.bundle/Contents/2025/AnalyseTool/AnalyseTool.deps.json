@@ -8,7 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "AnalyseTool/1.0.0": {
         "dependencies": {
-          "CommunityToolkit.Mvvm": "8.3.1",
+          "CommunityToolkit.Mvvm": "8.3.2",
           "Nice3point.Revit.Api.RevitAPI": "2025.2.0",
           "Nice3point.Revit.Api.RevitAPIUI": "2025.2.0",
           "Nice3point.Revit.Build.Tasks": "1.1.2",
@@ -20,11 +20,11 @@
           "AnalyseTool.dll": {}
         }
       },
-      "CommunityToolkit.Mvvm/8.3.1": {
+      "CommunityToolkit.Mvvm/8.3.2": {
         "runtime": {
           "lib/net8.0/CommunityToolkit.Mvvm.dll": {
             "assemblyVersion": "8.3.0.0",
-            "fileVersion": "8.3.1.1"
+            "fileVersion": "8.3.2.1"
           }
         }
       },
@@ -782,12 +782,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "CommunityToolkit.Mvvm/8.3.1": {
+    "CommunityToolkit.Mvvm/8.3.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Fuqjp5uYzHEdrRxsZlY0EqvFX9pF2v0cZN+zfso44lVLI3wZa8Nb9jdcBoXbHxiRSU3hEDhHUqh2fM8znzodzg==",
-      "path": "communitytoolkit.mvvm/8.3.1",
-      "hashPath": "communitytoolkit.mvvm.8.3.1.nupkg.sha512"
+      "sha512": "sha512-m8EolE1A0Updj68WTsZSGI6VWb6mUqHPh7QFo0kt7+JPhYMNXRS1ch8TS/oITAdcxTLrwMOp3ku1KjeG1/Zdpg==",
+      "path": "communitytoolkit.mvvm/8.3.2",
+      "hashPath": "communitytoolkit.mvvm.8.3.2.nupkg.sha512"
     },
     "itext/8.0.4": {
       "type": "package",

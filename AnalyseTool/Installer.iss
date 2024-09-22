@@ -13,7 +13,7 @@ DefaultGroupName=AnalyseTool Plugin for Revit
 AppPublisher=Nikolai Davydov
 AppPublisherURL=https://github.com/Nikola1Davydov/AnalyzeTool
 AppSupportURL=https://github.com/Nikola1Davydov/AnalyzeTool
-AppUpdatesURL=https://github.com/Nikola1Davydov/AnalyzeTool
+AppUpdatesURL=https://github.com/Nikola1Davydov/AnalyzeTool/releases
 ; Тип установки
 Compression=lzma
 SolidCompression=yes
