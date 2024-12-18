@@ -30,8 +30,10 @@ namespace AnalyseTool
                     // Titels
                     writer.WriteLine("Parameter Name,Category,Parameter Count,Parameter Empty,Parameter Filled");
 
+                    AnalyseToolViewModel ViewModel = Host.GetService<AnalyseToolViewModel>();
+
                     // data
-                    foreach (var paramDef in ProgramContex.viewModel.ParameterDefinitions)
+                    foreach (var paramDef in ViewModel.ParameterDefinitions)
                     {
                         writer.WriteLine($"{paramDef.Name},{paramDef.CategoriesString},{paramDef.ParameterCount},{paramDef.ParameterEmpty},{paramDef.ParameterFilled}");
                     }

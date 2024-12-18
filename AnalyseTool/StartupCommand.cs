@@ -1,9 +1,5 @@
-﻿using AnalyseTool;
-using AnalyseTool.Utils;
-using AnalyseTool;
-using AnalyseTool;
-using Autodesk.Revit.Attributes;
-using Nice3point.Revit.Toolkit.External;
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.UI;
 
 namespace AnalyseTool
 {
@@ -12,13 +8,15 @@ namespace AnalyseTool
     /// </summary>
     [UsedImplicitly]
     [Transaction(TransactionMode.Manual)]
-    public class StartupCommand : ExternalCommand
+    public class StartupCommand : IExternalCommand
     {
-        public override void Execute()
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            if (WindowController.Focus<AnalyseToolView>()) return;
+            ProgramContex.Init(commandData.Application);
+            var view = Host.GetService<AnalyseToolView>();
+            view.Show();
 
-            ProgramContex.Init(UiApplication);
+            return Result.Succeeded;
         }
     }
 }

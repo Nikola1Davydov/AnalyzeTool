@@ -16,10 +16,10 @@ namespace AnalyseTool
         public Parameter Parameter { get; set; }
         public string ParameterValue {  get; set; }
         public Type ParameterType { get; set; }
-        public DataElement(Element Element, Category Category, string ParameterName) 
+        public DataElement(Element Element, string ParameterName) 
         { 
             this.Element = Element;
-            this.Category = Category;
+            this.Category = Element.Category;
             this.ParameterName = ParameterName;
             this.Parameter = Element.LookupParameter(ParameterName);
             if (Parameter != null)

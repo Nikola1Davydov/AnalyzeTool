@@ -34,8 +34,9 @@ namespace AnalyseTool
                     table.AddHeaderCell(new Cell().Add(new Paragraph("Parameter Filled")));
                     table.AddHeaderCell(new Cell().Add(new Paragraph("Parameter Filled in %")));
 
+                    AnalyseToolViewModel ViewModel = Host.GetService<AnalyseToolViewModel>();
                     // Заполнение данными
-                    foreach (var paramDef in ProgramContex.viewModel.ParameterDefinitions)
+                    foreach (var paramDef in ViewModel.ParameterDefinitions)
                     {
                         table.AddCell(new Cell().Add(new Paragraph(paramDef.CategoriesString)));
                         table.AddCell(new Cell().Add(new Paragraph(paramDef.Name)));

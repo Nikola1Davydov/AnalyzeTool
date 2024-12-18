@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace AnalyseTool
 {
     /// <summary>
@@ -15,9 +16,13 @@ namespace AnalyseTool
     {
         public override void OnStartup()
         {
+            Host.Start();
             CreateRibbon();
         }
-
+        public override void OnShutdown()
+        {
+            Host.Stop();
+        }
         private void CreateRibbon()
         {
             var panel = Application.CreatePanel("Data Check", "Analyse");

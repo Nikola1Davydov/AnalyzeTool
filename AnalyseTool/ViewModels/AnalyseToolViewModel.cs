@@ -8,20 +8,17 @@ using Binding = Autodesk.Revit.DB.Binding;
 
 namespace AnalyseTool
 {
-    public class AnalyseToolViewModel : ObservableObject
+    public partial class AnalyseToolViewModel : ObservableObject
     {
         public ICollectionView ParameterCollectionView { get; set; }
-        public ICommand SelectElementsCommand { get; }
-        public ICommand SelectFilledElementsCommand { get; }
         public ICommand ExportToExcelCommand { get; }
         public ICommand ExportToPdfCommand { get; }
+        List<DataElement> dataElements;
+        IList<KeyValuePair<string, Category>> CategoryParameterMap;
 
+        [ObservableProperty]
         private ObservableCollection<ParameterDefinition> parameterDefinitions;
-        public ObservableCollection<ParameterDefinition> ParameterDefinitions
-        {
-            get { return parameterDefinitions; }
-            set => SetProperty(ref parameterDefinitions, value);
-        }
+
         private string _parameterFilter = string.Empty;
         public string ParameterFilter
         {
@@ -33,8 +30,6 @@ namespace AnalyseTool
                 ParameterCollectionView.Refresh();
             }
         }
-        List<DataElement> dataElements;
-        IList<KeyValuePair<string, Category>> CategoryParameterMap;
 
         public AnalyseToolViewModel()
         {
@@ -44,8 +39,6 @@ namespace AnalyseTool
             GetAllParametersInProject();
 
             // commands
-            SelectElementsCommand = new RelayCommand<ParameterDefinition>(SelectElements);
-            SelectFilledElementsCommand = new RelayCommand<ParameterDefinition>(SelectFilledElements);
             ExportToExcelCommand = new RelayCommand(ExportCSV.ExportToCSV);
             ExportToPdfCommand = new RelayCommand(ExportPDF.ExportToPdf);
         }
@@ -163,7 +156,7 @@ namespace AnalyseTool
             {
                 foreach (Element element in tuple.Item3)
                 {
-                    dataElements.Add(new DataElement(element, tuple.Item2, tuple.Item1));
+                    dataElements.Add(new DataElement(element, tuple.Item1));
                 }
             }
         }
@@ -249,6 +242,7 @@ namespace AnalyseTool
             }
             return false;
         }
+        [RelayCommand]
         private void SelectElements(ParameterDefinition parameterDefinition)
         {
             if (parameterDefinition != null && parameterDefinition.EmptyElements != null)
@@ -256,6 +250,7 @@ namespace AnalyseTool
                 ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.EmptyElements);
             }
         }
+        [RelayCommand]
         private void SelectFilledElements(ParameterDefinition parameterDefinition)
         {
             if (parameterDefinition != null && parameterDefinition.FilledElements != null)
@@ -263,74 +258,8 @@ namespace AnalyseTool
                 ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.FilledElements);
             }
         }
-        private void getAllElementsParameters()
-        {
-            var allCategories = ProgramContex.doc.Settings.Categories.Cast<Category>().ToList();
 
-            // Создаем коллекцию всех встроенных категорий
-            ICollection<BuiltInCategory> allBuiltInCategories = new Collection<BuiltInCategory>(allCategories.Select(x =>
-            {
-                try
-                {
-                    return (BuiltInCategory)Enum.Parse(typeof(BuiltInCategory), x.Id.IntegerValue.ToString());
-                }
-                catch
-                {
-                    return BuiltInCategory.INVALID;
-                }
-            }).Where(c => c != BuiltInCategory.INVALID).ToList());
 
-            // Создаем фильтр для всех категорий
-            ElementMulticategoryFilter elementMulticategoryFilter = new ElementMulticategoryFilter(allBuiltInCategories);
 
-            // Получаем все элементы, которые не являются типами элементов и проходят фильтр категорий
-            var allElements = new FilteredElementCollector(ProgramContex.doc).WhereElementIsNotElementType().WherePasses(elementMulticategoryFilter).ToList();
-
-            foreach (var element in allElements)
-            {
-                var allParameters = element.Parameters;
-                foreach (Parameter parameter in allParameters)
-                {
-                    // Получаем значение параметра
-                    string parameterValue = GetParameterValue(parameter);
-
-                    // Добавляем элемент в dataElements
-                    dataElements.Add(new DataElement(element, element.Category, parameter.Definition.Name)
-                    {
-                        Parameter = parameter,
-                        ParameterValue = parameterValue,
-                        ParameterType = parameter.GetType(),
-                    });
-                }
-            }
-        }
-        private string GetParameterValue(Parameter parameter)
-        {
-            // Получаем значение параметра в зависимости от его типа
-            switch (parameter.StorageType)
-            {
-                case StorageType.Double:
-                    return parameter.AsDouble().ToString();
-                case StorageType.Integer:
-                    return parameter.AsInteger().ToString();
-                case StorageType.String:
-                    return parameter.AsString();
-                case StorageType.ElementId:
-                    return parameter.AsElementId().IntegerValue.ToString();
-                default:
-                    return string.Empty;
-            }
-        }
-
-        //private void FlattenParameterHierarchy(ParameterDefinition parameter)
-        //{
-        //    ParameterDefinitions.Add(parameter);
-
-        //    // add child elements
-        //    foreach (var child in parameter.ChildParameters)
-        //    {
-        //        FlattenParameterHierarchy(child);
-        //    }
-        //}
     }
 }
