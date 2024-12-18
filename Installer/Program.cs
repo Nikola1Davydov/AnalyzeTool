@@ -34,32 +34,7 @@ namespace Installer
                                            .Add(Dialogs.Progress)
                                            .Add(Dialogs.Exit);
 
-            //project.Load += Msi_Load;
-            //project.BeforeInstall += Msi_BeforeInstall;
-            //project.AfterInstall += Msi_AfterInstall;
-
-            //project.SourceBaseDir = "<input dir path>";
-            //project.OutDir = "<output dir path>";
-
             project.BuildMsi();
         }
-
-        //static void Msi_Load(SetupEventArgs e)
-        //{
-        //    if (!e.IsUISupressed && !e.IsUninstalling)
-        //        MessageBox.Show(e.ToString(), "Load");
-        //}
-
-        //static void Msi_BeforeInstall(SetupEventArgs e)
-        //{
-        //    if (!e.IsUISupressed && !e.IsUninstalling)
-        //        MessageBox.Show(e.ToString(), "BeforeInstall");
-        //}
-
-        //static void Msi_AfterInstall(SetupEventArgs e)
-        //{
-        //    if (!e.IsUISupressed && !e.IsUninstalling)
-        //        MessageBox.Show(e.ToString(), "AfterExecute");
-        //}
     }
 }

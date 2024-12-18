@@ -1,4 +1,6 @@
 ﻿using AnalyseTool;
+using AnalyseTool.Helper;
+using AnalyseTool.ParameterControl.Models;
 using Autodesk.Revit.UI;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -6,10 +8,11 @@ using System.Windows.Data;
 using System.Windows.Input;
 using Binding = Autodesk.Revit.DB.Binding;
 
-namespace AnalyseTool
+namespace AnalyseTool.ParameterControl.ViewModels
 {
     public partial class AnalyseToolViewModel : ObservableObject
     {
+        #region data
         public ICollectionView ParameterCollectionView { get; set; }
         public ICommand ExportToExcelCommand { get; }
         public ICommand ExportToPdfCommand { get; }
@@ -30,7 +33,7 @@ namespace AnalyseTool
                 ParameterCollectionView.Refresh();
             }
         }
-
+        #endregion
         public AnalyseToolViewModel()
         {
             ParameterDefinitions = new ObservableCollection<ParameterDefinition>();

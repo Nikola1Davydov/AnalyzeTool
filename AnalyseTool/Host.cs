@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using AnalyseTool.DoorManager.View;
+using AnalyseTool.ParameterControl.ViewModels;
+using AnalyseTool.ParameterControl.Views;
+using AnalyseTool.Resources.wpf;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Reflection;
@@ -23,7 +27,8 @@ namespace AnalyseTool
 
             //Services
             builder.Services.AddTransient<AnalyseToolViewModel>();
-            builder.Services.AddTransient<AnalyseToolView>();
+            builder.Services.AddTransient<SubViewAnalyseTool>();
+            builder.Services.AddTransient<DoorManagerView>();
 
             _host = builder.Build();
             _host.Start();

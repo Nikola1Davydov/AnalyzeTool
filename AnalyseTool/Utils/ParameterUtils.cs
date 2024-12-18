@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AnalyseTool.Helper
+namespace AnalyseTool.Utils
 {
     public static class ParameterUtils
     {
@@ -55,7 +55,7 @@ namespace AnalyseTool.Helper
                 foreach (Parameter parameter in allParameters)
                 {
                     // Получаем значение параметра
-                    string parameterValue = Helper.ParameterUtils.GetParameterValue(parameter);
+                    string parameterValue = ParameterUtils.GetParameterValue(parameter);
 
                     //// Добавляем элемент в dataElements
                     //dataElements.Add(new DataElement(element, element.Category, parameter.Definition.Name)

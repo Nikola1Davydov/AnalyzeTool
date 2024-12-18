@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace AnalyseTool
+namespace AnalyseTool.Helper
 {
     public class RelayCommand<T> : ICommand
     {

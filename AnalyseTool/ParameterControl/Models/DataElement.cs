@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AnalyseTool
+namespace AnalyseTool.ParameterControl.Models
 {
     public class DataElement
     {

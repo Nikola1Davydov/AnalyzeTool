@@ -1,4 +1,6 @@
-﻿using Autodesk.Revit.DB;
+﻿using AnalyseTool.ParameterControl.Models;
+using AnalyseTool.ParameterControl.ViewModels;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace AnalyseTool
+namespace AnalyseTool.ParameterControl.Views
 {
     /// <summary>
     /// Interaktionslogik für SubViewAnalyseTool.xaml

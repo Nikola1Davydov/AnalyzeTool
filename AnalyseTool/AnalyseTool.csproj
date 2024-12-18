@@ -61,6 +61,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+        <PackageReference Include="WPF-UI" Version="3.0.5" />
     </ItemGroup>
 
     <ItemGroup>
@@ -74,5 +75,7 @@
 
     <ItemGroup>
       <Folder Include="Config\" />
+      <Folder Include="DoorManager\Model\" />
+      <Folder Include="DoorManager\ViewModel\" />
     </ItemGroup>
 </Project>
