@@ -14,8 +14,6 @@ namespace AnalyseTool.ParameterControl.ViewModels
     {
         #region data
         public ICollectionView ParameterCollectionView { get; set; }
-        public ICommand ExportToExcelCommand { get; }
-        public ICommand ExportToPdfCommand { get; }
         List<DataElement> dataElements;
         IList<KeyValuePair<string, Category>> CategoryParameterMap;
 
@@ -40,10 +38,6 @@ namespace AnalyseTool.ParameterControl.ViewModels
             CategoryParameterMap = new List<KeyValuePair<string, Category>>();
             dataElements = new List<DataElement> { };
             GetAllParametersInProject();
-
-            // commands
-            ExportToExcelCommand = new RelayCommand(ExportCSV.ExportToCSV);
-            ExportToPdfCommand = new RelayCommand(ExportPDF.ExportToPdf);
         }
 
         private void GetAllParametersInProject()
@@ -244,6 +238,16 @@ namespace AnalyseTool.ParameterControl.ViewModels
                     parameterDefinition.Name.Contains(ParameterFilter, StringComparison.InvariantCultureIgnoreCase);
             }
             return false;
+        }
+        [RelayCommand]
+        private void ExportToPdf()
+        {
+            ExportPDF.ExportToPdf();
+        }
+        [RelayCommand]
+        private void  ExportToCSV()
+        {
+            ExportCSV.ExportToCSV();
         }
         [RelayCommand]
         private void SelectElements(ParameterDefinition parameterDefinition)
