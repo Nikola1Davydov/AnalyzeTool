@@ -14,12 +14,11 @@ namespace AnalyseTool
         public override void OnStartup()
         {
             LoadDLL();
-            Host.Start();
             CreateRibbon();
         }
         public override void OnShutdown()
         {
-            Host.Stop();
+
         }
         private void CreateRibbon()
         {

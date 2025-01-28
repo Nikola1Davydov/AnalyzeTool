@@ -6,7 +6,7 @@
     To suppress generation of this file remove `set ide=true` from the PostBuildEvent of the VS project
 </auto-generated>
 -->
-  <Package Compressed="yes" ProductCode="004264d8-7fcd-47c8-837b-8861632b0b09" Name="AnalyseTool" Language="1033" Version="1.0.0.0" UpgradeCode="004264d8-7fcd-47c8-837b-8861532b0b08" Manufacturer="davydov" InstallerVersion="200">
+  <Package Compressed="yes" ProductCode="004264d8-7fcd-47c8-837b-8861632b0b09" Name="AnalyseTool" Language="1033" Version="1.0.0.0" UpgradeCode="004264d8-7fcd-47c8-837b-8861532b0b08" Manufacturer="nikol" InstallerVersion="200">
     <SummaryInformation Codepage="Windows-1252" />
     <Media Id="1" Cabinet="AnalyseTool.cab" EmbedCab="yes" />
 
@@ -35,7 +35,7 @@
     <CustomAction Id="CancelRequestHandler" BinaryRef="WixSharp_InitRuntime_Action_File" DllEntry="CancelRequestHandler" Return="check" Impersonate="no" Execute="deferred" />
 
     <Binary Id="WixSharp_InitRuntime_Action_File" SourceFile="WixSharp.CA.dll" />
-    <Binary Id="WixSharp_UIText" SourceFile="..\..\..\..\..\..\..\ProgramData\WixSharp\2.4.2.0\WixUI_en-US.wxl" />
+    <Binary Id="WixSharp_UIText" SourceFile="C:\ProgramData\WixSharp\2.4.2.0\WixUI_en-US.wxl" />
     <Binary Id="WixSharp_LicenceFile" SourceFile="AnalyseTool.licence.rtf" />
     <Binary Id="WixSharpUI_Bmp_Dialog" SourceFile="AnalyseTool.dialog_bmp.png" />
     <Binary Id="WixSharpUI_Bmp_Banner" SourceFile="AnalyseTool.dialog_banner.png" />

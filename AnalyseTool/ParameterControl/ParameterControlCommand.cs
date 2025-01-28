@@ -14,9 +14,9 @@ namespace AnalyseTool.ParameterControl
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             ProgramContex.Init(commandData.Application);
-            SubViewAnalyseTool subview = Host.GetService<SubViewAnalyseTool>();
-            BaseView view = new BaseView("Parameter check", subview);
-            view.Show();
+            //SubViewAnalyseTool subview = Host.GetService<SubViewAnalyseTool>();
+            //BaseView view = new BaseView("Parameter check", subview);
+            //view.Show();
 
             return Result.Succeeded;
         }

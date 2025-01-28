@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnalyzeToolNuke", "build\An
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{FE79297B-D78C-42B1-9046-5D1CD6349433}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitApiLib", "..\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib.csproj", "{0032920A-9874-40A0-9368-9FADC8C503F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R23|Any CPU = Debug R23|Any CPU
@@ -69,6 +71,22 @@ Global
 		{FE79297B-D78C-42B1-9046-5D1CD6349433}.Release R25|Any CPU.Build.0 = Release|Any CPU
 		{FE79297B-D78C-42B1-9046-5D1CD6349433}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE79297B-D78C-42B1-9046-5D1CD6349433}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R23|Any CPU.ActiveCfg = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R23|Any CPU.Build.0 = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R24|Any CPU.ActiveCfg = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R24|Any CPU.Build.0 = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R25|Any CPU.ActiveCfg = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R25|Any CPU.Build.0 = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R23|Any CPU.ActiveCfg = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R23|Any CPU.Build.0 = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R24|Any CPU.Build.0 = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R25|Any CPU.Build.0 = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
