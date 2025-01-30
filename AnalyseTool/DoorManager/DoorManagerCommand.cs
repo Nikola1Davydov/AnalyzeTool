@@ -1,13 +1,7 @@
 ﻿using AnalyseTool.DoorManager.View;
-using AnalyseTool.ParameterControl.Views;
 using AnalyseTool.Resources.wpf;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AnalyseTool.DoorManager
 {
