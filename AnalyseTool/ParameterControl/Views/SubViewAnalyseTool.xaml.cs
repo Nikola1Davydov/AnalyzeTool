@@ -24,8 +24,8 @@ namespace AnalyseTool.ParameterControl.Views
     {
         public SubViewAnalyseTool()
         {
-            AnalyseToolViewModel viewModel = Host.GetService<AnalyseToolViewModel>();
-            DataContext = viewModel;
+            //AnalyseToolViewModel viewModel = Host.GetService<AnalyseToolViewModel>();
+            //DataContext = viewModel;
             InitializeComponent();
         }
         private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
