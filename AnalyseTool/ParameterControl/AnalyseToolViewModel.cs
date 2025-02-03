@@ -2,6 +2,7 @@
 using AnalyseTool.ParameterControl.Models;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Data;
 
 namespace AnalyseTool.ParameterControl.ViewModels
 {
@@ -9,12 +10,11 @@ namespace AnalyseTool.ParameterControl.ViewModels
     {
         #region data
         public ICollectionView ParameterCollectionView { get; set; }
-        List<DataElement> dataElements;
-        IList<KeyValuePair<string, Category>> CategoryParameterMap;
-        IAnalyseToolModel analyseToolModel;
+
+        IAnalyseToolModel AnalyseToolModel;
 
         [ObservableProperty]
-        private ObservableCollection<ParameterDefinition> parameterDefinitions;
+        private ObservableCollection<ParameterDefinition> _parameterDefinitions;
 
         private string _parameterFilter = string.Empty;
         public string ParameterFilter
@@ -30,12 +30,15 @@ namespace AnalyseTool.ParameterControl.ViewModels
         #endregion
         public AnalyseToolViewModel(IAnalyseToolModel analyseToolModel)
         {
-            this.analyseToolModel = analyseToolModel;
+            this.AnalyseToolModel = analyseToolModel;
+            ParameterDefinitions = new ObservableCollection<ParameterDefinition>(analyseToolModel.AnalyzeData());
 
-            ParameterDefinitions = new ObservableCollection<ParameterDefinition>();
-            CategoryParameterMap = new List<KeyValuePair<string, Category>>();
-            dataElements = new List<DataElement> { };
-            //GetAllParametersInProject();
+            // Initialize CollectionView
+            ParameterCollectionView = CollectionViewSource.GetDefaultView(ParameterDefinitions);
+            ParameterCollectionView.Filter = FilterParameter;
+            ParameterCollectionView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ParameterDefinition.CategoriesString)));
+            ParameterCollectionView.SortDescriptions.Add(new SortDescription(nameof(ParameterDefinition.CategoriesString), ListSortDirection.Ascending));
+            ParameterCollectionView.Filter = FilterParameter;
         }
 
 
@@ -54,7 +57,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         {
             if (parameterDefinition != null && parameterDefinition.EmptyElements != null)
             {
-                ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.EmptyElements);
+                AnalyseToolModel.SelectElements(parameterDefinition.EmptyElements);
             }
         }
         [RelayCommand]
@@ -62,7 +65,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         {
             if (parameterDefinition != null && parameterDefinition.FilledElements != null)
             {
-                ProgramContex.uidoc.Selection.SetElementIds(parameterDefinition.FilledElements);
+                AnalyseToolModel.SelectElements(parameterDefinition.FilledElements);
             }
         }
         private bool FilterParameter(object obj)

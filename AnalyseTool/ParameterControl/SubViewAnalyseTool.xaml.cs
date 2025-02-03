@@ -22,8 +22,9 @@ namespace AnalyseTool.ParameterControl.Views
     /// </summary>
     public partial class SubViewAnalyseTool : UserControl
     {
-        public SubViewAnalyseTool()
+        public SubViewAnalyseTool(AnalyseToolViewModel analyseToolViewModel)
         {
+            DataContext = analyseToolViewModel;
             //AnalyseToolViewModel viewModel = Host.GetService<AnalyseToolViewModel>();
             //DataContext = viewModel;
             InitializeComponent();

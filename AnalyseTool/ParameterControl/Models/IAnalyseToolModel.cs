@@ -2,6 +2,7 @@
 {
     public interface IAnalyseToolModel
     {
-        void GetAllParametersInProject();
+        List<ParameterDefinition> AnalyzeData();
+        void SelectElements(IList<ElementId> elementIds);
     }
 }

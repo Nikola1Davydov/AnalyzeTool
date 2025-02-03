@@ -26,46 +26,5 @@ namespace AnalyseTool.Utils
                     return string.Empty;
             }
         }
-        public static void getAllElementsParameters(Document document)
-        {
-            var allCategories = document.Settings.Categories.Cast<Category>().ToList();
-
-            // Создаем коллекцию всех встроенных категорий
-            ICollection<BuiltInCategory> allBuiltInCategories = new Collection<BuiltInCategory>(allCategories.Select(x =>
-            {
-                try
-                {
-                    return (BuiltInCategory)Enum.Parse(typeof(BuiltInCategory), x.Id.IntegerValue.ToString());
-                }
-                catch
-                {
-                    return BuiltInCategory.INVALID;
-                }
-            }).Where(c => c != BuiltInCategory.INVALID).ToList());
-
-            // Создаем фильтр для всех категорий
-            ElementMulticategoryFilter elementMulticategoryFilter = new ElementMulticategoryFilter(allBuiltInCategories);
-
-            // Получаем все элементы, которые не являются типами элементов и проходят фильтр категорий
-            var allElements = new FilteredElementCollector(document).WhereElementIsNotElementType().WherePasses(elementMulticategoryFilter).ToList();
-
-            foreach (var element in allElements)
-            {
-                var allParameters = element.Parameters;
-                foreach (Parameter parameter in allParameters)
-                {
-                    // Получаем значение параметра
-                    string parameterValue = ParameterUtils.GetParameterValue(parameter);
-
-                    //// Добавляем элемент в dataElements
-                    //dataElements.Add(new DataElement(element, element.Category, parameter.Definition.Name)
-                    //{
-                    //    Parameter = parameter,
-                    //    ParameterValue = parameterValue,
-                    //    ParameterType = parameter.GetType(),
-                    //});
-                }
-            }
-        }
     }
 }
