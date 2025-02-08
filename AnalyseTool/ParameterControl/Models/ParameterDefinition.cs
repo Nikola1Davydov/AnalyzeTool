@@ -7,8 +7,6 @@ namespace AnalyseTool.ParameterControl.Models
         [ObservableProperty]
         private string _name;
         [ObservableProperty]
-        private Category _categories;
-        [ObservableProperty]
         private int _parameterEmpty;
         [ObservableProperty]
         private int _parameterCount;
@@ -20,30 +18,26 @@ namespace AnalyseTool.ParameterControl.Models
         private IList<ElementId> _filledElements;
         [ObservableProperty]
         private ObservableCollection<ParameterDefinition> _childParameters;
+        [ObservableProperty]
         private string _categoriesString;
-        public string CategoriesString
-        {
-            get => _categories.Name;
-            private set => SetProperty(ref _categoriesString, value);
-        }
-        private int parameterFilled;
+
+        private int _parameterFilled;
         public int ParameterFilled
         {
-            get => parameterFilled;
+            get => _parameterFilled;
             set
             {
-                if (SetProperty(ref parameterFilled, value))
+                if (SetProperty(ref _parameterFilled, value))
                 {
                     UpdateParameterFilledProzent();
                 }
             }
         }
 
-        public ParameterDefinition(string Name, Category categories, int parameterCount, int parameterFilled, int parameterEmpty, IList<ElementId> emptyElements, IList<ElementId> filledElements)
+        public ParameterDefinition(string Name, string categories, int parameterCount, int parameterFilled, int parameterEmpty, IList<ElementId> emptyElements, IList<ElementId> filledElements)
         {
             this.Name = Name;
-            this.Categories = categories;
-            this.CategoriesString = categories.Name;
+            this.CategoriesString = categories;
             this.ParameterCount = parameterCount;
             this.ParameterFilled = parameterFilled;
             this.ParameterEmpty = parameterEmpty;

@@ -38,7 +38,6 @@ namespace AnalyseTool.ParameterControl.ViewModels
             ParameterCollectionView.Filter = FilterParameter;
             ParameterCollectionView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ParameterDefinition.CategoriesString)));
             ParameterCollectionView.SortDescriptions.Add(new SortDescription(nameof(ParameterDefinition.CategoriesString), ListSortDirection.Ascending));
-            ParameterCollectionView.Filter = FilterParameter;
         }
 
 
@@ -72,8 +71,8 @@ namespace AnalyseTool.ParameterControl.ViewModels
         {
             if (obj is ParameterDefinition parameterDefinition)
             {
-                return parameterDefinition.Categories.Name.Contains(ParameterFilter, StringComparison.InvariantCultureIgnoreCase) ||
-                    parameterDefinition.Name.Contains(ParameterFilter, StringComparison.InvariantCultureIgnoreCase);
+                return parameterDefinition.CategoriesString.Contains(ParameterFilter, StringComparison.InvariantCultureIgnoreCase) ||
+                        parameterDefinition.Name.Contains(ParameterFilter, StringComparison.InvariantCultureIgnoreCase);
             }
             return false;
         }

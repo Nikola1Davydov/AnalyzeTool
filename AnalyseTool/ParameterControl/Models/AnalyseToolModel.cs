@@ -20,7 +20,7 @@ namespace AnalyseTool.ParameterControl.Models
         {
             IList<KeyValuePair<string, Category>> allParamsCategoriesInProject = GetAllParametersInProject(doc);
             List<DataElement> dataElements = CreateDataElements(allParamsCategoriesInProject);
-            IEnumerable<IGrouping<Category, DataElement>> groupedByCategory = dataElements.GroupBy(x => x.Category);
+            IEnumerable<IGrouping<string, DataElement>> groupedByCategory = dataElements.GroupBy(x => x.Category.Name);
             List<ParameterDefinition> parameterDefinitionList = new List<ParameterDefinition>();
 
             // Iterate over each group

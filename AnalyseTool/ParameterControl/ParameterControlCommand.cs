@@ -19,8 +19,7 @@ namespace AnalyseTool.ParameterControl
             IAnalyseToolModel model = new AnalyseToolModel(commandData.Application);
             AnalyseToolViewModel analyseToolViewModel = new AnalyseToolViewModel(model);
             SubViewAnalyseTool subview = new SubViewAnalyseTool(analyseToolViewModel);
-            BaseView view = new BaseView("Parameter check", subview);
-            view.Show();
+            subview.Show();
 
             return Result.Succeeded;
         }

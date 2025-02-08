@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -20,15 +21,21 @@ namespace AnalyseTool.ParameterControl.Views
     /// <summary>
     /// Interaktionslogik für SubViewAnalyseTool.xaml
     /// </summary>
-    public partial class SubViewAnalyseTool : UserControl
+    public partial class SubViewAnalyseTool : Window
     {
         public SubViewAnalyseTool(AnalyseToolViewModel analyseToolViewModel)
         {
             DataContext = analyseToolViewModel;
-            //AnalyseToolViewModel viewModel = Host.GetService<AnalyseToolViewModel>();
-            //DataContext = viewModel;
             InitializeComponent();
+
+            IntPtr revitHandle = Context.UiApplication.MainWindowHandle;
+
+            WindowInteropHelper helper = new WindowInteropHelper(this);
+            helper.Owner = revitHandle;
         }
+
+
+
         private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             // Получаем объект DataGridRow, на который кликнули
@@ -84,6 +91,11 @@ namespace AnalyseTool.ParameterControl.Views
 
             // Если родитель не нужного типа, повторяем поиск
             return FindVisualParent<T>(parentObject);
+        }
+
+        private void dataGridData_SelectionChanged()
+        {
+
         }
     }
 }

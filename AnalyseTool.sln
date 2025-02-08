@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Inst
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyzeToolStarter", "AnalyzeToolStarter\AnalyzeToolStarter.csproj", "{46AF2EE9-AB4E-4249-A006-71BE3D0385F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitApiLib", "..\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib.csproj", "{0032920A-9874-40A0-9368-9FADC8C503F9}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R23|Any CPU = Debug R23|Any CPU
@@ -89,22 +87,6 @@ Global
 		{46AF2EE9-AB4E-4249-A006-71BE3D0385F0}.Release R25|Any CPU.Build.0 = Release R25|Any CPU
 		{46AF2EE9-AB4E-4249-A006-71BE3D0385F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46AF2EE9-AB4E-4249-A006-71BE3D0385F0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R23|Any CPU.ActiveCfg = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R23|Any CPU.Build.0 = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R24|Any CPU.ActiveCfg = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R24|Any CPU.Build.0 = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R25|Any CPU.ActiveCfg = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug R25|Any CPU.Build.0 = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R23|Any CPU.ActiveCfg = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R23|Any CPU.Build.0 = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R24|Any CPU.Build.0 = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release R25|Any CPU.Build.0 = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0032920A-9874-40A0-9368-9FADC8C503F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
