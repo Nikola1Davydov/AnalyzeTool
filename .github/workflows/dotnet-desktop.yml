@@ -1,0 +1,42 @@
+name: AnalyzeTool Revit Plugin CI/CD
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build for Visual Studio
+
+    runs-on: windows-latest  # For a list of available runner types, refer to
+                             # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
+
+    env:
+      Solution_Name: AnalyseTool.sln                         # Replace with your solution name, i.e. MyWpfApp.sln.
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Build solution
+      run: msbuild $env:SOLUTION_NAME /p:Configuration=${{ matrix.configuration }}
+      
+
+    - name: Prepare plugin artifact
+      run: |
+        # Создаём каталог для артефакта, если он ещё не существует
+        if (!(Test-Path -Path $env:ARTIFACT_DIR)) { New-Item -ItemType Directory -Force -Path $env:ARTIFACT_DIR }
+        # Копируем собранный DLL файл плагина
+        Copy-Item -Path "$env:OUTPUT_DIRECTORY\AnalyseTool.dll" -Destination $env:ARTIFACT_DIR -Force
+        # Копируем .addin файл для установки плагина в Revit
+        Copy-Item -Path "path\to\AnalyseTool.addin" -Destination $env:ARTIFACT_DIR -Force
+
+
+    # Upload the MSIX package: https://github.com/marketplace/actions/upload-a-build-artifact
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Revit Plugin Package
+        path: ${{ env.Wap_Project_Directory }}\AppPackages
