@@ -78,8 +78,4 @@
       <Folder Include="DoorManager\Model\" />
       <Folder Include="DoorManager\ViewModel\" />
     </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\..\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib\RevitApiLib.csproj" />
-    </ItemGroup>
 </Project>
