@@ -15,14 +15,17 @@ namespace AnalyseTool
         {
             LoadDLL();
             CreateRibbon();
+            HostBuilderHelper.StartHost();
         }
         public override void OnShutdown()
         {
-
+            HostBuilderHelper.StopHost();
         }
+
+        // todo: add localization
         private void CreateRibbon()
         {
-            var panel = Application.CreatePanel("Work with data", "Analyse");
+            Autodesk.Revit.UI.RibbonPanel panel = Application.CreatePanel("Work with data", "Analyse");
 
             panel.AddPushButton<ParameterControlCommand>("Parameter check")
                 .SetLargeImage("/AnalyseTool;component/Resources/Icons/ParameterControl_Icon.ico");
@@ -33,6 +36,7 @@ namespace AnalyseTool
             panel.AddPushButton<DoorManagerCommand>("About me")
                 .SetLargeImage("/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico");
         }
+        // BUG: Load DLLs from the same folder as the current assembly
         private void LoadDLL()
         {
             // Получение пути к текущей DLL или EXE

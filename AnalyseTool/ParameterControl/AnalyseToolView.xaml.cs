@@ -1,29 +1,19 @@
 ﻿using AnalyseTool.ParameterControl.Models;
 using AnalyseTool.ParameterControl.ViewModels;
-using Autodesk.Revit.DB;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace AnalyseTool.ParameterControl.Views
 {
     /// <summary>
     /// Interaktionslogik für SubViewAnalyseTool.xaml
     /// </summary>
-    public partial class SubViewAnalyseTool : Window
+    public partial class AnalyseToolView : Window
     {
-        public SubViewAnalyseTool(AnalyseToolViewModel analyseToolViewModel)
+        public AnalyseToolView(AnalyseToolViewModel analyseToolViewModel)
         {
             DataContext = analyseToolViewModel;
             InitializeComponent();
@@ -39,7 +29,7 @@ namespace AnalyseTool.ParameterControl.Views
         private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             // Получаем объект DataGridRow, на который кликнули
-            var clickedRow = sender as DataGridRow;
+            DataGridRow clickedRow = sender as DataGridRow;
             if (clickedRow == null) return;
 
             // Получаем DataGrid, в котором находится эта строка
@@ -47,7 +37,7 @@ namespace AnalyseTool.ParameterControl.Views
             if (dataGrid == null) return;
 
             // Проходим через все строки DataGrid
-            foreach (var item in dataGrid.Items)
+            foreach (object item in dataGrid.Items)
             {
                 // Получаем строку для текущего элемента
                 DataGridRow row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
@@ -55,7 +45,7 @@ namespace AnalyseTool.ParameterControl.Views
                 if (row != null)
                 {
                     // Проверяем контекст данных строки
-                    var parameterDefinition = row.DataContext as ParameterDefinition;
+                    ParameterDefinition parameterDefinition = row.DataContext as ParameterDefinition;
 
                     // Если это та строка, по которой кликнули
                     if (row == clickedRow)

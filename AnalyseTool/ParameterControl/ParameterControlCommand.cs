@@ -1,7 +1,4 @@
-﻿using AnalyseTool.ParameterControl.Models;
-using AnalyseTool.ParameterControl.ViewModels;
-using AnalyseTool.ParameterControl.Views;
-using AnalyseTool.Resources.wpf;
+﻿using AnalyseTool.ParameterControl.Views;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI;
 
@@ -15,10 +12,11 @@ namespace AnalyseTool.ParameterControl
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            var te = commandData.Application;
-            IAnalyseToolModel model = new AnalyseToolModel(commandData.Application);
-            AnalyseToolViewModel analyseToolViewModel = new AnalyseToolViewModel(model);
-            SubViewAnalyseTool subview = new SubViewAnalyseTool(analyseToolViewModel);
+            //var te = commandData.Application;
+            //IAnalyseToolModel model = new AnalyseToolModel(commandData.Application);
+            //AnalyseToolViewModel analyseToolViewModel = new AnalyseToolViewModel(model);
+            HostBuilderHelper.StartHost();
+            AnalyseToolView subview = HostBuilderHelper.GetService<AnalyseToolView>();
             subview.Show();
 
             return Result.Succeeded;

@@ -9,10 +9,10 @@ namespace AnalyseTool.ParameterControl.Models
         UIDocument uidoc;
         Document doc;
 
-        public AnalyseToolModel(UIApplication _app)
+        public AnalyseToolModel()
         {
-            this.app = _app;
-            uidoc = _app.ActiveUIDocument;
+            this.app = Context.UiApplication;
+            uidoc = app.ActiveUIDocument;
             this.doc = app.ActiveUIDocument.Document;
         }
 
