@@ -12,10 +12,7 @@ namespace AnalyseTool.ParameterControl
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //var te = commandData.Application;
-            //IAnalyseToolModel model = new AnalyseToolModel(commandData.Application);
-            //AnalyseToolViewModel analyseToolViewModel = new AnalyseToolViewModel(model);
-            HostBuilderHelper.StartHost();
+            //HostBuilderHelper.StartHost();
             AnalyseToolView subview = HostBuilderHelper.GetService<AnalyseToolView>();
             subview.Show();
 

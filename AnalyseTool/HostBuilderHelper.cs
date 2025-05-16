@@ -19,9 +19,9 @@ namespace AnalyseTool
                 DisableDefaults = true,
             });
 
-            builder.Services.AddSingleton<IAnalyseToolModel, AnalyseToolModel>();
-            builder.Services.AddSingleton<AnalyseToolViewModel>();
-            builder.Services.AddSingleton<AnalyseToolView>();
+            builder.Services.AddTransient<IAnalyseToolModel, AnalyseToolModel>();
+            builder.Services.AddTransient<AnalyseToolViewModel>();
+            builder.Services.AddTransient<AnalyseToolView>();
 
             _host = builder.Build();
             _host.Start();

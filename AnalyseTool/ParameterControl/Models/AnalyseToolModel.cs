@@ -5,9 +5,9 @@ namespace AnalyseTool.ParameterControl.Models
 {
     public class AnalyseToolModel : IAnalyseToolModel
     {
-        UIApplication app;
-        UIDocument uidoc;
-        Document doc;
+        private UIApplication app;
+        private UIDocument uidoc;
+        private Document doc;
 
         public AnalyseToolModel()
         {
@@ -24,12 +24,12 @@ namespace AnalyseTool.ParameterControl.Models
             List<ParameterDefinition> parameterDefinitionList = new List<ParameterDefinition>();
 
             // Iterate over each group
-            foreach (var categoryGroup in groupedByCategory)
+            foreach (IGrouping<string, DataElement> categoryGroup in groupedByCategory)
             {
                 // Group the elements within each category by parameter name
-                var groupedByParameterName = categoryGroup.GroupBy(x => x.ParameterName);
+                IEnumerable<IGrouping<string, DataElement>> groupedByParameterName = categoryGroup.GroupBy(x => x.ParameterName);
 
-                foreach (var parameterGroup in groupedByParameterName)
+                foreach (IGrouping<string, DataElement> parameterGroup in groupedByParameterName)
                 {
                     int parameterCount = parameterGroup.Count();
                     int parameterEmpty = parameterGroup.Count(x => string.IsNullOrEmpty(x.ParameterValue));
@@ -42,7 +42,7 @@ namespace AnalyseTool.ParameterControl.Models
                     List<ElementId> filledElements = parameterGroup.Where(x => !string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
 
                     // Assuming ParameterDefinition has a constructor that accepts these parameters
-                    var parameterDefinition = new ParameterDefinition(
+                    ParameterDefinition parameterDefinition = new ParameterDefinition(
                                                     parameterGroup.Key,
                                                     categoryGroup.Key,
                                                     parameterCount,
@@ -51,11 +51,11 @@ namespace AnalyseTool.ParameterControl.Models
                                                     emptyElements,
                                                     filledElements);
 
-                    var groupedByParameterValue = parameterGroup
+                    IEnumerable<IGrouping<string, DataElement>> groupedByParameterValue = parameterGroup
                         .Where(x => !string.IsNullOrEmpty(x.ParameterValue)) // get filled parameter
                         .GroupBy(x => x.ParameterValue); // group by value parameter
 
-                    foreach (var valueGroup in groupedByParameterValue)
+                    foreach (IGrouping<string, DataElement> valueGroup in groupedByParameterValue)
                     {
                         int childParameterCount = valueGroup.Count();
                         int childParameterEmpty = 0;
@@ -97,7 +97,7 @@ namespace AnalyseTool.ParameterControl.Models
 
             List<KeyValuePair<string, IList<Element>>> ParameterElementListMap = getParameterElementListMap(CategoryParameterMap);
 
-            foreach (var dict in ParameterElementListMap)
+            foreach (KeyValuePair<string, IList<Element>> dict in ParameterElementListMap)
             {
                 foreach (Element element in dict.Value)
                 {
@@ -174,7 +174,7 @@ namespace AnalyseTool.ParameterControl.Models
                 }
                 else
                 {
-                    foreach (var item in ParameterElementListMap)
+                    foreach (KeyValuePair<string, IList<Element>> item in ParameterElementListMap)
                     {
                         IEnumerable<Element> elementList = item.Value.Where(x => x.Category.Id == category.Id);
                         ParameterElementListMap.Add(new KeyValuePair<string, IList<Element>>(ParameterName, elementList.ToList()));
