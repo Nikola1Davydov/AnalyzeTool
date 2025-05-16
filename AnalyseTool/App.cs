@@ -22,13 +22,16 @@ namespace AnalyseTool
         }
         private void CreateRibbon()
         {
-            var panel = Application.CreatePanel("Data Check", "Analyse");
+            var panel = Application.CreatePanel("Work with data", "Analyse");
 
-            panel.AddPushButton<ParameterControlCommand>("Parameter Check")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/icons8-analyse-34.ico");
+            panel.AddPushButton<ParameterControlCommand>("Parameter check")
+                .SetLargeImage("/AnalyseTool;component/Resources/Icons/ParameterControl_Icon.ico");
 
-            panel.AddPushButton<DoorManagerCommand>("Door Manager")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/icons8-analyse-34.ico");
+            panel.AddPushButton<DoorManagerCommand>("Door manager")
+                .SetLargeImage("/AnalyseTool;component/Resources/Icons/DoorManager_Icon.ico");
+
+            panel.AddPushButton<DoorManagerCommand>("About me")
+                .SetLargeImage("/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico");
         }
         private void LoadDLL()
         {

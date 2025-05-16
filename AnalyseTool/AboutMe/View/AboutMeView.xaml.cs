@@ -18,7 +18,7 @@ namespace AnalyseTool.AboutMe.View
     /// <summary>
     /// Interaktionslogik für AboutMeView.xaml
     /// </summary>
-    public partial class AboutMeView : UserControl
+    public partial class AboutMeView : Window
     {
         public AboutMeView()
         {

@@ -1,23 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace AnalyseTool.ParameterControl.Models
+﻿namespace AnalyseTool.ParameterControl.Models
 {
     public class DataElement
     {
-        public Element Element {  get; set; }
+        public Element Element { get; set; }
         public string Name { get; set; }
         public Category Category { get; set; }
         public string ParameterName { get; set; }
         public Parameter Parameter { get; set; }
-        public string ParameterValue {  get; set; }
+        public string ParameterValue { get; set; }
         public Type ParameterType { get; set; }
-        public DataElement(Element Element, string ParameterName) 
-        { 
+        public DataElement(Element Element, string ParameterName)
+        {
             this.Element = Element;
             this.Category = Element.Category;
             this.ParameterName = ParameterName;

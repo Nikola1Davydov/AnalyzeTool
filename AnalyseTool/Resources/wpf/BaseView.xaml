@@ -8,6 +8,7 @@
     mc:Ignorable="d"
     ResizeMode="CanResize"
     Background="White"
+    WindowStyle="None"
     WindowStartupLocation="CenterScreen"
     Title="AnalyseTool"
     Height="650"
