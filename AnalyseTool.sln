@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnalyseTool", "AnalyseTool\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedData", "SharedData\SharedData.shproj", "{A72D5C2A-EBBC-497A-99A9-63297A30876B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R23|Any CPU = Debug R23|Any CPU
@@ -57,5 +59,10 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9CF0C768-8334-48D5-993F-23654760619C}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		SharedData\SharedData.projitems*{1306e047-4577-4911-9864-128080703f27}*SharedItemsImports = 5
+		SharedData\SharedData.projitems*{1ed552dc-c81f-b5c2-8ca8-bf8bdc334b01}*SharedItemsImports = 5
+		SharedData\SharedData.projitems*{a72d5c2a-ebbc-497a-99a9-63297a30876b}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal

@@ -23,4 +23,6 @@
     <Exec Command="cd .\&#xD;&#xA;set ide=true&#xD;&#xA;&quot;$(TargetPath)&quot;" />
   </Target>
 
+  <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
 </Project>
