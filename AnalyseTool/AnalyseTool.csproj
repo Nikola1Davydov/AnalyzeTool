@@ -7,19 +7,31 @@
         <ImplicitUsings>true</ImplicitUsings>
         <Configurations>Debug R23;Debug R24;Debug R25</Configurations>
         <Configurations>$(Configurations);Release R23;Release R24;Release R25</Configurations>
+
     </PropertyGroup>
 
     <PropertyGroup Condition="$(Configuration.Contains('R23'))">
         <RevitVersion>2023</RevitVersion>
         <TargetFramework>net48</TargetFramework>
+		<!-- Куда деплоим -->
+		<!-- конечные пути -->
+		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
+		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
     <PropertyGroup Condition="$(Configuration.Contains('R24'))">
         <RevitVersion>2024</RevitVersion>
         <TargetFramework>net48</TargetFramework>
+		<!-- Куда деплоим -->
+		<!-- конечные пути -->
+		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
+		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
     <PropertyGroup Condition="$(Configuration.Contains('R25'))">
         <RevitVersion>2025</RevitVersion>
         <TargetFramework>net8.0-windows</TargetFramework>
+		<!-- конечные пути -->
+		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
+		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
 	
     <ItemGroup>
@@ -33,6 +45,7 @@
 		<StartAction>Program</StartAction>
 		<StartProgram>C:\Program Files\Autodesk\Revit $(RevitVersion)\Revit</StartProgram>
 		<StartArguments>/language DE</StartArguments>
+
 	</PropertyGroup>
 	
     <ItemGroup>
@@ -53,4 +66,29 @@
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+	<ItemGroup>
+		<!-- все собранные артефакты, кроме .pdb и .addin -->
+		<BuiltFiles Include="$(TargetDir)*.*"
+					Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
+
+		<!-- сам .addin файл -->
+		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
+	</ItemGroup>
+
+	<Target Name="CopyToRevitFolder" AfterTargets="Build">
+		<!-- создать папку для dll -->
+		<MakeDir Directories="$(RevitAddinDeployDir)" />
+
+		<!-- скопировать все dll и прочие артефакты в подпапку -->
+		<Copy SourceFiles="@(BuiltFiles)"
+			  DestinationFolder="$(RevitAddinDeployDir)"
+			  SkipUnchangedFiles="true" />
+
+		<!-- скопировать сам .addin в корень -->
+		<Copy SourceFiles="@(AddinFile)"
+			  DestinationFolder="$(RevitAddinsRoot)"
+			  SkipUnchangedFiles="true" />
+	</Target>
+
 </Project>

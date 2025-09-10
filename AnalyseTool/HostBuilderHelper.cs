@@ -10,31 +10,26 @@ namespace AnalyseTool
 {
     public static class HostBuilderHelper
     {
-        private static IHost _host;
+        private static IServiceProvider _serviceProvider;
         public static void StartHost()
         {
-            HostApplicationBuilder builder = new HostApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                ContentRootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                DisableDefaults = true,
-            });
+            var services = new ServiceCollection();
 
-            builder.Services.AddTransient<IAnalyseToolModel, AnalyseToolModel>();
-            builder.Services.AddTransient<AnalyseToolViewModel>();
-            builder.Services.AddTransient<AnalyseToolView>();
+            services.AddTransient<IAnalyseToolModel, AnalyseToolModel>();
+            services.AddTransient<AnalyseToolViewModel>();
+            services.AddTransient<AnalyseToolView>();
 
-            _host = builder.Build();
-            _host.Start();
+            _serviceProvider = services.BuildServiceProvider();
         }
 
-        public static void StopHost()
-        {
-            _host.StopAsync().GetAwaiter().GetResult();
-            _host.Dispose();
-        }
+        //public static void StopHost()
+        //{
+        //    _host.StopAsync().GetAwaiter().GetResult();
+        //    _host.Dispose();
+        //}
         public static T GetService<T>() where T : class
         {
-            return _host.Services.GetRequiredService<T>();
+            return _serviceProvider.GetRequiredService<T>();
         }
     }
 }

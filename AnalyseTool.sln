@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Inst
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedData", "SharedData\SharedData.shproj", "{A72D5C2A-EBBC-497A-99A9-63297A30876B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{9DFC2C50-AEB9-4324-BC9F-52006BD84037}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R23|Any CPU = Debug R23|Any CPU
@@ -53,6 +55,20 @@ Global
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R25|Any CPU.Build.0 = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R23|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R23|Any CPU.Build.0 = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R24|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R24|Any CPU.Build.0 = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R25|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R25|Any CPU.Build.0 = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R23|Any CPU.ActiveCfg = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R23|Any CPU.Build.0 = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R24|Any CPU.Build.0 = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.Build.0 = Release|Any CPU
+		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
