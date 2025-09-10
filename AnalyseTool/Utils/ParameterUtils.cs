@@ -11,7 +11,6 @@ namespace AnalyseTool.Utils
     {
         public static string GetParameterValue(Parameter parameter)
         {
-            // Получаем значение параметра в зависимости от его типа
             switch (parameter.StorageType)
             {
                 case StorageType.Double:

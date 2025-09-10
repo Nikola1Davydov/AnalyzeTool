@@ -11,7 +11,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         #region data
         public ICollectionView ParameterCollectionView { get; set; }
 
-        IAnalyseToolModel AnalyseToolModel;
+        private readonly IAnalyseToolModel _analyseToolModel;
 
         [ObservableProperty]
         private ObservableCollection<ParameterDefinition> _parameterDefinitions;
@@ -30,7 +30,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         #endregion
         public AnalyseToolViewModel(IAnalyseToolModel analyseToolModel)
         {
-            this.AnalyseToolModel = analyseToolModel;
+            this._analyseToolModel = analyseToolModel;
             ParameterDefinitions = new ObservableCollection<ParameterDefinition>(analyseToolModel.AnalyzeData());
 
             // Initialize CollectionView
@@ -56,7 +56,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         {
             if (parameterDefinition != null && parameterDefinition.EmptyElements != null)
             {
-                AnalyseToolModel.SelectElements(parameterDefinition.EmptyElements);
+                _analyseToolModel.SelectElements(parameterDefinition.EmptyElements);
             }
         }
         [RelayCommand]
@@ -64,7 +64,7 @@ namespace AnalyseTool.ParameterControl.ViewModels
         {
             if (parameterDefinition != null && parameterDefinition.FilledElements != null)
             {
-                AnalyseToolModel.SelectElements(parameterDefinition.FilledElements);
+                _analyseToolModel.SelectElements(parameterDefinition.FilledElements);
             }
         }
         private bool FilterParameter(object obj)

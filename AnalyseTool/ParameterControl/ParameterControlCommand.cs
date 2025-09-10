@@ -12,7 +12,6 @@ namespace AnalyseTool.ParameterControl
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //HostBuilderHelper.StartHost();
             AnalyseToolView subview = HostBuilderHelper.GetService<AnalyseToolView>();
             subview.Show();
 
