@@ -69,8 +69,7 @@
 
 	<ItemGroup>
 		<!-- все собранные артефакты, кроме .pdb и .addin -->
-		<BuiltFiles Include="$(TargetDir)*.*"
-					Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
+		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 
 		<!-- сам .addin файл -->
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
@@ -81,14 +80,10 @@
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
 
 		<!-- скопировать все dll и прочие артефакты в подпапку -->
-		<Copy SourceFiles="@(BuiltFiles)"
-			  DestinationFolder="$(RevitAddinDeployDir)"
-			  SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(BuiltFiles)" DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
 
 		<!-- скопировать сам .addin в корень -->
-		<Copy SourceFiles="@(AddinFile)"
-			  DestinationFolder="$(RevitAddinsRoot)"
-			  SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />
 	</Target>
 
 </Project>
