@@ -42,7 +42,7 @@ namespace Installer
             project.ControlPanelInfo = new ProductInfo
             {
                 Manufacturer = "Nikolai Davydov",
-                ProductIcon = Path.Combine(solutionPath.FullName, @"SharedData\Resources\Icons\AnalyzeTool_Icon.ico"),
+                ProductIcon = Path.Combine(solutionPath.FullName, "SharedData/Resources/Icons/AnalyzeTool_Icon.ico"),
                 Name = "AnalyseTool",
                 Readme = "https://github.com/Nikola1Davydov/AnalyzeTool",
                 HelpLink = "https://github.com/Nikola1Davydov/AnalyzeTool",

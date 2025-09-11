@@ -82,10 +82,5 @@ namespace AnalyseTool.ParameterControl.Views
             // Если родитель не нужного типа, повторяем поиск
             return FindVisualParent<T>(parentObject);
         }
-
-        private void dataGridData_SelectionChanged()
-        {
-
-        }
     }
 }

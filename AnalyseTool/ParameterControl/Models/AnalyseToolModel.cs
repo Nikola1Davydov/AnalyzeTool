@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using Binding = Autodesk.Revit.DB.Binding;
 
 namespace AnalyseTool.ParameterControl.Models

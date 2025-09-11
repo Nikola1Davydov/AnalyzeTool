@@ -1,5 +1,6 @@
 ﻿using AnalyseTool.ParameterControl.Views;
 using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
 namespace AnalyseTool.ParameterControl
@@ -12,6 +13,8 @@ namespace AnalyseTool.ParameterControl
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            Context.Init(commandData.Application);
+
             AnalyseToolView subview = HostBuilderHelper.GetService<AnalyseToolView>();
             subview.Show();
 

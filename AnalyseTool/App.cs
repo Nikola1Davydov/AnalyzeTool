@@ -1,32 +1,60 @@
 ﻿using AnalyseTool.AboutMe;
-using AnalyseTool.DoorManager;
 using AnalyseTool.ParameterControl;
-using Nice3point.Revit.Toolkit.External;
+using Autodesk.Revit.UI;
+using System.Reflection;
+using System.Windows.Media.Imaging;
 
 namespace AnalyseTool
 {
     /// <summary>
     ///     Application entry point
     /// </summary>
-    public class App : ExternalApplication
+    public class App : IExternalApplication
     {
-        public override void OnStartup()
+        private UIControlledApplication Application;
+        public Result OnStartup(UIControlledApplication application)
         {
+            Application = application;
             HostBuilderHelper.StartHost();
-            CreateRibbon();
+
+            // Create a custom ribbon tab
+            String tabName = "Analyse";
+            application.CreateRibbonTab(tabName);
+
+            // Add a new ribbon panel
+            RibbonPanel ribbonPanel = application.CreateRibbonPanel(tabName, "Work with data");
+
+            // Get dll assembly path
+            string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
+
+            // Parameter Control button
+            PushButtonData b1Data = new PushButtonData(
+                nameof(ParameterControlCommand),
+                "Parameter" + System.Environment.NewLine + "check",
+                thisAssemblyPath,
+                typeof(ParameterControlCommand).FullName);
+
+            PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
+            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            pb1.LargeImage = pb1Image;
+
+            // About me button
+            PushButtonData b2Data = new PushButtonData(
+                nameof(AboutMeCommand),
+                "About",
+                thisAssemblyPath,
+                typeof(AboutMeCommand).FullName);
+
+            PushButton pb2 = ribbonPanel.AddItem(b2Data) as PushButton;
+            BitmapImage pb2Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            pb2.LargeImage = pb2Image;
+
+            return Result.Succeeded;
         }
 
-        // todo: add localization
-        private void CreateRibbon()
+        public Result OnShutdown(UIControlledApplication application)
         {
-            Autodesk.Revit.UI.RibbonPanel panel = Application.CreatePanel("Work with data", "Analyse");
-
-            panel.AddPushButton<ParameterControlCommand>("Parameter check")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/ParameterControl_Icon.ico");
-
-            panel.AddPushButton<AboutMeCommand>("About me")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico");
+            return Result.Succeeded;
         }
-
     }
 }

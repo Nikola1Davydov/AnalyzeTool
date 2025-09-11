@@ -1,5 +1,7 @@
 ﻿using AnalyseTool.Helper;
 using AnalyseTool.ParameterControl.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
@@ -40,12 +42,6 @@ namespace AnalyseTool.ParameterControl.ViewModels
             ParameterCollectionView.SortDescriptions.Add(new SortDescription(nameof(ParameterDefinition.CategoriesString), ListSortDirection.Ascending));
         }
 
-
-        [RelayCommand]
-        private void ExportToPdf()
-        {
-            ExportPDF.ExportToPdf();
-        }
         [RelayCommand]
         private void ExportToCSV()
         {
