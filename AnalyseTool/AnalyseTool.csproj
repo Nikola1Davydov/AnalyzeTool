@@ -61,8 +61,6 @@
 
     <ItemGroup>
       <Folder Include="Config\" />
-      <Folder Include="DoorManager\Model\" />
-      <Folder Include="DoorManager\ViewModel\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
