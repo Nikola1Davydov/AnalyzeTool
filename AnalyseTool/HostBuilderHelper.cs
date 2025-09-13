@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.ParameterControl.Models;
+using AnalyseTool.ParameterControl.Services;
 using AnalyseTool.ParameterControl.ViewModels;
 using AnalyseTool.ParameterControl.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,9 +17,12 @@ namespace AnalyseTool
             services.AddTransient<AnalyseToolViewModel>();
             services.AddTransient<AnalyseToolView>();
 
+            services.AddTransient<ParameterDefinitionManagment>();
+            services.AddSingleton<IParameterDefinitionRepository, ParameterDefinitionRepository>();
+         
             _serviceProvider = services.BuildServiceProvider();
-        }
 
+        }
         public static T GetService<T>() where T : class
         {
             return _serviceProvider.GetRequiredService<T>();

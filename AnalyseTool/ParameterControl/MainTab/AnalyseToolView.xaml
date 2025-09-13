@@ -11,9 +11,9 @@
     Height="600"
     MinWidth="500"
     MinHeight="300"
+    DataContext="{Binding AnalyseToolViewModel, Source={StaticResource Locator}}"
     Icon="pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"
     mc:Ignorable="d">
-
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -56,6 +56,19 @@
                     <EventSetter Event="PreviewMouseLeftButtonDown" Handler="DataGridRow_MouseLeftButtonDown" />
                 </Style>
             </DataGrid.RowStyle>
+
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem
+                        Command="{Binding DataContext.SelectElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                        CommandParameter="{Binding}"
+                        Header="Select empty elements" />
+                    <MenuItem
+                        Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                        CommandParameter="{Binding}"
+                        Header="Select filled elements" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
 
             <DataGrid.Columns>
 
@@ -118,32 +131,6 @@
                                 <!--  Text displaying the percentage  -->
                                 <TextBlock HorizontalAlignment="Center" Text="{Binding ParameterFilledProzent}" />
                             </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!--  Column with a button to select empty elements  -->
-                <DataGridTemplateColumn Header="Select Empty&#10;Elements">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button
-                                VerticalContentAlignment="Center"
-                                Command="{Binding DataContext.SelectElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                                CommandParameter="{Binding}"
-                                Content="Select" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!--  Column with a button to select filled elements  -->
-                <DataGridTemplateColumn Header="Select Filled&#10;Elements">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button
-                                VerticalContentAlignment="Center"
-                                Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                                CommandParameter="{Binding}"
-                                Content="Select" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

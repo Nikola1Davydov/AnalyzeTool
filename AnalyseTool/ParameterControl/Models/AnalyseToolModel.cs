@@ -43,14 +43,16 @@ namespace AnalyseTool.ParameterControl.Models
                     List<ElementId> filledElements = parameterGroup.Where(x => !string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
 
                     // Assuming ParameterDefinition has a constructor that accepts these parameters
-                    ParameterDefinition parameterDefinition = new ParameterDefinition(
-                                                    parameterGroup.Key,
-                                                    categoryGroup.Key,
-                                                    parameterCount,
-                                                    parameterFilled,
-                                                    parameterEmpty,
-                                                    emptyElements,
-                                                    filledElements);
+                    ParameterDefinition parameterDefinition = new ParameterDefinition()
+                    {
+                        Name = parameterGroup.Key,
+                        CategoriesString = categoryGroup.Key,
+                        ParameterCount = parameterCount,
+                        ParameterFilled = parameterFilled,
+                        ParameterEmpty = parameterEmpty,
+                        EmptyElements = emptyElements,
+                        FilledElements = filledElements
+                    };
 
                     IEnumerable<IGrouping<string, DataElement>> groupedByParameterValue = parameterGroup
                         .Where(x => !string.IsNullOrEmpty(x.ParameterValue)) // get filled parameter
@@ -69,14 +71,16 @@ namespace AnalyseTool.ParameterControl.Models
                         List<ElementId> childFilledElements = valueGroup.Where(x => !string.IsNullOrEmpty(x.ParameterValue)).Select(x => x.Element.Id).ToList();
 
                         // Создаем дочерний параметр (childDefinition) для каждого значения параметра
-                        ParameterDefinition childDefinition = new ParameterDefinition(
-                                                                valueGroup.Key, // Значение параметра становится ключом для дочернего элемента
-                                                                categoryGroup.Key,
-                                                                childParameterCount,
-                                                                childParameterFilled,
-                                                                childParameterEmpty,
-                                                                childEmptyElements,
-                                                                childFilledElements);
+                        ParameterDefinition childDefinition = new ParameterDefinition()
+                        {
+                            Name = parameterGroup.Key,
+                            CategoriesString = categoryGroup.Key,
+                            ParameterCount = childParameterCount,
+                            ParameterFilled = childParameterFilled,
+                            ParameterEmpty = childParameterEmpty,
+                            EmptyElements = childEmptyElements,
+                            FilledElements = childFilledElements
+                        };
 
                         // Добавляем дочерний параметр в родительский
                         parameterDefinition.AddChild(childDefinition);
@@ -88,9 +92,9 @@ namespace AnalyseTool.ParameterControl.Models
             }
             return parameterDefinitionList;
         }
-        public void SelectElements(IList<ElementId> elementIds)
+        public void SelectElements(IEnumerable<ElementId> elementIds)
         {
-            uidoc.Selection.SetElementIds(elementIds);
+            uidoc.Selection.SetElementIds(elementIds.ToList());
         }
         private List<DataElement> CreateDataElements(IList<KeyValuePair<string, Category>> CategoryParameterMap)
         {

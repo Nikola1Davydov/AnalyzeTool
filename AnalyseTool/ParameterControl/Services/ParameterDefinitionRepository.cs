@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AnalyseTool.ParameterControl
+namespace AnalyseTool.ParameterControl.Services
 {
     internal class ParameterDefinitionRepository : IParameterDefinitionRepository
     {
@@ -20,7 +20,7 @@ namespace AnalyseTool.ParameterControl
         {
             return _parameterDefinitions;
         }
-        public void Clear()
+        public void RemoveAll()
         {
             _parameterDefinitions.Clear();
         }

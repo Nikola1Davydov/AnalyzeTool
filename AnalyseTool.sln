@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.7.34221.43
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11010.61 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnalyseTool", "AnalyseTool\AnalyseTool.csproj", "{1306E047-4577-4911-9864-128080703F27}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedData", "SharedData\SharedData.shproj", "{A72D5C2A-EBBC-497A-99A9-63297A30876B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{9DFC2C50-AEB9-4324-BC9F-52006BD84037}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Test", "AnalyseTool.Test\AnalyseTool.Test.csproj", "{161C8DD2-A7A4-4262-9959-819F712E88D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,22 @@ Global
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.Build.0 = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R23|Any CPU.ActiveCfg = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R23|Any CPU.Build.0 = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R24|Any CPU.ActiveCfg = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R24|Any CPU.Build.0 = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R25|Any CPU.ActiveCfg = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R25|Any CPU.Build.0 = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R23|Any CPU.ActiveCfg = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R23|Any CPU.Build.0 = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R24|Any CPU.Build.0 = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release R25|Any CPU.Build.0 = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

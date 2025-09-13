@@ -13,9 +13,9 @@ namespace AnalyseTool.ParameterControl.Views
     /// </summary>
     public partial class AnalyseToolView : Window
     {
-        public AnalyseToolView(AnalyseToolViewModel analyseToolViewModel)
+        public AnalyseToolView(AnalyseToolViewModel viewModel)
         {
-            DataContext = analyseToolViewModel;
+            DataContext = viewModel;
             InitializeComponent();
 
             IntPtr revitHandle = Context.UiApplication.MainWindowHandle;
