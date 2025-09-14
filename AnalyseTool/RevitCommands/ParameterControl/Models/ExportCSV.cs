@@ -1,22 +1,14 @@
-﻿using AnalyseTool;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using Microsoft.Win32;
 using System.IO;
-using Microsoft.Win32;
-using AnalyseTool.ParameterControl.ViewModels;
+using System.Windows;
 
-namespace AnalyseTool.Helper
+namespace AnalyseTool.RevitCommands.ParameterControl.Models
 {
     public static class ExportCSV
     {
         public static void ExportToCSV()
         {
-            var saveFileDialog = new SaveFileDialog
+            SaveFileDialog saveFileDialog = new SaveFileDialog
             {
                 Filter = "CSV files (*.csv)|*.csv",
                 DefaultExt = ".csv",
@@ -25,8 +17,8 @@ namespace AnalyseTool.Helper
             //var filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ParameterDefinitions.csv");
             if (saveFileDialog.ShowDialog() == true)
             {
-                var filePath = saveFileDialog.FileName;
-                using (var writer = new StreamWriter(filePath))
+                string filePath = saveFileDialog.FileName;
+                using (StreamWriter writer = new StreamWriter(filePath))
                 {
                     // Titels
                     writer.WriteLine("Parameter Name,Category,Parameter Count,Parameter Empty,Parameter Filled");

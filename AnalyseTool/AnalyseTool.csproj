@@ -5,31 +5,14 @@
         <LangVersion>latest</LangVersion>
         <PlatformTarget>x64</PlatformTarget>
         <ImplicitUsings>true</ImplicitUsings>
-        <Configurations>Debug R23;Debug R24;Debug R25</Configurations>
-        <Configurations>$(Configurations);Release R23;Release R24;Release R25</Configurations>
+        <Configurations>Debug R25</Configurations>
+        <Configurations>$(Configurations);Release R25</Configurations>
 
-    </PropertyGroup>
-
-    <PropertyGroup Condition="$(Configuration.Contains('R23'))">
-        <RevitVersion>2023</RevitVersion>
-        <TargetFramework>net48</TargetFramework>
-		<!-- Куда деплоим -->
-		<!-- конечные пути -->
-		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
-		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
-    </PropertyGroup>
-    <PropertyGroup Condition="$(Configuration.Contains('R24'))">
-        <RevitVersion>2024</RevitVersion>
-        <TargetFramework>net48</TargetFramework>
-		<!-- Куда деплоим -->
-		<!-- конечные пути -->
-		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
-		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
     <PropertyGroup Condition="$(Configuration.Contains('R25'))">
         <RevitVersion>2025</RevitVersion>
         <TargetFramework>net8.0-windows</TargetFramework>
-		<!-- конечные пути -->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
 		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
@@ -49,7 +32,8 @@
 	</PropertyGroup>
 	
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
+        <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
@@ -59,6 +43,7 @@
       <Folder Include="AboutMe\View\" />
       <Folder Include="Config\" />
       <Folder Include="Resources\" />
+      <Folder Include="RevitCommands\ParameterControl\MVVM\AboutMe\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
@@ -81,5 +66,4 @@
 		<!-- скопировать сам .addin в корень -->
 		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />
 	</Target>
-
 </Project>

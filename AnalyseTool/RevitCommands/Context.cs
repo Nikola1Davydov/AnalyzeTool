@@ -2,7 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace AnalyseTool
+namespace AnalyseTool.RevitCommands
 {
     internal class Context
     {

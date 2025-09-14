@@ -1,6 +1,6 @@
-﻿using AnalyseTool.AboutMe;
-using AnalyseTool.ParameterControl;
+﻿using AnalyseTool.RevitCommands.ParameterControl;
 using Autodesk.Revit.UI;
+using System.IO;
 using System.Reflection;
 using System.Windows.Media.Imaging;
 
@@ -15,6 +15,7 @@ namespace AnalyseTool
         public Result OnStartup(UIControlledApplication application)
         {
             Application = application;
+            LoadDll();
             HostBuilderHelper.StartHost();
 
             // Create a custom ribbon tab
@@ -38,23 +39,24 @@ namespace AnalyseTool
             BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
             pb1.LargeImage = pb1Image;
 
-            // About me button
-            PushButtonData b2Data = new PushButtonData(
-                nameof(AboutMeCommand),
-                "About",
-                thisAssemblyPath,
-                typeof(AboutMeCommand).FullName);
-
-            PushButton pb2 = ribbonPanel.AddItem(b2Data) as PushButton;
-            BitmapImage pb2Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
-            pb2.LargeImage = pb2Image;
-
             return Result.Succeeded;
         }
 
         public Result OnShutdown(UIControlledApplication application)
         {
             return Result.Succeeded;
+        }
+        private void LoadDll()
+        {
+            string directory = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
+            string meterialDesign = "MaterialDesignColors.dll";
+            string meterialDesignXaml = "MaterialDesignThemes.Wpf.dll";
+
+            string meterialDesignPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesign);
+            string meterialDesignXamlPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesignXaml);
+
+            Assembly.LoadFile(meterialDesignPath);
+            Assembly.LoadFile(meterialDesignXamlPath);
         }
     }
 }

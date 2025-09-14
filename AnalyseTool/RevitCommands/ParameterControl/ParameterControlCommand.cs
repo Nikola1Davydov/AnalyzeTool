@@ -1,9 +1,9 @@
-﻿using AnalyseTool.ParameterControl.Views;
+﻿using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
-namespace AnalyseTool.ParameterControl
+namespace AnalyseTool.RevitCommands.ParameterControl
 {
     /// <summary>
     ///     External command entry point invoked from the Revit interface
@@ -15,7 +15,7 @@ namespace AnalyseTool.ParameterControl
         {
             Context.Init(commandData.Application);
 
-            AnalyseToolView subview = HostBuilderHelper.GetService<AnalyseToolView>();
+            MainView subview = HostBuilderHelper.GetService<MainView>();
             subview.Show();
 
             return Result.Succeeded;

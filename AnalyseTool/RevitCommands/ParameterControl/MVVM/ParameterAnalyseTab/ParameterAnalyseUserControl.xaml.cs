@@ -1,30 +1,20 @@
-﻿using AnalyseTool.ParameterControl.Models;
-using AnalyseTool.ParameterControl.ViewModels;
+﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace AnalyseTool.ParameterControl.Views
+namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
 {
     /// <summary>
-    /// Interaktionslogik für SubViewAnalyseTool.xaml
+    /// Interaktionslogik für ParameterAnalyseUserControl.xaml
     /// </summary>
-    public partial class AnalyseToolView : Window
+    public partial class ParameterAnalyseUserControl : UserControl
     {
-        public AnalyseToolView(AnalyseToolViewModel viewModel)
+        public ParameterAnalyseUserControl()
         {
-            DataContext = viewModel;
             InitializeComponent();
-
-            IntPtr revitHandle = Context.UiApplication.MainWindowHandle;
-
-            WindowInteropHelper helper = new WindowInteropHelper(this);
-            helper.Owner = revitHandle;
         }
-
-
 
         private void DataGridRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -45,7 +35,7 @@ namespace AnalyseTool.ParameterControl.Views
                 if (row != null)
                 {
                     // Проверяем контекст данных строки
-                    ParameterDefinition parameterDefinition = row.DataContext as ParameterDefinition;
+                    ParameterSummary parameterDefinition = row.DataContext as ParameterSummary;
 
                     // Если это та строка, по которой кликнули
                     if (row == clickedRow)

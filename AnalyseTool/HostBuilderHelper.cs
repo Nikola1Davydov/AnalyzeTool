@@ -1,7 +1,5 @@
-﻿using AnalyseTool.ParameterControl.Models;
-using AnalyseTool.ParameterControl.Services;
-using AnalyseTool.ParameterControl.ViewModels;
-using AnalyseTool.ParameterControl.Views;
+﻿using AnalyseTool.RevitCommands.ParameterControl.Models;
+using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AnalyseTool
@@ -14,11 +12,8 @@ namespace AnalyseTool
             ServiceCollection services = new ServiceCollection();
 
             services.AddTransient<IAnalyseToolModel, AnalyseToolModel>();
-            services.AddTransient<AnalyseToolViewModel>();
-            services.AddTransient<AnalyseToolView>();
-
-            services.AddTransient<ParameterDefinitionManagment>();
-            services.AddSingleton<IParameterDefinitionRepository, ParameterDefinitionRepository>();
+            services.AddTransient<MainViewModel>();
+            services.AddTransient<MainView>();
          
             _serviceProvider = services.BuildServiceProvider();
 
