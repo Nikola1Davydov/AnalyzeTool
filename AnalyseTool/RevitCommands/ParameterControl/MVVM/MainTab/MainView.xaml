@@ -13,8 +13,8 @@
     Height="600"
     MinWidth="500"
     MinHeight="300"
+    d:DataContext="{d:DesignInstance viewmodel:MainViewModel}"
     mc:Ignorable="d">
-    <!--  d:DataContext="{d:DesignInstance viewmodel:MainViewModel}"  -->
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -30,7 +30,7 @@
 
     <TabControl Margin="10">
         <TabItem Header="Parameter Control">
-            <parameterControl:ParameterAnalyseUserControl />
+            <parameterControl:ParameterAnalyseUserControl DataContext="{Binding ParameterAnalyseViewModel}" />
         </TabItem>
     </TabControl>
 

@@ -2,7 +2,7 @@
 using System.IO;
 using System.Windows;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.Models
+namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
 {
     public static class ExportCSV
     {

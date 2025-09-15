@@ -3,9 +3,12 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dataModel="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.DataModel"
     xmlns:local="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:materialDesingColors="clr-namespace:MaterialDesignColors;assembly=MaterialDesignColors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=local:ParameterAnalyseViewModel}"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
@@ -28,33 +31,38 @@
         <DockPanel DockPanel.Dock="Top">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
 
+                <ComboBox Width="100" Margin="10" />
+
                 <Button Command="" Content="Export to CSV" />
 
                 <Button
-                    Width="20"
                     Margin="10,10,0,10"
                     Command=""
-                    Content="te" />
+                    Content="{materialDesign:PackIcon Kind=Update}" />
 
             </StackPanel>
 
+            <materialDesign:AutoSuggestBox Width="100" />
 
             <TextBox
                 Grid.Row="0"
                 Margin="10"
                 VerticalContentAlignment="Center"
-                Text="" />
+                Text="{Binding ParameterFilter, UpdateSourceTrigger=PropertyChanged}" />
         </DockPanel>
 
         <DataGrid
             x:Name="dataGridData"
             Grid.Row="1"
+            Width="Auto"
             d:ItemsSource="{d:SampleData}"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
+            CanUserReorderColumns="False"
+            CanUserSortColumns="False"
             GridLinesVisibility="None"
-            ItemsSource="{Binding}"
+            ItemsSource="{Binding ParameterCollectionView}"
             RowDetailsVisibilityMode="VisibleWhenSelected"
             SelectionMode="Single">
 
@@ -67,67 +75,46 @@
             <DataGrid.ContextMenu>
                 <ContextMenu>
                     <MenuItem
-                        Command=""
-                        CommandParameter="{Binding}"
+                        Command="{Binding SelectEmptyElementsCommand}"
+                        CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                         Header="Select empty elements" />
                     <MenuItem
-                        Command=""
-                        CommandParameter="{Binding}"
+                        Command="{Binding SelectFilledElementsCommand}"
+                        CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                         Header="Select filled elements" />
                 </ContextMenu>
             </DataGrid.ContextMenu>
 
             <DataGrid.Columns>
-
-                <DataGridTemplateColumn Header="Category">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock VerticalAlignment="Center" Text="{Binding CategoriesString}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Parameter">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock VerticalAlignment="Center" Text="{Binding Name}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Count">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock VerticalAlignment="Center" Text="{Binding ParameterCount}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Parameter&#10;Empty">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock VerticalAlignment="Center" Text="{Binding ParameterEmpty}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Parameter&#10;Filled">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock VerticalAlignment="Center" Text="{Binding ParameterFilled}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+                <DataGridTextColumn
+                    Binding="{Binding CategoryName}"
+                    Header="Category"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Binding="{Binding ParameterName}"
+                    Header="Parameter"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Binding="{Binding ParameterCount}"
+                    Header="Count"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Binding="{Binding ParameterEmpty}"
+                    Header="Parameter&#10;Empty"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Binding="{Binding ParameterFilled}"
+                    Header="Parameter&#10;Filled"
+                    IsReadOnly="True" />
 
                 <DataGridTemplateColumn Header="Parameter&#10;Filled in %">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate DataType="dataModel:ParameterSummary">
                             <Grid VerticalAlignment="Center">
                                 <Rectangle
                                     Width="{Binding ParameterFilledProzent}"
-                                    Height="18"
                                     HorizontalAlignment="Left"
-                                    Fill="Pink" />
+                                    Fill="Red" />
                                 <TextBlock HorizontalAlignment="Center" Text="{Binding ParameterFilledProzent}" />
                             </Grid>
                         </DataTemplate>

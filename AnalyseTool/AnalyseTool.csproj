@@ -32,6 +32,7 @@
 	</PropertyGroup>
 	
     <ItemGroup>
+        <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
         <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
@@ -43,7 +44,7 @@
       <Folder Include="AboutMe\View\" />
       <Folder Include="Config\" />
       <Folder Include="Resources\" />
-      <Folder Include="RevitCommands\ParameterControl\MVVM\AboutMe\" />
+      <Folder Include="RevitCommands\AboutMe\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />

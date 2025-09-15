@@ -10,7 +10,7 @@ namespace AnalyseTool.Extensions
     }
     internal static class ParameterExtensions
     {
-        public static ParameterOrgin GetParameterDocumentType(this Parameter parameter)
+        public static ParameterOrgin GetParameterOrgin(this Parameter parameter)
         {
             ParameterOrgin result = ParameterOrgin.BuiltIn;
             if (parameter.Id.Value > -1)
