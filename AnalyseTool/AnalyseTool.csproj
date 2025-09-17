@@ -30,9 +30,14 @@
 		<StartArguments>/language DE</StartArguments>
 
 	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug R25|AnyCPU'">
+	  <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release R25|AnyCPU'">
+	  <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+	</PropertyGroup>
 	
     <ItemGroup>
-        <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
         <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
@@ -41,8 +46,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="AboutMe\View\" />
-      <Folder Include="Config\" />
       <Folder Include="Resources\" />
       <Folder Include="RevitCommands\AboutMe\" />
     </ItemGroup>
@@ -52,6 +55,14 @@
 	<ItemGroup>
 		<!-- все собранные артефакты, кроме .pdb и .addin -->
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
+		<Compile Remove="AboutMe\**" />
+		<Compile Remove="Config\**" />
+		<EmbeddedResource Remove="AboutMe\**" />
+		<EmbeddedResource Remove="Config\**" />
+		<None Remove="AboutMe\**" />
+		<None Remove="Config\**" />
+		<Page Remove="AboutMe\**" />
+		<Page Remove="Config\**" />
 
 		<!-- сам .addin файл -->
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
