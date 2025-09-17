@@ -8,9 +8,10 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:materialDesingColors="clr-namespace:MaterialDesignColors;assembly=MaterialDesignColors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:Background="White"
     d:DataContext="{d:DesignInstance Type=local:ParameterAnalyseViewModel}"
     d:DesignHeight="450"
-    d:DesignWidth="800"
+    d:DesignWidth="1000"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -21,7 +22,7 @@
                     PrimaryColor="Blue"
                     SecondaryColor="Lime" />
 
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -31,18 +32,33 @@
         <DockPanel DockPanel.Dock="Top">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
 
-                <ComboBox Width="100" Margin="10" />
+                <materialDesign:PopupBox>
+                    <StackPanel Margin="10">
+                        <CheckBox Content="Instance" IsChecked="{Binding IsParameterInstance}" />
+                        <CheckBox Content="Type" IsChecked="{Binding IsParameterType}" />
+                        <Separator />
+                        <CheckBox Content="Shared" IsChecked="{Binding IsParameterShared}" />
+                        <CheckBox Content="Project" IsChecked="{Binding IsParameterProject}" />
+                        <CheckBox Content="BuiltIn" IsChecked="{Binding IsParameterBuildIn}" />
+                    </StackPanel>
+                </materialDesign:PopupBox>
 
-                <Button Command="" Content="Export to CSV" />
+                <Button Command="{Binding ExportToCSVCommand}" Content="Export to CSV" />
 
                 <Button
                     Margin="10,10,0,10"
-                    Command=""
+                    Command="{Binding UpdateCommand}"
                     Content="{materialDesign:PackIcon Kind=Update}" />
 
             </StackPanel>
 
-            <materialDesign:AutoSuggestBox Width="100" />
+            <ComboBox
+                Width="100"
+                Height="Auto"
+                Margin="10"
+                ItemsSource="{Binding Categories}"
+                SelectedIndex="0"
+                SelectedItem="{Binding SelectedCategory}" />
 
             <TextBox
                 Grid.Row="0"
@@ -56,21 +72,19 @@
             Grid.Row="1"
             Width="Auto"
             d:ItemsSource="{d:SampleData}"
+            d:RowDetailsVisibilityMode="Visible"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
             CanUserReorderColumns="False"
             CanUserSortColumns="False"
-            GridLinesVisibility="None"
+            EnableColumnVirtualization="True"
+            EnableRowVirtualization="True"
             ItemsSource="{Binding ParameterCollectionView}"
-            RowDetailsVisibilityMode="VisibleWhenSelected"
-            SelectionMode="Single">
-
-            <!--<DataGrid.RowStyle>
-                <Style TargetType="DataGridRow">
-                    <EventSetter Handler="DataGridRow_MouseLeftButtonDown" />
-                </Style>
-            </DataGrid.RowStyle>-->
+            RowDetailsVisibilityMode="Collapsed"
+            SelectionMode="Single"
+            VirtualizingPanel.IsVirtualizing="True"
+            VirtualizingPanel.VirtualizationMode="Recycling">
 
             <DataGrid.ContextMenu>
                 <ContextMenu>
@@ -86,36 +100,54 @@
             </DataGrid.ContextMenu>
 
             <DataGrid.Columns>
+                <DataGridTemplateColumn Width="60" CanUserReorder="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="dataModel:ParameterSummary">
+                            <Expander
+                                Collapsed="Expander_Collapsed"
+                                Expanded="Expander_Expanded"
+                                Style="{x:Null}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <DataGridTextColumn
-                    Binding="{Binding CategoryName}"
-                    Header="Category"
-                    IsReadOnly="True" />
-                <DataGridTextColumn
+                    Width="*"
                     Binding="{Binding ParameterName}"
                     Header="Parameter"
                     IsReadOnly="True" />
                 <DataGridTextColumn
+                    Width="80"
                     Binding="{Binding ParameterCount}"
                     Header="Count"
                     IsReadOnly="True" />
                 <DataGridTextColumn
+                    Width="100"
                     Binding="{Binding ParameterEmpty}"
                     Header="Parameter&#10;Empty"
                     IsReadOnly="True" />
                 <DataGridTextColumn
+                    Width="100"
                     Binding="{Binding ParameterFilled}"
                     Header="Parameter&#10;Filled"
                     IsReadOnly="True" />
 
-                <DataGridTemplateColumn Header="Parameter&#10;Filled in %">
+                <DataGridTemplateColumn
+                    Width="100"
+                    CanUserResize="False"
+                    Header="Parameter&#10;Filled in %">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="dataModel:ParameterSummary">
-                            <Grid VerticalAlignment="Center">
+                            <Grid x:Name="grid_ParameterFilledProzent" VerticalAlignment="Center">
                                 <Rectangle
                                     Width="{Binding ParameterFilledProzent}"
+                                    Height="{Binding ActualHeight, ElementName=tb_ParameterFilledProzent}"
                                     HorizontalAlignment="Left"
-                                    Fill="Red" />
-                                <TextBlock HorizontalAlignment="Center" Text="{Binding ParameterFilledProzent}" />
+                                    Fill="Pink" />
+                                <TextBlock
+                                    x:Name="tb_ParameterFilledProzent"
+                                    HorizontalAlignment="Center"
+                                    Text="{Binding ParameterFilledProzent}" />
                             </Grid>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
@@ -125,24 +157,56 @@
 
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate>
-                    <Grid MaxHeight="200">
-
+                    <Grid MaxHeight="300">
                         <ListView
-                            x:Name="dataGridData"
                             Grid.Row="1"
                             d:ItemsSource="{d:SampleData ItemCount=2}"
-                            ItemsSource="{Binding ChildParameters}">
+                            ItemsSource="{Binding ChildParameters}"
+                            Style="{StaticResource MaterialDesignListView}">
+
+                            <!--<ListView.ContextMenu>
+                                <ContextMenu DataContext="{Binding}">
+                                    <MenuItem
+                                        Command="{Binding DataContext.SelectEmptyElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, PresentationTraceSources.TraceLevel=High}"
+                                        CommandParameter="{Binding}"
+                                        Header="Select empty elements" />
+                                    <MenuItem
+                                        Command="{Binding SelectFilledElementsCommand, PresentationTraceSources.TraceLevel=High}"
+                                        CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"
+                                        Header="Select filled elements" />
+                                </ContextMenu>
+                            </ListView.ContextMenu>-->
+
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn>
-                                        <GridViewColumnHeader Content="Parameter&#10;Name" />
+                                        <GridViewColumnHeader Content="Level" />
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Text="{Binding Level}" />
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
-                                    <GridViewColumn>
+
+                                    <GridViewColumn Width="100">
+                                        <GridViewColumnHeader Content="Count" />
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ParameterCount}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <GridViewColumn Width="130">
+                                        <GridViewColumnHeader Content="Parameter&#10;Empty" />
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ParameterEmpty}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <GridViewColumn Width="130">
                                         <GridViewColumnHeader Content="Parameter&#10;Filled" />
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -150,17 +214,33 @@
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
-                                    <GridViewColumn>
-                                        <GridViewColumnHeader Content="Parameter&#10;Filled in %" />
+
+                                    <GridViewColumn Width="130" Header="Parameter&#10;Filled in %">
                                         <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Grid>
+                                            <DataTemplate DataType="dataModel:ParameterSummary">
+                                                <Grid x:Name="grid_ParameterFilledProzent" VerticalAlignment="Center">
                                                     <Rectangle
                                                         Width="{Binding ParameterFilledProzent}"
+                                                        Height="{Binding ActualHeight, ElementName=tb_ParameterFilledProzent}"
                                                         HorizontalAlignment="Left"
                                                         Fill="Pink" />
-                                                    <TextBlock HorizontalAlignment="Center" Text="{Binding ParameterFilledProzent}" />
+                                                    <TextBlock
+                                                        x:Name="tb_ParameterFilledProzent"
+                                                        HorizontalAlignment="Center"
+                                                        Text="{Binding ParameterFilledProzent}" />
                                                 </Grid>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn>
+                                        <GridViewColumnHeader Content="Select Empty&#10;Elements" />
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button
+                                                    VerticalContentAlignment="Center"
+                                                    Command="{Binding DataContext.SelectEmptyElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="Select" />
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
@@ -170,20 +250,21 @@
                                             <DataTemplate>
                                                 <Button
                                                     VerticalContentAlignment="Center"
-                                                    Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    Command="{Binding DataContext.SelectFilledElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
                                                     CommandParameter="{Binding}"
                                                     Content="Select" />
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
+
                                 </GridView>
                             </ListView.View>
                         </ListView>
                     </Grid>
                 </DataTemplate>
-
             </DataGrid.RowDetailsTemplate>
 
         </DataGrid>
+
     </DockPanel>
 </UserControl>

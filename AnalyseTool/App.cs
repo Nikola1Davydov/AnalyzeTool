@@ -18,12 +18,8 @@ namespace AnalyseTool
             LoadDll();
             HostBuilderHelper.StartHost();
 
-            // Create a custom ribbon tab
-            String tabName = "Analyse";
-            application.CreateRibbonTab(tabName);
-
             // Add a new ribbon panel
-            RibbonPanel ribbonPanel = application.CreateRibbonPanel(tabName, "Work with data");
+            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");
 
             // Get dll assembly path
             string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;

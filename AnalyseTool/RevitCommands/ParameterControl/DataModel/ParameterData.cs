@@ -8,10 +8,12 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataModel
         public Parameter Parameter { get; private set; }
         public string Name { get; }
         public long Id { get; }
+        public string Level { get; }
         public long ElementId { get; }
+        public bool IsTypeParameter { get; }
         public ParameterOrgin Orgin { get; }
         public string Value { get; }
-        public ParameterData(Parameter parameter, long elementId)
+        public ParameterData(Parameter parameter, long elementId, string level, bool isTypeParameter)
         {
             ElementId = elementId;
             Parameter = parameter;
@@ -19,6 +21,8 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataModel
             Id = parameter.Id.Value();
             Orgin = parameter.GetParameterOrgin();
             Value = parameter.GetParameterValue();
+            Level = level;
+            IsTypeParameter = isTypeParameter;
         }
     }
 }

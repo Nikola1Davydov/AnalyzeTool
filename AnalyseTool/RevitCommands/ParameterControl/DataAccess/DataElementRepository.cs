@@ -8,6 +8,13 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
 
         public void Add(DataElement dataElement)
         {
+            if (dataElement == null) return;
+            if (_dataElements.Contains(dataElement))
+            {
+                Update(dataElement);
+                return;
+            }
+
             _dataElements.Add(dataElement);
         }
         public IEnumerable<DataElement> GetAll()
@@ -21,6 +28,19 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
         public bool Remove(DataElement dataElement)
         {
             return _dataElements.Remove(dataElement);
+        }
+
+        public void AddRange(IEnumerable<DataElement> dataElements)
+        {
+            _dataElements.AddRange(dataElements);
+        }
+        public void Update(DataElement dataElement)
+        {
+            DataElement existingElement = _dataElements.FirstOrDefault(de => de.Equals(dataElement));
+            if (existingElement != null)
+            {
+                existingElement.Update();
+            }
         }
     }
 }
