@@ -6,6 +6,7 @@ using Octokit;
 using Serilog;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 sealed partial class Build
@@ -19,6 +20,12 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
+            string msiFile = Directory
+                .EnumerateFiles(Solution.Installer.Directory / "bin" / "Release", "*.msi", SearchOption.TopDirectoryOnly)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault()
+                .NotNull($"No MSI file was created for project: {Solution.Installer.Name}");
+
             string gitHubName = GitRepository.GetGitHubName();
             string gitHubOwner = GitRepository.GetGitHubOwner();
 
