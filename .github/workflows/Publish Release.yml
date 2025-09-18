@@ -1,11 +1,9 @@
-name: Build & Release
+name: Publish Release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:   # чтобы можно было вручную запускать
+    tags:
+      - '*'
 
 jobs:
   windows:
