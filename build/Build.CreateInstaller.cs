@@ -31,17 +31,17 @@ sealed partial class Build
                     .SetVersion(ReleaseVersionNumber)
                     .SetVerbosity(DotNetVerbosity.minimal));
 
-                //string builderFile = Directory
-                //    .EnumerateFiles(wixInstaller.Directory / "bin" / configuration, $"{wixInstaller.Name}.exe")
-                //    .FirstOrDefault()
-                //    .NotNull($"No installer builder was found for the project: {wixInstaller.Name}");
+                string builderFile = Directory
+                    .EnumerateFiles(wixInstaller.Directory / "bin" / configuration, $"{wixInstaller.Name}.exe")
+                    .FirstOrDefault()
+                    .NotNull($"No installer builder was found for the project: {wixInstaller.Name}");
 
-                //string[] targetDirectories = Directory.GetDirectories(wixTarget.Directory, $"* {configuration} *", SearchOption.AllDirectories);
-                //Assert.NotEmpty(targetDirectories, "No content were found to create an installer");
+                string[] targetDirectories = Directory.GetDirectories(wixTarget.Directory, $"* {configuration} *", SearchOption.AllDirectories);
+                Assert.NotEmpty(targetDirectories, "No content were found to create an installer");
 
-                //string arguments = targetDirectories.Select(path => path.DoubleQuoteIfNeeded()).JoinSpace();
-                //IProcess process = ProcessTasks.StartProcess(builderFile, arguments, logInvocation: false);
-                //process.AssertZeroExitCode();
+                string arguments = targetDirectories.Select(path => path.DoubleQuoteIfNeeded()).JoinSpace();
+                IProcess process = ProcessTasks.StartProcess(builderFile, arguments, logInvocation: false);
+                process.AssertZeroExitCode();
             }
         });
 }
