@@ -21,6 +21,8 @@ jobs:
             .nuke/temp
             ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
+      - name: Install WiX
+        run: dotnet tool install --global wix --version 4.*
 
       - name: Run NUKE Publish
         run: ./build.cmd PublishGitHub
