@@ -10,7 +10,10 @@ on:
         description: "Release version"
         required: true
         type: string
-
+        
+permissions:
+  contents: write  
+  
 jobs:
   release:
     name: Publish release
@@ -36,6 +39,6 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
 
       - name: Publish release
-        run: ./.nuke/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
+        run: ./build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
