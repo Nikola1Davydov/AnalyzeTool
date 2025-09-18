@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 sealed partial class Build
 {
@@ -18,9 +17,9 @@ sealed partial class Build
     [GeneratedRegex("'(.+?)'", RegexOptions.Compiled)]
     private static partial Regex ArgumentsRegexGenerator();
 
-    private static string? GetRevitVersion(string text)
+    private static string GetRevitVersion(string text)
     {
-        var regex = new Regex(@"R(24|25|26)");
+        Regex regex = new Regex(@"R(24|25|26)");
         Match match = regex.Match(text);
 
         if (match.Success)
@@ -28,7 +27,7 @@ sealed partial class Build
             return match.Value; // например "R25"
         }
 
-        return null;
+        return string.Empty;
     }
 
 }
