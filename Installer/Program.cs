@@ -34,14 +34,14 @@ namespace Installer
             string licencePath = Path.Combine(solutionPath.FullName, "LICENSE.rtf");
 
             Project project = new Project(SharedData.ToolData.PLUGIN_NAME,
-    new Dir(@"%CommonAppDataFolder%",
-        new Dir(new Id("Revit2024Addins"), @"Autodesk\Revit\Addins\2024",
-            new Files(plaginPath24)),
-        new Dir(new Id("Revit2025Addins"), @"Autodesk\Revit\Addins\2025",
-            new Files(plaginPath25)),
-        new Dir(new Id("Revit2026Addins"), @"Autodesk\Revit\Addins\2026",
-            new Files(plaginPath26))
-                                    );
+                            new Dir(@"%CommonAppDataFolder%",
+                                new Dir(new Id("Revit2024Addins"), @"Autodesk\Revit\Addins\2024",
+                                    new Files(plaginPath24)),
+                                new Dir(new Id("Revit2025Addins"), @"Autodesk\Revit\Addins\2025",
+                                    new Files(plaginPath25)),
+                                new Dir(new Id("Revit2026Addins"), @"Autodesk\Revit\Addins\2026",
+                                    new Files(plaginPath26))
+                                    ));
 
             project.GUID = new Guid("e74a2dbc-8131-4240-abde-e2a776451bba");
             project.Version = new Version(SharedData.ToolData.PLUGIN_VERSION);
