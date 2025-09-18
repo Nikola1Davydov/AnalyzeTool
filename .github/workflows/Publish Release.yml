@@ -9,13 +9,13 @@ on:
 
 jobs:
   windows:
-    name: windows-2022
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # нужно для правильной работы GitVersion/Changelog
+          fetch-depth: 0
+
       - name: Cache packages
         uses: actions/cache@v4
         with:
@@ -23,13 +23,10 @@ jobs:
             .nuke/temp
             ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
-      - name: Run NUKE
-        run: ./build.cmd Compile
+
+      - name: Run NUKE Publish
+        run: ./build.cmd PublishGitHub
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run Nuke Build
-        run: ./build.cmd PublishGitHub PublishNuget
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLISH_VERSION: ${{ github.ref_name }}
