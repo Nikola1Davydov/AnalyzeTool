@@ -44,7 +44,6 @@ namespace Installer
 
             project.GUID = new Guid("e74a2dbc-8131-4240-abde-e2a776451bba");
             project.Version = new Version(SharedData.ToolData.PLUGIN_VERSION);
-            project.Scope = InstallScope.perUser;
             project.LicenceFile = licencePath;
             project.UI = WUI.WixUI_InstallDir;
 
