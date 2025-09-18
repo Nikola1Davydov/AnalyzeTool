@@ -34,11 +34,11 @@ namespace Installer
             string licencePath = Path.Combine(solutionPath.FullName, "LICENSE.rtf");
 
             Project project = new Project(SharedData.ToolData.PLUGIN_NAME,
-                                new Dir(targetPath24,
+                                new Dir(new Id("24"), targetPath24,
                                   new Files(plaginPath24)),
-                                 new Dir(targetPath25,
+                                 new Dir(new Id("25"), targetPath25,
                                   new Files(plaginPath25)),
-                                    new Dir(targetPath26,
+                                    new Dir(new Id("26"), targetPath26,
                                   new Files(plaginPath26))
                                     );
 
