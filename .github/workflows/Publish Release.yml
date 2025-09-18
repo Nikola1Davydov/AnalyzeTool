@@ -2,8 +2,7 @@ name: Publish Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches: [ "main" ]
 
 
 jobs:
