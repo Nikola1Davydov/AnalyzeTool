@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-     <RootNamespace>WixSharp</RootNamespace>
-    <TargetFramework>net472</TargetFramework>
-     <RootNamespace>WixSharp</RootNamespace>
+    <RootNamespace>WixSharp</RootNamespace>
+	<TargetFramework>net48</TargetFramework>
+    <RootNamespace>WixSharp</RootNamespace>
   </PropertyGroup>
   
   <ItemGroup>

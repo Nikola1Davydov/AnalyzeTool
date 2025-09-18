@@ -1,24 +1,46 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	<ImplicitUsings>disable</ImplicitUsings>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+	<!--<TargetFramework>net8.0-windows</TargetFramework>-->
+	<Configurations>Debug R24;Debug R25;Debug R26</Configurations>
+	<Configurations>$(Configurations);Release R24;Release R25;Release R26</Configurations>
   </PropertyGroup>
+	
+	<PropertyGroup Condition="$(Configuration.Contains('R24'))">
+		<RevitVersion>2024</RevitVersion>
+		<TargetFramework>net48</TargetFramework>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="NUnit" Version="3.14.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
-  </ItemGroup>
+	<PropertyGroup Condition="$(Configuration.Contains('R25'))">
+		<RevitVersion>2025</RevitVersion>
+		<TargetFramework>net8.0-windows</TargetFramework>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Using Include="NUnit.Framework" />
+	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
+		<RevitVersion>2026</RevitVersion>
+		<TargetFramework>net8.0-windows</TargetFramework>
+	</PropertyGroup>
+	
+	<ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.10.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ricaun.RevitTest.TestAdapter" Version="1.10.1" />
   </ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj" />
+	</ItemGroup>
+	
+	<Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
 </Project>

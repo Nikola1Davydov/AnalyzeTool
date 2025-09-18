@@ -13,26 +13,23 @@ namespace Installer
             string targetPath(string revitVersion) => Path.Combine("%CommonAppDataFolder%", $@"Autodesk\Revit\Addins\20{revitVersion}");
             string plaginPath(string revitVersion) => Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\publish\Revit 20{revitVersion} Release R{revitVersion} addin", @"*.*");
 
-            string plaginPath23 = plaginPath("23");
-            string plaginPath24 = plaginPath("24");
             string plaginPath25 = plaginPath("25");
+            string plaginPath26 = plaginPath("26");
 
-            string targetPath23 = targetPath("23");
-            string targetPath24 = targetPath("24");
             string targetPath25 = targetPath("25");
+            string targetPath26 = targetPath("26");
 
             string licencePath = Path.Combine(solutionPath.FullName, "LICENSE.rtf");
 
-            Project project = new Project("AnalyzeTool",
-                              new Dir(targetPath23,
-                                  new Files(plaginPath23)),
-                                    new Dir(targetPath24,
-                                  new Files(plaginPath24)),
-                                    new Dir(targetPath25,
-                                  new Files(plaginPath25)));
+            Project project = new Project(SharedData.ToolData.PLUGIN_NAME,
+                              new Dir(targetPath25,
+                                  new Files(plaginPath25)),
+                                    new Dir(targetPath26,
+                                  new Files(plaginPath26))
+                                    );
 
             project.GUID = new Guid("e74a2dbc-8131-4240-abde-e2a776451bba");
-            project.Version = new Version(1, 0, 1, 0);
+            project.Version = new Version(SharedData.ToolData.PLUGIN_VERSION);
             project.Scope = InstallScope.perUser;
             project.LicenceFile = licencePath;
             project.UI = WUI.WixUI_InstallDir;
@@ -41,13 +38,13 @@ namespace Installer
             project.BannerImage = ""; // 493 x 58 pixels
             project.ControlPanelInfo = new ProductInfo
             {
-                Manufacturer = "Nikolai Davydov",
+                Manufacturer = SharedData.ToolData.PLUGIN_AUTHOR,
                 ProductIcon = Path.Combine(solutionPath.FullName, "SharedData/Resources/Icons/AnalyzeTool_Icon.ico"),
-                Name = "AnalyseTool",
-                Readme = "https://github.com/Nikola1Davydov/AnalyzeTool",
-                HelpLink = "https://github.com/Nikola1Davydov/AnalyzeTool",
-                UrlInfoAbout = "https://github.com/Nikola1Davydov/AnalyzeTool",
-                UrlUpdateInfo = "https://github.com/Nikola1Davydov/AnalyzeTool/releases"
+                Name = SharedData.ToolData.PLUGIN_NAME,
+                Readme = SharedData.ToolData.LINK_TO_GITHUB,
+                HelpLink = SharedData.ToolData.LINK_TO_GITHUB,
+                UrlInfoAbout = SharedData.ToolData.LINK_TO_GITHUB,
+                UrlUpdateInfo = SharedData.ToolData.LINK_TO_DOWNLOADS
             };
 
             project.BuildMsi();

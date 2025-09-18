@@ -2,7 +2,7 @@
 
 namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
 {
-    internal class DataElementRepository : IDataElementRepository
+    public class DataElementRepository : IDataElementRepository
     {
         private readonly List<DataElement> _dataElements = new List<DataElement>();
 

@@ -10,7 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="$(MSBuildThisFileDirectory)Resources\Icons\AnalyzeTool_Icon.ico" />
-    <Resource Include="$(MSBuildThisFileDirectory)Resources\Icons\DoorManager_Icon.ico" />
     <Resource Include="$(MSBuildThisFileDirectory)Resources\Icons\icons8-analyse-34.ico">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>

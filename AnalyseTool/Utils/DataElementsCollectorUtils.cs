@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Utils
 {
-    internal class DataElementsCollectorUtils
+    public class DataElementsCollectorUtils
     {
         public static IEnumerable<DataElement> GetAllElements(Document doc)
         {
@@ -91,8 +91,8 @@ namespace AnalyseTool.Utils
             {
                 result.Add(cat.Name);
             }
-            List<string> ordered = result.OrderDescending().ToList();
-            return ordered;
+            result.Sort();
+            return result;
         }
     }
 }

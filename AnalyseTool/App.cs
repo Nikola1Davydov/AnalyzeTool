@@ -27,7 +27,7 @@ namespace AnalyseTool
             // Parameter Control button
             PushButtonData b1Data = new PushButtonData(
                 nameof(ParameterControlCommand),
-                "Parameter" + System.Environment.NewLine + "check",
+                SharedData.ToolData.PLUGIN_NAME,
                 thisAssemblyPath,
                 typeof(ParameterControlCommand).FullName);
 

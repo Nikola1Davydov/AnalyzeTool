@@ -4,7 +4,7 @@ using Autodesk.Revit.UI;
 
 namespace AnalyseTool.RevitCommands
 {
-    internal class Context
+    public class Context
     {
         public static UIApplication UiApplication { get; private set; }
         public static Application Application => UiApplication.Application;
