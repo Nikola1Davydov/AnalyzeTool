@@ -27,4 +27,4 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PUBLISH_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ github.ref_name }}    
