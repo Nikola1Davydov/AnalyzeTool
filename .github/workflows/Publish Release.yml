@@ -2,8 +2,12 @@ name: Publish Release
 
 on:
   push:
+    branches: [ "main" ]
     tags:
       - '*'
+  pull_request:
+    branches: [ "main" ]
+
 
 jobs:
   windows:
