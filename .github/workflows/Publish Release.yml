@@ -32,6 +32,13 @@ jobs:
           git tag ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
 
+      - name: Install WiX toolset + extensions
+        run: |
+          dotnet tool install --global wix --version 4.*
+          wix extension add -g WixToolset.UI.wixext
+          wix extension add -g WixToolset.Util.wixext
+        shell: pwsh
+
       - name: Cache packages
         uses: actions/cache@v4
         with:
