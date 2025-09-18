@@ -2,8 +2,10 @@ name: Publish Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:   # чтобы можно было вручную запускать
 
 jobs:
   windows:
