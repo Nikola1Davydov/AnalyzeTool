@@ -1,29 +1,58 @@
-﻿using Nice3point.Revit.Toolkit.External;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AnalyseTool.RevitCommands.ParameterControl;
+using Autodesk.Revit.UI;
+using System.IO;
+using System.Reflection;
+using System.Windows.Media.Imaging;
 
 namespace AnalyseTool
 {
     /// <summary>
     ///     Application entry point
     /// </summary>
-    [UsedImplicitly]
-    public class App : ExternalApplication
+    public class App : IExternalApplication
     {
-        public override void OnStartup()
+        private UIControlledApplication Application;
+        public Result OnStartup(UIControlledApplication application)
         {
-            CreateRibbon();
+            Application = application;
+            LoadDll();
+            HostBuilderHelper.StartHost();
+
+            // Add a new ribbon panel
+            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");
+
+            // Get dll assembly path
+            string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
+
+            // Parameter Control button
+            PushButtonData b1Data = new PushButtonData(
+                nameof(ParameterControlCommand),
+                SharedData.ToolData.PLUGIN_NAME,
+                thisAssemblyPath,
+                typeof(ParameterControlCommand).FullName);
+
+            PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
+            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            pb1.LargeImage = pb1Image;
+
+            return Result.Succeeded;
         }
 
-        private void CreateRibbon()
+        public Result OnShutdown(UIControlledApplication application)
         {
-            var panel = Application.CreatePanel("Data Check", "Analyse");
+            return Result.Succeeded;
+        }
+        private void LoadDll()
+        {
+            string directory = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
+            string meterialDesign = "MaterialDesignColors.dll";
+            string meterialDesignXaml = "MaterialDesignThemes.Wpf.dll";
 
-            panel.AddPushButton<StartupCommand>("Parameter Check")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/icons8-analyse-34.ico");
+            string meterialDesignPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesign);
+            string meterialDesignXamlPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesignXaml);
+
+            Assembly.LoadFile(meterialDesignPath);
+            Assembly.LoadFile(meterialDesignXamlPath);
         }
     }
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+ <AddIn Type="Application">
+    <Name>Revit database explorer</Name>
+	<Assembly>CopyParameters.dll</Assembly>
+    <FullClassName>CopyParameters.App</FullClassName>   
+    <AddInId>6ea87bee-8a73-4790-a862-4838a289b569</AddInId>
+    <VendorId>Nikolai Davydov</VendorId>
+    <VendorDescription>https://github.com/Nikola1Davydov</VendorDescription>
+ </AddIn>
+</RevitAddIns>
