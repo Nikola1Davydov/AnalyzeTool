@@ -2,10 +2,9 @@
 
   <PropertyGroup>
 	<ImplicitUsings>disable</ImplicitUsings>
-
+	<PlatformTarget>x64</PlatformTarget>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-	<!--<TargetFramework>net8.0-windows</TargetFramework>-->
 	<Configurations>Debug R24;Debug R25;Debug R26</Configurations>
 	<Configurations>$(Configurations);Release R24;Release R25;Release R26</Configurations>
   </PropertyGroup>

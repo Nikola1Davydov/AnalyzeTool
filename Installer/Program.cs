@@ -11,18 +11,32 @@ namespace Installer
         {
             System.IO.DirectoryInfo solutionPath = TryGetSolutionDirectoryInfo();
             string targetPath(string revitVersion) => Path.Combine("%CommonAppDataFolder%", $@"Autodesk\Revit\Addins\20{revitVersion}");
-            string plaginPath(string revitVersion) => Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\publish\Revit 20{revitVersion} Release R{revitVersion} addin", @"*.*");
+            string plaginPath(string revitVersion)
+            {
+                int revitVersionInt = int.Parse(revitVersion);
+                if (revitVersionInt < 25)
+                {
+                    return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\net48", @"*.*");
+                }
+                {
+                    return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\net8.0-windows", @"*.*");
+                }
+            }
 
+            string plaginPath24 = plaginPath("24");
             string plaginPath25 = plaginPath("25");
             string plaginPath26 = plaginPath("26");
 
+            string targetPath24 = targetPath("24");
             string targetPath25 = targetPath("25");
             string targetPath26 = targetPath("26");
 
             string licencePath = Path.Combine(solutionPath.FullName, "LICENSE.rtf");
 
             Project project = new Project(SharedData.ToolData.PLUGIN_NAME,
-                              new Dir(targetPath25,
+                                new Dir(targetPath24,
+                                  new Files(plaginPath24)),
+                                 new Dir(targetPath25,
                                   new Files(plaginPath25)),
                                     new Dir(targetPath26,
                                   new Files(plaginPath26))

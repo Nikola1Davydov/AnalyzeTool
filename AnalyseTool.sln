@@ -47,11 +47,8 @@ Global
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
-		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R24|Any CPU.Build.0 = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
-		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R25|Any CPU.Build.0 = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R26|Any CPU.ActiveCfg = Release|Any CPU
-		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release R26|Any CPU.Build.0 = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R24|Any CPU.ActiveCfg = Debug|Any CPU
@@ -59,11 +56,8 @@ Global
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug R26|Any CPU.ActiveCfg = Debug|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R24|Any CPU.ActiveCfg = Release|Any CPU
-		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R24|Any CPU.Build.0 = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.ActiveCfg = Release|Any CPU
-		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R25|Any CPU.Build.0 = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R26|Any CPU.ActiveCfg = Release|Any CPU
-		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release R26|Any CPU.Build.0 = Release|Any CPU
 		{9DFC2C50-AEB9-4324-BC9F-52006BD84037}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R24|Any CPU.ActiveCfg = Debug R24|Any CPU
 		{161C8DD2-A7A4-4262-9959-819F712E88D9}.Debug R24|Any CPU.Build.0 = Debug R24|Any CPU
@@ -92,6 +86,7 @@ Global
 		SharedData\SharedData.projitems*{1306e047-4577-4911-9864-128080703f27}*SharedItemsImports = 5
 		SharedData\SharedData.projitems*{161c8dd2-a7a4-4262-9959-819f712e88d9}*SharedItemsImports = 5
 		SharedData\SharedData.projitems*{1ed552dc-c81f-b5c2-8ca8-bf8bdc334b01}*SharedItemsImports = 5
+		SharedData\SharedData.projitems*{9dfc2c50-aeb9-4324-bc9f-52006bd84037}*SharedItemsImports = 5
 		SharedData\SharedData.projitems*{a72d5c2a-ebbc-497a-99a9-63297a30876b}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal

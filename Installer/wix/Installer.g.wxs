@@ -6,255 +6,200 @@
     To suppress generation of this file remove `set ide=true` from the PostBuildEvent of the VS project
 </auto-generated>
 -->
-  <Package Compressed="yes" ProductCode="e74a2dbc-8131-4240-abde-e2a786452bbb" Name="AnalyzeTool" Language="1033" Version="1.0.1.0" UpgradeCode="e74a2dbc-8131-4240-abde-e2a776451bba" Manufacturer="Nikolai Davydov" Scope="perUser" InstallerVersion="200">
+  <Package Compressed="yes" ProductCode="e74a2dbc-8131-4240-abde-e2a786551bbb" Name="Analyse Tool" Language="1033" Version="1.1.0.0" UpgradeCode="e74a2dbc-8131-4240-abde-e2a776451bba" Manufacturer="Nikolai Davydov" Scope="perUser" InstallerVersion="200">
     <SummaryInformation Codepage="Windows-1252" />
-    <Media Id="1" Cabinet="AnalyzeTool.cab" EmbedCab="yes" />
+    <Media Id="1" Cabinet="Analyse20Tool_.cab" EmbedCab="yes" />
 
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="Autodesk" Name="Autodesk">
         <Directory Id="Revit" Name="Revit">
           <Directory Id="Addins" Name="Addins">
-            <Directory Id="INSTALLDIR" Name="2023">
+            <Directory Id="INSTALLDIR" Name="2024">
 
-              <Component Id="Component.AnalyzeTool.addin_1390386578" Guid="e74a2dbc-8131-4240-abde-e2a79094e30a">
-                <File Id="AnalyzeTool.addin_1390386578" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyzeTool.addin" />
+              <Component Id="Component.AnalyseTool.dll_816617249" Guid="e74a2dbc-8131-4240-abde-e2a7391fe1cf">
+                <File Id="AnalyseTool.dll_816617249" Source="..\AnalyseTool\bin\Release R24\net48\AnalyseTool.dll" />
               </Component>
 
-              <Directory Id="AnalyseTool_" Name="AnalyseTool">
+              <Component Id="Component.AnalyseTool.pdb_2320645113" Guid="e74a2dbc-8131-4240-abde-e2a70c2ba3c7">
+                <File Id="AnalyseTool.pdb_2320645113" Source="..\AnalyseTool\bin\Release R24\net48\AnalyseTool.pdb" />
+              </Component>
 
-                <Component Id="Component.AnalyseTool.dll_4050973100" Guid="e74a2dbc-8131-4240-abde-e2a7706ee1b2">
-                  <File Id="AnalyseTool.dll_4050973100" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\AnalyseTool.dll" />
-                </Component>
+              <Component Id="Component.AnalyzeTool.addin_3709613969" Guid="e74a2dbc-8131-4240-abde-e2a7af7ea72c">
+                <File Id="AnalyzeTool.addin_3709613969" Source="..\AnalyseTool\bin\Release R24\net48\AnalyzeTool.addin" />
+              </Component>
 
-                <Component Id="Component.AnalyzeTool.addin_131695344" Guid="e74a2dbc-8131-4240-abde-e2a7dcc3d6bc">
-                  <File Id="AnalyzeTool.addin_131695344" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\AnalyzeTool.addin" />
-                </Component>
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_1171052799" Guid="e74a2dbc-8131-4240-abde-e2a7b4eb2d51">
+                <File Id="CommunityToolkit.Mvvm.dll_1171052799" Source="..\AnalyseTool\bin\Release R24\net48\CommunityToolkit.Mvvm.dll" />
+              </Component>
 
-                <Component Id="Component.CommunityToolkit.Mvvm.dll_2921231786" Guid="e74a2dbc-8131-4240-abde-e2a7b3c70b29">
-                  <File Id="CommunityToolkit.Mvvm.dll_2921231786" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\CommunityToolkit.Mvvm.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignColors.dll_801232743" Guid="e74a2dbc-8131-4240-abde-e2a744ce8e37">
+                <File Id="MaterialDesignColors.dll_801232743" Source="..\AnalyseTool\bin\Release R24\net48\MaterialDesignColors.dll" />
+              </Component>
 
-                <Component Id="Component.itext.barcodes.dll_2616486768" Guid="e74a2dbc-8131-4240-abde-e2a73e4ec3bf">
-                  <File Id="itext.barcodes.dll_2616486768" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.barcodes.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_2301622021" Guid="e74a2dbc-8131-4240-abde-e2a7fdc997f0">
+                <File Id="MaterialDesignThemes.Wpf.dll_2301622021" Source="..\AnalyseTool\bin\Release R24\net48\MaterialDesignThemes.Wpf.dll" />
+              </Component>
 
-                <Component Id="Component.itext.bouncy2dcastle2dconnector.dll_2348353217" Guid="e74a2dbc-8131-4240-abde-e2a75ec361d2">
-                  <File Id="itext.bouncy2dcastle2dconnector.dll_2348353217" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.bouncy-castle-connector.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_2528368248" Guid="e74a2dbc-8131-4240-abde-e2a7c92cd2e6">
+                <File Id="Microsoft.Bcl.AsyncInterfaces.dll_2528368248" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Bcl.AsyncInterfaces.dll" />
+              </Component>
 
-                <Component Id="Component.itext.commons.dll_1069548242" Guid="e74a2dbc-8131-4240-abde-e2a77c6c4e6a">
-                  <File Id="itext.commons.dll_1069548242" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.commons.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" Guid="e74a2dbc-8131-4240-abde-e2a7fda981a7">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.forms.dll_78646056" Guid="e74a2dbc-8131-4240-abde-e2a75a64fa65">
-                  <File Id="itext.forms.dll_78646056" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.forms.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1352344495" Guid="e74a2dbc-8131-4240-abde-e2a7d43dae00">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_1352344495" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
 
-                <Component Id="Component.itext.io.dll_3447211628" Guid="e74a2dbc-8131-4240-abde-e2a7d8172c27">
-                  <File Id="itext.io.dll_3447211628" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.io.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_994690770" Guid="e74a2dbc-8131-4240-abde-e2a7b19a6a5c">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_994690770" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
 
-                <Component Id="Component.itext.kernel.dll_2030732327" Guid="e74a2dbc-8131-4240-abde-e2a71ffec3eb">
-                  <File Id="itext.kernel.dll_2030732327" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.kernel.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_4038447548" Guid="e74a2dbc-8131-4240-abde-e2a771a7ebbf">
+                <File Id="Microsoft.Extensions.Configuration.dll_4038447548" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.itext.layout.dll_3561584222" Guid="e74a2dbc-8131-4240-abde-e2a78c4a4809">
-                  <File Id="itext.layout.dll_3561584222" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.layout.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" Guid="e74a2dbc-8131-4240-abde-e2a757cec686">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfa.dll_1715968841" Guid="e74a2dbc-8131-4240-abde-e2a77324d2aa">
-                  <File Id="itext.pdfa.dll_1715968841" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.pdfa.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" Guid="e74a2dbc-8131-4240-abde-e2a77c4738ca">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfua.dll_3113719235" Guid="e74a2dbc-8131-4240-abde-e2a72a387013">
-                  <File Id="itext.pdfua.dll_3113719235" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.pdfua.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_2670734809" Guid="e74a2dbc-8131-4240-abde-e2a74b1fdc08">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_2670734809" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
 
-                <Component Id="Component.itext.sign.dll_1077768783" Guid="e74a2dbc-8131-4240-abde-e2a7a993ea8f">
-                  <File Id="itext.sign.dll_1077768783" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.sign.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" Guid="e74a2dbc-8131-4240-abde-e2a709b1d1f7">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
 
-                <Component Id="Component.itext.styledxmlparser.dll_3421440602" Guid="e74a2dbc-8131-4240-abde-e2a75073ba77">
-                  <File Id="itext.styledxmlparser.dll_3421440602" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.styledxmlparser.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" Guid="e74a2dbc-8131-4240-abde-e2a74c397b99">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.svg.dll_1021781967" Guid="e74a2dbc-8131-4240-abde-e2a7fdd7c091">
-                  <File Id="itext.svg.dll_1021781967" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\itext.svg.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_227485807" Guid="e74a2dbc-8131-4240-abde-e2a7b828b3b2">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_227485807" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
 
-                <Component Id="Component.JetBrains.Annotations.dll_3716186479" Guid="e74a2dbc-8131-4240-abde-e2a781b1cad0">
-                  <File Id="JetBrains.Annotations.dll_3716186479" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\JetBrains.Annotations.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" Guid="e74a2dbc-8131-4240-abde-e2a751c7304f">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_1051373110" Guid="e74a2dbc-8131-4240-abde-e2a74ad72132">
-                  <File Id="Microsoft.Bcl.AsyncInterfaces.dll_1051373110" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Bcl.AsyncInterfaces.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_1413028242" Guid="e74a2dbc-8131-4240-abde-e2a74525233c">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_1413028242" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1797309623" Guid="e74a2dbc-8131-4240-abde-e2a741c6a75c">
-                  <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_1797309623" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" Guid="e74a2dbc-8131-4240-abde-e2a7e4511d17">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3005599205" Guid="e74a2dbc-8131-4240-abde-e2a732bc7067">
-                  <File Id="Microsoft.Extensions.Configuration.Binder.dll_3005599205" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.Binder.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2474877157" Guid="e74a2dbc-8131-4240-abde-e2a7acfa4d99">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_2474877157" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_3258396673" Guid="e74a2dbc-8131-4240-abde-e2a7ac17ae3d">
-                  <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_3258396673" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.CommandLine.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_802366788" Guid="e74a2dbc-8131-4240-abde-e2a7cc2f85f1">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_802366788" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.dll_1443102863" Guid="e74a2dbc-8131-4240-abde-e2a71f6e1e84">
-                  <File Id="Microsoft.Extensions.Configuration.dll_1443102863" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_115494662" Guid="e74a2dbc-8131-4240-abde-e2a7889a10bc">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_115494662" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2124412416" Guid="e74a2dbc-8131-4240-abde-e2a71416c751">
-                  <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2124412416" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_3410103097" Guid="e74a2dbc-8131-4240-abde-e2a7d45ec6ad">
+                <File Id="Microsoft.Extensions.Hosting.dll_3410103097" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Hosting.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3181396660" Guid="e74a2dbc-8131-4240-abde-e2a70d6684bd">
-                  <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_3181396660" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.FileExtensions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_3865628491" Guid="e74a2dbc-8131-4240-abde-e2a76277c227">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_3865628491" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_2527773899" Guid="e74a2dbc-8131-4240-abde-e2a73a1af519">
-                  <File Id="Microsoft.Extensions.Configuration.Json.dll_2527773899" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.Json.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_298222694" Guid="e74a2dbc-8131-4240-abde-e2a72aa76980">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_298222694" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_3452757831" Guid="e74a2dbc-8131-4240-abde-e2a7b99ddede">
-                  <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_3452757831" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Configuration.UserSecrets.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_3377386326" Guid="e74a2dbc-8131-4240-abde-e2a71d886f12">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_3377386326" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1469949865" Guid="e74a2dbc-8131-4240-abde-e2a7d6bef46b">
-                  <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_1469949865" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_1098164232" Guid="e74a2dbc-8131-4240-abde-e2a7eff3021e">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_1098164232" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_2482183819" Guid="e74a2dbc-8131-4240-abde-e2a77b9dbb66">
-                  <File Id="Microsoft.Extensions.DependencyInjection.dll_2482183819" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_3868223593" Guid="e74a2dbc-8131-4240-abde-e2a78d6dbb19">
+                <File Id="Microsoft.Extensions.Logging.dll_3868223593" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_702299412" Guid="e74a2dbc-8131-4240-abde-e2a7b8177d9e">
-                  <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_702299412" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_4118074958" Guid="e74a2dbc-8131-4240-abde-e2a7850f77e4">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_4118074958" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_2892545072" Guid="e74a2dbc-8131-4240-abde-e2a70dcb4d86">
-                  <File Id="Microsoft.Extensions.Diagnostics.dll_2892545072" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_787572548" Guid="e74a2dbc-8131-4240-abde-e2a7f4aaad54">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_787572548" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2668301933" Guid="e74a2dbc-8131-4240-abde-e2a787c3fc4c">
-                  <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_2668301933" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" Guid="e74a2dbc-8131-4240-abde-e2a7bf2547d7">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2315401695" Guid="e74a2dbc-8131-4240-abde-e2a74d5fa4b5">
-                  <File Id="Microsoft.Extensions.FileProviders.Physical.dll_2315401695" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Physical.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.dll_109781667" Guid="e74a2dbc-8131-4240-abde-e2a7f5bb3686">
+                <File Id="Microsoft.Extensions.Options.dll_109781667" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Options.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2575958476" Guid="e74a2dbc-8131-4240-abde-e2a7bbe429e1">
-                  <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2575958476" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.FileSystemGlobbing.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_4033814098" Guid="e74a2dbc-8131-4240-abde-e2a794b4c2a6">
+                <File Id="Microsoft.Extensions.Primitives.dll_4033814098" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Primitives.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_3445289931" Guid="e74a2dbc-8131-4240-abde-e2a7da0dc788">
-                  <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_3445289931" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Hosting.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_3932309534" Guid="e74a2dbc-8131-4240-abde-e2a777cab831">
+                <File Id="Microsoft.Xaml.Behaviors.dll_3932309534" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.dll_2816214007" Guid="e74a2dbc-8131-4240-abde-e2a774392582">
-                  <File Id="Microsoft.Extensions.Hosting.dll_2816214007" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Hosting.dll" />
-                </Component>
+              <Component Id="Component.System.Buffers.dll_957892006" Guid="e74a2dbc-8131-4240-abde-e2a7a2fdcd47">
+                <File Id="System.Buffers.dll_957892006" Source="..\AnalyseTool\bin\Release R24\net48\System.Buffers.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1068898081" Guid="e74a2dbc-8131-4240-abde-e2a7326bcbec">
-                  <File Id="Microsoft.Extensions.Logging.Abstractions.dll_1068898081" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.System.ComponentModel.Annotations.dll_3429552103" Guid="e74a2dbc-8131-4240-abde-e2a77732d5e6">
+                <File Id="System.ComponentModel.Annotations.dll_3429552103" Source="..\AnalyseTool\bin\Release R24\net48\System.ComponentModel.Annotations.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_2020871651" Guid="e74a2dbc-8131-4240-abde-e2a749113783">
-                  <File Id="Microsoft.Extensions.Logging.Configuration.dll_2020871651" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.Configuration.dll" />
-                </Component>
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2287635149" Guid="e74a2dbc-8131-4240-abde-e2a75254b2a2">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_2287635149" Source="..\AnalyseTool\bin\Release R24\net48\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_1052155374" Guid="e74a2dbc-8131-4240-abde-e2a74ddf01e1">
-                  <File Id="Microsoft.Extensions.Logging.Console.dll_1052155374" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.Console.dll" />
-                </Component>
+              <Component Id="Component.System.IO.Pipelines.dll_4065773619" Guid="e74a2dbc-8131-4240-abde-e2a74de4e02c">
+                <File Id="System.IO.Pipelines.dll_4065773619" Source="..\AnalyseTool\bin\Release R24\net48\System.IO.Pipelines.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_2351024622" Guid="e74a2dbc-8131-4240-abde-e2a7e8c84b14">
-                  <File Id="Microsoft.Extensions.Logging.Debug.dll_2351024622" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.Debug.dll" />
-                </Component>
+              <Component Id="Component.System.Memory.dll_2504815842" Guid="e74a2dbc-8131-4240-abde-e2a7ad81f21d">
+                <File Id="System.Memory.dll_2504815842" Source="..\AnalyseTool\bin\Release R24\net48\System.Memory.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.dll_3507319798" Guid="e74a2dbc-8131-4240-abde-e2a718c79435">
-                  <File Id="Microsoft.Extensions.Logging.dll_3507319798" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.dll" />
-                </Component>
+              <Component Id="Component.System.Numerics.Vectors.dll_332160060" Guid="e74a2dbc-8131-4240-abde-e2a708a4f0b4">
+                <File Id="System.Numerics.Vectors.dll_332160060" Source="..\AnalyseTool\bin\Release R24\net48\System.Numerics.Vectors.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_586552878" Guid="e74a2dbc-8131-4240-abde-e2a78ca72878">
-                  <File Id="Microsoft.Extensions.Logging.EventLog.dll_586552878" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.EventLog.dll" />
-                </Component>
+              <Component Id="Component.System.Runtime.CompilerServices.Unsafe.dll_3711986210" Guid="e74a2dbc-8131-4240-abde-e2a79374c28e">
+                <File Id="System.Runtime.CompilerServices.Unsafe.dll_3711986210" Source="..\AnalyseTool\bin\Release R24\net48\System.Runtime.CompilerServices.Unsafe.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_808031123" Guid="e74a2dbc-8131-4240-abde-e2a7c27d59e2">
-                  <File Id="Microsoft.Extensions.Logging.EventSource.dll_808031123" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Logging.EventSource.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Encodings.Web.dll_2580125629" Guid="e74a2dbc-8131-4240-abde-e2a7485b235a">
+                <File Id="System.Text.Encodings.Web.dll_2580125629" Source="..\AnalyseTool\bin\Release R24\net48\System.Text.Encodings.Web.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2210738252" Guid="e74a2dbc-8131-4240-abde-e2a7c3b1a483">
-                  <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_2210738252" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Json.dll_342707185" Guid="e74a2dbc-8131-4240-abde-e2a79e83aa6a">
+                <File Id="System.Text.Json.dll_342707185" Source="..\AnalyseTool\bin\Release R24\net48\System.Text.Json.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Options.dll_4231075495" Guid="e74a2dbc-8131-4240-abde-e2a7a09ac834">
-                  <File Id="Microsoft.Extensions.Options.dll_4231075495" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Options.dll" />
-                </Component>
+              <Component Id="Component.System.Threading.Tasks.Extensions.dll_1872845740" Guid="e74a2dbc-8131-4240-abde-e2a7ac161dac">
+                <File Id="System.Threading.Tasks.Extensions.dll_1872845740" Source="..\AnalyseTool\bin\Release R24\net48\System.Threading.Tasks.Extensions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Primitives.dll_3290677623" Guid="e74a2dbc-8131-4240-abde-e2a79f8246fd">
-                  <File Id="Microsoft.Extensions.Primitives.dll_3290677623" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Microsoft.Extensions.Primitives.dll" />
-                </Component>
+              <Component Id="Component.System.ValueTuple.dll_3447647600" Guid="e74a2dbc-8131-4240-abde-e2a7f883b647">
+                <File Id="System.ValueTuple.dll_3447647600" Source="..\AnalyseTool\bin\Release R24\net48\System.ValueTuple.dll" />
+              </Component>
 
-                <Component Id="Component.Newtonsoft.Json.dll_575166318" Guid="e74a2dbc-8131-4240-abde-e2a73ff876e1">
-                  <File Id="Newtonsoft.Json.dll_575166318" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Newtonsoft.Json.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Extensions.dll_180724621" Guid="e74a2dbc-8131-4240-abde-e2a7cdfa6ac3">
-                  <File Id="Nice3point.Revit.Extensions.dll_180724621" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Nice3point.Revit.Extensions.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Toolkit.dll_2346198842" Guid="e74a2dbc-8131-4240-abde-e2a798074e31">
-                  <File Id="Nice3point.Revit.Toolkit.dll_2346198842" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\Nice3point.Revit.Toolkit.dll" />
-                </Component>
-
-                <Component Id="Component.System.Buffers.dll_4001202270" Guid="e74a2dbc-8131-4240-abde-e2a7feff4807">
-                  <File Id="System.Buffers.dll_4001202270" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Buffers.dll" />
-                </Component>
-
-                <Component Id="Component.System.ComponentModel.Annotations.dll_1739693140" Guid="e74a2dbc-8131-4240-abde-e2a79bb25749">
-                  <File Id="System.ComponentModel.Annotations.dll_1739693140" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.ComponentModel.Annotations.dll" />
-                </Component>
-
-                <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2590148983" Guid="e74a2dbc-8131-4240-abde-e2a70bd725c3">
-                  <File Id="System.Diagnostics.DiagnosticSource.dll_2590148983" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Diagnostics.DiagnosticSource.dll" />
-                </Component>
-
-                <Component Id="Component.System.IO.Pipelines.dll_400604452" Guid="e74a2dbc-8131-4240-abde-e2a796701d95">
-                  <File Id="System.IO.Pipelines.dll_400604452" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.IO.Pipelines.dll" />
-                </Component>
-
-                <Component Id="Component.System.Memory.dll_875487303" Guid="e74a2dbc-8131-4240-abde-e2a70a569f41">
-                  <File Id="System.Memory.dll_875487303" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Memory.dll" />
-                </Component>
-
-                <Component Id="Component.System.Numerics.Vectors.dll_3600339850" Guid="e74a2dbc-8131-4240-abde-e2a75cad5d09">
-                  <File Id="System.Numerics.Vectors.dll_3600339850" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Numerics.Vectors.dll" />
-                </Component>
-
-                <Component Id="Component.System.Runtime.CompilerServices.Unsafe.dll_442782775" Guid="e74a2dbc-8131-4240-abde-e2a751ae2a31">
-                  <File Id="System.Runtime.CompilerServices.Unsafe.dll_442782775" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Runtime.CompilerServices.Unsafe.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Encodings.Web.dll_3273749794" Guid="e74a2dbc-8131-4240-abde-e2a79ac03fdc">
-                  <File Id="System.Text.Encodings.Web.dll_3273749794" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Text.Encodings.Web.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Json.dll_2502811433" Guid="e74a2dbc-8131-4240-abde-e2a740504634">
-                  <File Id="System.Text.Json.dll_2502811433" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Text.Json.dll" />
-                </Component>
-
-                <Component Id="Component.System.Threading.Tasks.Extensions.dll_1743727734" Guid="e74a2dbc-8131-4240-abde-e2a722cf4ef9">
-                  <File Id="System.Threading.Tasks.Extensions.dll_1743727734" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.Threading.Tasks.Extensions.dll" />
-                </Component>
-
-                <Component Id="Component.System.ValueTuple.dll_714399896" Guid="e74a2dbc-8131-4240-abde-e2a70afe6a45">
-                  <File Id="System.ValueTuple.dll_714399896" Source="..\AnalyseTool\bin\Release R23\publish\Revit 2023 Release R23 addin\AnalyseTool\System.ValueTuple.dll" />
-                </Component>
-
-              </Directory>
             </Directory>
           </Directory>
         </Directory>
@@ -265,246 +210,196 @@
       <Directory Id="Autodesk.1" Name="Autodesk">
         <Directory Id="Revit.1" Name="Revit">
           <Directory Id="Addins.1" Name="Addins">
-            <Directory Id="_2024_" Name="2024">
+            <Directory Id="_2025_" Name="2025">
 
-              <Component Id="Component.AnalyzeTool.addin_3709613969" Guid="e74a2dbc-8131-4240-abde-e2a7af7ea72c">
-                <File Id="AnalyzeTool.addin_3709613969" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyzeTool.addin" />
+              <Component Id="Component.AnalyseTool.deps.json_1268379870" Guid="e74a2dbc-8131-4240-abde-e2a7e42cacee">
+                <File Id="AnalyseTool.deps.json_1268379870" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.deps.json" />
               </Component>
 
-              <Directory Id="AnalyseTool.1" Name="AnalyseTool">
+              <Component Id="Component.AnalyseTool.dll_2888060273" Guid="e74a2dbc-8131-4240-abde-e2a7bf2d2b9a">
+                <File Id="AnalyseTool.dll_2888060273" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.dll" />
+              </Component>
 
-                <Component Id="Component.AnalyseTool.dll_3144146192" Guid="e74a2dbc-8131-4240-abde-e2a78186b4d4">
-                  <File Id="AnalyseTool.dll_3144146192" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\AnalyseTool.dll" />
-                </Component>
+              <Component Id="Component.AnalyseTool.pdb_3627414089" Guid="e74a2dbc-8131-4240-abde-e2a7f3a3932e">
+                <File Id="AnalyseTool.pdb_3627414089" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.pdb" />
+              </Component>
 
-                <Component Id="Component.AnalyzeTool.addin_1556150546" Guid="e74a2dbc-8131-4240-abde-e2a72b0e2b73">
-                  <File Id="AnalyzeTool.addin_1556150546" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\AnalyzeTool.addin" />
-                </Component>
+              <Component Id="Component.AnalyzeTool.addin_1486089697" Guid="e74a2dbc-8131-4240-abde-e2a7ba8657d3">
+                <File Id="AnalyzeTool.addin_1486089697" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyzeTool.addin" />
+              </Component>
 
-                <Component Id="Component.CommunityToolkit.Mvvm.dll_1757196285" Guid="e74a2dbc-8131-4240-abde-e2a73fb078a0">
-                  <File Id="CommunityToolkit.Mvvm.dll_1757196285" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\CommunityToolkit.Mvvm.dll" />
-                </Component>
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_3045743145" Guid="e74a2dbc-8131-4240-abde-e2a72929b917">
+                <File Id="CommunityToolkit.Mvvm.dll_3045743145" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\CommunityToolkit.Mvvm.dll" />
+              </Component>
 
-                <Component Id="Component.itext.barcodes.dll_1883449114" Guid="e74a2dbc-8131-4240-abde-e2a7e61a5cc4">
-                  <File Id="itext.barcodes.dll_1883449114" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.barcodes.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignColors.dll_1382397682" Guid="e74a2dbc-8131-4240-abde-e2a7217b0b8d">
+                <File Id="MaterialDesignColors.dll_1382397682" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\MaterialDesignColors.dll" />
+              </Component>
 
-                <Component Id="Component.itext.bouncy2dcastle2dconnector.dll_3898228811" Guid="e74a2dbc-8131-4240-abde-e2a7beb38562">
-                  <File Id="itext.bouncy2dcastle2dconnector.dll_3898228811" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.bouncy-castle-connector.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_4233440801" Guid="e74a2dbc-8131-4240-abde-e2a7cea606c9">
+                <File Id="MaterialDesignThemes.Wpf.dll_4233440801" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\MaterialDesignThemes.Wpf.dll" />
+              </Component>
 
-                <Component Id="Component.itext.commons.dll_1492199516" Guid="e74a2dbc-8131-4240-abde-e2a7271b280d">
-                  <File Id="itext.commons.dll_1492199516" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.commons.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_124560356" Guid="e74a2dbc-8131-4240-abde-e2a7db8ab6d2">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_124560356" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.forms.dll_3519985054" Guid="e74a2dbc-8131-4240-abde-e2a7e24fb46a">
-                  <File Id="itext.forms.dll_3519985054" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.forms.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1309848806" Guid="e74a2dbc-8131-4240-abde-e2a72674eb71">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_1309848806" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
 
-                <Component Id="Component.itext.io.dll_2610449583" Guid="e74a2dbc-8131-4240-abde-e2a7795dc8a6">
-                  <File Id="itext.io.dll_2610449583" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.io.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_852690392" Guid="e74a2dbc-8131-4240-abde-e2a790d937c6">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_852690392" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
 
-                <Component Id="Component.itext.kernel.dll_2813716283" Guid="e74a2dbc-8131-4240-abde-e2a7c37efbdb">
-                  <File Id="itext.kernel.dll_2813716283" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.kernel.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_657150674" Guid="e74a2dbc-8131-4240-abde-e2a7eb915812">
+                <File Id="Microsoft.Extensions.Configuration.dll_657150674" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.itext.layout.dll_2430716" Guid="e74a2dbc-8131-4240-abde-e2a7addcb501">
-                  <File Id="itext.layout.dll_2430716" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.layout.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" Guid="e74a2dbc-8131-4240-abde-e2a7f80e338d">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfa.dll_3813328239" Guid="e74a2dbc-8131-4240-abde-e2a7d70f27b7">
-                  <File Id="itext.pdfa.dll_3813328239" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.pdfa.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" Guid="e74a2dbc-8131-4240-abde-e2a75a9ca2c8">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfua.dll_3941187721" Guid="e74a2dbc-8131-4240-abde-e2a7560cfafb">
-                  <File Id="itext.pdfua.dll_3941187721" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.pdfua.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_453611900" Guid="e74a2dbc-8131-4240-abde-e2a75be509f7">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_453611900" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
 
-                <Component Id="Component.itext.sign.dll_1616172387" Guid="e74a2dbc-8131-4240-abde-e2a7d1de4721">
-                  <File Id="itext.sign.dll_1616172387" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.sign.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" Guid="e74a2dbc-8131-4240-abde-e2a7da9a7021">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
 
-                <Component Id="Component.itext.styledxmlparser.dll_3748855465" Guid="e74a2dbc-8131-4240-abde-e2a7c13508cc">
-                  <File Id="itext.styledxmlparser.dll_3748855465" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.styledxmlparser.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" Guid="e74a2dbc-8131-4240-abde-e2a7d1779eb7">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.svg.dll_3686897378" Guid="e74a2dbc-8131-4240-abde-e2a787858d5b">
-                  <File Id="itext.svg.dll_3686897378" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\itext.svg.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_2842921535" Guid="e74a2dbc-8131-4240-abde-e2a7df26997f">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_2842921535" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
 
-                <Component Id="Component.JetBrains.Annotations.dll_4292413833" Guid="e74a2dbc-8131-4240-abde-e2a71aba0fdd">
-                  <File Id="JetBrains.Annotations.dll_4292413833" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\JetBrains.Annotations.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" Guid="e74a2dbc-8131-4240-abde-e2a73bd0a2c5">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_150575131" Guid="e74a2dbc-8131-4240-abde-e2a74a6ae533">
-                  <File Id="Microsoft.Bcl.AsyncInterfaces.dll_150575131" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Bcl.AsyncInterfaces.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_3133881266" Guid="e74a2dbc-8131-4240-abde-e2a77bc82869">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_3133881266" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1381082524" Guid="e74a2dbc-8131-4240-abde-e2a7772bc64b">
-                  <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_1381082524" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" Guid="e74a2dbc-8131-4240-abde-e2a707d4dd6a">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1850787244" Guid="e74a2dbc-8131-4240-abde-e2a776790c58">
-                  <File Id="Microsoft.Extensions.Configuration.Binder.dll_1850787244" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.Binder.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_495226111" Guid="e74a2dbc-8131-4240-abde-e2a77a6e133d">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_495226111" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_2389531333" Guid="e74a2dbc-8131-4240-abde-e2a79e0cbfc2">
-                  <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_2389531333" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.CommandLine.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" Guid="e74a2dbc-8131-4240-abde-e2a7d24eca93">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.dll_1476953908" Guid="e74a2dbc-8131-4240-abde-e2a78e3b966a">
-                  <File Id="Microsoft.Extensions.Configuration.dll_1476953908" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" Guid="e74a2dbc-8131-4240-abde-e2a7349a7aa6">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3648136584" Guid="e74a2dbc-8131-4240-abde-e2a783aaaf4c">
-                  <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3648136584" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_2640083308" Guid="e74a2dbc-8131-4240-abde-e2a7876f4a93">
+                <File Id="Microsoft.Extensions.Hosting.dll_2640083308" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Hosting.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3871065459" Guid="e74a2dbc-8131-4240-abde-e2a7b7b8c233">
-                  <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_3871065459" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.FileExtensions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1961578976" Guid="e74a2dbc-8131-4240-abde-e2a79227ca40">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_1961578976" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_42148832" Guid="e74a2dbc-8131-4240-abde-e2a718ea6379">
-                  <File Id="Microsoft.Extensions.Configuration.Json.dll_42148832" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.Json.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1389974726" Guid="e74a2dbc-8131-4240-abde-e2a7b8341e6f">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_1389974726" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_3430320262" Guid="e74a2dbc-8131-4240-abde-e2a7b520337c">
-                  <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_3430320262" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Configuration.UserSecrets.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_97585908" Guid="e74a2dbc-8131-4240-abde-e2a7d311a4d0">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_97585908" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_2499268558" Guid="e74a2dbc-8131-4240-abde-e2a738337af4">
-                  <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_2499268558" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_466911883" Guid="e74a2dbc-8131-4240-abde-e2a7d935d037">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_466911883" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_680770495" Guid="e74a2dbc-8131-4240-abde-e2a764af12ff">
-                  <File Id="Microsoft.Extensions.DependencyInjection.dll_680770495" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_191041908" Guid="e74a2dbc-8131-4240-abde-e2a78872ed5d">
+                <File Id="Microsoft.Extensions.Logging.dll_191041908" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2166853123" Guid="e74a2dbc-8131-4240-abde-e2a790169de7">
-                  <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_2166853123" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1807743215" Guid="e74a2dbc-8131-4240-abde-e2a7012e0688">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_1807743215" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_2532605365" Guid="e74a2dbc-8131-4240-abde-e2a74b379e3c">
-                  <File Id="Microsoft.Extensions.Diagnostics.dll_2532605365" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4208017431" Guid="e74a2dbc-8131-4240-abde-e2a7eaebba3b">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_4208017431" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2932365279" Guid="e74a2dbc-8131-4240-abde-e2a77f7bcfa3">
-                  <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_2932365279" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" Guid="e74a2dbc-8131-4240-abde-e2a77a3ee5a8">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_1090549538" Guid="e74a2dbc-8131-4240-abde-e2a778c15de9">
-                  <File Id="Microsoft.Extensions.FileProviders.Physical.dll_1090549538" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Physical.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.dll_1345271214" Guid="e74a2dbc-8131-4240-abde-e2a741859ebe">
+                <File Id="Microsoft.Extensions.Options.dll_1345271214" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Options.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2304157282" Guid="e74a2dbc-8131-4240-abde-e2a7791a5d4a">
-                  <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2304157282" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.FileSystemGlobbing.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_2409293927" Guid="e74a2dbc-8131-4240-abde-e2a7a0054c55">
+                <File Id="Microsoft.Extensions.Primitives.dll_2409293927" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Primitives.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_1619060822" Guid="e74a2dbc-8131-4240-abde-e2a7b7ed5701">
-                  <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_1619060822" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Hosting.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_3018560629" Guid="e74a2dbc-8131-4240-abde-e2a7a382d254">
+                <File Id="Microsoft.Xaml.Behaviors.dll_3018560629" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.dll_4252927197" Guid="e74a2dbc-8131-4240-abde-e2a77d45537e">
-                  <File Id="Microsoft.Extensions.Hosting.dll_4252927197" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Hosting.dll" />
-                </Component>
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_1182331818" Guid="e74a2dbc-8131-4240-abde-e2a788183343">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_1182331818" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_260970500" Guid="e74a2dbc-8131-4240-abde-e2a719d6f56b">
-                  <File Id="Microsoft.Extensions.Logging.Abstractions.dll_260970500" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.System.Diagnostics.EventLog.dll_2771808142" Guid="e74a2dbc-8131-4240-abde-e2a700362ea0">
+                <File Id="System.Diagnostics.EventLog.dll_2771808142" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Diagnostics.EventLog.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1829775825" Guid="e74a2dbc-8131-4240-abde-e2a7b8dbe288">
-                  <File Id="Microsoft.Extensions.Logging.Configuration.dll_1829775825" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.Configuration.dll" />
-                </Component>
+              <Component Id="Component.System.IO.Pipelines.dll_1354185765" Guid="e74a2dbc-8131-4240-abde-e2a75d643547">
+                <File Id="System.IO.Pipelines.dll_1354185765" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.IO.Pipelines.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_4285644431" Guid="e74a2dbc-8131-4240-abde-e2a7443d7b4a">
-                  <File Id="Microsoft.Extensions.Logging.Console.dll_4285644431" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.Console.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Encodings.Web.dll_907551361" Guid="e74a2dbc-8131-4240-abde-e2a72cb79a7a">
+                <File Id="System.Text.Encodings.Web.dll_907551361" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Text.Encodings.Web.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_3512097099" Guid="e74a2dbc-8131-4240-abde-e2a70f31ed81">
-                  <File Id="Microsoft.Extensions.Logging.Debug.dll_3512097099" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.Debug.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Json.dll_1504584441" Guid="e74a2dbc-8131-4240-abde-e2a7156d67d9">
+                <File Id="System.Text.Json.dll_1504584441" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Text.Json.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.dll_2007178260" Guid="e74a2dbc-8131-4240-abde-e2a7747b3411">
-                  <File Id="Microsoft.Extensions.Logging.dll_2007178260" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.dll" />
-                </Component>
+              <Directory Id="runtimes" Name="runtimes">
+                <Directory Id="browser" Name="browser">
+                  <Directory Id="lib" Name="lib">
+                    <Directory Id="net8.0_" Name="net8.0">
 
-                <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_937757527" Guid="e74a2dbc-8131-4240-abde-e2a7eb4537a3">
-                  <File Id="Microsoft.Extensions.Logging.EventLog.dll_937757527" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.EventLog.dll" />
-                </Component>
+                      <Component Id="Component.System.Text.Encodings.Web.dll_1282738837" Guid="e74a2dbc-8131-4240-abde-e2a7ce8be0ee">
+                        <File Id="System.Text.Encodings.Web.dll_1282738837" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll" />
+                      </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4215748419" Guid="e74a2dbc-8131-4240-abde-e2a77e305aff">
-                  <File Id="Microsoft.Extensions.Logging.EventSource.dll_4215748419" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Logging.EventSource.dll" />
-                </Component>
+                    </Directory>
+                  </Directory>
+                </Directory>
 
-                <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_3220335621" Guid="e74a2dbc-8131-4240-abde-e2a7ab43d218">
-                  <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_3220335621" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
-                </Component>
+                <Directory Id="win" Name="win">
+                  <Directory Id="lib.1" Name="lib">
+                    <Directory Id="net8.0.1" Name="net8.0">
 
-                <Component Id="Component.Microsoft.Extensions.Options.dll_8469593" Guid="e74a2dbc-8131-4240-abde-e2a703b02290">
-                  <File Id="Microsoft.Extensions.Options.dll_8469593" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Options.dll" />
-                </Component>
+                      <Component Id="Component.System.Diagnostics.EventLog.dll_2950804445" Guid="e74a2dbc-8131-4240-abde-e2a7c3f72e6a">
+                        <File Id="System.Diagnostics.EventLog.dll_2950804445" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+                      </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Primitives.dll_2705157284" Guid="e74a2dbc-8131-4240-abde-e2a748851910">
-                  <File Id="Microsoft.Extensions.Primitives.dll_2705157284" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Microsoft.Extensions.Primitives.dll" />
-                </Component>
+                      <Component Id="Component.System.Diagnostics.EventLog.Messages.dll_1490307435" Guid="e74a2dbc-8131-4240-abde-e2a79588506d">
+                        <File Id="System.Diagnostics.EventLog.Messages.dll_1490307435" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" />
+                      </Component>
 
-                <Component Id="Component.Newtonsoft.Json.dll_119008476" Guid="e74a2dbc-8131-4240-abde-e2a78f7187a4">
-                  <File Id="Newtonsoft.Json.dll_119008476" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Newtonsoft.Json.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Extensions.dll_1459585857" Guid="e74a2dbc-8131-4240-abde-e2a7ec0c05dc">
-                  <File Id="Nice3point.Revit.Extensions.dll_1459585857" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Nice3point.Revit.Extensions.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Toolkit.dll_35965842" Guid="e74a2dbc-8131-4240-abde-e2a7e1c63cf4">
-                  <File Id="Nice3point.Revit.Toolkit.dll_35965842" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\Nice3point.Revit.Toolkit.dll" />
-                </Component>
-
-                <Component Id="Component.System.Buffers.dll_3788686234" Guid="e74a2dbc-8131-4240-abde-e2a7f1291f6d">
-                  <File Id="System.Buffers.dll_3788686234" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Buffers.dll" />
-                </Component>
-
-                <Component Id="Component.System.ComponentModel.Annotations.dll_321169706" Guid="e74a2dbc-8131-4240-abde-e2a76aac6f33">
-                  <File Id="System.ComponentModel.Annotations.dll_321169706" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.ComponentModel.Annotations.dll" />
-                </Component>
-
-                <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2283600580" Guid="e74a2dbc-8131-4240-abde-e2a71af02ae1">
-                  <File Id="System.Diagnostics.DiagnosticSource.dll_2283600580" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Diagnostics.DiagnosticSource.dll" />
-                </Component>
-
-                <Component Id="Component.System.IO.Pipelines.dll_3353214154" Guid="e74a2dbc-8131-4240-abde-e2a7be817ae8">
-                  <File Id="System.IO.Pipelines.dll_3353214154" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.IO.Pipelines.dll" />
-                </Component>
-
-                <Component Id="Component.System.Memory.dll_1553671975" Guid="e74a2dbc-8131-4240-abde-e2a792e46b4e">
-                  <File Id="System.Memory.dll_1553671975" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Memory.dll" />
-                </Component>
-
-                <Component Id="Component.System.Numerics.Vectors.dll_3675810709" Guid="e74a2dbc-8131-4240-abde-e2a77a5d35c9">
-                  <File Id="System.Numerics.Vectors.dll_3675810709" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Numerics.Vectors.dll" />
-                </Component>
-
-                <Component Id="Component.System.Runtime.CompilerServices.Unsafe.dll_1179970583" Guid="e74a2dbc-8131-4240-abde-e2a76ebef3a8">
-                  <File Id="System.Runtime.CompilerServices.Unsafe.dll_1179970583" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Runtime.CompilerServices.Unsafe.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Encodings.Web.dll_3835982058" Guid="e74a2dbc-8131-4240-abde-e2a7c676460e">
-                  <File Id="System.Text.Encodings.Web.dll_3835982058" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Text.Encodings.Web.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Json.dll_4019641356" Guid="e74a2dbc-8131-4240-abde-e2a768901ae3">
-                  <File Id="System.Text.Json.dll_4019641356" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Text.Json.dll" />
-                </Component>
-
-                <Component Id="Component.System.Threading.Tasks.Extensions.dll_3745258751" Guid="e74a2dbc-8131-4240-abde-e2a78cd69c95">
-                  <File Id="System.Threading.Tasks.Extensions.dll_3745258751" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.Threading.Tasks.Extensions.dll" />
-                </Component>
-
-                <Component Id="Component.System.ValueTuple.dll_725137183" Guid="e74a2dbc-8131-4240-abde-e2a74ad57a8c">
-                  <File Id="System.ValueTuple.dll_725137183" Source="..\AnalyseTool\bin\Release R24\publish\Revit 2024 Release R24 addin\AnalyseTool\System.ValueTuple.dll" />
-                </Component>
-
+                    </Directory>
+                  </Directory>
+                </Directory>
               </Directory>
             </Directory>
           </Directory>
@@ -516,256 +411,193 @@
       <Directory Id="Autodesk.2" Name="Autodesk">
         <Directory Id="Revit.2" Name="Revit">
           <Directory Id="Addins.2" Name="Addins">
-            <Directory Id="_2025_" Name="2025">
+            <Directory Id="_2026_" Name="2026">
 
-              <Component Id="Component.AnalyzeTool.addin_1486089697" Guid="e74a2dbc-8131-4240-abde-e2a7ba8657d3">
-                <File Id="AnalyzeTool.addin_1486089697" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyzeTool.addin" />
+              <Component Id="Component.AnalyseTool.deps.json_1529731243" Guid="e74a2dbc-8131-4240-abde-e2a758cc2673">
+                <File Id="AnalyseTool.deps.json_1529731243" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.deps.json" />
               </Component>
 
-              <Directory Id="AnalyseTool.2" Name="AnalyseTool">
+              <Component Id="Component.AnalyseTool.dll_936913242" Guid="e74a2dbc-8131-4240-abde-e2a7ddd9fbfb">
+                <File Id="AnalyseTool.dll_936913242" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.dll" />
+              </Component>
 
-                <Component Id="Component.AnalyseTool.deps.json_310740741" Guid="e74a2dbc-8131-4240-abde-e2a72ecad7ad">
-                  <File Id="AnalyseTool.deps.json_310740741" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\AnalyseTool.deps.json" />
-                </Component>
+              <Component Id="Component.AnalyseTool.pdb_3729425538" Guid="e74a2dbc-8131-4240-abde-e2a74644aca2">
+                <File Id="AnalyseTool.pdb_3729425538" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.pdb" />
+              </Component>
 
-                <Component Id="Component.AnalyseTool.dll_1441151392" Guid="e74a2dbc-8131-4240-abde-e2a751c7c289">
-                  <File Id="AnalyseTool.dll_1441151392" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\AnalyseTool.dll" />
-                </Component>
+              <Component Id="Component.AnalyzeTool.addin_2908595930" Guid="e74a2dbc-8131-4240-abde-e2a77471e7e7">
+                <File Id="AnalyzeTool.addin_2908595930" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyzeTool.addin" />
+              </Component>
 
-                <Component Id="Component.AnalyzeTool.addin_1326856676" Guid="e74a2dbc-8131-4240-abde-e2a7e53b7014">
-                  <File Id="AnalyzeTool.addin_1326856676" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\AnalyzeTool.addin" />
-                </Component>
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_1757223711" Guid="e74a2dbc-8131-4240-abde-e2a76e3ad617">
+                <File Id="CommunityToolkit.Mvvm.dll_1757223711" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\CommunityToolkit.Mvvm.dll" />
+              </Component>
 
-                <Component Id="Component.CommunityToolkit.Mvvm.dll_899455540" Guid="e74a2dbc-8131-4240-abde-e2a74ce7a057">
-                  <File Id="CommunityToolkit.Mvvm.dll_899455540" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\CommunityToolkit.Mvvm.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignColors.dll_1715462873" Guid="e74a2dbc-8131-4240-abde-e2a71d73a8c6">
+                <File Id="MaterialDesignColors.dll_1715462873" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\MaterialDesignColors.dll" />
+              </Component>
 
-                <Component Id="Component.itext.barcodes.dll_3614065365" Guid="e74a2dbc-8131-4240-abde-e2a788a4ddbc">
-                  <File Id="itext.barcodes.dll_3614065365" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.barcodes.dll" />
-                </Component>
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_906331324" Guid="e74a2dbc-8131-4240-abde-e2a72ac53d51">
+                <File Id="MaterialDesignThemes.Wpf.dll_906331324" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\MaterialDesignThemes.Wpf.dll" />
+              </Component>
 
-                <Component Id="Component.itext.bouncy2dcastle2dconnector.dll_1559868790" Guid="e74a2dbc-8131-4240-abde-e2a7fce903b2">
-                  <File Id="itext.bouncy2dcastle2dconnector.dll_1559868790" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.bouncy-castle-connector.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_578809819" Guid="e74a2dbc-8131-4240-abde-e2a707567686">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_578809819" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.commons.dll_4139976762" Guid="e74a2dbc-8131-4240-abde-e2a7707ec51e">
-                  <File Id="itext.commons.dll_4139976762" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.commons.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3194681960" Guid="e74a2dbc-8131-4240-abde-e2a77fa87c57">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_3194681960" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
 
-                <Component Id="Component.itext.forms.dll_464044816" Guid="e74a2dbc-8131-4240-abde-e2a7b6742f21">
-                  <File Id="itext.forms.dll_464044816" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.forms.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" Guid="e74a2dbc-8131-4240-abde-e2a7801511c8">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
 
-                <Component Id="Component.itext.io.dll_1596141540" Guid="e74a2dbc-8131-4240-abde-e2a7bee5bcac">
-                  <File Id="itext.io.dll_1596141540" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.io.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_947797165" Guid="e74a2dbc-8131-4240-abde-e2a75d169fbb">
+                <File Id="Microsoft.Extensions.Configuration.dll_947797165" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.itext.kernel.dll_3523513695" Guid="e74a2dbc-8131-4240-abde-e2a7b8e94b3c">
-                  <File Id="itext.kernel.dll_3523513695" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.kernel.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" Guid="e74a2dbc-8131-4240-abde-e2a7d6b4387c">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
 
-                <Component Id="Component.itext.layout.dll_673415062" Guid="e74a2dbc-8131-4240-abde-e2a747f280c5">
-                  <File Id="itext.layout.dll_673415062" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.layout.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" Guid="e74a2dbc-8131-4240-abde-e2a7432ec024">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfa.dll_2081439617" Guid="e74a2dbc-8131-4240-abde-e2a7d9029788">
-                  <File Id="itext.pdfa.dll_2081439617" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.pdfa.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_3494353268" Guid="e74a2dbc-8131-4240-abde-e2a753692f1e">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_3494353268" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
 
-                <Component Id="Component.itext.pdfua.dll_3408768571" Guid="e74a2dbc-8131-4240-abde-e2a73b7c425f">
-                  <File Id="itext.pdfua.dll_3408768571" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.pdfua.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" Guid="e74a2dbc-8131-4240-abde-e2a723524ba1">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
 
-                <Component Id="Component.itext.sign.dll_3599287607" Guid="e74a2dbc-8131-4240-abde-e2a7b58aac7b">
-                  <File Id="itext.sign.dll_3599287607" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.sign.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" Guid="e74a2dbc-8131-4240-abde-e2a76eec091f">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.itext.styledxmlparser.dll_3311283705" Guid="e74a2dbc-8131-4240-abde-e2a7141dfa49">
-                  <File Id="itext.styledxmlparser.dll_3311283705" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.styledxmlparser.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_1520303382" Guid="e74a2dbc-8131-4240-abde-e2a7275fd229">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_1520303382" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
 
-                <Component Id="Component.itext.svg.dll_2672589335" Guid="e74a2dbc-8131-4240-abde-e2a7e3d02b7a">
-                  <File Id="itext.svg.dll_2672589335" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\itext.svg.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" Guid="e74a2dbc-8131-4240-abde-e2a77a3e6e95">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.JetBrains.Annotations.dll_1740433889" Guid="e74a2dbc-8131-4240-abde-e2a79d9bfd38">
-                  <File Id="JetBrains.Annotations.dll_1740433889" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\JetBrains.Annotations.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_890034550" Guid="e74a2dbc-8131-4240-abde-e2a7a26c9d43">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_890034550" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.DotNet.PlatformAbstractions.dll_3216992429" Guid="e74a2dbc-8131-4240-abde-e2a7addf47aa">
-                  <File Id="Microsoft.DotNet.PlatformAbstractions.dll_3216992429" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.DotNet.PlatformAbstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" Guid="e74a2dbc-8131-4240-abde-e2a754ce06bd">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1657324801" Guid="e74a2dbc-8131-4240-abde-e2a7aad49013">
-                  <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_1657324801" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2303584897" Guid="e74a2dbc-8131-4240-abde-e2a7193f9ddc">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_2303584897" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_423647236" Guid="e74a2dbc-8131-4240-abde-e2a78510a4e9">
-                  <File Id="Microsoft.Extensions.Configuration.Binder.dll_423647236" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.Binder.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" Guid="e74a2dbc-8131-4240-abde-e2a7cd371768">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_2391875040" Guid="e74a2dbc-8131-4240-abde-e2a7193b54b0">
-                  <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_2391875040" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.CommandLine.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" Guid="e74a2dbc-8131-4240-abde-e2a7d3efa634">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.dll_448104690" Guid="e74a2dbc-8131-4240-abde-e2a798dbfcd1">
-                  <File Id="Microsoft.Extensions.Configuration.dll_448104690" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_1090739886" Guid="e74a2dbc-8131-4240-abde-e2a786057d2d">
+                <File Id="Microsoft.Extensions.Hosting.dll_1090739886" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Hosting.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3202935018" Guid="e74a2dbc-8131-4240-abde-e2a77e4dbe58">
-                  <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3202935018" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_2291596093" Guid="e74a2dbc-8131-4240-abde-e2a7df070676">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_2291596093" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3915829243" Guid="e74a2dbc-8131-4240-abde-e2a7fa5c0a9e">
-                  <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_3915829243" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.FileExtensions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_96717790" Guid="e74a2dbc-8131-4240-abde-e2a7ea95af3a">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_96717790" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_1013515192" Guid="e74a2dbc-8131-4240-abde-e2a7a9fb4a1b">
-                  <File Id="Microsoft.Extensions.Configuration.Json.dll_1013515192" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.Json.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_2393489699" Guid="e74a2dbc-8131-4240-abde-e2a764b85962">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_2393489699" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_497411175" Guid="e74a2dbc-8131-4240-abde-e2a7eef422b4">
-                  <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_497411175" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Configuration.UserSecrets.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_1475928182" Guid="e74a2dbc-8131-4240-abde-e2a7d9e204a4">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_1475928182" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_2441895282" Guid="e74a2dbc-8131-4240-abde-e2a7e1b880c1">
-                  <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_2441895282" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_3807460398" Guid="e74a2dbc-8131-4240-abde-e2a794fbc6ad">
+                <File Id="Microsoft.Extensions.Logging.dll_3807460398" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_2613436359" Guid="e74a2dbc-8131-4240-abde-e2a796b31cc5">
-                  <File Id="Microsoft.Extensions.DependencyInjection.dll_2613436359" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.DependencyInjection.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1847197131" Guid="e74a2dbc-8131-4240-abde-e2a7c97ef83c">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_1847197131" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.DependencyModel.dll_406683632" Guid="e74a2dbc-8131-4240-abde-e2a7bff1682c">
-                  <File Id="Microsoft.Extensions.DependencyModel.dll_406683632" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.DependencyModel.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_947283496" Guid="e74a2dbc-8131-4240-abde-e2a796071931">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_947283496" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_842725349" Guid="e74a2dbc-8131-4240-abde-e2a7b5690038">
-                  <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_842725349" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" Guid="e74a2dbc-8131-4240-abde-e2a7ce428e0d">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_1136050828" Guid="e74a2dbc-8131-4240-abde-e2a763839b2f">
-                  <File Id="Microsoft.Extensions.Diagnostics.dll_1136050828" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Diagnostics.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Options.dll_1361590364" Guid="e74a2dbc-8131-4240-abde-e2a756814a31">
+                <File Id="Microsoft.Extensions.Options.dll_1361590364" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Options.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_815608078" Guid="e74a2dbc-8131-4240-abde-e2a7acd4fd70">
-                  <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_815608078" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_1543453567" Guid="e74a2dbc-8131-4240-abde-e2a791761a70">
+                <File Id="Microsoft.Extensions.Primitives.dll_1543453567" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Primitives.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_1530622187" Guid="e74a2dbc-8131-4240-abde-e2a76c1746ec">
-                  <File Id="Microsoft.Extensions.FileProviders.Physical.dll_1530622187" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.FileProviders.Physical.dll" />
-                </Component>
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_2511162936" Guid="e74a2dbc-8131-4240-abde-e2a782a7b3d4">
+                <File Id="Microsoft.Xaml.Behaviors.dll_2511162936" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_3951730790" Guid="e74a2dbc-8131-4240-abde-e2a7367502a0">
-                  <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_3951730790" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.FileSystemGlobbing.dll" />
-                </Component>
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2326409771" Guid="e74a2dbc-8131-4240-abde-e2a75c49d417">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_2326409771" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_1336657047" Guid="e74a2dbc-8131-4240-abde-e2a7084f761c">
-                  <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_1336657047" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Hosting.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.System.Diagnostics.EventLog.dll_3351174627" Guid="e74a2dbc-8131-4240-abde-e2a715c87d98">
+                <File Id="System.Diagnostics.EventLog.dll_3351174627" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Diagnostics.EventLog.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Hosting.dll_404147754" Guid="e74a2dbc-8131-4240-abde-e2a7fd56e34c">
-                  <File Id="Microsoft.Extensions.Hosting.dll_404147754" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Hosting.dll" />
-                </Component>
+              <Component Id="Component.System.IO.Pipelines.dll_699550593" Guid="e74a2dbc-8131-4240-abde-e2a74459f77f">
+                <File Id="System.IO.Pipelines.dll_699550593" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.IO.Pipelines.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1487238220" Guid="e74a2dbc-8131-4240-abde-e2a7e7deef46">
-                  <File Id="Microsoft.Extensions.Logging.Abstractions.dll_1487238220" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.Abstractions.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Encodings.Web.dll_779245860" Guid="e74a2dbc-8131-4240-abde-e2a71f4eaba4">
+                <File Id="System.Text.Encodings.Web.dll_779245860" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Text.Encodings.Web.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_2803880562" Guid="e74a2dbc-8131-4240-abde-e2a7e9c12569">
-                  <File Id="Microsoft.Extensions.Logging.Configuration.dll_2803880562" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.Configuration.dll" />
-                </Component>
+              <Component Id="Component.System.Text.Json.dll_1888342667" Guid="e74a2dbc-8131-4240-abde-e2a78894bcb0">
+                <File Id="System.Text.Json.dll_1888342667" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Text.Json.dll" />
+              </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_472640273" Guid="e74a2dbc-8131-4240-abde-e2a7cd067027">
-                  <File Id="Microsoft.Extensions.Logging.Console.dll_472640273" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.Console.dll" />
-                </Component>
+              <Directory Id="runtimes.1" Name="runtimes">
+                <Directory Id="browser.1" Name="browser">
+                  <Directory Id="lib.2" Name="lib">
+                    <Directory Id="net8.0.2" Name="net8.0">
 
-                <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_3668852315" Guid="e74a2dbc-8131-4240-abde-e2a796ae77d1">
-                  <File Id="Microsoft.Extensions.Logging.Debug.dll_3668852315" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.Debug.dll" />
-                </Component>
+                      <Component Id="Component.System.Text.Encodings.Web.dll_3212645398" Guid="e74a2dbc-8131-4240-abde-e2a776f5d76d">
+                        <File Id="System.Text.Encodings.Web.dll_3212645398" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll" />
+                      </Component>
 
-                <Component Id="Component.Microsoft.Extensions.Logging.dll_1065560713" Guid="e74a2dbc-8131-4240-abde-e2a76b35871c">
-                  <File Id="Microsoft.Extensions.Logging.dll_1065560713" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.dll" />
-                </Component>
-
-                <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_2740786591" Guid="e74a2dbc-8131-4240-abde-e2a7d68569d0">
-                  <File Id="Microsoft.Extensions.Logging.EventLog.dll_2740786591" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.EventLog.dll" />
-                </Component>
-
-                <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_1405069375" Guid="e74a2dbc-8131-4240-abde-e2a76668c004">
-                  <File Id="Microsoft.Extensions.Logging.EventSource.dll_1405069375" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Logging.EventSource.dll" />
-                </Component>
-
-                <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_3142224035" Guid="e74a2dbc-8131-4240-abde-e2a7213fc102">
-                  <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_3142224035" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
-                </Component>
-
-                <Component Id="Component.Microsoft.Extensions.Options.dll_2003920954" Guid="e74a2dbc-8131-4240-abde-e2a733a28883">
-                  <File Id="Microsoft.Extensions.Options.dll_2003920954" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Options.dll" />
-                </Component>
-
-                <Component Id="Component.Microsoft.Extensions.Primitives.dll_697262067" Guid="e74a2dbc-8131-4240-abde-e2a7cecd2548">
-                  <File Id="Microsoft.Extensions.Primitives.dll_697262067" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Microsoft.Extensions.Primitives.dll" />
-                </Component>
-
-                <Component Id="Component.Newtonsoft.Json.dll_251033342" Guid="e74a2dbc-8131-4240-abde-e2a78e8f8c3d">
-                  <File Id="Newtonsoft.Json.dll_251033342" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Newtonsoft.Json.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Extensions.dll_1570521983" Guid="e74a2dbc-8131-4240-abde-e2a79abf4c21">
-                  <File Id="Nice3point.Revit.Extensions.dll_1570521983" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Nice3point.Revit.Extensions.dll" />
-                </Component>
-
-                <Component Id="Component.Nice3point.Revit.Toolkit.dll_3216092777" Guid="e74a2dbc-8131-4240-abde-e2a710183ed6">
-                  <File Id="Nice3point.Revit.Toolkit.dll_3216092777" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\Nice3point.Revit.Toolkit.dll" />
-                </Component>
-
-                <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_3898566397" Guid="e74a2dbc-8131-4240-abde-e2a77aa966cd">
-                  <File Id="System.Diagnostics.DiagnosticSource.dll_3898566397" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\System.Diagnostics.DiagnosticSource.dll" />
-                </Component>
-
-                <Component Id="Component.System.Diagnostics.EventLog.dll_2706978555" Guid="e74a2dbc-8131-4240-abde-e2a7f28cd833">
-                  <File Id="System.Diagnostics.EventLog.dll_2706978555" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\System.Diagnostics.EventLog.dll" />
-                </Component>
-
-                <Component Id="Component.System.IO.Pipelines.dll_3999945708" Guid="e74a2dbc-8131-4240-abde-e2a7670a0923">
-                  <File Id="System.IO.Pipelines.dll_3999945708" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\System.IO.Pipelines.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Encodings.Web.dll_3932931743" Guid="e74a2dbc-8131-4240-abde-e2a7510cbaaa">
-                  <File Id="System.Text.Encodings.Web.dll_3932931743" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\System.Text.Encodings.Web.dll" />
-                </Component>
-
-                <Component Id="Component.System.Text.Json.dll_1881338016" Guid="e74a2dbc-8131-4240-abde-e2a74b21c759">
-                  <File Id="System.Text.Json.dll_1881338016" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\System.Text.Json.dll" />
-                </Component>
-
-                <Directory Id="runtimes" Name="runtimes">
-                  <Directory Id="browser" Name="browser">
-                    <Directory Id="lib" Name="lib">
-                      <Directory Id="net8.0_" Name="net8.0">
-
-                        <Component Id="Component.System.Text.Encodings.Web.dll_3097169836" Guid="e74a2dbc-8131-4240-abde-e2a78508444e">
-                          <File Id="System.Text.Encodings.Web.dll_3097169836" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll" />
-                        </Component>
-
-                      </Directory>
                     </Directory>
                   </Directory>
+                </Directory>
 
-                  <Directory Id="win" Name="win">
-                    <Directory Id="lib.1" Name="lib">
-                      <Directory Id="net8.0.1" Name="net8.0">
+                <Directory Id="win.1" Name="win">
+                  <Directory Id="lib.3" Name="lib">
+                    <Directory Id="net8.0.3" Name="net8.0">
 
-                        <Component Id="Component.System.Diagnostics.EventLog.dll_1823192440" Guid="e74a2dbc-8131-4240-abde-e2a7f2218587">
-                          <File Id="System.Diagnostics.EventLog.dll_1823192440" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
-                        </Component>
+                      <Component Id="Component.System.Diagnostics.EventLog.dll_1104608594" Guid="e74a2dbc-8131-4240-abde-e2a73cdc433b">
+                        <File Id="System.Diagnostics.EventLog.dll_1104608594" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+                      </Component>
 
-                        <Component Id="Component.System.Diagnostics.EventLog.Messages.dll_1963171944" Guid="e74a2dbc-8131-4240-abde-e2a7700819a2">
-                          <File Id="System.Diagnostics.EventLog.Messages.dll_1963171944" Source="..\AnalyseTool\bin\Release R25\publish\Revit 2025 Release R25 addin\AnalyseTool\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" />
-                        </Component>
+                      <Component Id="Component.System.Diagnostics.EventLog.Messages.dll_4053180813" Guid="e74a2dbc-8131-4240-abde-e2a7ecf5ca63">
+                        <File Id="System.Diagnostics.EventLog.Messages.dll_4053180813" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" />
+                      </Component>
 
-                      </Directory>
                     </Directory>
                   </Directory>
                 </Directory>
@@ -793,182 +625,138 @@
     <Property Id="INSTALLDIR" Secure="yes" />
 
     <Feature Id="Complete" Title="Complete" Level="1" AllowAbsent="yes">
-      <ComponentRef Id="Component.AnalyzeTool.addin_1390386578" />
-      <ComponentRef Id="Component.AnalyseTool.dll_4050973100" />
-      <ComponentRef Id="Component.AnalyzeTool.addin_131695344" />
-      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_2921231786" />
-      <ComponentRef Id="Component.itext.barcodes.dll_2616486768" />
-      <ComponentRef Id="Component.itext.bouncy2dcastle2dconnector.dll_2348353217" />
-      <ComponentRef Id="Component.itext.commons.dll_1069548242" />
-      <ComponentRef Id="Component.itext.forms.dll_78646056" />
-      <ComponentRef Id="Component.itext.io.dll_3447211628" />
-      <ComponentRef Id="Component.itext.kernel.dll_2030732327" />
-      <ComponentRef Id="Component.itext.layout.dll_3561584222" />
-      <ComponentRef Id="Component.itext.pdfa.dll_1715968841" />
-      <ComponentRef Id="Component.itext.pdfua.dll_3113719235" />
-      <ComponentRef Id="Component.itext.sign.dll_1077768783" />
-      <ComponentRef Id="Component.itext.styledxmlparser.dll_3421440602" />
-      <ComponentRef Id="Component.itext.svg.dll_1021781967" />
-      <ComponentRef Id="Component.JetBrains.Annotations.dll_3716186479" />
-      <ComponentRef Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_1051373110" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1797309623" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3005599205" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_3258396673" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_1443102863" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2124412416" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3181396660" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_2527773899" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_3452757831" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1469949865" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_2482183819" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_702299412" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_2892545072" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2668301933" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2315401695" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2575958476" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_3445289931" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_2816214007" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1068898081" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_2020871651" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_1052155374" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_2351024622" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_3507319798" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_586552878" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_808031123" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2210738252" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_4231075495" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_3290677623" />
-      <ComponentRef Id="Component.Newtonsoft.Json.dll_575166318" />
-      <ComponentRef Id="Component.Nice3point.Revit.Extensions.dll_180724621" />
-      <ComponentRef Id="Component.Nice3point.Revit.Toolkit.dll_2346198842" />
-      <ComponentRef Id="Component.System.Buffers.dll_4001202270" />
-      <ComponentRef Id="Component.System.ComponentModel.Annotations.dll_1739693140" />
-      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2590148983" />
-      <ComponentRef Id="Component.System.IO.Pipelines.dll_400604452" />
-      <ComponentRef Id="Component.System.Memory.dll_875487303" />
-      <ComponentRef Id="Component.System.Numerics.Vectors.dll_3600339850" />
-      <ComponentRef Id="Component.System.Runtime.CompilerServices.Unsafe.dll_442782775" />
-      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3273749794" />
-      <ComponentRef Id="Component.System.Text.Json.dll_2502811433" />
-      <ComponentRef Id="Component.System.Threading.Tasks.Extensions.dll_1743727734" />
-      <ComponentRef Id="Component.System.ValueTuple.dll_714399896" />
+      <ComponentRef Id="Component.AnalyseTool.dll_816617249" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_2320645113" />
       <ComponentRef Id="Component.AnalyzeTool.addin_3709613969" />
-      <ComponentRef Id="Component.AnalyseTool.dll_3144146192" />
-      <ComponentRef Id="Component.AnalyzeTool.addin_1556150546" />
-      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_1757196285" />
-      <ComponentRef Id="Component.itext.barcodes.dll_1883449114" />
-      <ComponentRef Id="Component.itext.bouncy2dcastle2dconnector.dll_3898228811" />
-      <ComponentRef Id="Component.itext.commons.dll_1492199516" />
-      <ComponentRef Id="Component.itext.forms.dll_3519985054" />
-      <ComponentRef Id="Component.itext.io.dll_2610449583" />
-      <ComponentRef Id="Component.itext.kernel.dll_2813716283" />
-      <ComponentRef Id="Component.itext.layout.dll_2430716" />
-      <ComponentRef Id="Component.itext.pdfa.dll_3813328239" />
-      <ComponentRef Id="Component.itext.pdfua.dll_3941187721" />
-      <ComponentRef Id="Component.itext.sign.dll_1616172387" />
-      <ComponentRef Id="Component.itext.styledxmlparser.dll_3748855465" />
-      <ComponentRef Id="Component.itext.svg.dll_3686897378" />
-      <ComponentRef Id="Component.JetBrains.Annotations.dll_4292413833" />
-      <ComponentRef Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_150575131" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1381082524" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1850787244" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_2389531333" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_1476953908" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3648136584" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3871065459" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_42148832" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_3430320262" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_2499268558" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_680770495" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2166853123" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_2532605365" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2932365279" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_1090549538" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2304157282" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_1619060822" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_4252927197" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_260970500" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1829775825" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_4285644431" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_3512097099" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_2007178260" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_937757527" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4215748419" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_3220335621" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_8469593" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_2705157284" />
-      <ComponentRef Id="Component.Newtonsoft.Json.dll_119008476" />
-      <ComponentRef Id="Component.Nice3point.Revit.Extensions.dll_1459585857" />
-      <ComponentRef Id="Component.Nice3point.Revit.Toolkit.dll_35965842" />
-      <ComponentRef Id="Component.System.Buffers.dll_3788686234" />
-      <ComponentRef Id="Component.System.ComponentModel.Annotations.dll_321169706" />
-      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2283600580" />
-      <ComponentRef Id="Component.System.IO.Pipelines.dll_3353214154" />
-      <ComponentRef Id="Component.System.Memory.dll_1553671975" />
-      <ComponentRef Id="Component.System.Numerics.Vectors.dll_3675810709" />
-      <ComponentRef Id="Component.System.Runtime.CompilerServices.Unsafe.dll_1179970583" />
-      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3835982058" />
-      <ComponentRef Id="Component.System.Text.Json.dll_4019641356" />
-      <ComponentRef Id="Component.System.Threading.Tasks.Extensions.dll_3745258751" />
-      <ComponentRef Id="Component.System.ValueTuple.dll_725137183" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_1171052799" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_801232743" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_2301622021" />
+      <ComponentRef Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_2528368248" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1352344495" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_994690770" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_4038447548" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_2670734809" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_227485807" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_1413028242" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2474877157" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_802366788" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_115494662" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_3410103097" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_3865628491" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_298222694" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_3377386326" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_1098164232" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_3868223593" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_4118074958" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_787572548" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_109781667" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_4033814098" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_3932309534" />
+      <ComponentRef Id="Component.System.Buffers.dll_957892006" />
+      <ComponentRef Id="Component.System.ComponentModel.Annotations.dll_3429552103" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2287635149" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_4065773619" />
+      <ComponentRef Id="Component.System.Memory.dll_2504815842" />
+      <ComponentRef Id="Component.System.Numerics.Vectors.dll_332160060" />
+      <ComponentRef Id="Component.System.Runtime.CompilerServices.Unsafe.dll_3711986210" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_2580125629" />
+      <ComponentRef Id="Component.System.Text.Json.dll_342707185" />
+      <ComponentRef Id="Component.System.Threading.Tasks.Extensions.dll_1872845740" />
+      <ComponentRef Id="Component.System.ValueTuple.dll_3447647600" />
+      <ComponentRef Id="Component.AnalyseTool.deps.json_1268379870" />
+      <ComponentRef Id="Component.AnalyseTool.dll_2888060273" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_3627414089" />
       <ComponentRef Id="Component.AnalyzeTool.addin_1486089697" />
-      <ComponentRef Id="Component.AnalyseTool.deps.json_310740741" />
-      <ComponentRef Id="Component.AnalyseTool.dll_1441151392" />
-      <ComponentRef Id="Component.AnalyzeTool.addin_1326856676" />
-      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_899455540" />
-      <ComponentRef Id="Component.itext.barcodes.dll_3614065365" />
-      <ComponentRef Id="Component.itext.bouncy2dcastle2dconnector.dll_1559868790" />
-      <ComponentRef Id="Component.itext.commons.dll_4139976762" />
-      <ComponentRef Id="Component.itext.forms.dll_464044816" />
-      <ComponentRef Id="Component.itext.io.dll_1596141540" />
-      <ComponentRef Id="Component.itext.kernel.dll_3523513695" />
-      <ComponentRef Id="Component.itext.layout.dll_673415062" />
-      <ComponentRef Id="Component.itext.pdfa.dll_2081439617" />
-      <ComponentRef Id="Component.itext.pdfua.dll_3408768571" />
-      <ComponentRef Id="Component.itext.sign.dll_3599287607" />
-      <ComponentRef Id="Component.itext.styledxmlparser.dll_3311283705" />
-      <ComponentRef Id="Component.itext.svg.dll_2672589335" />
-      <ComponentRef Id="Component.JetBrains.Annotations.dll_1740433889" />
-      <ComponentRef Id="Component.Microsoft.DotNet.PlatformAbstractions.dll_3216992429" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_1657324801" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_423647236" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_2391875040" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_448104690" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3202935018" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3915829243" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_1013515192" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_497411175" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_2441895282" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_2613436359" />
-      <ComponentRef Id="Component.Microsoft.Extensions.DependencyModel.dll_406683632" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_842725349" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_1136050828" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_815608078" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_1530622187" />
-      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_3951730790" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_1336657047" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_404147754" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1487238220" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_2803880562" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_472640273" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_3668852315" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_1065560713" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_2740786591" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_1405069375" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_3142224035" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_2003920954" />
-      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_697262067" />
-      <ComponentRef Id="Component.Newtonsoft.Json.dll_251033342" />
-      <ComponentRef Id="Component.Nice3point.Revit.Extensions.dll_1570521983" />
-      <ComponentRef Id="Component.Nice3point.Revit.Toolkit.dll_3216092777" />
-      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_3898566397" />
-      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_2706978555" />
-      <ComponentRef Id="Component.System.IO.Pipelines.dll_3999945708" />
-      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3932931743" />
-      <ComponentRef Id="Component.System.Text.Json.dll_1881338016" />
-      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3097169836" />
-      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_1823192440" />
-      <ComponentRef Id="Component.System.Diagnostics.EventLog.Messages.dll_1963171944" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_3045743145" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_1382397682" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_4233440801" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_124560356" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1309848806" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_852690392" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_657150674" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_453611900" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_2842921535" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_3133881266" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_495226111" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_2640083308" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1961578976" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1389974726" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_97585908" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_466911883" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_191041908" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1807743215" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4208017431" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_1345271214" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_2409293927" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_3018560629" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_1182331818" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_2771808142" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_1354185765" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_907551361" />
+      <ComponentRef Id="Component.System.Text.Json.dll_1504584441" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_1282738837" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_2950804445" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.Messages.dll_1490307435" />
+      <ComponentRef Id="Component.AnalyseTool.deps.json_1529731243" />
+      <ComponentRef Id="Component.AnalyseTool.dll_936913242" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_3729425538" />
+      <ComponentRef Id="Component.AnalyzeTool.addin_2908595930" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_1757223711" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_1715462873" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_906331324" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_578809819" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3194681960" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_947797165" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_3494353268" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_1520303382" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_890034550" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2303584897" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_1090739886" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_2291596093" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_96717790" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_2393489699" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_1475928182" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_3807460398" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1847197131" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_947283496" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_1361590364" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_1543453567" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_2511162936" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2326409771" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_3351174627" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_699550593" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_779245860" />
+      <ComponentRef Id="Component.System.Text.Json.dll_1888342667" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3212645398" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_1104608594" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.Messages.dll_4053180813" />
     </Feature>
   </Package>
 </Wix>

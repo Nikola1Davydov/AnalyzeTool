@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,7 +12,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Autodesk.PackageBuilder" Version="2.0.1" />
     <PackageReference Include="Nuke.Common" Version="9.0.4" />
+    <PackageReference Include="Octokit" Version="14.0.0" />
   </ItemGroup>
+
+  <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
 </Project>
