@@ -18,19 +18,19 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
-            var gitHubName = GitRepository.GetGitHubName();
-            var gitHubOwner = GitRepository.GetGitHubOwner();
+            string gitHubName = GitRepository.GetGitHubName();
+            string gitHubOwner = GitRepository.GetGitHubOwner();
 
-            var artifacts = Directory.GetFiles(ArtifactsDirectory, "*");
+            string[] artifacts = Directory.GetFiles(ArtifactsDirectory, "*");
             Assert.NotEmpty(artifacts, "No artifacts were found to create the Release");
 
-            var changelogFile = RootDirectory / "CHANGELOG.md";
-            var changelog = ChangelogTasks.ReadChangelog(changelogFile);
-            var releaseNotes = changelog.ReleaseNotes;
+            Nuke.Common.IO.AbsolutePath changelogFile = RootDirectory / "CHANGELOG.md";
+            ChangeLog changelog = ChangelogTasks.ReadChangelog(changelogFile);
+            IReadOnlyList<ReleaseNotes> releaseNotes = changelog.ReleaseNotes;
 
             Log.Information(changelog.Path);
 
-            var newRelease = new NewRelease(ReleaseVersion)
+            NewRelease newRelease = new NewRelease(ReleaseVersion)
             {
                 Name = ReleaseVersion,
                 Body = changelog.ToString(),
@@ -38,7 +38,7 @@ sealed partial class Build
                 Prerelease = IsPrerelease
             };
 
-            var release = await GitHubTasks.GitHubClient.Repository.Release.Create(gitHubOwner, gitHubName, newRelease);
+            Release release = await GitHubTasks.GitHubClient.Repository.Release.Create(gitHubOwner, gitHubName, newRelease);
             await UploadArtifactsAsync(release, artifacts);
         });
 
@@ -47,9 +47,9 @@ sealed partial class Build
     /// </summary>
     static async Task UploadArtifactsAsync(Release createdRelease, IEnumerable<string> artifacts)
     {
-        foreach (var file in artifacts)
+        foreach (string file in artifacts)
         {
-            var releaseAssetUpload = new ReleaseAssetUpload
+            ReleaseAssetUpload releaseAssetUpload = new ReleaseAssetUpload
             {
                 ContentType = "application/x-binary",
                 FileName = Path.GetFileName(file),
