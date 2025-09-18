@@ -28,4 +28,4 @@ jobs:
         run: ./build.cmd PublishGitHub
         shell: pwsh
         env:
-          ReleaseVersion: ${{ github.ref_name }}    
+          PUBLISH_VERSION: ${{ github.ref_name }}    
