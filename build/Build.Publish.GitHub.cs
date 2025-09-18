@@ -1,5 +1,6 @@
 ﻿using Nuke.Common;
 using Nuke.Common.ChangeLog;
+using Nuke.Common.IO;
 using Nuke.Common.Tools.GitHub;
 using Octokit;
 using Serilog;
@@ -14,7 +15,7 @@ sealed partial class Build
     /// </summary>
     Target PublishGitHub => _ => _
         .DependsOn(CreateInstaller, CreateBundle)
-        .Requires(() => ReleaseVersion)
+        //.Requires(() => ReleaseVersion)
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
@@ -24,7 +25,7 @@ sealed partial class Build
             string[] artifacts = Directory.GetFiles(ArtifactsDirectory, "*");
             Assert.NotEmpty(artifacts, "No artifacts were found to create the Release");
 
-            Nuke.Common.IO.AbsolutePath changelogFile = RootDirectory / "CHANGELOG.md";
+            AbsolutePath changelogFile = RootDirectory / "CHANGELOG.md";
             ChangeLog changelog = ChangelogTasks.ReadChangelog(changelogFile);
             IReadOnlyList<ReleaseNotes> releaseNotes = changelog.ReleaseNotes;
 
