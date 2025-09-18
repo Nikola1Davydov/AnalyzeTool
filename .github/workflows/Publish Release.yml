@@ -4,9 +4,9 @@ on:
   push:
     branches: [ "main" ]
 
-
 jobs:
-  windows:
+  release:
+    name: Publish release
     runs-on: windows-2022
     steps:
       - name: Checkout
@@ -14,16 +14,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Create release tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -e
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
       - name: Cache packages
         uses: actions/cache@v4
         with:
-          path: |
-            .nuke/temp
-            ~/.nuget/packages
-          key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
 
-      - name: Run NUKE Publish
-        run: ./build.cmd PublishGitHub
-        shell: pwsh
+      - name: Publish release
+        run: ./.nuke/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
-          PUBLISH_VERSION: ${{ github.ref_name }}    
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
