@@ -21,8 +21,12 @@ jobs:
             .nuke/temp
             ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
-      - name: Install WiX
-        run: dotnet tool install --global wix --version 4.*
+      - name: Install WiX Toolset 3.14
+        run: |
+          curl -L -o wix.zip https://wixtoolset.org/downloads/v3.14.0.5722/wix314-binaries.zip
+          tar -xf wix.zip -C $env:ProgramFiles
+          echo "$env:ProgramFiles\wix314-binaries" >> $env:GITHUB_PATH
+        shell: pwsh
 
       - name: Run NUKE Publish
         run: ./build.cmd PublishGitHub
