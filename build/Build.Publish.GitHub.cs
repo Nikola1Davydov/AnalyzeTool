@@ -20,10 +20,12 @@ sealed partial class Build
         .Executes(async () =>
         {
             // MSI-Datei zum ArtifactsDirectory kopieren
-            AbsolutePath msiFile = RootDirectory / "Installer" / "Analyse Tool.msi";
+            AbsolutePath msiFile = RootDirectory / "Installer" / "Analyse Tool-1.1.0.0-SingleUser.msi";
             if (File.Exists(msiFile))
             {
-                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool.msi"), true);
+                Log.Information(msiFile);
+                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool-1.1.0.0-MultiUser.msi"), true);
+                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool-1.1.0.0-SingleUser.msi"), true);
             }
 
             string gitHubName = GitRepository.GetGitHubName();
