@@ -19,6 +19,12 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
+            // MSI-Datei zum ArtifactsDirectory kopieren
+            AbsolutePath msiFile = RootDirectory / "Installer" / "Analyse Tool.msi";
+            if (File.Exists(msiFile))
+            {
+                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool.msi"), true);
+            }
 
             string gitHubName = GitRepository.GetGitHubName();
             string gitHubOwner = GitRepository.GetGitHubOwner();
