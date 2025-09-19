@@ -8,12 +8,15 @@
         <Configurations>Debug R24;Debug R25;Debug R26</Configurations>
         <Configurations>$(Configurations);Release R24;Release R25;Release R26</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+		
+		<PluginSubDir>AnalyseTool</PluginSubDir>
+
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
 	<PropertyGroup Condition="$(Configuration.Contains('R24'))">
 		<RevitVersion>2024</RevitVersion>
 		<TargetFramework>net48</TargetFramework>
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
 		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
 	</PropertyGroup>
@@ -21,7 +24,6 @@
     <PropertyGroup Condition="$(Configuration.Contains('R25'))">
         <RevitVersion>2025</RevitVersion>
         <TargetFramework>net8.0-windows</TargetFramework>
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
 		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
     </PropertyGroup>
@@ -29,17 +31,10 @@
 	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
 		<RevitVersion>2026</RevitVersion>
 		<TargetFramework>net8.0-windows</TargetFramework>
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
 		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
 	</PropertyGroup>
 	
-    <ItemGroup>
-      <Content Include="AnalyzeTool.addin">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </Content>
-    </ItemGroup>
-
 	<!--DEBUG SETTINGS-->
 	<PropertyGroup>
 		<StartAction>Program</StartAction>
@@ -63,7 +58,7 @@
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
 	<ItemGroup>
-		<!-- все собранные артефакты, кроме .pdb и .addin -->
+		 <!--все собранные артефакты, кроме .pdb и .addin--> 
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
 		<Compile Remove="Config\**" />
@@ -74,18 +69,39 @@
 		<Page Remove="AboutMe\**" />
 		<Page Remove="Config\**" />
 
-		<!-- сам .addin файл -->
+		 <!--сам .addin файл--> 
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
 	</ItemGroup>
 
-	<Target Name="CopyToRevitFolder" AfterTargets="Build">
+	<ItemGroup>
+	  <None Update="AnalyzeTool.addin">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
+	<Target Name="RearrangeOutputs" AfterTargets="Build">
+		<ItemGroup>
+			<BuiltFiles Include="$(OutputPath)*.*"
+						Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
+		</ItemGroup>
+
+		<MakeDir Directories="$(OutputPath)$(PluginSubDir)" />
+		<Move SourceFiles="@(BuiltFiles)" DestinationFolder="$(OutputPath)$(PluginSubDir)" />
+	</Target>
+
+	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' 
+																				 Or '$(Configuration)' == 'Debug R25' 
+																				 Or '$(Configuration)' == 'Debug R26'">
 		<!-- создать папку для dll -->
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
-
+		<ItemGroup>
+			<FilesToCopy Include="$(OutputPath)$(PluginSubDir)\*.*" />
+		</ItemGroup>
 		<!-- скопировать все dll и прочие артефакты в подпапку -->
-		<Copy SourceFiles="@(BuiltFiles)" DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(FilesToCopy)"  DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
 
 		<!-- скопировать сам .addin в корень -->
 		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />
 	</Target>
+	
 </Project>
