@@ -20,11 +20,12 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
-            //string msiFile = Directory
-            //    .EnumerateFiles(Solution.Installer.Directory / "bin" / "Release", "*.msi", SearchOption.TopDirectoryOnly)
-            //    .OrderByDescending(File.GetLastWriteTimeUtc)
-            //    .FirstOrDefault()
-            //    .NotNull($"No MSI file was created for project: {Solution.Installer.Name}");
+            // MSI-Datei zum ArtifactsDirectory kopieren
+            var msiFile = RootDirectory / "Installer" / "Analyse Tool.msi";
+            if (File.Exists(msiFile))
+            {
+                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool.msi"), true);
+            }
 
             string gitHubName = GitRepository.GetGitHubName();
             string gitHubOwner = GitRepository.GetGitHubOwner();
