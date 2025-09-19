@@ -20,7 +20,7 @@ sealed partial class Build
         .Executes(async () =>
         {
             // MSI-Datei zum ArtifactsDirectory kopieren
-            AbsolutePath msiFile = RootDirectory / "Installer" / "Analyse Tool-1.1.0.0-SingleUser.msi";
+            AbsolutePath msiFile = RootDirectory / "Installer" / "output" / "Analyse Tool-1.1.0.0-SingleUser.msi";
             if (File.Exists(msiFile))
             {
                 Log.Information(msiFile);
