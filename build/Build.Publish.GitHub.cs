@@ -20,11 +20,11 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
-            string msiFile = Directory
-                .EnumerateFiles(Solution.Installer.Directory / "bin" / "Release", "*.msi", SearchOption.TopDirectoryOnly)
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .FirstOrDefault()
-                .NotNull($"No MSI file was created for project: {Solution.Installer.Name}");
+            //string msiFile = Directory
+            //    .EnumerateFiles(Solution.Installer.Directory / "bin" / "Release", "*.msi", SearchOption.TopDirectoryOnly)
+            //    .OrderByDescending(File.GetLastWriteTimeUtc)
+            //    .FirstOrDefault()
+            //    .NotNull($"No MSI file was created for project: {Solution.Installer.Name}");
 
             string gitHubName = GitRepository.GetGitHubName();
             string gitHubOwner = GitRepository.GetGitHubOwner();
