@@ -18,10 +18,8 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 
 ## 🚀 Features
 
-- **Parameter Analysis**: Analyze shared parameters in your Revit project.
+- **Parameter Analysis**: Analyze all parameters in your Revit project. Parameters are grouped by name and categories. You can also view parameters grouped by value — showing which are empty and which are filled.
 - **Export to CSV**: Export analyzed data to a CSV file.
-- **Flexible Filtering**: Filter parameters based on various criteria.
-- **Category Grouping**: Group parameters by categories for better organization.
 
 ![Filter in AnalyzeTool](img/filter.png)
 
@@ -41,15 +39,6 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 3. Click `Save`.
 
 ## 🔧 Development
-
-#### Prerequisites
-
-- Visual Studio 2019 or higher
-- .NET Framework 4.8 & .NET Core 8.0
-- CommunityToolkit.Mvvm
-- Nice3point.Revit.Api.RevitAPI
-- Nice3point.Revit.Api.RevitAPIUI
-
 #### For Developers
 
 1. Clone the repository:
