@@ -6,7 +6,6 @@ using Octokit;
 using Serilog;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 sealed partial class Build
@@ -21,7 +20,7 @@ sealed partial class Build
         .Executes(async () =>
         {
             // MSI-Datei zum ArtifactsDirectory kopieren
-            var msiFile = RootDirectory / "Installer" / "Analyse Tool.msi";
+            AbsolutePath msiFile = RootDirectory / "Installer" / "Analyse Tool.msi";
             if (File.Exists(msiFile))
             {
                 File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool.msi"), true);
