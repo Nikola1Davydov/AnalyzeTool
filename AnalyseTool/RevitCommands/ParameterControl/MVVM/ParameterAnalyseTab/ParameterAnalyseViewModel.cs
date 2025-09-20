@@ -2,8 +2,10 @@
 using AnalyseTool.RevitCommands.ParameterControl.DataAccess;
 using AnalyseTool.RevitCommands.ParameterControl.DataModel;
 using AnalyseTool.Utils;
+using Autodesk.Revit.DB;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
@@ -93,6 +95,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
             {
                 ParameterDefinitions.Add(item);
             }
+            WeakReferenceMessenger.Default.Send(new CategoryChangedMessage(SelectedCategory));
         }
         [RelayCommand]
         private void ExportToCSV()
@@ -119,6 +122,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
         {
             Update();
         }
+
         private bool FilterParameter(object obj)
         {
             // guard

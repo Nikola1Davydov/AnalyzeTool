@@ -43,6 +43,7 @@
 	</PropertyGroup>
 	
     <ItemGroup>
+        <PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
         <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
@@ -81,24 +82,21 @@
 
 	<Target Name="RearrangeOutputs" AfterTargets="Build">
 		<ItemGroup>
-			<BuiltFiles Include="$(OutputPath)*.*"
-						Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
+			<BuiltFiles Include="$(OutputPath)*.*" Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
 		</ItemGroup>
 
 		<MakeDir Directories="$(OutputPath)$(PluginSubDir)" />
 		<Move SourceFiles="@(BuiltFiles)" DestinationFolder="$(OutputPath)$(PluginSubDir)" />
 	</Target>
 
-	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' 
-																				 Or '$(Configuration)' == 'Debug R25' 
-																				 Or '$(Configuration)' == 'Debug R26'">
+	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R25' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R26'">
 		<!-- создать папку для dll -->
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
 		<ItemGroup>
 			<FilesToCopy Include="$(OutputPath)$(PluginSubDir)\*.*" />
 		</ItemGroup>
 		<!-- скопировать все dll и прочие артефакты в подпапку -->
-		<Copy SourceFiles="@(FilesToCopy)"  DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
 
 		<!-- скопировать сам .addin в корень -->
 		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />

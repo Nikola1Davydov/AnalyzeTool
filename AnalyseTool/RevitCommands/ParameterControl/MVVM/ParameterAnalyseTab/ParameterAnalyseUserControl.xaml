@@ -6,13 +6,12 @@
     xmlns:dataModel="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.DataModel"
     xmlns:local="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-    xmlns:materialDesingColors="clr-namespace:MaterialDesignColors;assembly=MaterialDesignColors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:Background="White"
-    d:DataContext="{d:DesignInstance Type=local:ParameterAnalyseViewModel}"
     d:DesignHeight="450"
     d:DesignWidth="1000"
     mc:Ignorable="d">
+    <!--  d:DataContext="{d:DesignInstance Type=local:ParameterAnalyseViewModel}"  -->
 
     <UserControl.Resources>
         <ResourceDictionary>

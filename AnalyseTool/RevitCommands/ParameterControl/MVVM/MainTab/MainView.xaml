@@ -6,6 +6,7 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:parameterControl="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
+    xmlns:parameterValue="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:viewmodel="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab"
     Title="Analyze Tool"
@@ -32,6 +33,9 @@
     <TabControl Margin="10">
         <TabItem Header="Parameter Control">
             <parameterControl:ParameterAnalyseUserControl DataContext="{Binding ParameterAnalyseViewModel}" />
+        </TabItem>
+        <TabItem Header="Parameter Value Control">
+            <parameterValue:ParameterValueUserControl DataContext="{Binding ParameterValueViewModel}" />
         </TabItem>
     </TabControl>
 

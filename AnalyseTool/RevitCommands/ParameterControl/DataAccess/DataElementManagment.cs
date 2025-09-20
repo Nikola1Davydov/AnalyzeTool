@@ -92,5 +92,16 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
 
             return result.ToList();
         }
+
+        public IEnumerable<string> GetParametersByCategory(string category)
+        {
+            IEnumerable<DataElement> dataElements = dataElementRepository.GetAll().Where(x => string.Equals(x.CategoryName, category));
+            IEnumerable<string> parameters = dataElements.SelectMany(x => x.Parameters)
+                .Select(p => p.Name)
+                .Distinct()
+                .OrderBy(x => x);
+
+            return parameters;
+        }
     }
 }
