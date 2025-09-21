@@ -25,16 +25,21 @@
     </UserControl.Resources>
     <DockPanel Margin="10">
 
-        <DockPanel DockPanel.Dock="Top">
+        <UniformGrid DockPanel.Dock="Top" Rows="1">
             <ComboBox
                 Height="Auto"
                 Margin="10"
                 ItemsSource="{Binding Parameters}"
                 SelectedIndex="0"
                 SelectedItem="{Binding SelectedParameter}" />
-        </DockPanel>
+            <Button Margin="10,0" Content="Create Filters" />
+            <Button Content="Clear Filters" />
+        </UniformGrid>
 
-        <lvc:PieChart LegendLocation="Right" Series="{Binding SeriesCollection}" />
+        <lvc:PieChart
+            DataClickCommand="{Binding SelectElementsCommand}"
+            LegendLocation="Right"
+            Series="{Binding SeriesCollection}" />
 
     </DockPanel>
 </UserControl>

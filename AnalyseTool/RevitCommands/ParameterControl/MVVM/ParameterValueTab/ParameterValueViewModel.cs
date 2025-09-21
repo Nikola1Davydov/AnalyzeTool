@@ -1,7 +1,9 @@
 ﻿using AnalyseTool.RevitCommands.ParameterControl.DataAccess;
 using AnalyseTool.RevitCommands.ParameterControl.DataModel;
 using AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab;
+using AnalyseTool.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using LiveCharts;
 using LiveCharts.Wpf;
@@ -34,7 +36,27 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
             {
                 SelectedCategory = m.Category;
             });
+        }
+        [RelayCommand]
+        private void SelectElements(ChartPoint chartPoint)
+        {
+            if (chartPoint == null) return;
+            var title = chartPoint.SeriesView.Title;
 
+            IEnumerable<DataElement> currentElementsBySelectedCategory = _dataElementManagment.GetAll()
+                .Where(x => string.Equals(x.CategoryName, SelectedCategory));
+            IEnumerable<DataElement> currentElementBySelectedParameter = currentElementsBySelectedCategory
+                .Where(x => x.Parameters.Any(p => p.Name == SelectedParameter));
+
+            var elementsToSelect = currentElementBySelectedParameter
+                .Where(x => x.Parameters.Any(p => p.Name == SelectedParameter && p.Value == title))
+                .Select(x => x.Id).ToList();
+
+
+            if (elementsToSelect.Count > 0)
+            {
+                SelectionUtils.SelectElements(Context.UiDocument, elementsToSelect);
+            }
         }
         private void UpdateDiagramm()
         {
