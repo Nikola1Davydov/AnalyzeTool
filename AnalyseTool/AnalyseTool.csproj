@@ -46,6 +46,7 @@
         <PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
         <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
@@ -78,13 +79,24 @@
 	  <None Update="AnalyzeTool.addin">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
+	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\assets\index-CX1J8J_0.css">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\assets\index-DrtzxwOF.js">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\favicon.ico">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\index.html">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 	<Target Name="RearrangeOutputs" AfterTargets="Build">
 		<ItemGroup>
 			<BuiltFiles Include="$(OutputPath)*.*" Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
 		</ItemGroup>
-
 		<MakeDir Directories="$(OutputPath)$(PluginSubDir)" />
 		<Move SourceFiles="@(BuiltFiles)" DestinationFolder="$(OutputPath)$(PluginSubDir)" />
 	</Target>

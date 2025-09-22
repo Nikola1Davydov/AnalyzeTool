@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LiveCharts;
 using LiveCharts.Wpf;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
 {
@@ -70,15 +71,17 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
                 .Select(g => new { Value = g.Key, Count = g.Count() })
                 .OrderByDescending(x => x.Count).ToList();
 
-            foreach (var group in groupedValues)
-            {
-                SeriesCollection.Add(new PieSeries
-                {
-                    Title = group.Value,
-                    Values = new ChartValues<int> { group.Count },
-                    DataLabels = true
-                });
-            }
+            string json = JsonSerializer.Serialize(groupedValues);
+            VueBridge.SendToWebView(json);
+            //foreach (var group in groupedValues)
+            //{
+            //    SeriesCollection.Add(new PieSeries
+            //    {
+            //        Title = group.Value,
+            //        Values = new ChartValues<int> { group.Count },
+            //        DataLabels = true
+            //    });
+            //}
         }
         partial void OnSelectedParameterChanged(string value)
         {
@@ -96,5 +99,6 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
             SelectedParameter = Parameters.FirstOrDefault();
             OnPropertyChanged(nameof(Parameters));
         }
+
     }
 }

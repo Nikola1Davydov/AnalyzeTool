@@ -7,6 +7,8 @@
     xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+    d:DataContext="{d:DesignInstance Type=local:ParameterValueViewModel}"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
@@ -35,11 +37,15 @@
             <Button Margin="10,0" Content="Create Filters" />
             <Button Content="Clear Filters" />
         </UniformGrid>
+        <Grid>
+            <wv2:WebView2 x:Name="webView" />
 
-        <lvc:PieChart
-            DataClickCommand="{Binding SelectElementsCommand}"
-            LegendLocation="Right"
-            Series="{Binding SeriesCollection}" />
+            <!--<lvc:PieChart
+                DataClickCommand="{Binding SelectElementsCommand}"
+                LegendLocation="Right"
+                Series="{Binding SeriesCollection}" />-->
+        </Grid>
+
 
     </DockPanel>
 </UserControl>
