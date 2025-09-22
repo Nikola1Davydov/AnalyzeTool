@@ -3,7 +3,7 @@
   <PropertyGroup>
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <SharedGUID>d18f155d-35af-4ba6-9ddd-86dd33868b55</SharedGUID>
+    <SharedGUID>a11e845a-974c-4177-a135-f409a4dd2ac6</SharedGUID>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <Import_RootNamespace>ConstantData</Import_RootNamespace>

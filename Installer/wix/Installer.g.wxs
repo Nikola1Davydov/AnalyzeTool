@@ -6,54 +6,758 @@
     To suppress generation of this file remove `set ide=true` from the PostBuildEvent of the VS project
 </auto-generated>
 -->
-  <Package Compressed="yes" ProductCode="004264d8-7fcd-47c8-837b-8861632b0b09" Name="AnalyseTool" Language="1033" Version="1.0.0.0" UpgradeCode="004264d8-7fcd-47c8-837b-8861532b0b08" Manufacturer="nikol" InstallerVersion="200">
+  <Package Compressed="yes" ProductCode="e74a2dbc-8131-4240-abde-e2a786551bbb" Name="Analyse Tool" Language="1033" Version="1.1.0.0" UpgradeCode="e74a2dbc-8131-4240-abde-e2a776451bba" Manufacturer="Nikolai Davydov" Scope="perUser" InstallerVersion="200">
     <SummaryInformation Codepage="Windows-1252" />
-    <Media Id="1" Cabinet="AnalyseTool.cab" EmbedCab="yes" />
+    <Media Id="1" Cabinet="Analyse20Tool_.cab" EmbedCab="yes" />
 
-    <StandardDirectory Id="ProgramFilesFolder">
-      <Directory Id="My20Company" Name="My Company">
-        <Directory Id="INSTALLDIR" Name="My Product">
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="Autodesk" Name="Autodesk">
+        <Directory Id="Revit" Name="Revit">
+          <Directory Id="Addins" Name="Addins">
+            <Directory Id="INSTALLDIR" Name="2024">
 
-          <Component Id="Component.Program.cs_2198778745" Guid="004264d8-7fcd-47c8-837b-8861cd7c0a48">
-            <File Id="Program.cs_2198778745" Source="Program.cs" />
-          </Component>
+              <Component Id="Component.AnalyseTool.dll_816617249" Guid="e74a2dbc-8131-4240-abde-e2a7391fe1cf">
+                <File Id="AnalyseTool.dll_816617249" Source="..\AnalyseTool\bin\Release R24\net48\AnalyseTool.dll" />
+              </Component>
 
+              <Component Id="Component.AnalyseTool.pdb_2320645113" Guid="e74a2dbc-8131-4240-abde-e2a70c2ba3c7">
+                <File Id="AnalyseTool.pdb_2320645113" Source="..\AnalyseTool\bin\Release R24\net48\AnalyseTool.pdb" />
+              </Component>
+
+              <Component Id="Component.AnalyzeTool.addin_3709613969" Guid="e74a2dbc-8131-4240-abde-e2a7af7ea72c">
+                <File Id="AnalyzeTool.addin_3709613969" Source="..\AnalyseTool\bin\Release R24\net48\AnalyzeTool.addin" />
+              </Component>
+
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_1171052799" Guid="e74a2dbc-8131-4240-abde-e2a7b4eb2d51">
+                <File Id="CommunityToolkit.Mvvm.dll_1171052799" Source="..\AnalyseTool\bin\Release R24\net48\CommunityToolkit.Mvvm.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignColors.dll_801232743" Guid="e74a2dbc-8131-4240-abde-e2a744ce8e37">
+                <File Id="MaterialDesignColors.dll_801232743" Source="..\AnalyseTool\bin\Release R24\net48\MaterialDesignColors.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_2301622021" Guid="e74a2dbc-8131-4240-abde-e2a7fdc997f0">
+                <File Id="MaterialDesignThemes.Wpf.dll_2301622021" Source="..\AnalyseTool\bin\Release R24\net48\MaterialDesignThemes.Wpf.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_2528368248" Guid="e74a2dbc-8131-4240-abde-e2a7c92cd2e6">
+                <File Id="Microsoft.Bcl.AsyncInterfaces.dll_2528368248" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Bcl.AsyncInterfaces.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" Guid="e74a2dbc-8131-4240-abde-e2a7fda981a7">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1352344495" Guid="e74a2dbc-8131-4240-abde-e2a7d43dae00">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_1352344495" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_994690770" Guid="e74a2dbc-8131-4240-abde-e2a7b19a6a5c">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_994690770" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_4038447548" Guid="e74a2dbc-8131-4240-abde-e2a771a7ebbf">
+                <File Id="Microsoft.Extensions.Configuration.dll_4038447548" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" Guid="e74a2dbc-8131-4240-abde-e2a757cec686">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" Guid="e74a2dbc-8131-4240-abde-e2a77c4738ca">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_2670734809" Guid="e74a2dbc-8131-4240-abde-e2a74b1fdc08">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_2670734809" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" Guid="e74a2dbc-8131-4240-abde-e2a709b1d1f7">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" Guid="e74a2dbc-8131-4240-abde-e2a74c397b99">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_227485807" Guid="e74a2dbc-8131-4240-abde-e2a7b828b3b2">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_227485807" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" Guid="e74a2dbc-8131-4240-abde-e2a751c7304f">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_1413028242" Guid="e74a2dbc-8131-4240-abde-e2a74525233c">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_1413028242" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" Guid="e74a2dbc-8131-4240-abde-e2a7e4511d17">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2474877157" Guid="e74a2dbc-8131-4240-abde-e2a7acfa4d99">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_2474877157" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_802366788" Guid="e74a2dbc-8131-4240-abde-e2a7cc2f85f1">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_802366788" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_115494662" Guid="e74a2dbc-8131-4240-abde-e2a7889a10bc">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_115494662" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_3410103097" Guid="e74a2dbc-8131-4240-abde-e2a7d45ec6ad">
+                <File Id="Microsoft.Extensions.Hosting.dll_3410103097" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Hosting.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_3865628491" Guid="e74a2dbc-8131-4240-abde-e2a76277c227">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_3865628491" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_298222694" Guid="e74a2dbc-8131-4240-abde-e2a72aa76980">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_298222694" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_3377386326" Guid="e74a2dbc-8131-4240-abde-e2a71d886f12">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_3377386326" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_1098164232" Guid="e74a2dbc-8131-4240-abde-e2a7eff3021e">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_1098164232" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_3868223593" Guid="e74a2dbc-8131-4240-abde-e2a78d6dbb19">
+                <File Id="Microsoft.Extensions.Logging.dll_3868223593" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_4118074958" Guid="e74a2dbc-8131-4240-abde-e2a7850f77e4">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_4118074958" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_787572548" Guid="e74a2dbc-8131-4240-abde-e2a7f4aaad54">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_787572548" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" Guid="e74a2dbc-8131-4240-abde-e2a7bf2547d7">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.dll_109781667" Guid="e74a2dbc-8131-4240-abde-e2a7f5bb3686">
+                <File Id="Microsoft.Extensions.Options.dll_109781667" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Options.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_4033814098" Guid="e74a2dbc-8131-4240-abde-e2a794b4c2a6">
+                <File Id="Microsoft.Extensions.Primitives.dll_4033814098" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Extensions.Primitives.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_3932309534" Guid="e74a2dbc-8131-4240-abde-e2a777cab831">
+                <File Id="Microsoft.Xaml.Behaviors.dll_3932309534" Source="..\AnalyseTool\bin\Release R24\net48\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
+
+              <Component Id="Component.System.Buffers.dll_957892006" Guid="e74a2dbc-8131-4240-abde-e2a7a2fdcd47">
+                <File Id="System.Buffers.dll_957892006" Source="..\AnalyseTool\bin\Release R24\net48\System.Buffers.dll" />
+              </Component>
+
+              <Component Id="Component.System.ComponentModel.Annotations.dll_3429552103" Guid="e74a2dbc-8131-4240-abde-e2a77732d5e6">
+                <File Id="System.ComponentModel.Annotations.dll_3429552103" Source="..\AnalyseTool\bin\Release R24\net48\System.ComponentModel.Annotations.dll" />
+              </Component>
+
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2287635149" Guid="e74a2dbc-8131-4240-abde-e2a75254b2a2">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_2287635149" Source="..\AnalyseTool\bin\Release R24\net48\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
+
+              <Component Id="Component.System.IO.Pipelines.dll_4065773619" Guid="e74a2dbc-8131-4240-abde-e2a74de4e02c">
+                <File Id="System.IO.Pipelines.dll_4065773619" Source="..\AnalyseTool\bin\Release R24\net48\System.IO.Pipelines.dll" />
+              </Component>
+
+              <Component Id="Component.System.Memory.dll_2504815842" Guid="e74a2dbc-8131-4240-abde-e2a7ad81f21d">
+                <File Id="System.Memory.dll_2504815842" Source="..\AnalyseTool\bin\Release R24\net48\System.Memory.dll" />
+              </Component>
+
+              <Component Id="Component.System.Numerics.Vectors.dll_332160060" Guid="e74a2dbc-8131-4240-abde-e2a708a4f0b4">
+                <File Id="System.Numerics.Vectors.dll_332160060" Source="..\AnalyseTool\bin\Release R24\net48\System.Numerics.Vectors.dll" />
+              </Component>
+
+              <Component Id="Component.System.Runtime.CompilerServices.Unsafe.dll_3711986210" Guid="e74a2dbc-8131-4240-abde-e2a79374c28e">
+                <File Id="System.Runtime.CompilerServices.Unsafe.dll_3711986210" Source="..\AnalyseTool\bin\Release R24\net48\System.Runtime.CompilerServices.Unsafe.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Encodings.Web.dll_2580125629" Guid="e74a2dbc-8131-4240-abde-e2a7485b235a">
+                <File Id="System.Text.Encodings.Web.dll_2580125629" Source="..\AnalyseTool\bin\Release R24\net48\System.Text.Encodings.Web.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Json.dll_342707185" Guid="e74a2dbc-8131-4240-abde-e2a79e83aa6a">
+                <File Id="System.Text.Json.dll_342707185" Source="..\AnalyseTool\bin\Release R24\net48\System.Text.Json.dll" />
+              </Component>
+
+              <Component Id="Component.System.Threading.Tasks.Extensions.dll_1872845740" Guid="e74a2dbc-8131-4240-abde-e2a7ac161dac">
+                <File Id="System.Threading.Tasks.Extensions.dll_1872845740" Source="..\AnalyseTool\bin\Release R24\net48\System.Threading.Tasks.Extensions.dll" />
+              </Component>
+
+              <Component Id="Component.System.ValueTuple.dll_3447647600" Guid="e74a2dbc-8131-4240-abde-e2a7f883b647">
+                <File Id="System.ValueTuple.dll_3447647600" Source="..\AnalyseTool\bin\Release R24\net48\System.ValueTuple.dll" />
+              </Component>
+
+            </Directory>
+          </Directory>
         </Directory>
       </Directory>
     </StandardDirectory>
 
-    <UI />
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="Autodesk.1" Name="Autodesk">
+        <Directory Id="Revit.1" Name="Revit">
+          <Directory Id="Addins.1" Name="Addins">
+            <Directory Id="_2025_" Name="2025">
 
-    <WixUI Id="WixUI_Minimal" xmlns="http://wixtoolset.org/schemas/v4/wxs/ui" />
+              <Component Id="Component.AnalyseTool.deps.json_1268379870" Guid="e74a2dbc-8131-4240-abde-e2a7e42cacee">
+                <File Id="AnalyseTool.deps.json_1268379870" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.deps.json" />
+              </Component>
 
-    <UI>
-      <EmbeddedUI Id="WixSharp_EmbeddedUI_Asm" SourceFile="WixSharp.UI.CA.dll" />
-    </UI>
+              <Component Id="Component.AnalyseTool.dll_2888060273" Guid="e74a2dbc-8131-4240-abde-e2a7bf2d2b9a">
+                <File Id="AnalyseTool.dll_2888060273" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.dll" />
+              </Component>
 
-    <CustomAction Id="WixSharp_InitRuntime_Action" BinaryRef="WixSharp_InitRuntime_Action_File" DllEntry="WixSharp_InitRuntime_Action" Return="check" Execute="immediate" />
-    <CustomAction Id="Set_CancelRequestHandler_Props" Property="CancelRequestHandler" Value="UpgradeCode=[UpgradeCode];INSTALLDIR=[INSTALLDIR];UILevel=[UILevel];ProductCode=[ProductCode];ADDLOCAL=[ADDLOCAL];ADDFEATURES=[ADDFEATURES]" />
-    <CustomAction Id="CancelRequestHandler" BinaryRef="WixSharp_InitRuntime_Action_File" DllEntry="CancelRequestHandler" Return="check" Impersonate="no" Execute="deferred" />
+              <Component Id="Component.AnalyseTool.pdb_3627414089" Guid="e74a2dbc-8131-4240-abde-e2a7f3a3932e">
+                <File Id="AnalyseTool.pdb_3627414089" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyseTool.pdb" />
+              </Component>
 
-    <Binary Id="WixSharp_InitRuntime_Action_File" SourceFile="WixSharp.CA.dll" />
-    <Binary Id="WixSharp_UIText" SourceFile="C:\ProgramData\WixSharp\2.4.2.0\WixUI_en-US.wxl" />
-    <Binary Id="WixSharp_LicenceFile" SourceFile="AnalyseTool.licence.rtf" />
-    <Binary Id="WixSharpUI_Bmp_Dialog" SourceFile="AnalyseTool.dialog_bmp.png" />
-    <Binary Id="WixSharpUI_Bmp_Banner" SourceFile="AnalyseTool.dialog_banner.png" />
+              <Component Id="Component.AnalyzeTool.addin_1486089697" Guid="e74a2dbc-8131-4240-abde-e2a7ba8657d3">
+                <File Id="AnalyzeTool.addin_1486089697" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\AnalyzeTool.addin" />
+              </Component>
 
-    <Property Id="WixSharp_UI_INSTALLDIR" Value="INSTALLDIR" />
-    <Property Id="UAC_WARNING" Value="Please wait for UAC prompt to appear.&#xD;&#xA;&#xD;&#xA;If it appears minimized then activate it from the taskbar." />
-    <Property Id="WixSharp_InstallDialogs" Value="WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.WelcomeDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.LicenceDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.SetupTypeDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.FeaturesDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.InstallDirDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.ProgressDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.ExitDialog" />
-    <Property Id="WixSharp_ModifyDialogs" Value="WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.MaintenanceTypeDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.FeaturesDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.ProgressDialog&#xA;WixSharp.UI, Version=2.4.2.0, Culture=neutral, PublicKeyToken=3775edd25acc43c2|WixSharp.UI.Forms.ExitDialog" />
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_3045743145" Guid="e74a2dbc-8131-4240-abde-e2a72929b917">
+                <File Id="CommunityToolkit.Mvvm.dll_3045743145" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\CommunityToolkit.Mvvm.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignColors.dll_1382397682" Guid="e74a2dbc-8131-4240-abde-e2a7217b0b8d">
+                <File Id="MaterialDesignColors.dll_1382397682" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\MaterialDesignColors.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_4233440801" Guid="e74a2dbc-8131-4240-abde-e2a7cea606c9">
+                <File Id="MaterialDesignThemes.Wpf.dll_4233440801" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\MaterialDesignThemes.Wpf.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_124560356" Guid="e74a2dbc-8131-4240-abde-e2a7db8ab6d2">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_124560356" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1309848806" Guid="e74a2dbc-8131-4240-abde-e2a72674eb71">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_1309848806" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_852690392" Guid="e74a2dbc-8131-4240-abde-e2a790d937c6">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_852690392" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_657150674" Guid="e74a2dbc-8131-4240-abde-e2a7eb915812">
+                <File Id="Microsoft.Extensions.Configuration.dll_657150674" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" Guid="e74a2dbc-8131-4240-abde-e2a7f80e338d">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" Guid="e74a2dbc-8131-4240-abde-e2a75a9ca2c8">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_453611900" Guid="e74a2dbc-8131-4240-abde-e2a75be509f7">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_453611900" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" Guid="e74a2dbc-8131-4240-abde-e2a7da9a7021">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" Guid="e74a2dbc-8131-4240-abde-e2a7d1779eb7">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_2842921535" Guid="e74a2dbc-8131-4240-abde-e2a7df26997f">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_2842921535" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" Guid="e74a2dbc-8131-4240-abde-e2a73bd0a2c5">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_3133881266" Guid="e74a2dbc-8131-4240-abde-e2a77bc82869">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_3133881266" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" Guid="e74a2dbc-8131-4240-abde-e2a707d4dd6a">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_495226111" Guid="e74a2dbc-8131-4240-abde-e2a77a6e133d">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_495226111" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" Guid="e74a2dbc-8131-4240-abde-e2a7d24eca93">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" Guid="e74a2dbc-8131-4240-abde-e2a7349a7aa6">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_2640083308" Guid="e74a2dbc-8131-4240-abde-e2a7876f4a93">
+                <File Id="Microsoft.Extensions.Hosting.dll_2640083308" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Hosting.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1961578976" Guid="e74a2dbc-8131-4240-abde-e2a79227ca40">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_1961578976" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1389974726" Guid="e74a2dbc-8131-4240-abde-e2a7b8341e6f">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_1389974726" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_97585908" Guid="e74a2dbc-8131-4240-abde-e2a7d311a4d0">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_97585908" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_466911883" Guid="e74a2dbc-8131-4240-abde-e2a7d935d037">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_466911883" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_191041908" Guid="e74a2dbc-8131-4240-abde-e2a78872ed5d">
+                <File Id="Microsoft.Extensions.Logging.dll_191041908" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1807743215" Guid="e74a2dbc-8131-4240-abde-e2a7012e0688">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_1807743215" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4208017431" Guid="e74a2dbc-8131-4240-abde-e2a7eaebba3b">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_4208017431" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" Guid="e74a2dbc-8131-4240-abde-e2a77a3ee5a8">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.dll_1345271214" Guid="e74a2dbc-8131-4240-abde-e2a741859ebe">
+                <File Id="Microsoft.Extensions.Options.dll_1345271214" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Options.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_2409293927" Guid="e74a2dbc-8131-4240-abde-e2a7a0054c55">
+                <File Id="Microsoft.Extensions.Primitives.dll_2409293927" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Extensions.Primitives.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_3018560629" Guid="e74a2dbc-8131-4240-abde-e2a7a382d254">
+                <File Id="Microsoft.Xaml.Behaviors.dll_3018560629" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
+
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_1182331818" Guid="e74a2dbc-8131-4240-abde-e2a788183343">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_1182331818" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
+
+              <Component Id="Component.System.Diagnostics.EventLog.dll_2771808142" Guid="e74a2dbc-8131-4240-abde-e2a700362ea0">
+                <File Id="System.Diagnostics.EventLog.dll_2771808142" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Diagnostics.EventLog.dll" />
+              </Component>
+
+              <Component Id="Component.System.IO.Pipelines.dll_1354185765" Guid="e74a2dbc-8131-4240-abde-e2a75d643547">
+                <File Id="System.IO.Pipelines.dll_1354185765" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.IO.Pipelines.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Encodings.Web.dll_907551361" Guid="e74a2dbc-8131-4240-abde-e2a72cb79a7a">
+                <File Id="System.Text.Encodings.Web.dll_907551361" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Text.Encodings.Web.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Json.dll_1504584441" Guid="e74a2dbc-8131-4240-abde-e2a7156d67d9">
+                <File Id="System.Text.Json.dll_1504584441" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\System.Text.Json.dll" />
+              </Component>
+
+              <Directory Id="runtimes" Name="runtimes">
+                <Directory Id="browser" Name="browser">
+                  <Directory Id="lib" Name="lib">
+                    <Directory Id="net8.0_" Name="net8.0">
+
+                      <Component Id="Component.System.Text.Encodings.Web.dll_1282738837" Guid="e74a2dbc-8131-4240-abde-e2a7ce8be0ee">
+                        <File Id="System.Text.Encodings.Web.dll_1282738837" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll" />
+                      </Component>
+
+                    </Directory>
+                  </Directory>
+                </Directory>
+
+                <Directory Id="win" Name="win">
+                  <Directory Id="lib.1" Name="lib">
+                    <Directory Id="net8.0.1" Name="net8.0">
+
+                      <Component Id="Component.System.Diagnostics.EventLog.dll_2950804445" Guid="e74a2dbc-8131-4240-abde-e2a7c3f72e6a">
+                        <File Id="System.Diagnostics.EventLog.dll_2950804445" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+                      </Component>
+
+                      <Component Id="Component.System.Diagnostics.EventLog.Messages.dll_1490307435" Guid="e74a2dbc-8131-4240-abde-e2a79588506d">
+                        <File Id="System.Diagnostics.EventLog.Messages.dll_1490307435" Source="..\AnalyseTool\bin\Release R25\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" />
+                      </Component>
+
+                    </Directory>
+                  </Directory>
+                </Directory>
+              </Directory>
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="Autodesk.2" Name="Autodesk">
+        <Directory Id="Revit.2" Name="Revit">
+          <Directory Id="Addins.2" Name="Addins">
+            <Directory Id="_2026_" Name="2026">
+
+              <Component Id="Component.AnalyseTool.deps.json_1529731243" Guid="e74a2dbc-8131-4240-abde-e2a758cc2673">
+                <File Id="AnalyseTool.deps.json_1529731243" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.deps.json" />
+              </Component>
+
+              <Component Id="Component.AnalyseTool.dll_936913242" Guid="e74a2dbc-8131-4240-abde-e2a7ddd9fbfb">
+                <File Id="AnalyseTool.dll_936913242" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.dll" />
+              </Component>
+
+              <Component Id="Component.AnalyseTool.pdb_3729425538" Guid="e74a2dbc-8131-4240-abde-e2a74644aca2">
+                <File Id="AnalyseTool.pdb_3729425538" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyseTool.pdb" />
+              </Component>
+
+              <Component Id="Component.AnalyzeTool.addin_2908595930" Guid="e74a2dbc-8131-4240-abde-e2a77471e7e7">
+                <File Id="AnalyzeTool.addin_2908595930" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\AnalyzeTool.addin" />
+              </Component>
+
+              <Component Id="Component.CommunityToolkit.Mvvm.dll_1757223711" Guid="e74a2dbc-8131-4240-abde-e2a76e3ad617">
+                <File Id="CommunityToolkit.Mvvm.dll_1757223711" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\CommunityToolkit.Mvvm.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignColors.dll_1715462873" Guid="e74a2dbc-8131-4240-abde-e2a71d73a8c6">
+                <File Id="MaterialDesignColors.dll_1715462873" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\MaterialDesignColors.dll" />
+              </Component>
+
+              <Component Id="Component.MaterialDesignThemes.Wpf.dll_906331324" Guid="e74a2dbc-8131-4240-abde-e2a72ac53d51">
+                <File Id="MaterialDesignThemes.Wpf.dll_906331324" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\MaterialDesignThemes.Wpf.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_578809819" Guid="e74a2dbc-8131-4240-abde-e2a707567686">
+                <File Id="Microsoft.Extensions.Configuration.Abstractions.dll_578809819" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3194681960" Guid="e74a2dbc-8131-4240-abde-e2a77fa87c57">
+                <File Id="Microsoft.Extensions.Configuration.Binder.dll_3194681960" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" Guid="e74a2dbc-8131-4240-abde-e2a7801511c8">
+                <File Id="Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.CommandLine.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.dll_947797165" Guid="e74a2dbc-8131-4240-abde-e2a75d169fbb">
+                <File Id="Microsoft.Extensions.Configuration.dll_947797165" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" Guid="e74a2dbc-8131-4240-abde-e2a7d6b4387c">
+                <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" Guid="e74a2dbc-8131-4240-abde-e2a7432ec024">
+                <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.FileExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.Json.dll_3494353268" Guid="e74a2dbc-8131-4240-abde-e2a753692f1e">
+                <File Id="Microsoft.Extensions.Configuration.Json.dll_3494353268" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.Json.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" Guid="e74a2dbc-8131-4240-abde-e2a723524ba1">
+                <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Configuration.UserSecrets.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" Guid="e74a2dbc-8131-4240-abde-e2a76eec091f">
+                <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.DependencyInjection.dll_1520303382" Guid="e74a2dbc-8131-4240-abde-e2a7275fd229">
+                <File Id="Microsoft.Extensions.DependencyInjection.dll_1520303382" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" Guid="e74a2dbc-8131-4240-abde-e2a77a3e6e95">
+                <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Diagnostics.dll_890034550" Guid="e74a2dbc-8131-4240-abde-e2a7a26c9d43">
+                <File Id="Microsoft.Extensions.Diagnostics.dll_890034550" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Diagnostics.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" Guid="e74a2dbc-8131-4240-abde-e2a754ce06bd">
+                <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileProviders.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2303584897" Guid="e74a2dbc-8131-4240-abde-e2a7193f9ddc">
+                <File Id="Microsoft.Extensions.FileProviders.Physical.dll_2303584897" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileProviders.Physical.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" Guid="e74a2dbc-8131-4240-abde-e2a7cd371768">
+                <File Id="Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" Guid="e74a2dbc-8131-4240-abde-e2a7d3efa634">
+                <File Id="Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Hosting.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Hosting.dll_1090739886" Guid="e74a2dbc-8131-4240-abde-e2a786057d2d">
+                <File Id="Microsoft.Extensions.Hosting.dll_1090739886" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Hosting.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_2291596093" Guid="e74a2dbc-8131-4240-abde-e2a7df070676">
+                <File Id="Microsoft.Extensions.Logging.Abstractions.dll_2291596093" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Configuration.dll_96717790" Guid="e74a2dbc-8131-4240-abde-e2a7ea95af3a">
+                <File Id="Microsoft.Extensions.Logging.Configuration.dll_96717790" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Configuration.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Console.dll_2393489699" Guid="e74a2dbc-8131-4240-abde-e2a764b85962">
+                <File Id="Microsoft.Extensions.Logging.Console.dll_2393489699" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Console.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.Debug.dll_1475928182" Guid="e74a2dbc-8131-4240-abde-e2a7d9e204a4">
+                <File Id="Microsoft.Extensions.Logging.Debug.dll_1475928182" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.Debug.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.dll_3807460398" Guid="e74a2dbc-8131-4240-abde-e2a794fbc6ad">
+                <File Id="Microsoft.Extensions.Logging.dll_3807460398" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1847197131" Guid="e74a2dbc-8131-4240-abde-e2a7c97ef83c">
+                <File Id="Microsoft.Extensions.Logging.EventLog.dll_1847197131" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.EventLog.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Logging.EventSource.dll_947283496" Guid="e74a2dbc-8131-4240-abde-e2a796071931">
+                <File Id="Microsoft.Extensions.Logging.EventSource.dll_947283496" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Logging.EventSource.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" Guid="e74a2dbc-8131-4240-abde-e2a7ce428e0d">
+                <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Options.dll_1361590364" Guid="e74a2dbc-8131-4240-abde-e2a756814a31">
+                <File Id="Microsoft.Extensions.Options.dll_1361590364" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Options.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Extensions.Primitives.dll_1543453567" Guid="e74a2dbc-8131-4240-abde-e2a791761a70">
+                <File Id="Microsoft.Extensions.Primitives.dll_1543453567" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Extensions.Primitives.dll" />
+              </Component>
+
+              <Component Id="Component.Microsoft.Xaml.Behaviors.dll_2511162936" Guid="e74a2dbc-8131-4240-abde-e2a782a7b3d4">
+                <File Id="Microsoft.Xaml.Behaviors.dll_2511162936" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\Microsoft.Xaml.Behaviors.dll" />
+              </Component>
+
+              <Component Id="Component.System.Diagnostics.DiagnosticSource.dll_2326409771" Guid="e74a2dbc-8131-4240-abde-e2a75c49d417">
+                <File Id="System.Diagnostics.DiagnosticSource.dll_2326409771" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Diagnostics.DiagnosticSource.dll" />
+              </Component>
+
+              <Component Id="Component.System.Diagnostics.EventLog.dll_3351174627" Guid="e74a2dbc-8131-4240-abde-e2a715c87d98">
+                <File Id="System.Diagnostics.EventLog.dll_3351174627" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Diagnostics.EventLog.dll" />
+              </Component>
+
+              <Component Id="Component.System.IO.Pipelines.dll_699550593" Guid="e74a2dbc-8131-4240-abde-e2a74459f77f">
+                <File Id="System.IO.Pipelines.dll_699550593" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.IO.Pipelines.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Encodings.Web.dll_779245860" Guid="e74a2dbc-8131-4240-abde-e2a71f4eaba4">
+                <File Id="System.Text.Encodings.Web.dll_779245860" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Text.Encodings.Web.dll" />
+              </Component>
+
+              <Component Id="Component.System.Text.Json.dll_1888342667" Guid="e74a2dbc-8131-4240-abde-e2a78894bcb0">
+                <File Id="System.Text.Json.dll_1888342667" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\System.Text.Json.dll" />
+              </Component>
+
+              <Directory Id="runtimes.1" Name="runtimes">
+                <Directory Id="browser.1" Name="browser">
+                  <Directory Id="lib.2" Name="lib">
+                    <Directory Id="net8.0.2" Name="net8.0">
+
+                      <Component Id="Component.System.Text.Encodings.Web.dll_3212645398" Guid="e74a2dbc-8131-4240-abde-e2a776f5d76d">
+                        <File Id="System.Text.Encodings.Web.dll_3212645398" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll" />
+                      </Component>
+
+                    </Directory>
+                  </Directory>
+                </Directory>
+
+                <Directory Id="win.1" Name="win">
+                  <Directory Id="lib.3" Name="lib">
+                    <Directory Id="net8.0.3" Name="net8.0">
+
+                      <Component Id="Component.System.Diagnostics.EventLog.dll_1104608594" Guid="e74a2dbc-8131-4240-abde-e2a73cdc433b">
+                        <File Id="System.Diagnostics.EventLog.dll_1104608594" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll" />
+                      </Component>
+
+                      <Component Id="Component.System.Diagnostics.EventLog.Messages.dll_4053180813" Guid="e74a2dbc-8131-4240-abde-e2a7ecf5ca63">
+                        <File Id="System.Diagnostics.EventLog.Messages.dll_4053180813" Source="..\AnalyseTool\bin\Release R26\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.Messages.dll" />
+                      </Component>
+
+                    </Directory>
+                  </Directory>
+                </Directory>
+              </Directory>
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Icon Id="app_icon.ico" SourceFile="..\SharedData\Resources\Icons\AnalyzeTool_Icon.ico" />
+
+    <WixUI Id="WixUI_InstallDir" xmlns="http://wixtoolset.org/schemas/v4/wxs/ui" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="D:\12_Code\C# Lernen\RevitPlugins\LICENSE.rtf" />
+
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+    <Property Id="ARPHELPLINK" Value="https://github.com/Nikola1Davydov/AnalyzeTool" />
+    <Property Id="ARPPRODUCTICON" Value="app_icon.ico" />
+    <Property Id="ARPREADME" Value="https://github.com/Nikola1Davydov/AnalyzeTool" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Nikola1Davydov/AnalyzeTool" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Nikola1Davydov/AnalyzeTool/releases" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+    <Property Id="INSTALLDIR" Secure="yes" />
 
     <Feature Id="Complete" Title="Complete" Level="1" AllowAbsent="yes">
-      <ComponentRef Id="Component.Program.cs_2198778745" />
+      <ComponentRef Id="Component.AnalyseTool.dll_816617249" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_2320645113" />
+      <ComponentRef Id="Component.AnalyzeTool.addin_3709613969" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_1171052799" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_801232743" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_2301622021" />
+      <ComponentRef Id="Component.Microsoft.Bcl.AsyncInterfaces.dll_2528368248" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_2388551097" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1352344495" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_994690770" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_4038447548" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_1056675152" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_3476894993" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_2670734809" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_4087244506" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3698087183" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_227485807" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_4216099834" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_1413028242" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_2832779139" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2474877157" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_802366788" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_115494662" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_3410103097" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_3865628491" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_298222694" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_3377386326" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_1098164232" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_3868223593" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_4118074958" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_787572548" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4143004859" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_109781667" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_4033814098" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_3932309534" />
+      <ComponentRef Id="Component.System.Buffers.dll_957892006" />
+      <ComponentRef Id="Component.System.ComponentModel.Annotations.dll_3429552103" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2287635149" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_4065773619" />
+      <ComponentRef Id="Component.System.Memory.dll_2504815842" />
+      <ComponentRef Id="Component.System.Numerics.Vectors.dll_332160060" />
+      <ComponentRef Id="Component.System.Runtime.CompilerServices.Unsafe.dll_3711986210" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_2580125629" />
+      <ComponentRef Id="Component.System.Text.Json.dll_342707185" />
+      <ComponentRef Id="Component.System.Threading.Tasks.Extensions.dll_1872845740" />
+      <ComponentRef Id="Component.System.ValueTuple.dll_3447647600" />
+      <ComponentRef Id="Component.AnalyseTool.deps.json_1268379870" />
+      <ComponentRef Id="Component.AnalyseTool.dll_2888060273" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_3627414089" />
+      <ComponentRef Id="Component.AnalyzeTool.addin_1486089697" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_3045743145" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_1382397682" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_4233440801" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_124560356" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_1309848806" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_852690392" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_657150674" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_2039507102" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2676351281" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_453611900" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_675267367" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_1328158038" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_2842921535" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2684124164" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_3133881266" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1021968478" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_495226111" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2798470942" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2531737843" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_2640083308" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_1961578976" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_1389974726" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_97585908" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_466911883" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_191041908" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1807743215" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_4208017431" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_4228490263" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_1345271214" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_2409293927" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_3018560629" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_1182331818" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_2771808142" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_1354185765" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_907551361" />
+      <ComponentRef Id="Component.System.Text.Json.dll_1504584441" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_1282738837" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_2950804445" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.Messages.dll_1490307435" />
+      <ComponentRef Id="Component.AnalyseTool.deps.json_1529731243" />
+      <ComponentRef Id="Component.AnalyseTool.dll_936913242" />
+      <ComponentRef Id="Component.AnalyseTool.pdb_3729425538" />
+      <ComponentRef Id="Component.AnalyzeTool.addin_2908595930" />
+      <ComponentRef Id="Component.CommunityToolkit.Mvvm.dll_1757223711" />
+      <ComponentRef Id="Component.MaterialDesignColors.dll_1715462873" />
+      <ComponentRef Id="Component.MaterialDesignThemes.Wpf.dll_906331324" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Abstractions.dll_578809819" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Binder.dll_3194681960" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.CommandLine.dll_1418281839" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.dll_947797165" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.EnvironmentVariables.dll_3296769605" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.FileExtensions.dll_2142247703" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.Json.dll_3494353268" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Configuration.UserSecrets.dll_2863987080" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.Abstractions.dll_3883830767" />
+      <ComponentRef Id="Component.Microsoft.Extensions.DependencyInjection.dll_1520303382" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.Abstractions.dll_2315244502" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Diagnostics.dll_890034550" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Abstractions.dll_1249665540" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileProviders.Physical.dll_2303584897" />
+      <ComponentRef Id="Component.Microsoft.Extensions.FileSystemGlobbing.dll_2505651992" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.Abstractions.dll_2644035448" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Hosting.dll_1090739886" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Abstractions.dll_2291596093" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Configuration.dll_96717790" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Console.dll_2393489699" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.Debug.dll_1475928182" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.dll_3807460398" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventLog.dll_1847197131" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Logging.EventSource.dll_947283496" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.ConfigurationExtensions.dll_2509833385" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Options.dll_1361590364" />
+      <ComponentRef Id="Component.Microsoft.Extensions.Primitives.dll_1543453567" />
+      <ComponentRef Id="Component.Microsoft.Xaml.Behaviors.dll_2511162936" />
+      <ComponentRef Id="Component.System.Diagnostics.DiagnosticSource.dll_2326409771" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_3351174627" />
+      <ComponentRef Id="Component.System.IO.Pipelines.dll_699550593" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_779245860" />
+      <ComponentRef Id="Component.System.Text.Json.dll_1888342667" />
+      <ComponentRef Id="Component.System.Text.Encodings.Web.dll_3212645398" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.dll_1104608594" />
+      <ComponentRef Id="Component.System.Diagnostics.EventLog.Messages.dll_4053180813" />
     </Feature>
-
-    <InstallExecuteSequence>
-      <Custom Condition=" (1) " Action="WixSharp_InitRuntime_Action" Before="AppSearch" />
-      <Custom Action="Set_CancelRequestHandler_Props" Before="InstallFinalize" />
-      <Custom Condition=" (1) " Action="CancelRequestHandler" After="Set_CancelRequestHandler_Props" />
-    </InstallExecuteSequence>
   </Package>
 </Wix>
 

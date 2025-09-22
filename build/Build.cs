@@ -1,44 +1,31 @@
-using System;
-using System.Linq;
+using JetBrains.Annotations;
 using Nuke.Common;
-using Nuke.Common.CI;
-using Nuke.Common.Execution;
-using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
-using Nuke.Common.Tooling;
-using Nuke.Common.Utilities.Collections;
-using static Nuke.Common.EnvironmentInfo;
-using static Nuke.Common.IO.FileSystemTasks;
-using static Nuke.Common.IO.PathConstruction;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO.Enumeration;
+using System.Linq;
 
-class Build : NukeBuild
+[PublicAPI]
+sealed partial class Build : NukeBuild
 {
-    /// Support plugins are available for:
-    ///   - JetBrains ReSharper        https://nuke.build/resharper
-    ///   - JetBrains Rider            https://nuke.build/rider
-    ///   - Microsoft VisualStudio     https://nuke.build/visualstudio
-    ///   - Microsoft VSCode           https://nuke.build/vscode
+    /// <summary>
+    ///     Pipeline entry point.
+    /// </summary>
+    public static int Main() => Execute<Build>(build => build.PublishGitHub);
 
-    public static int Main () => Execute<Build>(x => x.Compile);
+    /// <summary>
+    ///     Extract solution configuration names from the solution file.
+    /// </summary>
+    List<string> GlobBuildConfigurations()
+    {
+        var configurations = Solution.Configurations
+            .Select(pair => pair.Key)
+            .Select(config => config.Remove(config.LastIndexOf('|')))
+            .Where(config => Configurations.Any(wildcard => FileSystemName.MatchesSimpleExpression(wildcard, config)))
+            .ToList();
 
-    [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
-    readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
-
-    Target Clean => _ => _
-        .Before(Restore)
-        .Executes(() =>
-        {
-        });
-
-    Target Restore => _ => _
-        .Executes(() =>
-        {
-        });
-
-    Target Compile => _ => _
-        .DependsOn(Restore)
-        .Executes(() =>
-        {
-        });
-
+        Assert.NotEmpty(configurations, $"No solution configurations have been found. Pattern: {string.Join(" | ", Configurations)}");
+        return configurations;
+    }
 }

@@ -1,40 +1,94 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using Installer;
+using System;
+using System.IO;
+using System.Linq;
 using WixSharp;
-using WixSharp.Forms;
 
-namespace Installer
+const string outputName = SharedData.ToolData.PLUGIN_NAME;
+const string projectName = SharedData.ToolData.PLUGIN_NAME;
+const string projectVersion = SharedData.ToolData.PLUGIN_VERSION;
+
+System.IO.DirectoryInfo solutionPath = TryGetSolutionDirectoryInfo();
+string targetPath(string revitVersion) => Path.Combine("%CommonAppDataFolder%", $@"Autodesk\Revit\Addins\20{revitVersion}");
+string plaginPath(string revitVersion)
 {
-    public class Program
+    int revitVersionInt = int.Parse(revitVersion);
+    if (revitVersionInt < 25)
     {
-        static void Main()
-        {
-            var project = new ManagedProject("AnalyseTool",
-                             new Dir(@"%ProgramFiles%\My Company\My Product",
-                                 new File("Program.cs")));
-
-            project.GUID = new Guid("004264d8-7fcd-47c8-837b-8861532b0b08");
-
-            //project.ManagedUI = ManagedUI.Empty;    //no standard UI dialogs
-            project.ManagedUI = ManagedUI.Default;  //all standard UI dialogs
-
-            //custom set of standard UI dialogs
-            project.ManagedUI = new ManagedUI();
-
-            project.ManagedUI.InstallDialogs.Add(Dialogs.Welcome)
-                                            .Add(Dialogs.Licence)
-                                            .Add(Dialogs.SetupType)
-                                            .Add(Dialogs.Features)
-                                            .Add(Dialogs.InstallDir)
-                                            .Add(Dialogs.Progress)
-                                            .Add(Dialogs.Exit);
-
-            project.ManagedUI.ModifyDialogs.Add(Dialogs.MaintenanceType)
-                                           .Add(Dialogs.Features)
-                                           .Add(Dialogs.Progress)
-                                           .Add(Dialogs.Exit);
-
-            project.BuildMsi();
-        }
+        return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\net48");
     }
+    {
+        return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\net8.0-windows");
+    }
+}
+
+string[] versions =
+{
+    plaginPath("24"),
+    plaginPath("25"),
+    plaginPath("26"),
+};
+
+
+Project project = new Project
+{
+    OutDir = "output",
+    Name = projectName,
+    Platform = Platform.x64,
+    UI = WUI.WixUI_Minimal,
+    MajorUpgrade = MajorUpgrade.Default,
+    GUID = new Guid("e74a2dbc-8131-4240-abde-e2a776451bba"),
+    LicenceFile= Path.Combine(solutionPath.FullName, "Installer", "LICENSE.rtf"),
+    //BannerImage = @"",
+    //BackgroundImage = @"",
+    Version = new Version(projectVersion),
+    ControlPanelInfo =
+    {
+        Manufacturer = SharedData.ToolData.PLUGIN_AUTHOR,
+        //ProductIcon = Path.Combine(solutionPath.FullName, "SharedData/Resources/Icons/AnalyzeTool_Icon.ico"),
+        Name = SharedData.ToolData.PLUGIN_NAME,
+        Readme = SharedData.ToolData.LINK_TO_GITHUB,
+        HelpLink = SharedData.ToolData.LINK_TO_GITHUB,
+        UrlInfoAbout = SharedData.ToolData.LINK_TO_GITHUB,
+        UrlUpdateInfo = SharedData.ToolData.LINK_TO_DOWNLOADS
+    }
+};
+
+WixEntity[] wixEntities = Generator.GenerateWixEntities(versions);
+//project.RemoveDialogsBetween(NativeDialogs.WelcomeDlg, NativeDialogs.CustomizeDlg);
+
+BuildSingleUserMsi();
+BuildMultiUserUserMsi();
+
+void BuildSingleUserMsi()
+{
+    project.InstallScope = InstallScope.perUser;
+    project.OutFileName = $"{outputName}-{project.Version}-SingleUser";
+    project.Dirs =
+    [
+        new InstallDir(@"%AppDataFolder%\Autodesk\Revit\Addins\", wixEntities)
+    ];
+    project.BuildMsi();
+}
+
+void BuildMultiUserUserMsi()
+{
+    project.InstallScope = InstallScope.perMachine;
+    project.OutFileName = $"{outputName}-{project.Version}-MultiUser";
+    project.Dirs =
+    [
+        new InstallDir(@"%CommonAppDataFolder%\Autodesk\Revit\Addins\", wixEntities)
+    ];
+    project.BuildMsi();
+}
+
+static System.IO.DirectoryInfo TryGetSolutionDirectoryInfo(string currentPath = null)
+{
+    System.IO.DirectoryInfo directory = new System.IO.DirectoryInfo(
+        currentPath ?? System.IO.Directory.GetCurrentDirectory());
+    while (directory != null && !directory.GetFiles("*.sln").Any())
+    {
+        directory = directory.Parent;
+    }
+    return directory;
 }

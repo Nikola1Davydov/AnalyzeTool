@@ -1,46 +1,64 @@
-﻿using AnalyseTool.DoorManager;
-using AnalyseTool.ParameterControl;
-using Nice3point.Revit.Toolkit.External;
+﻿using AnalyseTool.RevitCommands.ParameterControl;
+using Autodesk.Revit.UI;
 using System.IO;
 using System.Reflection;
+using System.Windows.Media.Imaging;
 
 namespace AnalyseTool
 {
     /// <summary>
     ///     Application entry point
     /// </summary>
-    public class App : ExternalApplication
+    public class App : IExternalApplication
     {
-        public override void OnStartup()
+        private UIControlledApplication Application;
+        public Result OnStartup(UIControlledApplication application)
         {
-            LoadDLL();
-            CreateRibbon();
+            Application = application;
+            LoadDll();
+            HostBuilderHelper.StartHost();
+
+            // Add a new ribbon panel
+            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");
+
+            // Get dll assembly path
+            string thisAssemblyPath = Assembly.GetExecutingAssembly().Location;
+
+            // Parameter Control button
+            PushButtonData b1Data = new PushButtonData(
+                nameof(ParameterControlCommand),
+                SharedData.ToolData.PLUGIN_NAME,
+                thisAssemblyPath,
+                typeof(ParameterControlCommand).FullName);
+
+            PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
+            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            pb1.LargeImage = pb1Image;
+
+            return Result.Succeeded;
         }
-        public override void OnShutdown()
-        {
 
+        public Result OnShutdown(UIControlledApplication application)
+        {
+            return Result.Succeeded;
         }
-        private void CreateRibbon()
+        private void LoadDll()
         {
-            var panel = Application.CreatePanel("Work with data", "Analyse");
+            string directory = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
+            string meterialDesign = "MaterialDesignColors.dll";
+            string meterialDesignXaml = "MaterialDesignThemes.Wpf.dll";
+            string liveCharts = "LiveCharts.dll";
+            string liveChartsWpf = "LiveCharts.Wpf.dll";
 
-            panel.AddPushButton<ParameterControlCommand>("Parameter check")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/ParameterControl_Icon.ico");
+            string meterialDesignPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesign);
+            string meterialDesignXamlPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesignXaml);
+            string liveChartsPath = Path.Combine(Path.GetDirectoryName(directory), liveCharts);
+            string liveChartsWpfPath = Path.Combine(Path.GetDirectoryName(directory), liveChartsWpf);
 
-            panel.AddPushButton<DoorManagerCommand>("Door manager")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/DoorManager_Icon.ico");
-
-            panel.AddPushButton<DoorManagerCommand>("About me")
-                .SetLargeImage("/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico");
-        }
-        private void LoadDLL()
-        {
-            // Получение пути к текущей DLL или EXE
-            string assemblyPath = Assembly.GetExecutingAssembly().Location;
-
-            // Получение пути к папке
-            string wpfuiPath = Path.Combine(Path.GetDirectoryName(assemblyPath), "Wpf.Ui.dll");
-            Assembly.LoadFrom(wpfuiPath);
+            Assembly.LoadFile(meterialDesignPath);
+            Assembly.LoadFile(meterialDesignXamlPath);
+            Assembly.LoadFile(liveChartsPath);
+            Assembly.LoadFile(liveChartsWpfPath);
         }
     }
 }
