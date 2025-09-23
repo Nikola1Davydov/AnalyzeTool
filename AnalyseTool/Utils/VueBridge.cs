@@ -4,17 +4,13 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
+namespace AnalyseTool.Utils
 {
     public static class VueBridge
     {
         private static CoreWebView2Environment? _env; // глобальный env
 
-        private static string distFolder = Path.Combine(
-            Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName,
-            "RevitCommands", "ParameterControl", "MVVM", "ParameterValueTab", "Web", "dist");
 
-        //public static Uri VueUri = new Uri(vuePath);
 
         public static WebView2 WebView { get; set; }
 
@@ -25,7 +21,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
                 WebView.CoreWebView2.PostWebMessageAsString(json);
             }
         }
-        public static async Task InitWebView(WebView2 webView)
+        public static async Task InitWebView(WebView2 webView, string distFolder)
         {
             if (_env == null)
             {

@@ -38,7 +38,7 @@
             <Button Content="Clear Filters" />
         </UniformGrid>
         <Grid>
-            <wv2:WebView2 x:Name="webView" />
+            <!--<wv2:WebView2 x:Name="webView" />-->
 
             <!--<lvc:PieChart
                 DataClickCommand="{Binding SelectElementsCommand}"

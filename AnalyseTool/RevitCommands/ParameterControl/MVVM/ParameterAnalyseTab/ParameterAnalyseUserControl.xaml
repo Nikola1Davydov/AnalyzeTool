@@ -7,6 +7,7 @@
     xmlns:local="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
     d:Background="White"
     d:DesignHeight="450"
     d:DesignWidth="1000"
@@ -25,8 +26,10 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
-
-    <DockPanel Margin="10">
+    <Grid>
+        <wv2:WebView2 x:Name="webView" />
+    </Grid>
+    <!--<DockPanel Margin="10">
 
         <DockPanel DockPanel.Dock="Top">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -163,7 +166,8 @@
                             ItemsSource="{Binding ChildParameters}"
                             Style="{StaticResource MaterialDesignListView}">
 
-                            <!--<ListView.ContextMenu>
+    -->
+    <!--<ListView.ContextMenu>
                                 <ContextMenu DataContext="{Binding}">
                                     <MenuItem
                                         Command="{Binding DataContext.SelectEmptyElementsCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, PresentationTraceSources.TraceLevel=High}"
@@ -175,6 +179,7 @@
                                         Header="Select filled elements" />
                                 </ContextMenu>
                             </ListView.ContextMenu>-->
+    <!--
 
                             <ListView.View>
                                 <GridView>
@@ -265,5 +270,5 @@
 
         </DataGrid>
 
-    </DockPanel>
+    </DockPanel>-->
 </UserControl>

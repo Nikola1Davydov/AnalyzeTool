@@ -55,6 +55,7 @@
     <ItemGroup>
       <Folder Include="Resources\" />
       <Folder Include="RevitCommands\AboutMe\" />
+      <Folder Include="Web\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
@@ -77,18 +78,6 @@
 
 	<ItemGroup>
 	  <None Update="AnalyzeTool.addin">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\assets\index-CX1J8J_0.css">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\assets\index-DrtzxwOF.js">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\favicon.ico">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="RevitCommands\ParameterControl\MVVM\ParameterValueTab\Web\dist\index.html">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
 	</ItemGroup>

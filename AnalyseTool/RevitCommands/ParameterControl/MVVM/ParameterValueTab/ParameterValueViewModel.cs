@@ -71,17 +71,17 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
                 .Select(g => new { Value = g.Key, Count = g.Count() })
                 .OrderByDescending(x => x.Count).ToList();
 
-            string json = JsonSerializer.Serialize(groupedValues);
-            VueBridge.SendToWebView(json);
-            //foreach (var group in groupedValues)
-            //{
-            //    SeriesCollection.Add(new PieSeries
-            //    {
-            //        Title = group.Value,
-            //        Values = new ChartValues<int> { group.Count },
-            //        DataLabels = true
-            //    });
-            //}
+            //string json = JsonSerializer.Serialize(groupedValues);
+            //VueBridge.SendToWebView(json);
+            foreach (var group in groupedValues)
+            {
+                SeriesCollection.Add(new PieSeries
+                {
+                    Title = group.Value,
+                    Values = new ChartValues<int> { group.Count },
+                    DataLabels = true
+                });
+            }
         }
         partial void OnSelectedParameterChanged(string value)
         {

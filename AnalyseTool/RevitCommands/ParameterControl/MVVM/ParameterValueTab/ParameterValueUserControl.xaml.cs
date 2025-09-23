@@ -10,7 +10,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab
         public ParameterValueUserControl()
         {
             InitializeComponent();
-            VueBridge.InitWebView(webView);
+            //VueBridge.InitWebView(webView);
         }
     }
 }
