@@ -20,6 +20,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
             }
         }
         public IEnumerable<DataElement> GetAll() => dataElementRepository.GetAll();
+
         public IEnumerable<ParameterSummary> AnalyzeData(string category)
         {
             List<ParameterSummary> parameterSummaries = new List<ParameterSummary>();

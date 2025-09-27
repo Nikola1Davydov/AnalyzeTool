@@ -1,13 +1,18 @@
-using AnalyseTool.RevitCommands;
+﻿using AnalyseTool.RevitCommands;
 using AnalyseTool.RevitCommands.ParameterControl.DataAccess;
 using AnalyseTool.RevitCommands.ParameterControl.DataModel;
 using AnalyseTool.Utils;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Microsoft.Web.WebView2.WinForms;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 
 namespace AnalyseTool.Test
 {
@@ -46,6 +51,33 @@ namespace AnalyseTool.Test
             // Assert
             Assert.IsNotNull(categories);
             Assert.IsNotEmpty(categories);
+        }
+        [Test]
+        public void JsonSerializer_SerializeCategories_ReturnString()
+        {
+            // Arrange 
+            // Act
+            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
+            string json = JsonSerializer.Serialize(categories);
+
+            Console.WriteLine(json);
+            // Assert
+            Assert.IsNotNull(json);
+            Assert.IsNotEmpty(json);
+        }
+
+        [Test]
+        public void VueBridge_SendToWebView_ReturnVoid()
+        {
+            // Arrange 
+            // Act
+            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
+            string json = JsonSerializer.Serialize(categories);
+            string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "Web", "dist");
+            WebView2 webView2 = new WebView2();
+            //VueBridge.InitWebView(webView2, distFolder);
+            VueBridge.SendToWebView(json);
+            // Assert
         }
         [Test]
         public void DataElementsCollectorUtils_GetAllElementsByCategory_ReturnListDataElement()

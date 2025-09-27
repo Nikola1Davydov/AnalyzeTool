@@ -43,10 +43,9 @@
 	</PropertyGroup>
 	
     <ItemGroup>
-        <PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
-        <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
@@ -91,15 +90,15 @@
 	</Target>
 
 	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R25' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R26'">
-		<!-- создать папку для dll -->
+		 <!--создать папку для dll--> 
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
 		<ItemGroup>
 			<FilesToCopy Include="$(OutputPath)$(PluginSubDir)\*.*" />
 		</ItemGroup>
-		<!-- скопировать все dll и прочие артефакты в подпапку -->
+		 <!--скопировать все dll и прочие артефакты в подпапку--> 
 		<Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
 
-		<!-- скопировать сам .addin в корень -->
+		 <!--скопировать сам .addin в корень--> 
 		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />
 	</Target>
 	

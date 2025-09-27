@@ -5,30 +5,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:dataModel="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.DataModel"
     xmlns:local="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
-    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
     d:Background="White"
     d:DesignHeight="450"
     d:DesignWidth="1000"
     mc:Ignorable="d">
     <!--  d:DataContext="{d:DesignInstance Type=local:ParameterAnalyseViewModel}"  -->
 
-    <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <materialDesign:BundledTheme
-                    BaseTheme="Light"
-                    PrimaryColor="Blue"
-                    SecondaryColor="Lime" />
-
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </UserControl.Resources>
-    <Grid>
-        <wv2:WebView2 x:Name="webView" />
-    </Grid>
     <!--<DockPanel Margin="10">
 
         <DockPanel DockPanel.Dock="Top">

@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
 {
@@ -80,12 +81,16 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
             Categories = DataElementsCollectorUtils.GetModelCategoriesNames(Context.Document);
             SelectedCategory = Categories.FirstOrDefault();
 
+            string json = JsonConvert.SerializeObject(Categories);
+            VueBridge.SendToWebView(json);
+
             // Initialize CollectionView
             ParameterCollectionView = CollectionViewSource.GetDefaultView(ParameterDefinitions);
             ParameterCollectionView.Filter = FilterParameter;
             ParameterCollectionView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ParameterSummary.CategoryName)));
             ParameterCollectionView.SortDescriptions.Add(new SortDescription(nameof(ParameterSummary.CategoryName), ListSortDirection.Ascending));
         }
+
         [RelayCommand]
         private void Update()
         {

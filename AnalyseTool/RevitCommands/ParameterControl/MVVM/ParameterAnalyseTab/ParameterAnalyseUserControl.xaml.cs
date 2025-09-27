@@ -12,12 +12,14 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
     /// </summary>
     public partial class ParameterAnalyseUserControl : UserControl
     {
-        private static string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "Web", "dist");
         public ParameterAnalyseUserControl()
         {
             InitializeComponent();
-            VueBridge.InitWebView(webView, distFolder);
+            
         }
+
+
+
         private void Expander_Expanded(object sender, RoutedEventArgs e)
         {
             Expander expander = (Expander)sender;

@@ -47,19 +47,14 @@ namespace AnalyseTool
             string directory = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
             string meterialDesign = "MaterialDesignColors.dll";
             string meterialDesignXaml = "MaterialDesignThemes.Wpf.dll";
-            string liveCharts = "LiveCharts.dll";
-            string liveChartsWpf = "LiveCharts.Wpf.dll";
-            string json = "System.Text.Json.dll";
+            string json = "Newtonsoft.Json.dll";
 
             string meterialDesignPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesign);
             string meterialDesignXamlPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesignXaml);
-            string liveChartsPath = Path.Combine(Path.GetDirectoryName(directory), liveCharts);
-            string liveChartsWpfPath = Path.Combine(Path.GetDirectoryName(directory), liveChartsWpf);
             string jsonPath = Path.Combine(Path.GetDirectoryName(directory), json);
 
             Assembly.LoadFile(meterialDesignPath);
             Assembly.LoadFile(meterialDesignXamlPath);
-            Assembly.LoadFile(liveChartsPath);
             Assembly.LoadFile(jsonPath);
         }
     }

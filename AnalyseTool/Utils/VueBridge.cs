@@ -1,16 +1,17 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace AnalyseTool.Utils
 {
     public static class VueBridge
     {
         private static CoreWebView2Environment? _env; // глобальный env
-
-
 
         public static WebView2 WebView { get; set; }
 
@@ -21,8 +22,10 @@ namespace AnalyseTool.Utils
                 WebView.CoreWebView2.PostWebMessageAsString(json);
             }
         }
+
         public static async Task InitWebView(WebView2 webView, string distFolder)
         {
+            WebView = webView;
             if (_env == null)
             {
                 var userDataFolder = Path.Combine(
@@ -32,26 +35,20 @@ namespace AnalyseTool.Utils
                 _env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
             }
 
-            if (webView.CoreWebView2 == null)
+            if (WebView.CoreWebView2 == null)
             {
-                await webView.EnsureCoreWebView2Async(_env);
+                await WebView.EnsureCoreWebView2Async(_env);
 
-                webView.CoreWebView2.OpenDevToolsWindow();
+                WebView.CoreWebView2.OpenDevToolsWindow();
 
-                webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "app", distFolder,
                     CoreWebView2HostResourceAccessKind.Allow);
 
-                // подписка на сообщения из Vue
-                webView.CoreWebView2.WebMessageReceived += (s, args) =>
-                {
-                    var msg = args.WebMessageAsJson;
-                    System.Diagnostics.Debug.WriteLine("Vue → C#: " + msg);
-                    // здесь разбираешь JSON и делаешь SelectElements(...)
-                };
-
-                webView.Source = new Uri("https://app/index.html");
+                //webView.Source = new Uri("https://app/index.html");
+                WebView.Source = new Uri("http://localhost:5173"); ;
             }
         }
+
     }
 }
