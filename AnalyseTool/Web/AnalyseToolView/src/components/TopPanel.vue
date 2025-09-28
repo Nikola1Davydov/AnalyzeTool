@@ -9,6 +9,11 @@ const categories = computed(() => {
   const set = new Set(list.map((e) => e?.CategoryName).filter(Boolean));
   return Array.from(set); // ["Walls","Floors", ...]
 });
+
+function testToSendData() {
+  const paylod = { category: selectedCategory.value };
+  window.chrome?.webview.postMessage(paylod);
+}
 </script>
 
 <template>
@@ -26,7 +31,7 @@ const categories = computed(() => {
     </IconField>
     <div class="flex flex-row gap-x-2">
       <Button class="flex-none" label="Settings" />
-      <Button class="flex-none" label="Send" />
+      <Button class="flex-none" label="Send" @click="testToSendData" />
     </div>
   </div>
 </template>

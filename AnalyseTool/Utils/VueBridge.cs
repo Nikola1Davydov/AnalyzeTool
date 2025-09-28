@@ -45,6 +45,16 @@ namespace AnalyseTool.Utils
                     "app", distFolder,
                     CoreWebView2HostResourceAccessKind.Allow);
 
+                webView.CoreWebView2.WebMessageReceived += (sender, args) =>
+                {
+                    string json = args.WebMessageAsJson;
+                    // десериализуем в объект
+                    //var data = JsonSerializer.Deserialize<MyDto>(json);
+
+                    //// теперь можешь работать с объектом
+                    //Debug.WriteLine($"Got category: {data.Category}");
+                };
+
                 //webView.Source = new Uri("https://app/index.html");
                 WebView.Source = new Uri("http://localhost:5173"); ;
             }
