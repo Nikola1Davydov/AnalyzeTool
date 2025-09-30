@@ -2,7 +2,9 @@
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useElements } from "@/stores/useElements";
-const { filtered, selectedCategory } = storeToRefs(useElements());
+const { filtered, selectedCategory, parameterFilters } = storeToRefs(
+  useElements()
+);
 
 const categories = computed(() => {
   const list = Array.isArray(filtered.value) ? filtered.value : [];
@@ -21,6 +23,20 @@ const tableData = computed(() => {
 
   // собираем все параметры в один массив
   const allParams = elements.flatMap((el) => el.Parameters || []);
+  // let params = allParams;
+
+  // if (parameterFilters.value.isTypeParameter !== null) {
+  //   params = params.filter(
+  //     (p) => p.IsTypeParameter === parameterFilters.value.isTypeParameter
+  //   );
+  // }
+
+  // if (parameterFilters.value.originMax !== null) {
+  //   params = params.filter((p) => p.Origin <= parameterFilters.value.originMax);
+  // }
+  // if (parameterFilters.value.originMin !== null) {
+  //   params = params.filter((p) => p.Origin >= parameterFilters.value.originMin);
+  // }
 
   // группировка по имени параметра
   const groupedByName = {};

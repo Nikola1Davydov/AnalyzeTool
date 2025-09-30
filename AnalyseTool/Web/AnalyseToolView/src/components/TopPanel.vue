@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useElements } from "@/stores/useElements";
 const { filtered, filter, selectedCategory } = storeToRefs(useElements());
+import SelectButton from "primevue/selectbutton";
 
 const categories = computed(() => {
   const list = Array.isArray(filtered.value) ? filtered.value : [];
@@ -14,6 +15,14 @@ function testToSendData() {
   const paylod = { category: selectedCategory.value };
   window.chrome?.webview.postMessage(paylod);
 }
+
+const filterParameter = [
+  "Instance parameter",
+  "Type",
+  "BuildIn",
+  "Schared",
+  "Project",
+];
 </script>
 
 <template>
@@ -24,13 +33,22 @@ function testToSendData() {
       placeholder="Select category"
       v-model="selectedCategory"
     />
-    <p>Выбрана: {{ selectedCategory }}</p>
     <IconField class="IconField flex-2">
       <InputIcon class="search-icon flex-none" />
       <InputText placeholder="Search" v-model="filter" class="flex-auto" />
     </IconField>
     <div class="flex flex-row gap-x-2">
-      <Button class="flex-none" label="Settings" />
+      <!-- <MultiSelect
+        :options="filterParameter"
+        placeholder="filter parameter by"
+        class="flex-none"
+        label="Settings"
+      /> -->
+      <SelectButton
+        :options="filterParameter"
+        multiple
+        aria-labelledby="multiple"
+      />
       <Button class="flex-none" label="Send" @click="testToSendData" />
     </div>
   </div>

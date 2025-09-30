@@ -3,6 +3,7 @@ import Chart from "primevue/chart";
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useElements } from "@/stores/useElements";
+import { display } from "@primeuix/themes/aura/inplace";
 const { filtered } = storeToRefs(useElements());
 
 const categories = computed(() => {
@@ -33,6 +34,7 @@ const chartOptions = {
   plugins: {
     legend: {
       position: "top",
+      display: false,
     },
   },
   scales: {
@@ -54,7 +56,7 @@ const chartOptions = {
 </script>
 
 <template>
-  <div class="flex flex-col h-full w-full">
+  <div>
     <Chart
       class="flex flex-col"
       type="bar"

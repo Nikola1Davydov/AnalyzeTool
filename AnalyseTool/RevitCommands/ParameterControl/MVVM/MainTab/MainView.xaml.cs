@@ -11,7 +11,6 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
     /// </summary>
     public partial class MainView : Window
     {
-        private static string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "dist");
 
         public MainView(MainViewModel viewModel)
         {
@@ -23,9 +22,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
             WindowInteropHelper helper = new WindowInteropHelper(this);
             helper.Owner = revitHandle;
 
-            VueBridge.InitWebView(webView, distFolder);
-
+            VueBridge.InitWebView(webView);
         }
-
     }
 }

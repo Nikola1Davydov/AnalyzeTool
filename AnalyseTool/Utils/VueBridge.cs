@@ -13,6 +13,8 @@ namespace AnalyseTool.Utils
     {
         private static CoreWebView2Environment? _env; // глобальный env
 
+        private static string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "dist");
+
         public static WebView2 WebView { get; set; }
 
         public static void SendToWebView(string json)
@@ -23,7 +25,7 @@ namespace AnalyseTool.Utils
             }
         }
 
-        public static async Task InitWebView(WebView2 webView, string distFolder)
+        public static async Task InitWebView(WebView2 webView)
         {
             WebView = webView;
             if (_env == null)
@@ -41,9 +43,9 @@ namespace AnalyseTool.Utils
 
                 WebView.CoreWebView2.OpenDevToolsWindow();
 
-                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "app", distFolder,
-                    CoreWebView2HostResourceAccessKind.Allow);
+                //WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                //    "app", distFolder,
+                //    CoreWebView2HostResourceAccessKind.Allow);
 
                 webView.CoreWebView2.WebMessageReceived += (sender, args) =>
                 {
@@ -56,7 +58,7 @@ namespace AnalyseTool.Utils
                 };
 
                 //webView.Source = new Uri("https://app/index.html");
-                WebView.Source = new Uri("http://localhost:5173"); ;
+                WebView.Source = new Uri("http://localhost:5173");
             }
         }
 

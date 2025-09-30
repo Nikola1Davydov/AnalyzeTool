@@ -43,6 +43,7 @@
 	</PropertyGroup>
 	
     <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />

@@ -20,6 +20,7 @@
     <DockPanel>
         <Button
             Height="25"
+            VerticalAlignment="Bottom"
             Background="CadetBlue"
             Command="{Binding TestWebCommand}"
             Content="Update Data"
