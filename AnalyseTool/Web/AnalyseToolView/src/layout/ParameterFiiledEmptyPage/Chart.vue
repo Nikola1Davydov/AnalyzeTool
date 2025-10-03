@@ -1,18 +1,15 @@
 <script setup>
 import Chart from "primevue/chart";
 import { computed } from "vue";
-import { storeToRefs } from "pinia";
-import { useElements } from "@/stores/useElements";
 
-const { filtered, selectedCategory } = storeToRefs(useElements());
+const props = defineProps({
+  items: { type: Array, default: () => [] },
+});
 
 const parameterStats = computed(() => {
-  if (!selectedCategory.value) return [];
+  if (!props.items || !Array.isArray(props.items)) return [];
 
-  const elements = filtered.value.filter(
-    (e) => e?.CategoryName === selectedCategory.value
-  );
-  const allParams = elements.flatMap((el) => el.Parameters || []);
+  const allParams = props.items.flatMap((el) => el.Parameters || []);
 
   // группируем по имени параметра
   const grouped = {};

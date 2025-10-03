@@ -1,42 +1,16 @@
 <script setup>
 import { computed, ref } from "vue";
-import { storeToRefs } from "pinia";
-import { useElements } from "@/stores/useElements";
-const { filtered, selectedCategory, parameterFilters } = storeToRefs(
-  useElements()
-);
 
-const categories = computed(() => {
-  const list = Array.isArray(filtered.value) ? filtered.value : [];
-  const set = new Set(list.map((e) => e?.CategoryName).filter(Boolean));
-  return Array.from(set); // ["Walls","Floors", ...]
+const props = defineProps({
+  items: { type: Array, default: () => [] },
 });
 
 // агрегированная таблица для TreeTable
 const tableData = computed(() => {
-  console.log(selectedCategory.value);
-  if (!selectedCategory.value) return [];
-  // берём только элементы выбранной категории
-  const elements = filtered.value.filter(
-    (e) => e.CategoryName === selectedCategory.value
-  );
+  if (!props.items || !Array.isArray(props.items)) return [];
 
   // собираем все параметры в один массив
-  const allParams = elements.flatMap((el) => el.Parameters || []);
-  // let params = allParams;
-
-  // if (parameterFilters.value.isTypeParameter !== null) {
-  //   params = params.filter(
-  //     (p) => p.IsTypeParameter === parameterFilters.value.isTypeParameter
-  //   );
-  // }
-
-  // if (parameterFilters.value.originMax !== null) {
-  //   params = params.filter((p) => p.Origin <= parameterFilters.value.originMax);
-  // }
-  // if (parameterFilters.value.originMin !== null) {
-  //   params = params.filter((p) => p.Origin >= parameterFilters.value.originMin);
-  // }
+  const allParams = props.items.flatMap((el) => el.Parameters || []);
 
   // группировка по имени параметра
   const groupedByName = {};
@@ -71,11 +45,7 @@ const tableData = computed(() => {
 
 <template>
   <div class="app-container flex flex-col h-full w-full">
-    <TreeTable
-      tableStyle="min-width: 50rem"
-      :value="tableData"
-      :filters="filters"
-    >
+    <TreeTable tableStyle="min-width: 50rem" :value="tableData">
       <Column field="parameter" header="Parameter"></Column>
       <Column field="count" header="Count"></Column>
       <Column field="parameterEmpty" header="Parameter Empty"></Column>

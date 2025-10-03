@@ -16,6 +16,7 @@ import ColumnGroup from "primevue/columngroup"; // optional
 import Row from "primevue/row"; // optional
 import ProgressBar from "primevue/progressbar";
 import Slider from "primevue/slider";
+import SelectButton from "primevue/selectbutton";
 
 const app = createApp(App);
 
@@ -32,6 +33,7 @@ app.component("InputIcon", InputIcon);
 app.component("TreeTable", TreeTable);
 app.component("Column", Column);
 app.component("ColumnGroup", ColumnGroup);
+app.component("SelectButton", SelectButton);
 app.component("Row", Row);
 app.component("ProgressBar", ProgressBar);
 app.component("Slider", Slider);

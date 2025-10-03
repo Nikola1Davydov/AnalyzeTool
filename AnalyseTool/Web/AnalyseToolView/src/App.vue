@@ -1,7 +1,6 @@
 <script setup>
 import { onMounted } from "vue";
 import { useElements } from "@/stores/useElements";
-import { header } from "@primeuix/themes/aura/accordion";
 
 import HeaderLayout from "./layout/HeaderLayout.vue";
 import MainLayout from "./layout/MainLayout.vue";
