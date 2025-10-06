@@ -25,14 +25,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="layout-wrapper layout-static">
-    <HeaderLayout />
-    <div class="layout-sidebar"></div>
-    <div class="layout-main-container">
-      <MainLayout />
-      <div class="layout-footer"></div>
+  <div class="layout-wrapper">
+    <div>
+      <HeaderLayout />
+      <div class="layout-sidebar"></div>
+      <div class="layout-main-container">
+        <MainLayout />
+        <div class="layout-footer"></div>
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped></style>
+<style>
+.layout-wrapper {
+  background-color: var(--p-surface-0); /* фон из Aura */
+  transition: background-color 0.3s, color 0.3s;
+}
+</style>

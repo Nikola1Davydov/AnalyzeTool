@@ -6,7 +6,6 @@ import TopPanel from "./TopPanel.vue";
 import Cart from "@/components/Cart.vue";
 import { storeToRefs } from "pinia";
 import { useElements } from "@/stores/useElements";
-import { value } from "@primeuix/themes/aura/knob";
 
 const { items } = storeToRefs(useElements());
 
