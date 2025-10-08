@@ -1,16 +1,18 @@
 <script setup>
 import { Button } from "primevue";
+import { ref, inject } from "vue";
 
 function toggleDarkMode() {
   document.documentElement.classList.toggle("my-app-dark");
 }
+const { openSidebar } = inject("sidebarActions");
 </script>
 
 <template>
   <header class="layout-topbar">
     <div class="flex justify-between border-b border-slate-300 px-8 h-10">
       <div class="flex items-center gap-4">
-        <i class="pi pi-bars" />
+        <Button icon="pi pi-bars" @click="openSidebar" />
         <div>
           <h2 class="text-xl font-bold uppercase">Analyse Tool</h2>
         </div>

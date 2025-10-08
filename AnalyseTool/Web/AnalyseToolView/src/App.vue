@@ -1,10 +1,20 @@
 <script setup>
-import { onMounted } from "vue";
+import { ref, onMounted, provide } from "vue";
 import { useElements } from "@/stores/useElements";
 
 import HeaderLayout from "./layout/HeaderLayout.vue";
 import MainLayout from "./layout/MainLayout.vue";
+import Sidebar from "./layout/Sidebar.vue";
+
 const store = useElements();
+const sidebarVisible = ref(false);
+
+const openSidebar = () => {
+  sidebarVisible.value = true;
+};
+const closeSidebar = () => {
+  sidebarVisible.value = false;
+};
 
 onMounted(() => {
   if (window.chrome?.webview) {
@@ -22,13 +32,21 @@ onMounted(() => {
     });
   }
 });
+
+provide("sidebarVisible", sidebarVisible);
+provide("sidebarActions", {
+  closeSidebar,
+  openSidebar,
+});
 </script>
 
 <template>
   <div class="layout-wrapper">
     <div>
       <HeaderLayout />
-      <div class="layout-sidebar"></div>
+      <div class="layout-sidebar">
+        <Sidebar />
+      </div>
       <div class="layout-main-container">
         <MainLayout />
         <div class="layout-footer"></div>
