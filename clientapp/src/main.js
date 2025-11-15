@@ -18,6 +18,8 @@ import Row from "primevue/row"; // optional
 import ProgressBar from "primevue/progressbar";
 import Slider from "primevue/slider";
 import SelectButton from "primevue/selectbutton";
+import Drawer from "primevue/drawer";
+
 import { definePreset } from "@primeuix/themes";
 
 const app = createApp(App);
@@ -76,6 +78,7 @@ app.component("SelectButton", SelectButton);
 app.component("Row", Row);
 app.component("ProgressBar", ProgressBar);
 app.component("Slider", Slider);
+app.component("Drawer", Drawer);
 
 app.use(createPinia());
 app.use(router).mount("#app");

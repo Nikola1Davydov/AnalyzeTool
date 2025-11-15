@@ -1,11 +1,7 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Reflection;
-using System.Windows;
-using System.Windows.Interop;
 
 namespace AnalyseTool.Utils
 {
@@ -13,7 +9,7 @@ namespace AnalyseTool.Utils
     {
         private static CoreWebView2Environment? _env; // глобальный env
 
-        private static string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "dist");
+        private static readonly string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "dist");
 
         public static WebView2 WebView { get; set; }
 
@@ -30,7 +26,7 @@ namespace AnalyseTool.Utils
             WebView = webView;
             if (_env == null)
             {
-                var userDataFolder = Path.Combine(
+                string userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "RevitPluginWebView2");
 

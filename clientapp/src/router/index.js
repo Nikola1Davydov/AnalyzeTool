@@ -1,15 +1,15 @@
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createWebHistory, createRouter } from "vue-router";
 
-import MainLayout from "@/layout/MainLayout.vue";
 import AboutView from "@/view/AboutView.vue";
+import ParameterFilledEmptyPage from "@/layout/ParameterFilledEmptyPage/ParameterFilledEmptyPage.vue";
 
 const routes = [
-  { path: "/", component: MainLayout },
+  { path: "/", component: ParameterFilledEmptyPage },
   { path: "/about", component: AboutView },
 ];
 
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 });
 

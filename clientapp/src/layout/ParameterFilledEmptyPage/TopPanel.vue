@@ -9,22 +9,16 @@ const props = defineProps({
   filters: Array,
   filteredParamters: Array,
 });
-const emit = defineEmits([
-  "update:category",
-  "update:search",
-  "update:filters",
-]);
+const emit = defineEmits(["update:category", "update:search", "update:filters"]);
 // категории из всех items
 const categories = computed(() => {
-  const set = new Set(
-    props.allItems.map((e) => e?.CategoryName).filter(Boolean)
-  );
+  const set = new Set(props.allItems.map((e) => e?.CategoryName).filter(Boolean));
   return Array.from(set);
 });
 
 function testToSendData() {
   console.log("Send clicked", {
-    category: selectedCategory.value,
+    category: props.category,
   });
 }
 </script>
@@ -57,7 +51,7 @@ function testToSendData() {
         multiple
         aria-labelledby="multiple"
       />
-      <Button class="flex-none" label="Send" @click="testToSendData" />
+      <Button class="flex-none" icon="pi pi-sync" label="Update Data" @click="testToSendData" />
     </div>
   </div>
 </template>

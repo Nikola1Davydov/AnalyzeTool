@@ -1,33 +1,34 @@
 <script setup>
-import { Button } from "primevue";
-import { ref, inject } from "vue";
+import Button from "primevue/button";
+import { inject } from "vue";
 
 function toggleDarkMode() {
   document.documentElement.classList.toggle("my-app-dark");
 }
-const { openSidebar } = inject("sidebarActions");
+function printePage() {
+  window.print();
+}
+
+const sidebarActions = inject("sidebarActions", { openSidebar: () => {} });
+const { openSidebar } = sidebarActions;
 </script>
 
 <template>
   <header class="layout-topbar">
-    <div class="flex justify-between border-b border-slate-300 px-8 h-10">
+    <div class="flex justify-between items-center p-3">
       <div class="flex items-center gap-4">
-        <Button icon="pi pi-bars" @click="openSidebar" />
+        <Button icon="pi pi-bars" severity="secondary" text @click="openSidebar" />
         <div>
-          <h2 class="text-xl font-bold uppercase">Analyse Tool</h2>
+          <h2 class="text-xl font-bold uppercase m-0">Analyse Tool</h2>
         </div>
       </div>
 
-      <ul class="flex items-center gap-5">
-        <li class="flex items-center gap-3">
-          <Button icon="pi pi-sun" @click="toggleDarkMode" />
+      <ul class="flex items-center gap-6 m-0 p-0 list-none">
+        <li class="flex items-center gap-2">
+          <Button icon="pi pi-sun" severity="secondary" text @click="toggleDarkMode" />
         </li>
-        <li class="flex items-center gap-3">
-          <i class="pi pi-print" />
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="pi pi-sync" />
-          <b>Update Data</b>
+        <li class="flex items-center gap-2">
+          <Button icon="pi pi-print" severity="secondary" text @click="printePage" />
         </li>
       </ul>
     </div>

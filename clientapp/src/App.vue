@@ -3,7 +3,6 @@ import { ref, onMounted, provide } from "vue";
 import { useElements } from "@/stores/useElements";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
-import MainLayout from "@/layout/MainLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
 
 const store = useElements();
@@ -48,7 +47,7 @@ provide("sidebarActions", {
         <Sidebar />
       </div>
       <div class="layout-main-container">
-        <MainLayout />
+        <router-view />
         <div class="layout-footer"></div>
       </div>
     </div>

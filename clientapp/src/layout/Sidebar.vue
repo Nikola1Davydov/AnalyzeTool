@@ -1,32 +1,41 @@
 <script setup>
-import { Drawer } from "primevue";
 import { inject, ref } from "vue";
+import { useRouter } from "vue-router";
 
-const visible = inject("sidebarVisible", ref(false)); // ← fallback
+const visible = inject("sidebarVisible", ref(false));
+const { closeSidebar } = inject("sidebarActions");
+const router = useRouter();
+
+const menuItems = [
+  { label: "Home", icon: "pi pi-home", to: "/" },
+  { label: "About", icon: "pi pi-info-circle", to: "/about" },
+];
+
+const handleNavigation = (to) => {
+  router.push(to);
+  closeSidebar();
+};
 </script>
 
 <template>
   <Drawer v-model:visible="visible" position="left" class="w-72">
-    <template #container="{ closeCallback }">
-      <div class="flex flex-col h-full bg-surface-0 dark:bg-surface-900">
-        <div
-          class="flex justify-between items-center px-6 pt-4 border-b border-surface-200 dark:border-surface-700"
-        >
-          <span class="font-semibold text-xl text-primary">My Sidebar</span>
-          <Button icon="pi pi-times" @click="closeCallback" rounded text />
-        </div>
-
-        <div class="p-4 space-y-3">
-          <Button label="Dashboard" icon="pi pi-home" outlined class="w-full" />
-          <Button
-            label="Reports"
-            icon="pi pi-chart-line"
-            outlined
-            class="w-full"
-          />
-          <Button label="Settings" icon="pi pi-cog" outlined class="w-full" />
-        </div>
-      </div>
+    <template #header>
+      <h2 class="text-xl font-bold">Menu</h2>
+    </template>
+    <template #container>
+      <nav>
+        <ul class="list-none p-0 m-0 overflow-hidden">
+          <li v-for="item in menuItems" :key="item.to">
+            <Button
+              @click="handleNavigation(item.to)"
+              class="w-full flex items-center cursor-pointer p-4 rounded text-surface-700 hover:bg-surface-100 dark:text-surface-0 dark:hover:bg-surface-800 duration-150 transition-colors border-0 bg-transparent text-left"
+            >
+              <i :class="`${item.icon} mr-2`"></i>
+              <span class="font-medium">{{ item.label }}</span>
+            </Button>
+          </li>
+        </ul>
+      </nav>
     </template>
   </Drawer>
 </template>

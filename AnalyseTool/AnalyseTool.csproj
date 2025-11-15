@@ -53,9 +53,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Resources\" />
       <Folder Include="RevitCommands\AboutMe\" />
-      <Folder Include="Web\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
@@ -65,12 +63,20 @@
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
 		<Compile Remove="Config\**" />
+		<Compile Remove="Resources\**" />
+		<Compile Remove="Web\**" />
 		<EmbeddedResource Remove="AboutMe\**" />
 		<EmbeddedResource Remove="Config\**" />
+		<EmbeddedResource Remove="Resources\**" />
+		<EmbeddedResource Remove="Web\**" />
 		<None Remove="AboutMe\**" />
 		<None Remove="Config\**" />
+		<None Remove="Resources\**" />
+		<None Remove="Web\**" />
 		<Page Remove="AboutMe\**" />
 		<Page Remove="Config\**" />
+		<Page Remove="Resources\**" />
+		<Page Remove="Web\**" />
 
 		 <!--сам .addin файл--> 
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
