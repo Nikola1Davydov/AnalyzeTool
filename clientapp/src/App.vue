@@ -1,47 +1,63 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import { ref, onMounted, provide } from "vue";
+import { useElements } from "@/stores/useElements";
+
+import HeaderLayout from "@/layout/HeaderLayout.vue";
+import MainLayout from "@/layout/MainLayout.vue";
+import Sidebar from "@/layout/Sidebar.vue";
+
+const store = useElements();
+const sidebarVisible = ref(false);
+
+const openSidebar = () => {
+  sidebarVisible.value = true;
+};
+const closeSidebar = () => {
+  sidebarVisible.value = false;
+};
+
+onMounted(() => {
+  if (window.chrome?.webview) {
+    console.log(window.chrome.webview);
+    window.chrome.webview.addEventListener("message", (event) => {
+      console.log("Из Revit пришло:", event.data);
+      try {
+        const data = JSON.parse(event.data);
+        if (Array.isArray(data)) {
+          store.setItems(data);
+        }
+      } catch (err) {
+        console.error("Parse error", err);
+      }
+    });
+  }
+});
+
+provide("sidebarVisible", sidebarVisible);
+provide("sidebarActions", {
+  closeSidebar,
+  openSidebar,
+});
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+  <div class="layout-wrapper">
+    <div>
+      <HeaderLayout />
+      <div class="layout-sidebar">
+        <Sidebar />
+      </div>
+      <div class="layout-main-container">
+        <MainLayout />
+        <div class="layout-footer"></div>
+      </div>
     </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+<style>
+.layout-wrapper {
+  background-color: var(--p-surface-0); /* фон из Aura */
+  transition: background-color 0.3s, color 0.3s;
 }
 </style>

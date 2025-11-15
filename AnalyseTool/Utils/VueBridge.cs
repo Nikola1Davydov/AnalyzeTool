@@ -58,7 +58,7 @@ namespace AnalyseTool.Utils
                 };
 
                 //webView.Source = new Uri("https://app/index.html");
-                WebView.Source = new Uri("http://localhost:5173");
+                WebView.Source = new Uri("http://localhost:22524");
             }
         }
 
