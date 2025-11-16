@@ -22,7 +22,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
             WindowInteropHelper helper = new WindowInteropHelper(this);
             helper.Owner = revitHandle;
 
-            VueBridge.InitWebView(webView);
+            VueBridgeUtils.InitWebView(webView);
         }
     }
 }

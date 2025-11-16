@@ -82,7 +82,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab
             SelectedCategory = Categories.FirstOrDefault();
 
             string json = JsonConvert.SerializeObject(Categories);
-            VueBridge.SendToWebView(json);
+            VueBridgeUtils.SendToWebView(json);
 
             // Initialize CollectionView
             ParameterCollectionView = CollectionViewSource.GetDefaultView(ParameterDefinitions);

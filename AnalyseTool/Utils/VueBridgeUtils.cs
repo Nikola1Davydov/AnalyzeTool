@@ -1,11 +1,14 @@
-﻿using Microsoft.Web.WebView2.Core;
+﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Newtonsoft.Json;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
 namespace AnalyseTool.Utils
 {
-    public static class VueBridge
+    public static class VueBridgeUtils
     {
         private static CoreWebView2Environment? _env; // глобальный env
 
@@ -47,7 +50,7 @@ namespace AnalyseTool.Utils
                 {
                     string json = args.WebMessageAsJson;
                     // десериализуем в объект
-                    //var data = JsonSerializer.Deserialize<MyDto>(json);
+                    //var data = JsonSerializer.Deserialize<VueCommands>(json);
 
                     //// теперь можешь работать с объектом
                     //Debug.WriteLine($"Got category: {data.Category}");

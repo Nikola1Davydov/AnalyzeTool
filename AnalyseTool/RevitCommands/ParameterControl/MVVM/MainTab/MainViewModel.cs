@@ -29,7 +29,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
             IEnumerable<DataElement> testData = DataElementsCollectorUtils.GetAllElements(Context.Document);
             string json = JsonConvert.SerializeObject(testData);
 
-            VueBridge.SendToWebView(json);
+            VueBridgeUtils.SendToWebView(json);
         }
     }
 }

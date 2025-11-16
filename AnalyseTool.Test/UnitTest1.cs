@@ -76,7 +76,7 @@ namespace AnalyseTool.Test
             string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "Web", "dist");
             WebView2 webView2 = new WebView2();
             //VueBridge.InitWebView(webView2, distFolder);
-            VueBridge.SendToWebView(json);
+            VueBridgeUtils.SendToWebView(json);
             // Assert
         }
         [Test]

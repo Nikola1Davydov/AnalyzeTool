@@ -52,10 +52,6 @@
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="RevitCommands\AboutMe\" />
-    </ItemGroup>
-
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
 	<ItemGroup>

@@ -17,9 +17,19 @@ const categories = computed(() => {
 });
 
 function testToSendData() {
-  console.log("Send clicked", {
-    category: props.category,
-  });
+  const message = {
+    command: "updateDataParameterFilledEmptyPage",
+    selectedCategory: props.category,
+  };
+
+  console.log("Send clicked", message);
+
+  // Отправить сообщение обратно в Revit
+  if (window.chrome?.webview) {
+    window.chrome.webview.postMessage(JSON.stringify(message));
+  } else {
+    console.warn("WebView not available");
+  }
 }
 </script>
 
