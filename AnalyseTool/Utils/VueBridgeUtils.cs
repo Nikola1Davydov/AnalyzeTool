@@ -1,8 +1,9 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+﻿using AnalyseTool.RevitCommands.Commands;
+using AnalyseTool.RevitCommands.Commands.Base;
+using Autodesk.Revit.UI;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
@@ -49,11 +50,13 @@ namespace AnalyseTool.Utils
                 webView.CoreWebView2.WebMessageReceived += (sender, args) =>
                 {
                     string json = args.WebMessageAsJson;
-                    // десериализуем в объект
-                    //var data = JsonSerializer.Deserialize<VueCommands>(json);
 
-                    //// теперь можешь работать с объектом
-                    //Debug.WriteLine($"Got category: {data.Category}");
+                    // десериализуем в объект
+                    VueCommands data = JsonConvert.DeserializeObject<VueCommands>(json);
+                    if (data == null) return;
+
+                    IRevitTask task = CommandsFactory.CreateRevitCommand(data.CommandsEnum);
+                    task.Execute(data.JsonData);
                 };
 
                 //webView.Source = new Uri("https://app/index.html");

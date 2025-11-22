@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
+using AnalyseTool.Utils;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -14,6 +15,8 @@ namespace AnalyseTool.RevitCommands.ParameterControl
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Context.Init(commandData.Application);
+
+            ExternalEventHub.Initialize(commandData.Application);
 
             MainView subview = HostBuilderHelper.GetService<MainView>();
             subview.Show();
