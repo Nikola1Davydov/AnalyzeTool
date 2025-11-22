@@ -1,4 +1,4 @@
-﻿namespace AnalyseTool.RevitCommands.ParameterControl.DataModel
+﻿namespace AnalyseTool.RevitCommands.DataModel
 {
     public sealed record ParameterSummary : ParameterSummaryBase
     {

@@ -1,6 +1,6 @@
 ﻿using AnalyseTool.RevitCommands;
-using AnalyseTool.RevitCommands.ParameterControl.DataAccess;
-using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+using AnalyseTool.RevitCommands.DataAccess;
+using AnalyseTool.RevitCommands.DataModel;
 using AnalyseTool.Utils;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;

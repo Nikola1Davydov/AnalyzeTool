@@ -17,6 +17,12 @@ const closeSidebar = () => {
 
 onMounted(() => {
   if (window.chrome?.webview) {
+    if (!window.chrome?.webview) {
+      console.warn("WebView2 messaging not available");
+      return;
+    }
+    window.chrome.webview.postMessage("readyMessage");
+
     console.log(window.chrome.webview);
     window.chrome.webview.addEventListener("message", (event) => {
       console.log("Из Revit пришло:", event.data);

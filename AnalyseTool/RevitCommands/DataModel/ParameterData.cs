@@ -1,8 +1,8 @@
 ﻿using AnalyseTool.Extensions;
 using Autodesk.Revit.DB;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.DataModel
+namespace AnalyseTool.RevitCommands.DataModel
 {
     public sealed record ParameterData : IEquatable<ParameterData>
     {

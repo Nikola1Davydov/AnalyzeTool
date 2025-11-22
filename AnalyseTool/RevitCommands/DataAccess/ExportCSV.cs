@@ -1,10 +1,10 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+﻿using AnalyseTool.RevitCommands.DataModel;
 using AnalyseTool.Utils;
 using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
+namespace AnalyseTool.RevitCommands.DataAccess
 {
     public static class ExportCSV
     {

@@ -4,10 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:parameterControl="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab"
-    xmlns:parameterValue="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterValueTab"
     xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
-    xmlns:viewmodel="clr-namespace:AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab"
     xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
     Title="Analyze Tool"
     Width="850"
@@ -16,10 +13,9 @@
     MinHeight="300"
     Background="Transparent"
     mc:Ignorable="d">
-    <!--  d:DataContext="{d:DesignInstance viewmodel:MainViewModel}"  -->
 
     <DockPanel>
-        <Button
+        <!--<Button
             Height="25"
             VerticalAlignment="Bottom"
             Background="CadetBlue"
@@ -27,16 +23,8 @@
             Content="Update Data"
             DockPanel.Dock="Bottom"
             FontWeight="Bold"
-            Foreground="White" />
+            Foreground="White" />-->
         <wv2:WebView2 x:Name="webView" />
     </DockPanel>
-    <!--<TabControl Margin="10">
-        <TabItem Header="Parameter Control">
-            <parameterControl:ParameterAnalyseUserControl DataContext="{Binding ParameterAnalyseViewModel}" />
-        </TabItem>
-        <TabItem Header="Parameter Value Control">
-            <parameterValue:ParameterValueUserControl DataContext="{Binding ParameterValueViewModel}" />
-        </TabItem>
-    </TabControl>-->
 
 </Window>

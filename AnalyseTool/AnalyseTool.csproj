@@ -8,6 +8,7 @@
         <Configurations>Debug R24;Debug R25;Debug R26</Configurations>
         <Configurations>$(Configurations);Release R24;Release R25;Release R26</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+		<Nullable>enable</Nullable>
 		
 		<PluginSubDir>AnalyseTool</PluginSubDir>
 
@@ -49,7 +50,6 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />

@@ -1,6 +1,6 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+﻿using AnalyseTool.RevitCommands.DataModel;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
+namespace AnalyseTool.RevitCommands.DataAccess
 {
     public class DataElementRepository : IDataElementRepository
     {

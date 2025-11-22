@@ -1,6 +1,6 @@
 ﻿using AnalyseTool.Extensions;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.DataModel
+namespace AnalyseTool.RevitCommands.DataModel
 {
     public record ParameterSummaryBase
     {

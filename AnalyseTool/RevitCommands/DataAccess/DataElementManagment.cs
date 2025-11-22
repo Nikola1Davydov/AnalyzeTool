@@ -1,7 +1,7 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+﻿using AnalyseTool.RevitCommands.DataModel;
 using AnalyseTool.Utils;
 
-namespace AnalyseTool.RevitCommands.ParameterControl.DataAccess
+namespace AnalyseTool.RevitCommands.DataAccess
 {
     public class DataElementManagment
     {

@@ -1,4 +1,4 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl;
+﻿using AnalyseTool.RevitCommands;
 using Autodesk.Revit.UI;
 using System.IO;
 using System.Reflection;
@@ -45,16 +45,10 @@ namespace AnalyseTool
         private void LoadDll()
         {
             string directory = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
-            string meterialDesign = "MaterialDesignColors.dll";
-            string meterialDesignXaml = "MaterialDesignThemes.Wpf.dll";
             string json = "Newtonsoft.Json.dll";
 
-            string meterialDesignPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesign);
-            string meterialDesignXamlPath = Path.Combine(Path.GetDirectoryName(directory), meterialDesignXaml);
             string jsonPath = Path.Combine(Path.GetDirectoryName(directory), json);
 
-            Assembly.LoadFile(meterialDesignPath);
-            Assembly.LoadFile(meterialDesignXamlPath);
             Assembly.LoadFile(jsonPath);
         }
     }
