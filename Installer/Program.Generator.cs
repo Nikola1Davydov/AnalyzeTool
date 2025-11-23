@@ -14,6 +14,8 @@ public static class Generator
     /// </summary>
     public static WixEntity[] GenerateWixEntities(IEnumerable<string> args)
     {
+        string clienAppPath() => Path.Combine(TryGetSolutionDirectoryInfo().FullName, $@"clientapp\dist");
+
         Regex versionRegex = new Regex(@"\d+");
         Dictionary<string, List<WixEntity>> versionStorages = new Dictionary<string, List<WixEntity>>();
 
@@ -39,13 +41,20 @@ public static class Generator
             revitFeature.Add(feature);
 
             Files files = new Files(feature, $@"{directory}\*.*", FilterEntities);
+            Files filesClienApp = new Files(feature, $@"{clienAppPath()}\*.*", FilterEntities);
+
             if (versionStorages.TryGetValue(fileVersion, out List<WixEntity>? storage))
             {
                 storage.Add(files);
+                storage.Add(filesClienApp);
             }
             else
             {
-                versionStorages.Add(fileVersion, [files]);
+                versionStorages[fileVersion] = new List<WixEntity>
+                {
+                    files,
+                    filesClienApp
+                };
             }
 
             LogFeatureFiles(directory, fileVersion);
@@ -77,5 +86,15 @@ public static class Generator
         {
             Console.WriteLine($"'{assembly}'");
         }
+    }
+    private static System.IO.DirectoryInfo TryGetSolutionDirectoryInfo(string currentPath = null)
+    {
+        System.IO.DirectoryInfo directory = new System.IO.DirectoryInfo(
+            currentPath ?? System.IO.Directory.GetCurrentDirectory());
+        while (directory != null && !directory.GetFiles("*.sln").Any())
+        {
+            directory = directory.Parent;
+        }
+        return directory;
     }
 }
