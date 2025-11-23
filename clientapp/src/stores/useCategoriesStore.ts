@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { sendRequest } from "@/RevitBridge";
 
 export const useCategoriesStore = defineStore("categories", () => {
   const categories = ref<string[]>([]); // full list of category names
@@ -9,6 +10,16 @@ export const useCategoriesStore = defineStore("categories", () => {
     // Sort categories alphabetically for nicer UI
     return [...categories.value].sort((a, b) => a.localeCompare(b));
   });
+
+  async function loadCategories(): Promise<void> {
+    // Ask Revit for categories
+    const result = await sendRequest("getCategories", null);
+    if (Array.isArray(result)) {
+      categories.value = result.filter((x) => typeof x === "string") as string[];
+    } else {
+      categories.value = [];
+    }
+  }
 
   const hasSelectedCategory = computed(() => {
     // Indicates if any category is selected
@@ -36,6 +47,7 @@ export const useCategoriesStore = defineStore("categories", () => {
     sortedCategories,
     selectedCategory,
     hasSelectedCategory,
+    loadCategories,
     setCategories,
     selectCategory,
     clear,

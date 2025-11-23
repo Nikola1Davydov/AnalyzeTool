@@ -5,11 +5,9 @@ namespace AnalyseTool.Utils
     internal class RevitExternalEvent : IExternalEventHandler
     {
         internal Action action;
-        internal string TransactionName { get; set; }
         public void Execute(UIApplication app)
         {
             if (action == null) return;
-            if (string.IsNullOrEmpty(TransactionName)) TransactionName = "AnalyseTool Method";
 
             try
             {
@@ -23,7 +21,7 @@ namespace AnalyseTool.Utils
 
         public string GetName()
         {
-            return TransactionName;
+            return "TransactionName";
         }
     }
 }

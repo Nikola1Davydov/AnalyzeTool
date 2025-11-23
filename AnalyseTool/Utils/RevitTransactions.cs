@@ -6,9 +6,9 @@ namespace AnalyseTool.Utils
 {
     internal class RevitTransactions
     {
-        public static void Run(Action action)
+        public static void Run(string TransactionName, Action action)
         {
-            using (Transaction transaction = new Transaction(Context.Document))
+            using (Transaction transaction = new Transaction(Context.Document, TransactionName))
             {
                 try
                 {

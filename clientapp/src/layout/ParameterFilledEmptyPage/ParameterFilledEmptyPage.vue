@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+
 import BodyTable from "./BodyTable.vue";
 import Chart from "./Chart.vue";
 import TopPanel from "./TopPanel.vue";
@@ -12,7 +13,7 @@ const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
 
 const { sortedCategories, selectedCategory } = storeToRefs(categoriesStore);
-const { filteredByCategory } = storeToRefs(elementsStore);
+const { items } = storeToRefs(elementsStore);
 
 // Filter parameter labels
 const filterParameter = ["Instance", "Type", "BuildIn", "Schared", "Project"];
@@ -23,9 +24,9 @@ const selectedFilters = ref<string[]>([]);
 
 // фильтрация (общая для всех компонентов)
 const filteredItems = computed(() => {
-  let result = filteredByCategory.value;
-  console.log("Filtered by category:", result);
+  let result = items.value;
 
+  // По категории
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     result = result
@@ -47,7 +48,7 @@ const filteredItems = computed(() => {
       .filter(Boolean) as typeof result; // убираем null (элементы без совпадений)
   }
 
-  function matchFilter(p: any, filters: string[]) {
+  function matchFilter(p: any, filters: string[]): boolean {
     return filters.every((filter) => {
       if (filter === "Instance") return p.isTypeParameter === false;
       if (filter === "Type") return p.isTypeParameter === true;
@@ -80,22 +81,19 @@ const filteredItems = computed(() => {
   return result;
 });
 
-function handleUpdateData() {
-  console.log("selectedCategory in store before send:", selectedCategory.value);
-
-  if (!(window as any).chrome?.webview) {
-    console.warn("WebView not available");
+onMounted(async () => {
+  // Load categories once when the page is opened
+  if (!categoriesStore.categories.length) {
+    await categoriesStore.loadCategories();
+  }
+});
+async function handleUpdateData() {
+  if (!selectedCategory.value) {
+    console.warn("No category selected");
     return;
   }
 
-  const message = {
-    command: "updateDataParameterFilledEmptyPage",
-    JsonData: selectedCategory.value,
-  };
-
-  // Send plain object, WebView2 will serialize it
-  (window as any).chrome.webview.postMessage(message);
-  console.log("selectedCategory in store before send:", message);
+  await elementsStore.loadByCategory(selectedCategory.value);
 }
 </script>
 

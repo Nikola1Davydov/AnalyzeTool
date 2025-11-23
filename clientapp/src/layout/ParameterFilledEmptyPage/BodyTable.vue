@@ -1,25 +1,10 @@
 <script setup>
 import { computed, ref } from "vue";
+import { sendRequest } from "@/RevitBridge";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
 });
-
-function SelectionInRevit(data) {
-  const message = {
-    commandsEnum: "Isolation",
-    jsonData: data,
-  };
-
-  console.log("Send to Revit", message);
-
-  // Отправить сообщение обратно в Revit
-  if (window.chrome?.webview) {
-    window.chrome.webview.postMessage(message);
-  } else {
-    console.warn("WebView not available");
-  }
-}
 
 // агрегированная таблица для TreeTable
 const tableData = computed(() => {
@@ -86,7 +71,7 @@ const tableData = computed(() => {
               rounded
               icon="pi pi-check"
               title="Select filled"
-              @click="SelectionInRevit(slotProps.node.data.filledIds)"
+              @click="sendRequest('Isolation', slotProps.node.data.filledIds)"
             />
             <Button
               type="button"
@@ -94,7 +79,7 @@ const tableData = computed(() => {
               severity="danger"
               icon="pi pi-times"
               title="Select empty"
-              @click="SelectionInRevit(slotProps.node.data.emptyIds)"
+              @click="sendRequest('Isolation', slotProps.node.data.emptyIds)"
             />
           </div>
         </template>

@@ -9,17 +9,18 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class UpdateDataParameterFilledEmptyPage : IRevitTask
     {
-        public void Execute(object data, WebView2 webView)
+        public void Execute(JToken payload, WebView2 webView)
         {
-            string? categoryName = data.ToString();
+            string? categoryName = payload["categoryName"]?.ToString();
             if (string.IsNullOrEmpty(categoryName)) return;
 
             IEnumerable<DataElement> dataModels = DataElementsCollectorUtils.GetAllElementsByCategory(Context.Document, categoryName)?.ToList() ?? new List<DataElement>();
             
             string json = JsonConvert.SerializeObject(new WebViewMessage() 
             {
-                CommandsEnum = CommandsEnum.updateDataParameterFilledEmptyPage,
-                JsonData = dataModels
+                Type = WebMessageTypeEnum.Response.ToString(),
+                Command = nameof(CommandsEnum.updateDataParameterFilledEmptyPage),
+                Payload = JArray.FromObject(dataModels)
             });
 
             webView.CoreWebView2.PostWebMessageAsJson(json);

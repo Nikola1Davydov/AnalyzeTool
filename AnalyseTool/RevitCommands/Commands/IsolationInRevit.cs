@@ -10,7 +10,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class IsolationInRevit : IRevitTask
     {
-        public void Execute(object data, WebView2 webView)
+        public void Execute(JToken data, WebView2 webView)
         {
             List<long?>? list = JsonConvert.DeserializeObject<List<long?>>(data.ToString());
             if (list == null) return;
@@ -18,15 +18,16 @@ namespace AnalyseTool.RevitCommands.Commands
             List<ElementId> elementsIds = list.Where(x => x != null).Select(x => new ElementId((long)x)).ToList();
             if (!elementsIds.Any()) return;
 
-            //ExternalEventHub.RevitExternalEvent.action = () =>
-            //{
-            RevitTransactions.Run(() =>
+            string transactionName = "Isolate";
+            ExternalEventHub.RevitExternalEvent.action = () =>
             {
-                Context.Document.ActiveView.IsolateElementsTemporary(elementsIds);
-            });
-            //};
-            //ExternalEventHub.RevitExternalEvent.TransactionName = "Isolate";
-            //ExternalEventHub.RevitEvent.Raise();
+                RevitTransactions.Run(transactionName, () =>
+                {
+                    Context.Document.ActiveView.IsolateElementsTemporary(elementsIds);
+                });
+            };
+            
+            ExternalEventHub.RevitEvent.Raise();
         }
     }
 }

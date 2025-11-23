@@ -3,7 +3,8 @@ import { ref, onMounted, provide } from "vue";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import type { WebViewMessage } from "@/RevitBridge";
-import type { ElementItem } from "./types";
+import { sendRequest } from "@/RevitBridge";
+import type { ElementItem } from "@/stores/types";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
@@ -19,24 +20,11 @@ const closeSidebar = () => {
   sidebarVisible.value = false;
 };
 const message: WebViewMessage = {
-  CommandsEnum: "GetCategories",
-  JsonData: null,
+  Type: "Request",
+  Command: "GetCategories",
+  Payload: null,
 };
-function sendRequest(command: string, payload: any): Promise<any> {
-  return new Promise((reject) => {
-    if (!(window as any).chrome?.webview) {
-      reject(new Error("WebView2 messaging not available"));
-      return;
-    }
 
-    const message: WebViewMessage = {
-      CommandsEnum: command,
-      JsonData: payload,
-    };
-
-    (window as any).chrome.webview.postMessage(message);
-  });
-}
 onMounted(() => {
   if ((window as any).chrome?.webview) {
     if (!(window as any).chrome?.webview) {
@@ -51,14 +39,14 @@ onMounted(() => {
       try {
         const payload = event.data as WebViewMessage;
 
-        if (payload.CommandsEnum === 4) {
+        if (payload.Command === "GetCategories") {
           // payload is ElementItem[]
-          categoriesStore.setCategories(payload.JsonData as string[]);
+          categoriesStore.setCategories(payload.Payload as string[]);
           return;
         }
-        if (payload.CommandsEnum === 0) {
+        if (payload.Command === "updateDataParameterFilledEmptyPage") {
           // payload is ElementItem[]
-          elementsStore.setItems(payload.JsonData as ElementItem[]);
+          elementsStore.setItems(payload.Payload as ElementItem[]);
           return;
         }
       } catch (err) {

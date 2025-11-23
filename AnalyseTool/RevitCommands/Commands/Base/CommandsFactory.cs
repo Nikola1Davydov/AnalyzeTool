@@ -1,17 +1,21 @@
-﻿using AnalyseTool.RevitCommands.Commands.Base;
+﻿using Autodesk.Revit.UI;
 
-namespace AnalyseTool.RevitCommands.Commands
+namespace AnalyseTool.RevitCommands.Commands.Base
 {
     internal class CommandsFactory
     {
-        public static IRevitTask CreateRevitCommand(CommandsEnum command)
+        public static IRevitTask CreateRevitCommand(string command)
         {
-            return command switch
+            bool result = Enum.TryParse<CommandsEnum>(command, ignoreCase: true, out CommandsEnum parsedCommand);
+            if (!result) TaskDialog.Show("Error", $"The command {command} is not recognized.");
+
+            return parsedCommand switch
             {
                 CommandsEnum.Selection => new SelectionInRevit(),
                 CommandsEnum.Isolation => new IsolationInRevit(),
                 CommandsEnum.GetCategories => new GetCategoriesInRevit(),
                 CommandsEnum.updateDataParameterFilledEmptyPage => new UpdateDataParameterFilledEmptyPage(),
+
                 _ => throw new NotImplementedException($"The command {command} is not implemented in the CommandsFactory."),
             };
         }
