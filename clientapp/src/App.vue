@@ -1,11 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, provide } from "vue";
-import { useElements } from "@/stores/useElements";
+import { useElementsStore } from "@/stores/useElementsStore";
+import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import type { WebViewMessage } from "@/RevitBridge";
+import type { ElementItem } from "./types";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
 
-const store = useElements();
+const elementsStore = useElementsStore();
+const categoriesStore = useCategoriesStore();
 const sidebarVisible = ref(false);
 
 const openSidebar = () => {
@@ -14,22 +18,48 @@ const openSidebar = () => {
 const closeSidebar = () => {
   sidebarVisible.value = false;
 };
+const message: WebViewMessage = {
+  CommandsEnum: "GetCategories",
+  JsonData: null,
+};
+function sendRequest(command: string, payload: any): Promise<any> {
+  return new Promise((reject) => {
+    if (!(window as any).chrome?.webview) {
+      reject(new Error("WebView2 messaging not available"));
+      return;
+    }
 
+    const message: WebViewMessage = {
+      CommandsEnum: command,
+      JsonData: payload,
+    };
+
+    (window as any).chrome.webview.postMessage(message);
+  });
+}
 onMounted(() => {
-  if (window.chrome?.webview) {
-    if (!window.chrome?.webview) {
+  if ((window as any).chrome?.webview) {
+    if (!(window as any).chrome?.webview) {
       console.warn("WebView2 messaging not available");
       return;
     }
-    window.chrome.webview.postMessage("readyMessage");
 
-    console.log(window.chrome.webview);
-    window.chrome.webview.addEventListener("message", (event) => {
-      console.log("Из Revit пришло:", event.data);
+    sendRequest("GetCategories", null);
+
+    (window as any).chrome.webview.addEventListener("message", (event) => {
+      console.log("Из Revit пришло:", event.data, "тип:", typeof event.data);
       try {
-        const data = JSON.parse(event.data);
-        if (Array.isArray(data)) {
-          store.setItems(data);
+        const payload = event.data as WebViewMessage;
+
+        if (payload.CommandsEnum === 4) {
+          // payload is ElementItem[]
+          categoriesStore.setCategories(payload.JsonData as string[]);
+          return;
+        }
+        if (payload.CommandsEnum === 0) {
+          // payload is ElementItem[]
+          elementsStore.setItems(payload.JsonData as ElementItem[]);
+          return;
         }
       } catch (err) {
         console.error("Parse error", err);

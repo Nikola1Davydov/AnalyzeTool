@@ -26,19 +26,19 @@ const tableData = computed(() => {
   if (!props.items || !Array.isArray(props.items)) return [];
 
   // собираем все параметры в один массив
-  const allParams = props.items.flatMap((el) => el.Parameters || []);
+  const allParams = props.items.flatMap((el) => el.parameters || []);
 
   // группировка по имени параметра
   const groupedByName = {};
   for (const p of allParams) {
-    if (!groupedByName[p.Name]) groupedByName[p.Name] = [];
-    groupedByName[p.Name].push(p);
+    if (!groupedByName[p.name]) groupedByName[p.name] = [];
+    groupedByName[p.name].push(p);
   }
 
   // верхний уровень (параметры)
   const result = Object.entries(groupedByName).map(([paramName, params]) => {
-    const filled = params.filter((p) => p.Value).map((p) => p.ElementId);
-    const empty = params.filter((p) => !p.Value).map((p) => p.ElementId);
+    const filled = params.filter((p) => p.value).map((p) => p.elementId);
+    const empty = params.filter((p) => !p.value).map((p) => p.elementId);
 
     const percent =
       params.length > 0 ? Math.round((filled.length / params.length) * 10000) / 100 : 0;

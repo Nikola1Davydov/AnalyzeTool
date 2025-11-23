@@ -6,7 +6,7 @@ namespace AnalyseTool.RevitCommands.DataModel
     internal record WebViewMessage
     {
         public CommandsEnum CommandsEnum { get; set; }
-        public JObject JsonData { get; set; }
+        public object JsonData { get; set; }
     }
 }
 

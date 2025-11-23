@@ -6,5 +6,6 @@
         Selection,
         Isolation,
         Message,
+        GetCategories,
     }
 }

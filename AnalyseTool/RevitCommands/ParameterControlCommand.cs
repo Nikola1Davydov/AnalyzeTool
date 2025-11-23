@@ -7,7 +7,6 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
-using System.Text.Json;
 
 namespace AnalyseTool.RevitCommands
 {
@@ -26,23 +25,16 @@ namespace AnalyseTool.RevitCommands
 
             MainView subview = HostBuilderHelper.GetService<MainView>();
 
-            List<string> allCategories = DataElementsCollectorUtils.GetModelCategoriesNames(Context.Document);
-            string? jsonCategories = JsonConvert.SerializeObject(allCategories);
+
             subview.webView.WebMessageReceived += (sender, args) =>
             {
                 string json = args.WebMessageAsJson;
-                string? test = JsonConvert.DeserializeObject<string>(json);
-                if (test != null && test.Equals("readyMessage"))
-                {
-                    subview.webView.CoreWebView2.PostWebMessageAsString(jsonCategories);
-                    return;
-                }
 
                 WebViewMessage? message = JsonConvert.DeserializeObject<WebViewMessage>(json);
                 if (message == null) return;
 
                 IRevitTask task = CommandsFactory.CreateRevitCommand(message.CommandsEnum);
-                task.Execute(message.JsonData);
+                task.Execute(message.JsonData, subview.webView);
             };
 
             subview.ShowDialog();

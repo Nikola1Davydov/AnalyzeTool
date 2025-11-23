@@ -1,4 +1,4 @@
-<script setup>
+<script setup type="ts">
 import Chart from "primevue/chart";
 import { computed } from "vue";
 
@@ -9,18 +9,18 @@ const props = defineProps({
 const parameterStats = computed(() => {
   if (!props.items || !Array.isArray(props.items)) return [];
 
-  const allParams = props.items.flatMap((el) => el.Parameters || []);
+  const allParams = props.items.flatMap((el) => el.parameters || []);
 
   // группируем по имени параметра
   const grouped = {};
   for (const p of allParams) {
-    if (!grouped[p.Name]) grouped[p.Name] = [];
-    grouped[p.Name].push(p);
+    if (!grouped[p.name]) grouped[p.name] = [];
+    grouped[p.name].push(p);
   }
 
   return Object.entries(grouped).map(([paramName, params]) => {
-    const filled = params.filter((p) => p.Value).length;
-    const empty = params.filter((p) => !p.Value).length;
+    const filled = params.filter((p) => p.value).length;
+    const empty = params.filter((p) => !p.value).length;
     return { parameter: paramName, filled, empty };
   });
 });
@@ -59,11 +59,6 @@ const chartOptions = {
 
 <template>
   <div>
-    <Chart
-      class="flex flex-col"
-      type="bar"
-      :data="chartData"
-      :options="chartOptions"
-    />
+    <Chart class="flex flex-col" type="bar" :data="chartData" :options="chartOptions" />
   </div>
 </template>

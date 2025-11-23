@@ -1,6 +1,6 @@
 ﻿using AnalyseTool.Extensions;
 using Autodesk.Revit.DB;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.RevitCommands.DataModel
 {
@@ -8,11 +8,17 @@ namespace AnalyseTool.RevitCommands.DataModel
     {
         [JsonIgnore]
         public Element Element { get; private set; }
+        [JsonProperty("name")]
         public string Name { get; }
+        [JsonProperty("id")]
         public long Id { get; }
+        [JsonProperty("level")]
         public string Level { get; }
+        [JsonProperty("isElementType")]
         public bool IsElementType { get; }
+        [JsonProperty("categoryName")]
         public string CategoryName { get; }
+        [JsonProperty("parameters")]
         public List<ParameterData> Parameters { get; } = new();
         public DataElement(Element Element)
         {

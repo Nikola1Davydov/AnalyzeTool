@@ -2,7 +2,7 @@
 import Chart from "primevue/chart";
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
-import { useElements } from "@/stores/useElements";
+import { useElements } from "@/stores/useElementsStore";
 import { display } from "@primeuix/themes/aura/inplace";
 const { filtered } = storeToRefs(useElements());
 
@@ -57,11 +57,6 @@ const chartOptions = {
 
 <template>
   <div>
-    <Chart
-      class="flex flex-col"
-      type="bar"
-      :data="chartData"
-      :options="chartOptions"
-    />
+    <Chart class="flex flex-col" type="bar" :data="chartData" :options="chartOptions" />
   </div>
 </template>
