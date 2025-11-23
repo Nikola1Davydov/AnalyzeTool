@@ -4,7 +4,26 @@ export type WebViewMessage = {
   Payload: any;
 };
 
-export function sendRequest(command: string, payload: any): Promise<any> {
+export interface UpdatePayload {
+  currentVersion?: string;
+  latestVersion?: string;
+  isUpdateAvailable?: boolean;
+  releaseUrl?: string;
+}
+
+export interface CommandPayloads {
+  Selection: { elementIds: number[] };
+  Isolation: { elementIds: number[] };
+  GetCategories: { null: null };
+  UpdateDataParameterFilledEmptyPage: { categoryName: string };
+  CheckUpdate: UpdatePayload;
+  // … добавляешь сюда все команды
+}
+
+export function sendRequest<C extends keyof CommandPayloads>(
+  command: C,
+  payload: CommandPayloads[C]
+): Promise<any> {
   return new Promise((reject) => {
     if (!(window as any).chrome?.webview) {
       reject(new Error("WebView2 messaging not available"));

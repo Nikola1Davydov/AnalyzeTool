@@ -10,6 +10,14 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  levels: {
+    type: Array,
+    default: () => [],
+  },
+  level: {
+    type: String,
+    default: null,
+  },
   search: {
     type: String,
     default: "",
@@ -24,9 +32,19 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:category", "update:search", "update:filters", "update-data"]);
+const emit = defineEmits([
+  "update:category",
+  "update:search",
+  "update:filters",
+  "update:level",
+  "update-data",
+]);
 
 const categoryOptions = computed(() => props.categories as string[]);
+const levelOptions = computed(() => {
+  // Prepend "All Levels" (null value) to allow clearing the filter
+  return [null, ...(props.levels as string[])];
+});
 
 function onUpdateDataClick() {
   // Emit event for parent to send message to Revit
@@ -35,20 +53,25 @@ function onUpdateDataClick() {
 </script>
 
 <template>
-  <div class="card flex flex-row items-center w-full gap-5">
+  <header class="card flex flex-row items-center w-full gap-5">
     <Select
-      class="flex-1"
       :options="categoryOptions"
       placeholder="Select category"
       :modelValue="category"
       @update:modelValue="(val) => emit('update:category', val)"
     />
 
-    <IconField class="IconField flex-2">
-      <InputIcon class="search-icon flex-none" />
+    <Select
+      :options="levelOptions"
+      placeholder="Select Level"
+      :modelValue="level"
+      @update:modelValue="(val) => emit('update:level', val)"
+    />
+
+    <IconField class="IconField flex-1">
+      <InputIcon class="search-icon" />
       <InputText
         placeholder="Search"
-        class="flex-auto"
         :modelValue="search"
         @update:modelValue="(val) => emit('update:search', val)"
       />
@@ -64,5 +87,5 @@ function onUpdateDataClick() {
       />
       <Button class="flex-none" icon="pi pi-sync" label="Update Data" @click="onUpdateDataClick" />
     </div>
-  </div>
+  </header>
 </template>

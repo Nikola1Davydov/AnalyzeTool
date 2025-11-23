@@ -20,6 +20,7 @@ import Slider from "primevue/slider";
 import SelectButton from "primevue/selectbutton";
 import Drawer from "primevue/drawer";
 import Panel from "primevue/panel";
+import ContextMenu from "primevue/contextmenu";
 
 import { definePreset } from "@primeuix/themes";
 
@@ -81,6 +82,7 @@ app.component("ProgressBar", ProgressBar);
 app.component("Slider", Slider);
 app.component("Drawer", Drawer);
 app.component("Panel", Panel);
+app.component("ContextMenu", ContextMenu);
 
 app.use(createPinia());
 app.use(router).mount("#app");

@@ -1,5 +1,6 @@
 ﻿using AnalyseTool.RevitCommands.Commands.Base;
 using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
+using AnalyseTool.Updater;
 using AnalyseTool.Utils;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -14,6 +15,8 @@ namespace AnalyseTool.RevitCommands
     [Transaction(TransactionMode.Manual)]
     public class ParameterControlCommand : IExternalCommand
     {
+        
+
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -44,5 +47,6 @@ namespace AnalyseTool.RevitCommands
             }
             return Result.Succeeded;
         }
+
     }
 }

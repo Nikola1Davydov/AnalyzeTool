@@ -2,9 +2,7 @@
 using AnalyseTool.Utils;
 using Autodesk.Revit.DB;
 using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Text.Json;
 
 namespace AnalyseTool.RevitCommands.Commands
 {
@@ -12,10 +10,10 @@ namespace AnalyseTool.RevitCommands.Commands
     {
         public void Execute(JToken data, WebView2 webView)
         {
-            List<long?>? list = JsonConvert.DeserializeObject<List<long?>>(data.ToString());
+            IsolationPayload? list = data.ToObject<IsolationPayload>();
             if (list == null) return;
 
-            List<ElementId> elementsIds = list.Where(x => x != null).Select(x => new ElementId((long)x)).ToList();
+            List<ElementId> elementsIds = list.ElementIds.Where(x => x != null).Select(x => new ElementId((long)x)).ToList();
             if (!elementsIds.Any()) return;
 
             string transactionName = "Isolate";
@@ -28,6 +26,10 @@ namespace AnalyseTool.RevitCommands.Commands
             };
             
             ExternalEventHub.RevitEvent.Raise();
+        }
+        private record IsolationPayload
+        {
+            public List<long> ElementIds { get; set; }
         }
     }
 }

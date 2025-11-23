@@ -11,10 +11,10 @@ namespace AnalyseTool.RevitCommands.Commands
     {
         public void Execute(JToken payload, WebView2 webView)
         {
-            string? categoryName = payload["categoryName"]?.ToString();
-            if (string.IsNullOrEmpty(categoryName)) return;
+            UpdateDataParameterFilledEmptyPagePayload? data = payload.ToObject<UpdateDataParameterFilledEmptyPagePayload>();
+            if (string.IsNullOrEmpty(data.CategoryName)) return;
 
-            IEnumerable<DataElement> dataModels = DataElementsCollectorUtils.GetAllElementsByCategory(Context.Document, categoryName)?.ToList() ?? new List<DataElement>();
+            IEnumerable<DataElement> dataModels = DataElementsCollectorUtils.GetAllElementsByCategory(Context.Document, data.CategoryName)?.ToList() ?? new List<DataElement>();
             
             string json = JsonConvert.SerializeObject(new WebViewMessage() 
             {
@@ -24,6 +24,10 @@ namespace AnalyseTool.RevitCommands.Commands
             });
 
             webView.CoreWebView2.PostWebMessageAsJson(json);
+        }
+        private record UpdateDataParameterFilledEmptyPagePayload
+        {
+            public string CategoryName { get; set; }
         }
     }
 }

@@ -7,4 +7,5 @@ namespace AnalyseTool.RevitCommands.Commands.Base
     {
         void Execute(JToken payload, WebView2 webView);
     }
+
 }

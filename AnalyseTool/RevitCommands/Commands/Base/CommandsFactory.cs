@@ -15,6 +15,7 @@ namespace AnalyseTool.RevitCommands.Commands.Base
                 CommandsEnum.Isolation => new IsolationInRevit(),
                 CommandsEnum.GetCategories => new GetCategoriesInRevit(),
                 CommandsEnum.updateDataParameterFilledEmptyPage => new UpdateDataParameterFilledEmptyPage(),
+                CommandsEnum.CheckUpdate => new CheckUpdate(),
 
                 _ => throw new NotImplementedException($"The command {command} is not implemented in the CommandsFactory."),
             };

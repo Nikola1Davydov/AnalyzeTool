@@ -63,27 +63,6 @@ const tableData = computed(() => {
       <Column field="parameterEmpty" header="Parameter Empty"></Column>
       <Column field="parameterFilled" header="Parameter Filled"> </Column>
       <Column field="parameterFilledPercent" header="Parameter Filled in %"> </Column>
-      <Column header="Selection">
-        <template #body="slotProps">
-          <div class="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              rounded
-              icon="pi pi-check"
-              title="Select filled"
-              @click="sendRequest('Isolation', slotProps.node.data.filledIds)"
-            />
-            <Button
-              type="button"
-              rounded
-              severity="danger"
-              icon="pi pi-times"
-              title="Select empty"
-              @click="sendRequest('Isolation', slotProps.node.data.emptyIds)"
-            />
-          </div>
-        </template>
-      </Column>
     </TreeTable>
   </div>
 </template>

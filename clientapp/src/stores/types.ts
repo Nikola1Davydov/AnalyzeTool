@@ -15,10 +15,3 @@ export interface ParameterData {
   isTypeParameter: boolean;
   orgin: number;
 }
-
-export enum RevitCommand {
-  GetCategories = "GetCategories",
-  UpdateDataParameterFilledEmptyPage = "UpdateDataParameterFilledEmptyPage",
-  Isolation = "Isolation",
-  Selection = "Selection",
-}

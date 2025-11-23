@@ -21,12 +21,37 @@ const filterParameter = ["Instance", "Type", "BuildIn", "Schared", "Project"];
 // UI filters
 const searchQuery = ref("");
 const selectedFilters = ref<string[]>([]);
+const selectedLevel = ref<string | null>(null);
+
+// Compute unique levels from the loaded items (fall back to parameter.level if element level missing)
+const levels = computed(() => {
+  const set = new Set<string>();
+  for (const el of items.value || []) {
+    if (el?.level) {
+      set.add(String(el.level));
+      continue;
+    }
+    if (el?.parameters && Array.isArray(el.parameters)) {
+      for (const p of el.parameters) {
+        if (p?.level) set.add(String(p.level));
+      }
+    }
+  }
+  return Array.from(set).sort();
+});
 
 // фильтрация (общая для всех компонентов)
 const filteredItems = computed(() => {
   let result = items.value;
 
   // По категории
+  // По уровню (фильтрация на уровне элементов)
+  if (selectedLevel.value) {
+    result = result.filter((x) => {
+      const elLevel = x?.level ?? (x?.parameters?.[0]?.level ?? null);
+      return elLevel === selectedLevel.value;
+    });
+  }
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     result = result
@@ -102,6 +127,8 @@ async function handleUpdateData() {
     <TopPanel
       :categories="sortedCategories"
       v-model:category="selectedCategory"
+      v-model:level="selectedLevel"
+      :levels="levels"
       v-model:search="searchQuery"
       v-model:filters="selectedFilters"
       :filteredParamters="filterParameter"

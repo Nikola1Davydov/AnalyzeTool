@@ -2,15 +2,17 @@
 import { ref, onMounted, provide } from "vue";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import { UpdateInfo, useUpdateStore } from "@/stores/useUpdateStore";
 import type { WebViewMessage } from "@/RevitBridge";
-import { sendRequest } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
+import FooterLayout from "./layout/FooterLayout.vue";
 
 const elementsStore = useElementsStore();
 const categoriesStore = useCategoriesStore();
+const updateStore = useUpdateStore();
 const sidebarVisible = ref(false);
 
 const openSidebar = () => {
@@ -32,7 +34,7 @@ onMounted(() => {
       return;
     }
 
-    sendRequest("GetCategories", null);
+    updateStore.loadUpdateData();
 
     (window as any).chrome.webview.addEventListener("message", (event) => {
       console.log("Из Revit пришло:", event.data, "тип:", typeof event.data);
@@ -47,6 +49,11 @@ onMounted(() => {
         if (payload.Command === "updateDataParameterFilledEmptyPage") {
           // payload is ElementItem[]
           elementsStore.setItems(payload.Payload as ElementItem[]);
+          return;
+        }
+        if (payload.Command === "CheckUpdate") {
+          // payload is UpdateInfo
+          updateStore.setUpdateInfo(payload.Payload as UpdateInfo);
           return;
         }
       } catch (err) {
@@ -74,6 +81,7 @@ provide("sidebarActions", {
         <router-view />
         <div class="layout-footer"></div>
       </div>
+      <FooterLayout />
     </div>
   </div>
 </template>
