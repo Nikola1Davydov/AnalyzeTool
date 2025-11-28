@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.RevitCommands.Commands
 {
-    internal class UpdateDataParameterFilledEmptyPage : IRevitTask
+    internal class GetDataByCategoryName : IRevitTask
     {
         public void Execute(JToken payload, WebView2 webView)
         {
@@ -19,7 +19,7 @@ namespace AnalyseTool.RevitCommands.Commands
             string json = JsonConvert.SerializeObject(new WebViewMessage() 
             {
                 Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(CommandsEnum.updateDataParameterFilledEmptyPage),
+                Command = nameof(CommandsEnum.GetDataByCategoryName),
                 Payload = JArray.FromObject(dataModels)
             });
 

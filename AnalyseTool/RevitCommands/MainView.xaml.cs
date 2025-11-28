@@ -36,8 +36,12 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
 
             string fileUrl = string.Empty;
 #if RELEASE_R24 || RELEASE_R25 || RELEASE_R26
-            //webView.CoreWebView2.SetVirtualHostNameToFolderMapping("app", distFolder, CoreWebView2HostResourceAccessKind.Allow);
-            fileUrl = PathProvider.ReleaseServerUrl;
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("app", PathProvider.RootDirectory, CoreWebView2HostResourceAccessKind.Allow);
+            fileUrl = "https://app/index.html";
+            webView.CoreWebView2InitializationCompleted += (s, e) =>
+            {
+                webView.CoreWebView2.Navigate("fileUrl");
+            };
 #else
             webView.CoreWebView2.OpenDevToolsWindow();
             fileUrl = PathProvider.DebugServerUrl;

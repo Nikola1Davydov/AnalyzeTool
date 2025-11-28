@@ -15,9 +15,9 @@ export interface CommandPayloads {
   Selection: { elementIds: number[] };
   Isolation: { elementIds: number[] };
   GetCategories: { null: null };
-  UpdateDataParameterFilledEmptyPage: { categoryName: string };
+  GetDataByCategoryName: { categoryName: string };
   CheckUpdate: UpdatePayload;
-  // … добавляешь сюда все команды
+  // … add hier a new commads and their payloads
 }
 
 export function sendRequest<C extends keyof CommandPayloads>(

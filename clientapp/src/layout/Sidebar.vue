@@ -24,13 +24,10 @@ const handleNavigation = (to) => {
     </template>
     <template #container>
       <nav>
-        <ul class="list-none p-0 m-0 overflow-hidden">
+        <ul class="overflow-hidden pr-2">
           <li v-for="item in menuItems" :key="item.to">
-            <Button
-              @click="handleNavigation(item.to)"
-              class="w-full flex items-center cursor-pointer p-4 rounded text-surface-700 hover:bg-surface-100 dark:text-surface-0 dark:hover:bg-surface-800 duration-150 transition-colors border-0 bg-transparent text-left"
-            >
-              <i :class="`${item.icon} mr-2`"></i>
+            <Button @click="handleNavigation(item.to)" class="w-full m-1">
+              <i :class="`${item.icon}`"></i>
               <span class="font-medium">{{ item.label }}</span>
             </Button>
           </li>

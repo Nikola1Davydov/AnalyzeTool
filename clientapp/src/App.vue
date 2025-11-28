@@ -46,7 +46,7 @@ onMounted(() => {
           categoriesStore.setCategories(payload.Payload as string[]);
           return;
         }
-        if (payload.Command === "updateDataParameterFilledEmptyPage") {
+        if (payload.Command === "GetDataByCategoryName") {
           // payload is ElementItem[]
           elementsStore.setItems(payload.Payload as ElementItem[]);
           return;

@@ -53,8 +53,11 @@ function onUpdateDataClick() {
 </script>
 
 <template>
-  <header class="card flex flex-row items-center w-full gap-5">
+  <header
+    class="card flex flex-row items-start lg:items-center w-full gap-3 flex-wrap lg:flex-nowrap"
+  >
     <Select
+      class="min-w-[160px] flex-1 w-full"
       :options="categoryOptions"
       placeholder="Select category"
       :modelValue="category"
@@ -62,30 +65,38 @@ function onUpdateDataClick() {
     />
 
     <Select
+      class="min-w-[140px] flex-1 w-full"
       :options="levelOptions"
       placeholder="Select Level"
       :modelValue="level"
       @update:modelValue="(val) => emit('update:level', val)"
     />
 
-    <IconField class="IconField flex-1">
-      <InputIcon class="search-icon" />
+    <IconField class="flex-1 min-w-[200px] w-full">
+      <InputIcon class="pi pi-search" />
       <InputText
         placeholder="Search"
+        class="min-w-[40px] shrink w-full"
         :modelValue="search"
         @update:modelValue="(val) => emit('update:search', val)"
       />
     </IconField>
 
-    <div class="flex flex-row gap-x-2">
+    <div class="flex flex-row flex-wrap gap-2 w-full lg:w-auto">
       <SelectButton
+        class="flex-1 min-w-[180px] lg:flex-none"
         :modelValue="filters"
         @update:modelValue="(val) => emit('update:filters', val)"
         :options="filteredParamters"
         multiple
         aria-labelledby="multiple"
       />
-      <Button class="flex-none" icon="pi pi-sync" label="Update Data" @click="onUpdateDataClick" />
+      <Button
+        class="flex-none w-full lg:w-auto"
+        icon="pi pi-sync"
+        label="Update Data"
+        @click="onUpdateDataClick"
+      />
     </div>
   </header>
 </template>

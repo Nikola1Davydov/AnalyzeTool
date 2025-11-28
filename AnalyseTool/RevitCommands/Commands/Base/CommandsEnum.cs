@@ -2,7 +2,7 @@
 {
     internal enum CommandsEnum
     {
-        updateDataParameterFilledEmptyPage,
+        GetDataByCategoryName,
         Selection,
         Isolation,
         Message,

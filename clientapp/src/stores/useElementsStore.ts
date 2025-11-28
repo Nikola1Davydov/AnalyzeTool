@@ -15,7 +15,7 @@ export const useElementsStore = defineStore("elements", () => {
 
   async function loadByCategory(categoryName: string): Promise<void> {
     const payload = { categoryName };
-    const result = await sendRequest("UpdateDataParameterFilledEmptyPage", payload);
+    const result = await sendRequest("GetDataByCategoryName", payload);
 
     if (Array.isArray(result)) {
       items.value = result as ElementItem[];

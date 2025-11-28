@@ -1,6 +1,5 @@
 <script setup>
 import { computed, ref } from "vue";
-import { sendRequest } from "@/RevitBridge";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

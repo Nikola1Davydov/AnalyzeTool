@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.4110890">
+﻿<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.4110890">
   <PropertyGroup>
     <StartupCommand>npm run dev</StartupCommand>
     <JavaScriptTestRoot>.\</JavaScriptTestRoot>
@@ -7,24 +7,6 @@
     <ShouldRunBuildScript>false</ShouldRunBuildScript>
     <!-- Folder where production build objects will be placed -->
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
+    <BuildCommand>npm run build</BuildCommand>
   </PropertyGroup>
-
-	<Target Name="CopyDistToRevitPlugin" AfterTargets="Build">
-		<Message Text="Copying clientapp/dist to Revit plugin..." Importance="high" />
-
-		<!-- путь куда копировать -->
-		<PropertyGroup>
-			<RevitPluginOutputFolder>$(SolutionDir)AnalyseTool\bin\$(Configuration)\net8.0-windows</RevitPluginOutputFolder>
-		</PropertyGroup>
-
-		<ItemGroup>
-			<DistFiles Include="$(BuildOutputFolder)\**\*.*" />
-		</ItemGroup>
-
-		<Copy
-		  SourceFiles="@(DistFiles)"
-		  DestinationFolder="$(RevitPluginOutputFolder)\clientapp\dist\%(RecursiveDir)"
-		  SkipUnchangedFiles="true"
-      />
-	</Target>
 </Project>

@@ -37,7 +37,7 @@ import { Panel } from "primevue";
       <br />
       <br />
 
-      To report issues or share ideas, visit:
+      <b>To report issues or share ideas, visit:</b>
       <a
         href="https://github.com/Nikola1Davydov/AnalyzeTool/issues"
         target="_blank"
