@@ -22,11 +22,6 @@ const openSidebar = () => {
 const closeSidebar = () => {
   sidebarVisible.value = false;
 };
-const message: WebViewMessage = {
-  Type: MessageType.Request,
-  Command: Commands.GetCategories,
-  Payload: null,
-};
 
 onMounted(() => {
   if ((window as any).chrome?.webview) {

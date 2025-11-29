@@ -5,6 +5,7 @@ import ParameterFilledEmptyPage from "@/layout/ParameterFilledEmptyPage/Paramete
 
 const routes = [
   { path: "/", component: ParameterFilledEmptyPage },
+  { path: "/index.html", redirect: "/" }, // чтобы загрузка index.html попадала на главную
   { path: "/about", component: AboutView },
 ];
 

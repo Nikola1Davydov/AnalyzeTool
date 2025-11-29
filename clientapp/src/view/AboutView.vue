@@ -1,6 +1,4 @@
-<script setup lang="ts">
-import { Panel } from "primevue";
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <div class="p-4">
