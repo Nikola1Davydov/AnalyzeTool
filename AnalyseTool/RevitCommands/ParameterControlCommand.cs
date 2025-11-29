@@ -44,6 +44,5 @@ namespace AnalyseTool.RevitCommands
             }
             return Result.Succeeded;
         }
-
     }
 }

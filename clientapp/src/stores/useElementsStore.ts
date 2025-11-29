@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { ElementItem } from "./types";
 import { useCategoriesStore } from "./useCategoriesStore";
-import { sendRequest } from "@/RevitBridge";
+import { Commands, sendRequest } from "@/RevitBridge";
 
 export const useElementsStore = defineStore("elements", () => {
   const items = ref<ElementItem[]>([]); // full list of elements
@@ -15,7 +15,7 @@ export const useElementsStore = defineStore("elements", () => {
 
   async function loadByCategory(categoryName: string): Promise<void> {
     const payload = { categoryName };
-    const result = await sendRequest("GetDataByCategoryName", payload);
+    const result = await sendRequest(Commands.GetDataByCategoryName, payload);
 
     if (Array.isArray(result)) {
       items.value = result as ElementItem[];

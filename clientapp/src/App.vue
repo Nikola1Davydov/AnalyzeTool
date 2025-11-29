@@ -5,6 +5,7 @@ import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { UpdateInfo, useUpdateStore } from "@/stores/useUpdateStore";
 import type { WebViewMessage } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
+import { Commands } from "@/RevitBridge";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
@@ -37,21 +38,21 @@ onMounted(() => {
     updateStore.loadUpdateData();
 
     (window as any).chrome.webview.addEventListener("message", (event) => {
-      console.log("Из Revit пришло:", event.data, "тип:", typeof event.data);
+      console.log("Data from Revit:", event.data, "type:", typeof event.data);
       try {
         const payload = event.data as WebViewMessage;
 
-        if (payload.Command === "GetCategories") {
+        if (payload.Command === Commands.GetCategories) {
           // payload is ElementItem[]
           categoriesStore.setCategories(payload.Payload as string[]);
           return;
         }
-        if (payload.Command === "GetDataByCategoryName") {
+        if (payload.Command === Commands.GetDataByCategoryName) {
           // payload is ElementItem[]
           elementsStore.setItems(payload.Payload as ElementItem[]);
           return;
         }
-        if (payload.Command === "CheckUpdate") {
+        if (payload.Command === Commands.CheckUpdate) {
           // payload is UpdateInfo
           updateStore.setUpdateInfo(payload.Payload as UpdateInfo);
           return;

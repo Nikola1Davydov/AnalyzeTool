@@ -12,13 +12,20 @@ export interface UpdatePayload {
 }
 
 export interface CommandPayloads {
-  Selection: { elementIds: number[] };
-  Isolation: { elementIds: number[] };
-  GetCategories: { null: null };
-  GetDataByCategoryName: { categoryName: string };
-  CheckUpdate: UpdatePayload;
+  [Commands.Selection]: { elementIds: number[] };
+  [Commands.Isolation]: { elementIds: number[] };
+  [Commands.GetCategories]: { null: null };
+  [Commands.GetDataByCategoryName]: { categoryName: string };
+  [Commands.CheckUpdate]: UpdatePayload;
   // … add hier a new commads and their payloads
 }
+export const Commands = {
+  Selection: "Selection",
+  Isolation: "Isolation",
+  GetCategories: "GetCategories",
+  GetDataByCategoryName: "GetDataByCategoryName",
+  CheckUpdate: "CheckUpdate",
+} as const;
 
 export function sendRequest<C extends keyof CommandPayloads>(
   command: C,

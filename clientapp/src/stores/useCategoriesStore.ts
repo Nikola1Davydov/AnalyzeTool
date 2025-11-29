@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { sendRequest } from "@/RevitBridge";
+import { Commands, sendRequest } from "@/RevitBridge";
 
 export const useCategoriesStore = defineStore("categories", () => {
   const categories = ref<string[]>([]); // full list of category names
@@ -13,7 +13,7 @@ export const useCategoriesStore = defineStore("categories", () => {
 
   async function loadCategories(): Promise<void> {
     // Ask Revit for categories
-    const result = await sendRequest("GetCategories", null);
+    const result = await sendRequest(Commands.GetCategories, null);
     if (Array.isArray(result)) {
       categories.value = result.filter((x) => typeof x === "string") as string[];
     } else {

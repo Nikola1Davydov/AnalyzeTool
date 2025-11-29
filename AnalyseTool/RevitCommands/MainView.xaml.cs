@@ -40,7 +40,7 @@ namespace AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab
             fileUrl = "https://app/index.html";
             webView.CoreWebView2InitializationCompleted += (s, e) =>
             {
-                webView.CoreWebView2.Navigate("fileUrl");
+                webView.CoreWebView2.Navigate(fileUrl);
             };
 #else
             webView.CoreWebView2.OpenDevToolsWindow();
