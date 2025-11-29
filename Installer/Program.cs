@@ -10,7 +10,8 @@ const string projectVersion = SharedData.ToolData.PLUGIN_VERSION;
 
 System.IO.DirectoryInfo solutionPath = TryGetSolutionDirectoryInfo();
 string targetPath(string revitVersion) => Path.Combine("%CommonAppDataFolder%", $@"Autodesk\Revit\Addins\20{revitVersion}");
-string plaginPath(string revitVersion)
+
+string pluginPath(string revitVersion)
 {
     int revitVersionInt = int.Parse(revitVersion);
     if (revitVersionInt < 25)
@@ -24,9 +25,9 @@ string plaginPath(string revitVersion)
 
 string[] versions =
 {
-    plaginPath("24"),
-    plaginPath("25"),
-    plaginPath("26"),
+    pluginPath("24"),
+    pluginPath("25"),
+    pluginPath("26"),
 };
 
 
@@ -55,7 +56,6 @@ Project project = new Project
 };
 
 WixEntity[] wixEntities = Generator.GenerateWixEntities(versions);
-//project.RemoveDialogsBetween(NativeDialogs.WelcomeDlg, NativeDialogs.CustomizeDlg);
 
 BuildSingleUserMsi();
 BuildMultiUserUserMsi();
@@ -66,7 +66,7 @@ void BuildSingleUserMsi()
     project.OutFileName = $"{outputName}-{project.Version}-SingleUser";
     project.Dirs =
     [
-        new InstallDir(@"%AppDataFolder%\Autodesk\Revit\Addins\", wixEntities)
+        new InstallDir(@"%AppDataFolder%\Autodesk\Revit\Addins\", wixEntities),
     ];
     project.BuildMsi();
 }
