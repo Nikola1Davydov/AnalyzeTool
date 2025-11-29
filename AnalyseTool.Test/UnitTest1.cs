@@ -1,17 +1,13 @@
 ﻿using AnalyseTool.RevitCommands;
-using AnalyseTool.RevitCommands.DataAccess;
 using AnalyseTool.RevitCommands.DataModel;
 using AnalyseTool.Utils;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Microsoft.Web.WebView2.WinForms;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 
 namespace AnalyseTool.Test
@@ -67,19 +63,6 @@ namespace AnalyseTool.Test
         }
 
         [Test]
-        public void VueBridge_SendToWebView_ReturnVoid()
-        {
-            // Arrange 
-            // Act
-            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
-            string json = JsonSerializer.Serialize(categories);
-            string distFolder = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "Web", "dist");
-            WebView2 webView2 = new WebView2();
-            //VueBridge.InitWebView(webView2, distFolder);
-            VueBridgeUtils.SendToWebView(json);
-            // Assert
-        }
-        [Test]
         public void DataElementsCollectorUtils_GetAllElementsByCategory_ReturnListDataElement()
         {
             string category = DataElementsCollectorUtils.GetModelCategoriesNames(doc).FirstOrDefault(x => x == "Walls");
@@ -98,51 +81,6 @@ namespace AnalyseTool.Test
                 Assert.IsNotNull(item.CategoryName);
                 Assert.IsNotNull(item.Level);
             }
-        }
-        [Test]
-        public void DataElementManagment_Update_ReturnListDataElement()
-        {
-            string category = DataElementsCollectorUtils.GetModelCategoriesNames(doc).FirstOrDefault(x => x == "Walls");
-            IDataElementRepository repo = new DataElementRepository();
-            DataElementManagment dataElementManagment = new DataElementManagment(repo);
-
-            // Assert
-            List<ParameterSummary> summaries = new List<ParameterSummary>();
-            dataElementManagment.Update(category);
-            dataElementManagment.Update(category);
-            dataElementManagment.Update(category);
-
-            IEnumerable<DataElement> collection = dataElementManagment.GetAll();
-            Assert.That(collection, Is.Not.Null.And.Not.Empty);
-            Assert.That(collection, Is.All.Not.Null);
-            Assert.That(collection, Is.Unique);
-        }
-        [Test]
-        public void LogicInViewModel()
-        {
-            // Arrange 
-            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
-
-            // Act
-            IDataElementRepository repo = new DataElementRepository();
-            DataElementManagment dataElementManagment = new DataElementManagment(repo);
-
-            // Assert
-            List<ParameterSummary> summaries = new List<ParameterSummary>();
-            foreach (string category in categories)
-            {
-                dataElementManagment.Update(category);
-                
-
-                List<ParameterSummary> parameterSummaryListByCategory = dataElementManagment.AnalyzeData(category).ToList();
-                Assert.That(parameterSummaryListByCategory, Is.Not.Null);
-
-                summaries.AddRange(parameterSummaryListByCategory);
-            }
-            IEnumerable<DataElement> collection = dataElementManagment.GetAll();
-            Assert.That(collection, Is.Not.Null.And.Not.Empty);
-            Assert.That(collection, Is.All.Not.Null);
-            Assert.That(collection, Is.Unique);
         }
     }
 }

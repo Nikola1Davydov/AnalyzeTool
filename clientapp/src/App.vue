@@ -5,7 +5,7 @@ import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { UpdateInfo, useUpdateStore } from "@/stores/useUpdateStore";
 import type { WebViewMessage } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
-import { Commands } from "@/RevitBridge";
+import { Commands, MessageType } from "@/RevitBridge";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
@@ -23,8 +23,8 @@ const closeSidebar = () => {
   sidebarVisible.value = false;
 };
 const message: WebViewMessage = {
-  Type: "Request",
-  Command: "GetCategories",
+  Type: MessageType.Request,
+  Command: Commands.GetCategories,
   Payload: null,
 };
 

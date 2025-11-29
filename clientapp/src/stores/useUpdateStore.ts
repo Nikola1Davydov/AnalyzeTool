@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { sendRequest } from "@/RevitBridge";
+import { Commands, sendRequest } from "@/RevitBridge";
 
 export interface UpdateInfo {
   currentVersion?: string;
@@ -23,7 +23,7 @@ export const useUpdateStore = defineStore("updateInfo", () => {
   };
 
   async function loadUpdateData(): Promise<void> {
-    sendRequest("CheckUpdate", null);
+    sendRequest(Commands.CheckUpdate, null);
   }
 
   const resetUpdateInfo = () => {

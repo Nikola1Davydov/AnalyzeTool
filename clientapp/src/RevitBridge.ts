@@ -27,6 +27,11 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
 } as const;
 
+export const enum MessageType {
+  Request = "Request",
+  Response = "Response",
+}
+
 export function sendRequest<C extends keyof CommandPayloads>(
   command: C,
   payload: CommandPayloads[C]
@@ -38,7 +43,7 @@ export function sendRequest<C extends keyof CommandPayloads>(
     }
 
     const message: WebViewMessage = {
-      Type: "Request",
+      Type: MessageType.Request,
       Command: command,
       Payload: payload,
     };
