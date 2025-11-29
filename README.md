@@ -28,7 +28,7 @@ AnalyseTool is a Revit plugin that inspects element parameters and lets you act 
 
 1. Open your project and start `Add-Ins -> AnalyseTool`.
 2. Pick a category then click button "Update Data"; parameters and elements load automatically.
-3. Use filters to narrow results. Click the chart to select elements with filled/empty values; use isolate to focus the view.
+3. Use filters to narrow results. Click the chart to select elements with filled/empty values;
 
 ## Architecture
 
