@@ -1,13 +1,13 @@
-
-
 # AnalyseTool Plugin for Revit
 
-[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2024--2026-blue) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
+[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
 ## Overview
+
 ![AnalyseTool Screenshot](img/Overview_2.png)
 
 The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users to analyze and export parameter data of elements within a Revit project. With this plugin, you can easily export data to CSV formats, making it easier to manage and share project information.
+
 ## ⚙️ Installation
 
 1. **Download it**: [AnalyseTool Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases)
@@ -38,13 +38,15 @@ The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users t
 3. Click `Save`.
 
 ## 🔧 Development
+
 #### For Developers
 
 1. Clone the repository:
    ```sh
    git clone https://github.com/your-repo/AnalyseTool.git
+   ```
 2. Open the Solution:
-   -  Open the solution file in Visual Studio.
+   - Open the solution file in Visual Studio.
 3. Restore NuGet Packages:
    - Ensure all required NuGet packages are restored.
 4. Build the Solution:
