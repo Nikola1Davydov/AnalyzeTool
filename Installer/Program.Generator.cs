@@ -14,8 +14,6 @@ public static class Generator
     /// </summary>
     public static WixEntity[] GenerateWixEntities(IEnumerable<string> args)
     {
-        string clienAppPath() => Path.Combine(TryGetSolutionDirectoryInfo().FullName, $@"clientapp\dist");
-
         Regex versionRegex = new Regex(@"\d+");
         Dictionary<string, List<WixEntity>> versionStorages = new Dictionary<string, List<WixEntity>>();
 
@@ -41,19 +39,16 @@ public static class Generator
             revitFeature.Add(feature);
 
             Files files = new Files(feature, $@"{directory}\*.*", FilterEntities);
-            Files filesClienApp = new Files(feature, $@"{clienAppPath()}\*.*", FilterEntities);
 
             if (versionStorages.TryGetValue(fileVersion, out List<WixEntity>? storage))
             {
                 storage.Add(files);
-                storage.Add(filesClienApp);
             }
             else
             {
                 versionStorages[fileVersion] = new List<WixEntity>
                 {
                     files,
-                    filesClienApp
                 };
             }
 
