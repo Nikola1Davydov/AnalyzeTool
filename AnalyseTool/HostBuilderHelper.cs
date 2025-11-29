@@ -1,6 +1,5 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataAccess;
+﻿using AnalyseTool.RevitCommands.DataAccess;
 using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
-using AnalyseTool.RevitCommands.ParameterControl.MVVM.ParameterAnalyseTab;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AnalyseTool
@@ -12,16 +11,10 @@ namespace AnalyseTool
         {
             ServiceCollection services = new ServiceCollection();
 
-            services.AddTransient<IDataElementRepository, DataElementRepository>();
-            services.AddTransient<DataElementManagment>();
-
-            services.AddTransient<MainViewModel>();
+            services.AddSingleton<IDataElementRepository, DataElementRepository>();
             services.AddTransient<MainView>();
-            services.AddTransient<ParameterAnalyseViewModel>();
-
 
             _serviceProvider = services.BuildServiceProvider();
-
         }
         public static T GetService<T>() where T : class
         {

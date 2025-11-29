@@ -1,20 +1,16 @@
 # Changelog
 
 ## [1.1.0] – 2025-09-19
-### Added
-- Support for Revit 2026.
-- Basic WPF interface with MaterialDesign styles.
-- Add Nuke for CI/CD
-- Add UnitTests
+### What’s new:
+- Support for Revit 2026
+- Brand-new visual interface
+- Absolutely all parameters are visible now (not only shared)
+- Element selection via right-click on rows
+- Category selection via ComboBox instead of loading all at once
+- Parameter filtering by: Instance/Type, BuiltIn/Shared/Project
 
-### Changed
-- Change installer to WixSharp
-- Refactored build script for cleaner output structure.
-- Improved deployment targets for multiple Revit versions.
-- Internal code cleanup of ViewModels and Configuration handling.
-  
-### Deleted
-- Revit 2023 not more supported
+### What’s gone:
+- Revit 2023 support removed (focus on newer versions)
 
 ## [1.0.0] – 2024-09-18
 ### Added

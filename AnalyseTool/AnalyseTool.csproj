@@ -5,21 +5,15 @@
         <LangVersion>latest</LangVersion>
         <PlatformTarget>x64</PlatformTarget>
         <ImplicitUsings>true</ImplicitUsings>
-        <Configurations>Debug R24;Debug R25;Debug R26</Configurations>
-        <Configurations>$(Configurations);Release R24;Release R25;Release R26</Configurations>
+        <Configurations>Debug R25;Debug R26</Configurations>
+        <Configurations>$(Configurations);Release R25;Release R26</Configurations>
 		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+		<Nullable>enable</Nullable>
 		
 		<PluginSubDir>AnalyseTool</PluginSubDir>
 
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
-
-	<PropertyGroup Condition="$(Configuration.Contains('R24'))">
-		<RevitVersion>2024</RevitVersion>
-		<TargetFramework>net48</TargetFramework>
-		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
-		<RevitAddinDeployDir>$(RevitAddinsRoot)\AnalyseTool</RevitAddinDeployDir>
-	</PropertyGroup>
 	
     <PropertyGroup Condition="$(Configuration.Contains('R25'))">
         <RevitVersion>2025</RevitVersion>
@@ -43,16 +37,12 @@
 	</PropertyGroup>
 	
     <ItemGroup>
-        <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Resources\" />
-      <Folder Include="RevitCommands\AboutMe\" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
@@ -62,12 +52,20 @@
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
 		<Compile Remove="Config\**" />
+		<Compile Remove="Resources\**" />
+		<Compile Remove="Web\**" />
 		<EmbeddedResource Remove="AboutMe\**" />
 		<EmbeddedResource Remove="Config\**" />
+		<EmbeddedResource Remove="Resources\**" />
+		<EmbeddedResource Remove="Web\**" />
 		<None Remove="AboutMe\**" />
 		<None Remove="Config\**" />
+		<None Remove="Resources\**" />
+		<None Remove="Web\**" />
 		<Page Remove="AboutMe\**" />
 		<Page Remove="Config\**" />
+		<Page Remove="Resources\**" />
+		<Page Remove="Web\**" />
 
 		 <!--сам .addin файл--> 
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
@@ -81,27 +79,43 @@
 
 	<Target Name="RearrangeOutputs" AfterTargets="Build">
 		<ItemGroup>
-			<BuiltFiles Include="$(OutputPath)*.*"
-						Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
+			<BuiltFiles Include="$(OutputPath)*.*" Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
 		</ItemGroup>
-
 		<MakeDir Directories="$(OutputPath)$(PluginSubDir)" />
 		<Move SourceFiles="@(BuiltFiles)" DestinationFolder="$(OutputPath)$(PluginSubDir)" />
 	</Target>
 
-	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' 
-																				 Or '$(Configuration)' == 'Debug R25' 
-																				 Or '$(Configuration)' == 'Debug R26'">
-		<!-- создать папку для dll -->
+	<Target Name="CopyToRevitFolder" AfterTargets="RearrangeOutputs" Condition=" '$(Configuration)' == 'Debug R24' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R25' &#xD;&#xA;																				 Or '$(Configuration)' == 'Debug R26'">
+		 <!--создать папку для dll--> 
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
 		<ItemGroup>
 			<FilesToCopy Include="$(OutputPath)$(PluginSubDir)\*.*" />
 		</ItemGroup>
-		<!-- скопировать все dll и прочие артефакты в подпапку -->
-		<Copy SourceFiles="@(FilesToCopy)"  DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
+		 <!--скопировать все dll и прочие артефакты в подпапку--> 
+		<Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(RevitAddinDeployDir)" SkipUnchangedFiles="true" />
 
-		<!-- скопировать сам .addin в корень -->
+		 <!--скопировать сам .addin в корень--> 
 		<Copy SourceFiles="@(AddinFile)" DestinationFolder="$(RevitAddinsRoot)" SkipUnchangedFiles="true" />
+	</Target>
+	
+	<Target Name="CopyDistToRevitPlugin" AfterTargets="Build">
+		<Message Text="Copying clientapp/dist to Revit plugin..." Importance="high" />
+
+		<PropertyGroup>
+			<DistSource>$(SolutionDir)clientapp\dist</DistSource>
+			<!--<DistTarget>$(SolutionDir)AnalyseTool\bin\$(Configuration)\net8.0-windows\AnalyseTool\</DistTarget>-->
+			<DistTarget>$(OutputPath)\AnalyseTool</DistTarget>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<DistFiles Include="$(DistSource)\**\*.*" />
+		</ItemGroup>
+
+		<Copy
+			SourceFiles="@(DistFiles)"
+			DestinationFolder="$(DistTarget)\%(RecursiveDir)"
+			SkipUnchangedFiles="true"
+      />
 	</Target>
 	
 </Project>

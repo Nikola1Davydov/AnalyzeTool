@@ -39,13 +39,17 @@ public static class Generator
             revitFeature.Add(feature);
 
             Files files = new Files(feature, $@"{directory}\*.*", FilterEntities);
+
             if (versionStorages.TryGetValue(fileVersion, out List<WixEntity>? storage))
             {
                 storage.Add(files);
             }
             else
             {
-                versionStorages.Add(fileVersion, [files]);
+                versionStorages[fileVersion] = new List<WixEntity>
+                {
+                    files,
+                };
             }
 
             LogFeatureFiles(directory, fileVersion);
@@ -77,5 +81,15 @@ public static class Generator
         {
             Console.WriteLine($"'{assembly}'");
         }
+    }
+    private static System.IO.DirectoryInfo TryGetSolutionDirectoryInfo(string currentPath = null)
+    {
+        System.IO.DirectoryInfo directory = new System.IO.DirectoryInfo(
+            currentPath ?? System.IO.Directory.GetCurrentDirectory());
+        while (directory != null && !directory.GetFiles("*.sln").Any())
+        {
+            directory = directory.Parent;
+        }
+        return directory;
     }
 }
