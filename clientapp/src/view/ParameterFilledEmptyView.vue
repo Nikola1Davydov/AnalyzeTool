@@ -4,9 +4,9 @@ import { storeToRefs } from "pinia";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 
-import BodyTable from "./BodyTable.vue";
-import Chart from "./Chart.vue";
-import TopPanel from "./TopPanel.vue";
+import BodyTable from "./ParameterFilledEmptyPage/BodyTable.vue";
+import Chart from "./ParameterFilledEmptyPage/Chart.vue";
+import TopPanel from "./ParameterFilledEmptyPage/TopPanel.vue";
 import Cart from "@/components/Cart.vue";
 
 const categoriesStore = useCategoriesStore();
@@ -48,7 +48,7 @@ const filteredItems = computed(() => {
   // По уровню (фильтрация на уровне элементов)
   if (selectedLevel.value) {
     result = result.filter((x) => {
-      const elLevel = x?.level ?? (x?.parameters?.[0]?.level ?? null);
+      const elLevel = x?.level ?? x?.parameters?.[0]?.level ?? null;
       return elLevel === selectedLevel.value;
     });
   }
