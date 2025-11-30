@@ -19,15 +19,19 @@ sealed partial class Build
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
         {
-            // MSI-Datei zum ArtifactsDirectory kopieren
-            AbsolutePath msiFile = RootDirectory / "Installer" / "output" / "Analyse Tool-1.1.0.0-SingleUser.msi";
-            if (File.Exists(msiFile))
+            // Alle MSI-Dateien ins ArtifactsDirectory kopieren
+            var installerOutput = RootDirectory / "Installer" / "output";
+
+            foreach (var msi in installerOutput.GlobFiles("*.msi"))
             {
-                Log.Information(msiFile);
-                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool-1.1.0.0-MultiUser.msi"), true);
-                File.Copy(msiFile, Path.Combine(ArtifactsDirectory, "Analyse Tool-1.1.0.0-SingleUser.msi"), true);
+                var fileName = Path.GetFileName(msi);
+                var target = ArtifactsDirectory / fileName;
+
+                Log.Information("Copying {File}", msi);
+                File.Copy(msi, target, overwrite: true);
             }
 
+            // GitHub Daten
             string gitHubName = GitRepository.GetGitHubName();
             string gitHubOwner = GitRepository.GetGitHubOwner();
 
