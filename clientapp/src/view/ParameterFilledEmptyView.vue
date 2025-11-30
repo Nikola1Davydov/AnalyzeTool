@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
@@ -22,6 +22,7 @@ const filterParameter = ["Instance", "Type", "BuildIn", "Schared", "Project"];
 const searchQuery = ref("");
 const selectedFilters = ref<string[]>([]);
 const selectedLevel = ref<string | null>(null);
+const loading = ref(false);
 
 // Compute unique levels from the loaded items (fall back to parameter.level if element level missing)
 const levels = computed(() => {
@@ -113,13 +114,26 @@ onMounted(async () => {
   }
 });
 async function handleUpdateData() {
-  if (!selectedCategory.value) {
-    console.warn("No category selected");
-    return;
+  loading.value = true;
+  try {
+    if (!selectedCategory.value) {
+      console.warn("No category selected");
+      return;
+    }
+    await elementsStore.loadByCategory(selectedCategory.value);
+  } catch (err) {
+    console.error("Failed to load elements", err);
+  } finally {
+    loading.value = false;
   }
-
-  await elementsStore.loadByCategory(selectedCategory.value);
 }
+watch(
+  () => items.value,
+  () => {
+    // Stop spinner once store updates with new data
+    if (loading.value) loading.value = false;
+  }
+);
 </script>
 
 <template>
@@ -132,6 +146,7 @@ async function handleUpdateData() {
       v-model:search="searchQuery"
       v-model:filters="selectedFilters"
       :filteredParamters="filterParameter"
+      :loading="loading"
       @update-data="handleUpdateData"
     />
     <Cart title="Parameters by Category">

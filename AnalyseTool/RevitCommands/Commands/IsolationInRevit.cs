@@ -10,6 +10,7 @@ namespace AnalyseTool.RevitCommands.Commands
     {
         public void Execute(JToken data, WebView2 webView)
         {
+            
             IsolationPayload? list = data.ToObject<IsolationPayload>();
             if (list == null) return;
 
@@ -21,6 +22,12 @@ namespace AnalyseTool.RevitCommands.Commands
             {
                 RevitTransactions.Run(transactionName, () =>
                 {
+                    if (!Context.Document.ActiveView.IsModifiable) return;
+
+                    if(Context.Document.ActiveView.IsTemporaryHideIsolateActive())
+                    {
+                        Context.Document.ActiveView.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
+                    }
                     Context.Document.ActiveView.IsolateElementsTemporary(elementsIds);
                 });
             };

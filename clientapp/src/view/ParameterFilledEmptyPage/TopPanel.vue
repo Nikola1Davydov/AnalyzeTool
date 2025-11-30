@@ -2,34 +2,14 @@
 import { computed } from "vue";
 
 const props = defineProps({
-  categories: {
-    type: Array,
-    default: () => [],
-  },
-  category: {
-    type: String,
-    default: null,
-  },
-  levels: {
-    type: Array,
-    default: () => [],
-  },
-  level: {
-    type: String,
-    default: null,
-  },
-  search: {
-    type: String,
-    default: "",
-  },
-  filters: {
-    type: Array,
-    default: () => [],
-  },
-  filteredParamters: {
-    type: Array,
-    default: () => [],
-  },
+  categories: { type: Array, default: () => [] },
+  category: { type: String, default: null },
+  levels: { type: Array, default: () => [] },
+  level: { type: String, default: null },
+  search: { type: String, default: "" },
+  filters: { type: Array, default: () => [] },
+  filteredParamters: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -94,6 +74,8 @@ function onUpdateDataClick() {
       <Button
         class="flex-none w-full lg:w-auto"
         icon="pi pi-sync"
+        :loading="loading"
+        :disabled="!category || loading"
         label="Update Data"
         @click="onUpdateDataClick"
       />

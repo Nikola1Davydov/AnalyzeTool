@@ -7,6 +7,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   filters: { type: Array, default: () => [] },
   filterOptions: { type: Array, default: () => [] },
+  levels: { type: Array, default: () => [] },
+  level: { type: String, default: null },
   search: { type: String, default: "" },
   clickAction: { type: String, default: "Selection" },
   actionOptions: { type: Array, default: () => ["Selection", "Isolation"] },
@@ -16,11 +18,13 @@ const emit = defineEmits([
   "update:category",
   "update:filters",
   "update:search",
+  "update:level",
   "update:clickAction",
   "update-data",
 ]);
 
 const categoryOptions = computed(() => props.categories as string[]);
+const levelOptions = computed(() => [null, ...(props.levels as string[])]);
 const clickActionOptions = computed(() => props.actionOptions as string[]);
 
 function onUpdateDataClick() {
@@ -49,6 +53,14 @@ function onUpdateDataClick() {
         @update:modelValue="(val) => emit('update:search', val)"
       />
     </IconField>
+
+    <Select
+      class="min-w-[180px] flex-1 w-full"
+      :options="levelOptions"
+      placeholder="Select level"
+      :modelValue="level"
+      @update:modelValue="(val) => emit('update:level', val)"
+    />
 
     <Select
       class="min-w-[180px] flex-1 w-full"
