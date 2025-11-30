@@ -77,6 +77,10 @@
 	  </None>
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="RevitCommands\Commands\Base\" />
+	</ItemGroup>
+
 	<Target Name="RearrangeOutputs" AfterTargets="Build">
 		<ItemGroup>
 			<BuiltFiles Include="$(OutputPath)*.*" Exclude="$(OutputPath)*.pdb;$(OutputPath)*.addin" />
@@ -111,11 +115,7 @@
 			<DistFiles Include="$(DistSource)\**\*.*" />
 		</ItemGroup>
 
-		<Copy
-			SourceFiles="@(DistFiles)"
-			DestinationFolder="$(DistTarget)\%(RecursiveDir)"
-			SkipUnchangedFiles="true"
-      />
+		<Copy SourceFiles="@(DistFiles)" DestinationFolder="$(DistTarget)\%(RecursiveDir)" SkipUnchangedFiles="true" />
 	</Target>
 	
 </Project>
