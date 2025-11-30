@@ -1,7 +1,7 @@
 ﻿using AnalyseTool.RevitCommands.Commands;
 using Autodesk.Revit.UI;
 
-namespace AnalyseTool.RevitCommands.DataModel
+namespace AnalyseTool.RevitCommands.Commands.Base
 {
     internal class CommandsFactory
     {

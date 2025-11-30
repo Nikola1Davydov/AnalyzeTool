@@ -1,4 +1,4 @@
-﻿namespace AnalyseTool.RevitCommands.DataModel
+﻿namespace AnalyseTool.RevitCommands.Model
 {
     internal enum WebMessageTypeEnum
     {

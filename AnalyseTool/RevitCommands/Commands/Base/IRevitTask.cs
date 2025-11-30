@@ -1,7 +1,7 @@
 ﻿using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.RevitCommands.DataModel
+namespace AnalyseTool.RevitCommands.Commands.Base
 {
     internal interface IRevitTask
     {

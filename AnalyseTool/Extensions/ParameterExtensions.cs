@@ -1,13 +1,8 @@
-﻿using Autodesk.Revit.DB;
+﻿using AnalyseTool.RevitCommands.Model;
+using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Extensions
 {
-    public enum ParameterOrgin
-    {
-        Shared,
-        Project,
-        BuiltIn
-    }
     internal static class ParameterExtensions
     {
         public static ParameterOrgin GetParameterOrgin(this Parameter parameter)
