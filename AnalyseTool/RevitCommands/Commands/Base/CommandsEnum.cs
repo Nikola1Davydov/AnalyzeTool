@@ -7,6 +7,7 @@
         Isolation,
         Message,
         GetCategories,
+        GetWarnings,
         CheckUpdate,
     }
 }
