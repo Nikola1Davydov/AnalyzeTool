@@ -2,7 +2,7 @@
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.RevitCommands.DataModel
+namespace AnalyseTool.RevitCommands.Model
 {
     public sealed record DataElement : IEquatable<DataElement>
     {
@@ -25,7 +25,7 @@ namespace AnalyseTool.RevitCommands.DataModel
             this.Element = Element;
             this.CategoryName = Element.Category?.Name;
             this.Name = Element.Name;
-            Id = Element.Id.Value();
+            Id = Element.Id.Value;
             Level = Element.Document.GetElement(Element.LevelId)?.Name ?? string.Empty;
             IsElementType = Element.GetTypeId() == ElementId.InvalidElementId;
             Parameters = GetParameters(Element.Parameters).ToList();

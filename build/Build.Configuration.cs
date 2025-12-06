@@ -22,7 +22,8 @@ sealed partial class Build
     /// </summary>
     Project[] Bundles =>
     [
-        Solution.AnalyseTool
+        Solution.clientapp,
+        Solution.AnalyseTool_Launcher,
     ];
 
     /// <summary>

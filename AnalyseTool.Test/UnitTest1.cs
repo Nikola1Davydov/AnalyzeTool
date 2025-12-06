@@ -1,5 +1,5 @@
 ﻿using AnalyseTool.RevitCommands;
-using AnalyseTool.RevitCommands.DataModel;
+using AnalyseTool.RevitCommands.Model;
 using AnalyseTool.Utils;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;

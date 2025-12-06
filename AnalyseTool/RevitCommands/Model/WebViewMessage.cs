@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.RevitCommands.Commands.Base
+namespace AnalyseTool.RevitCommands.Model
 {
     internal record WebViewMessage
     {

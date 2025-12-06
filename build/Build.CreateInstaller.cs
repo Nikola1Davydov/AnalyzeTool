@@ -1,14 +1,6 @@
 ﻿using Nuke.Common;
-using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
-using Nuke.Common.Utilities;
 using Serilog;
-using Serilog.Events;
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 sealed partial class Build
@@ -17,7 +9,7 @@ sealed partial class Build
     ///     Create the .msi installers.
     /// </summary>
     Target CreateInstaller => _ => _
-        .DependsOn(Compile)
+        .DependsOn(BuildLauncher)
         .Executes(() =>
         {
             const string configuration = "Release";

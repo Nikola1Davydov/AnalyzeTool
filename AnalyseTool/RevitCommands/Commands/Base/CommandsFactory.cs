@@ -1,4 +1,6 @@
-﻿using Autodesk.Revit.UI;
+﻿using AnalyseTool.RevitCommands.Commands;
+using AnalyseTool.Services;
+using Autodesk.Revit.UI;
 
 namespace AnalyseTool.RevitCommands.Commands.Base
 {
@@ -7,7 +9,7 @@ namespace AnalyseTool.RevitCommands.Commands.Base
         public static IRevitTask CreateRevitCommand(string command)
         {
             bool result = Enum.TryParse<CommandsEnum>(command, ignoreCase: true, out CommandsEnum parsedCommand);
-            if (!result) TaskDialog.Show("Error", $"The command {command} is not recognized.");
+            if (!result) UserDialogService.Error($"The command {command} is not recognized.");
 
             return parsedCommand switch
             {

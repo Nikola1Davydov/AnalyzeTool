@@ -14,10 +14,10 @@ sealed partial class Build
     ///     Create the Autodesk .bundle package.
     /// </summary>
     Target CreateBundle => _ => _
-        .DependsOn(Compile)
+        .DependsOn(BuildLauncher)
         .Executes(() =>
         {
-            Project project = Solution.AnalyseTool;
+            Project project = Solution.AnalyseTool_Launcher;
             Log.Information("Project: {Name}", project.Name);
 
             string[] targetDirectories = Directory.GetDirectories(project.Directory, "Release *", SearchOption.AllDirectories);
