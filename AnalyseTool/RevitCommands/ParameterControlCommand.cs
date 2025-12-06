@@ -24,7 +24,7 @@ namespace AnalyseTool.RevitCommands
 
                 ExternalEventHub.Initialize(commandData.Application);
 
-                MainView subview = HostBuilderHelper.GetService<MainView>();
+                MainView subview = new MainView();
 
                 subview.webView.WebMessageReceived += (sender, args) =>
                 {

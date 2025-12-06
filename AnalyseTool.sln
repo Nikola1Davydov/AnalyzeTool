@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Test", "Analyse
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "clientapp", "ClientApp\clientapp.esproj", "{24581855-81DC-CBC5-2066-6239B39AC343}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Launcher", "AnalyseTool.Launcher\AnalyseTool.Launcher.csproj", "{BF8554B4-844E-4FC8-960A-1C156A62A5F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R25|Any CPU = Debug R25|Any CPU
@@ -78,6 +80,18 @@ Global
 		{24581855-81DC-CBC5-2066-6239B39AC343}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{24581855-81DC-CBC5-2066-6239B39AC343}.Release|Any CPU.Build.0 = Release|Any CPU
 		{24581855-81DC-CBC5-2066-6239B39AC343}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug R25|Any CPU.ActiveCfg = Debug R25|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug R25|Any CPU.Build.0 = Debug R25|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug R26|Any CPU.ActiveCfg = Debug R26|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug R26|Any CPU.Build.0 = Debug R26|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release R25|Any CPU.ActiveCfg = Release R25|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release R25|Any CPU.Build.0 = Release R25|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release R26|Any CPU.ActiveCfg = Release R26|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release R26|Any CPU.Build.0 = Release R26|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF8554B4-844E-4FC8-960A-1C156A62A5F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

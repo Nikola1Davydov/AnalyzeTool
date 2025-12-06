@@ -32,6 +32,5 @@ namespace AnalyseTool.RevitCommands.Commands
 
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }
-
     }
 }

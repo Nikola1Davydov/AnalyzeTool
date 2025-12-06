@@ -11,12 +11,9 @@ namespace AnalyseTool
     /// </summary>
     public class App : IExternalApplication
     {
-        private UIControlledApplication Application;
         public Result OnStartup(UIControlledApplication application)
         {
-            Application = application;
             LoadDll();
-            HostBuilderHelper.StartHost();
 
             // Add a new ribbon panel
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");

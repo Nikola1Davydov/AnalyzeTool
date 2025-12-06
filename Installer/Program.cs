@@ -13,7 +13,7 @@ string targetPath(string revitVersion) => Path.Combine("%CommonAppDataFolder%", 
 
 string pluginPath(string revitVersion)
 {
-    return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}\net8.0-windows");
+    return Path.Combine(solutionPath.FullName, $@"AnalyseTool\bin\Release R{revitVersion}");
 }
 
 string[] versions =
