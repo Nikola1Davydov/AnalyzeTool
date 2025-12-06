@@ -27,7 +27,7 @@ public static class Generator
         foreach (string directory in args)
         {
             DirectoryInfo directoryInfo = new DirectoryInfo(directory);
-            string fileVersionNumber = versionRegex.Match(directoryInfo.Parent.Name).Value;
+            string fileVersionNumber = versionRegex.Match(directoryInfo.Name).Value;
             string fileVersion = (int.Parse(fileVersionNumber) + 2000).ToString();
             Feature feature = new Feature
             {

@@ -24,9 +24,10 @@
     "ExecutableTarget": {
       "type": "string",
       "enum": [
+        "BuildClientApp",
+        "BuildLauncher",
         "Clean",
         "CleanFailedRelease",
-        "Compile",
         "CreateBundle",
         "CreateInstaller",
         "PublishGitHub"
