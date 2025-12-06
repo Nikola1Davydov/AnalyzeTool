@@ -8,7 +8,7 @@ const router = useRouter();
 
 const menuItems = [
   { label: "Home", icon: "pi pi-home", to: "/" },
-  { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
+  // { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
   { label: "Parameter Value Check", icon: "pi pi-check-square", to: "/parametervaluecheck" },
   { label: "About", icon: "pi pi-info-circle", to: "/about" },
 ];
