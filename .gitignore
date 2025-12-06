@@ -9,6 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+/img/lindkin
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -396,3 +397,49 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.env
+.env.*.local
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.user
+.vs
+
+# .NET build artifacts
+bin/
+obj/
+
+*.tsbuildinfo
+
+.eslintcache
+
+# Cypress
+/cypress/videos/
+/cypress/screenshots/
+
+# Vitest
+__screenshots__/
+

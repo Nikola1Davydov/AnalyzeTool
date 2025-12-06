@@ -1,64 +1,109 @@
+# AnalyseTool for Revit
 
+[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
-# AnalyseTool Plugin for Revit
-
-[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2023--2025-blue) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
-
-![AnalyzeTool_logo (1)](https://github.com/user-attachments/assets/68c9e4b7-90fe-48b7-b596-c7884a984c7a)
 ## Overview
-![AnalyseTool Screenshot](img/Overview_2.png)
 
-The AnalyseTool Plugin is a powerful tool for Autodesk Revit that allows users to analyze and export parameter data of elements within a Revit project. With this plugin, you can easily export data to CSV formats, making it easier to manage and share project information.
-## ⚙️ Installation
+AnalyseTool is a Revit plugin that inspects element parameters and lets you act on them right from a modern WebView2 UI. The new frontend is built with Vue + PrimeVue, so anyone who knows only JavaScript or TypeScript can extend the UI and business logic without touching C#.
+![AnalyseTool Screenshot](img/Overview.png)
 
-1. **Download it**: [AnalyseTool Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases)
-2. **Install it**
-3. **Use it**
-4. **Give some Feedback**
+## Compatibility
 
-## 🚀 Features
+- Revit 2025�2026
+- Windows with WebView2 and .NET 8
 
-- **Parameter Analysis**: Analyze all parameters in your Revit project. Parameters are grouped by name and categories. You can also view parameters grouped by value — showing which are empty and which are filled.
-- **Export to CSV**: Export analyzed data to a CSV file.
+## Features
 
-![Filter in AnalyzeTool](img/filter.png)
+- View every parameter grouped by category; filter by Instance/Type or BuiltIn/Shared/Project.
+- Clickable fill/empty chart to select elements with or without values.
+- Select or temporarily isolate elements directly from the web UI.
+- Update checker against GitHub releases.
 
-## 🛠 Usage
+## Installation
 
-#### Analyzing Parameters
+1. Download the latest installer/zip from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest).
+2. Close Revit and install.
 
-1. **Open Revit Project**: Open your project in Revit.
-2. **Launch AnalyseTool**: Go to `Add-Ins` > `AnalyseTool` to launch the plugin.
-3. **View Parameters**: The plugin will display a list of parameters for elements in your project.
-4. **Filter Parameters**: Use the filter box to search for specific parameters.
+## How to Use
 
-#### Export to CSV
+1. Open your project and start `Add-Ins -> AnalyseTool`.
+2. Pick a category; parameters and elements load automatically.
+3. Use filters to narrow results. Click the chart to select elements with filled/empty values; use isolate to focus the view.
 
-1. Click the `Export to CSV` button.
-2. Choose the location to save the CSV file.
-3. Click `Save`.
+## Architecture
 
-## 🔧 Development
-#### For Developers
+- Backend: `AnalyseTool/RevitCommands` (C#) handles Selection, Isolation, category queries, data retrieval, and update checks.
+- Frontend: `clientapp` (Vue 3 + Vite + TypeScript) runs in WebView2 and talks to Revit over a simple message bridge.
+- Messaging: `chrome.webview.postMessage` (frontend) ? `WebMessageReceived` (C#).
 
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/your-repo/AnalyseTool.git
-2. Open the Solution:
-   -  Open the solution file in Visual Studio.
-3. Restore NuGet Packages:
-   - Ensure all required NuGet packages are restored.
-4. Build the Solution:
-   - Build the project to generate the necessary DLL files.
+## Frontend for JS/TS Developers
 
-### 🤝 Contributing
+You can extend the plugin using only JS/TS:
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+- All web UI code lives in `clientapp` (Vue + PrimeVue).
+- Revit interactions go through `clientapp/src/RevitBridge.ts`.
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement". Don't forget to give the project a star! Thanks again!
+## RevitBridge API (clientapp/src/RevitBridge.ts)
 
-1. **Fork the Project**
-2. **Create your Feature Branch** (`git checkout -b feature/AmazingFeature`)
-3. **Commit your Changes** (`git commit -m 'Add some AmazingFeature'`)
-4. **Push to the Branch** (`git push origin feature/AmazingFeature`)
-5. **Open a Pull Request**
+Available commands and payloads:
+
+- `GetCategories` � payload: `null` ? response: `string[]` of category names.
+- `GetDataByCategoryName` � payload: `{ categoryName: string }` ? response: `ElementItem[]`.
+- `Selection` � payload: `{ elementIds: number[] }` ? selects elements in Revit.
+- `Isolation` � payload: `{ elementIds: number[] }` ? isolates elements in the active view.
+- `CheckUpdate` � payload: `null` ? response: `{ currentVersion?, latestVersion?, isUpdateAvailable?, releaseUrl? }`.
+
+Data contracts (`clientapp/src/stores/types.ts`):
+
+```ts
+export interface ElementItem {
+  name: string;
+  id: number;
+  level: string;
+  categoryName: string;
+  isElementType: boolean;
+  parameters: ParameterData[];
+}
+
+export interface ParameterData {
+  name: string;
+  id: number;
+  value: string;
+  level: string;
+  elementId: number;
+  isTypeParameter: boolean;
+  orgin: number;
+}
+```
+
+### JS/TS usage examples
+
+```ts
+import { Commands, sendRequest } from "./src/RevitBridge";
+
+// Get categories
+const categories = await sendRequest(Commands.GetCategories, null);
+
+// Load elements by category
+const walls = await sendRequest(Commands.GetDataByCategoryName, {
+  categoryName: "Walls",
+});
+
+// Select all loaded elements
+await sendRequest(Commands.Selection, { elementIds: walls.map((x) => x.id) });
+
+// Isolate elements with empty parameters
+const emptyElementIds = walls
+  .filter((el) => el.parameters.some((p) => !p.value))
+  .map((el) => el.id);
+await sendRequest(Commands.Isolation, { elementIds: emptyElementIds });
+
+// Check for updates
+await sendRequest(Commands.CheckUpdate, null);
+```
+
+Responses are also delivered via `chrome.webview.addEventListener("message", ...)` � see handling in `clientapp/src/App.vue`.
+
+## Feedback
+
+Open an issue or PR in this repo. If you need more JS/TS APIs or samples, feel free to ask.

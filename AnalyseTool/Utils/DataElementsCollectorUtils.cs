@@ -1,4 +1,4 @@
-﻿using AnalyseTool.RevitCommands.ParameterControl.DataModel;
+﻿using AnalyseTool.RevitCommands.Model;
 using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Utils
