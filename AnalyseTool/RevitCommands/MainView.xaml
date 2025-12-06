@@ -12,6 +12,7 @@
     MinWidth="500"
     MinHeight="300"
     Background="Transparent"
+    WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
 
     <DockPanel>

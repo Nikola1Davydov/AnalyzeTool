@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using AnalyseTool.Services;
+using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Utils
 {
@@ -15,7 +16,7 @@ namespace AnalyseTool.Utils
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Error", ex.Message);
+                UserDialogService.Error(ex.Message);
             }
         }
 
