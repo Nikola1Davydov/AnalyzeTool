@@ -38,17 +38,14 @@ onMounted(() => {
         const payload = event.data as WebViewMessage;
 
         if (payload.Command === Commands.GetCategories) {
-          // payload is ElementItem[]
           categoriesStore.setCategories(payload.Payload as string[]);
           return;
         }
         if (payload.Command === Commands.GetDataByCategoryName) {
-          // payload is ElementItem[]
           elementsStore.setItems(payload.Payload as ElementItem[]);
           return;
         }
         if (payload.Command === Commands.CheckUpdate) {
-          // payload is UpdateInfo
           updateStore.setUpdateInfo(payload.Payload as UpdateInfo);
           return;
         }
