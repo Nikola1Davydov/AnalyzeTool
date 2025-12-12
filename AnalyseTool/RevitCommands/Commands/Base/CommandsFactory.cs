@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.RevitCommands.Commands;
+using AnalyseTool.RevitCommands.Model;
 using AnalyseTool.Services;
 using Autodesk.Revit.UI;
 
@@ -18,6 +19,7 @@ namespace AnalyseTool.RevitCommands.Commands.Base
                 CommandsEnum.GetCategories => new GetCategoriesInRevit(),
                 CommandsEnum.GetDataByCategoryName => new GetDataByCategoryName(),
                 CommandsEnum.CheckUpdate => new CheckUpdate(),
+                CommandsEnum.GetDocumentHealth => new GetDocumentHealthStatus(),
 
                 _ => throw new NotImplementedException($"The command {command} is not implemented in the CommandsFactory."),
             };

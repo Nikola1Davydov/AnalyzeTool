@@ -15,3 +15,14 @@ export interface ParameterData {
   isTypeParameter: boolean;
   orgin: number;
 }
+export interface UpdatePayload {
+  currentVersion?: string;
+  latestVersion?: string;
+  isUpdateAvailable?: boolean;
+  releaseUrl?: string;
+}
+
+export interface KeyValuePair {
+  key: string;
+  value: number;
+}

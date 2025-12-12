@@ -4,12 +4,13 @@ import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { UpdateInfo, useUpdateStore } from "@/stores/useUpdateStore";
 import type { WebViewMessage } from "@/RevitBridge";
-import type { ElementItem } from "@/stores/types";
+import type { DocumentHealthPayload, ElementItem } from "@/stores/types";
 import { Commands, MessageType } from "@/RevitBridge";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
 import FooterLayout from "./layout/FooterLayout.vue";
+import { useDocumentHealthStore } from "./stores/useDocumentHealthStore";
 
 const elementsStore = useElementsStore();
 const categoriesStore = useCategoriesStore();
@@ -48,6 +49,9 @@ onMounted(() => {
         if (payload.Command === Commands.CheckUpdate) {
           updateStore.setUpdateInfo(payload.Payload as UpdateInfo);
           return;
+        }
+        if (payload.Command == Commands.GetDocumentHealth) {
+          useDocumentHealthStore().setHealth(payload.Payload as DocumentHealthPayload);
         }
       } catch (err) {
         console.error("Parse error", err);

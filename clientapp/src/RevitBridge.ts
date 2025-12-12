@@ -1,21 +1,17 @@
+import { DocumentHealthPayload, UpdatePayload } from "./stores/types";
+
 export type WebViewMessage = {
   Type: string;
   Command: string;
   Payload: any;
 };
 
-export interface UpdatePayload {
-  currentVersion?: string;
-  latestVersion?: string;
-  isUpdateAvailable?: boolean;
-  releaseUrl?: string;
-}
-
 export interface CommandPayloads {
   [Commands.Selection]: { elementIds: number[] };
   [Commands.Isolation]: { elementIds: number[] };
   [Commands.GetCategories]: { null: null };
   [Commands.GetDataByCategoryName]: { categoryName: string };
+  [Commands.GetDocumentHealth]: DocumentHealthPayload;
   [Commands.CheckUpdate]: UpdatePayload;
   // … add hier a new commads and their payloads
 }
@@ -24,6 +20,7 @@ export const Commands = {
   Isolation: "Isolation",
   GetCategories: "GetCategories",
   GetDataByCategoryName: "GetDataByCategoryName",
+  GetDocumentHealth: "GetDocumentHealth",
   CheckUpdate: "CheckUpdate",
 } as const;
 
