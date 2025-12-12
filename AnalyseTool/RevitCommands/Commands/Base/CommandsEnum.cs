@@ -8,6 +8,7 @@
         Message,
         GetCategories,
         GetWarnings,
+        GetDocumentHealth,
         CheckUpdate,
     }
 }
