@@ -4,11 +4,6 @@ import { storeToRefs } from "pinia";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 
-import BodyTable from "./ParameterFilledEmptyPage/BodyTable.vue";
-import Chart from "./ParameterFilledEmptyPage/Chart.vue";
-import TopPanel from "./ParameterFilledEmptyPage/TopPanel.vue";
-import Cart from "@/components/Cart.vue";
-
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
 
@@ -59,7 +54,7 @@ const filteredItems = computed(() => {
       .map((x) => {
         // оставляем только совпавшие параметры
         const matchedParams = (x.parameters || []).filter((p) =>
-          p?.name?.toLowerCase().includes(q)
+          p?.name?.toLowerCase().includes(q),
         );
 
         // если совпадений нет → возвращаем null (чтобы потом выкинуть)
@@ -90,7 +85,7 @@ const filteredItems = computed(() => {
       result = result
         .map((x) => {
           const matchedParams = (x.parameters || []).filter((p) =>
-            matchFilter(p, selectedFilters.value)
+            matchFilter(p, selectedFilters.value),
           );
 
           if (matchedParams.length === 0) return null;
@@ -132,7 +127,7 @@ watch(
   () => {
     // Stop spinner once store updates with new data
     if (loading.value) loading.value = false;
-  }
+  },
 );
 </script>
 
