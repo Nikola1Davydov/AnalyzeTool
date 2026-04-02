@@ -22,6 +22,10 @@ namespace AnalyseTool.RevitCommands.Model
         public ParameterOrgin Orgin { get; }
         [JsonProperty("value")]
         public string Value { get; }
+        [JsonProperty("storageType")]
+        public string StorageType { get; }
+        [JsonProperty("isReadOnly")]
+        public bool IsReadOnly { get; }
         public ParameterData(Parameter parameter, long elementId, string level, bool isTypeParameter)
         {
             ElementId = elementId;
@@ -31,6 +35,9 @@ namespace AnalyseTool.RevitCommands.Model
             Orgin = parameter.GetParameterOrgin();
             Value = parameter.GetParameterValue();
             Level = level;
+            StorageType = parameter.StorageType.ToString();
+            IsReadOnly = parameter.IsReadOnly;
+
             IsTypeParameter = isTypeParameter;
         }
     }

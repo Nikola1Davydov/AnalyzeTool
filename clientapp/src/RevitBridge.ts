@@ -1,4 +1,5 @@
-import { DocumentHealthPayload, UpdatePayload } from "./stores/types";
+import { ApplyCombinedParametersPayload, UpdatePayload } from "./stores/types";
+import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
 
 export type WebViewMessage = {
   Type: string;
@@ -13,6 +14,7 @@ export interface CommandPayloads {
   [Commands.GetDataByCategoryName]: { categoryName: string };
   [Commands.GetDocumentHealth]: DocumentHealthPayload;
   [Commands.CheckUpdate]: UpdatePayload;
+  [Commands.ApplyCombinedParameters]: ApplyCombinedParametersPayload;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
@@ -22,6 +24,7 @@ export const Commands = {
   GetDataByCategoryName: "GetDataByCategoryName",
   GetDocumentHealth: "GetDocumentHealth",
   CheckUpdate: "CheckUpdate",
+  ApplyCombinedParameters: "ApplyCombinedParameters",
 } as const;
 
 export const enum MessageType {
@@ -31,7 +34,7 @@ export const enum MessageType {
 
 export function sendRequest<C extends keyof CommandPayloads>(
   command: C,
-  payload: CommandPayloads[C]
+  payload: CommandPayloads[C],
 ): Promise<any> {
   return new Promise((reject) => {
     if (!(window as any).chrome?.webview) {

@@ -14,6 +14,8 @@ export interface ParameterData {
   elementId: number; // Revit element id
   isTypeParameter: boolean;
   orgin: number;
+  storageType: string;
+  isReadOnly: boolean;
 }
 export interface UpdatePayload {
   currentVersion?: string;
@@ -25,4 +27,24 @@ export interface UpdatePayload {
 export interface KeyValuePair {
   key: string;
   value: number;
+}
+
+export interface CombineRulePayload {
+  kind: "parameter" | "text" | "number";
+  value: string;
+  order: number;
+}
+
+export interface ApplyCombinedParameterItem {
+  elementId: number;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface ApplyCombinedParametersPayload {
+  categoryName: string;
+  targetParameterName: string;
+  mode: "Overwrite" | "OnlyIfEmpty" | "SkipIfEqual";
+  rules: CombineRulePayload[];
+  items: ParameterData[];
 }

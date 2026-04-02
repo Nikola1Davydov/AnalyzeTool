@@ -5,6 +5,7 @@ import ParameterFilledEmptyPage from "@/view/ParameterFilledEmptyView.vue";
 import RevitDocumentHealthView from "@/view/RevitDocumentHealthView.vue";
 import ParameterValueCheckView from "@/view/ParameterValueCheckView.vue";
 import FamiliesView from "@/view/FamiliesView.vue";
+import ConnectParameters from "@/view/ConnectParameters.vue";
 
 const routes = [
   { path: "/", component: ParameterFilledEmptyPage },
@@ -13,6 +14,7 @@ const routes = [
   { path: "/documenthealth", component: RevitDocumentHealthView },
   { path: "/parametervaluecheck", component: ParameterValueCheckView },
   { path: "/families", component: FamiliesView },
+  { path: "/connectParameters", component: ConnectParameters },
 ];
 
 const router = createRouter({
