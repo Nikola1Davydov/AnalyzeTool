@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
 
-namespace AnalyseTool
+namespace AnalyseTool.Services
 {
     internal sealed class PathProvider
     {

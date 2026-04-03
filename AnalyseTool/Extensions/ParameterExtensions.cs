@@ -34,5 +34,32 @@ namespace AnalyseTool.Extensions
                     return string.Empty;
             }
         }
+        public static void SetParameterValue(this Parameter parameter, string value)
+        {
+            switch (parameter.StorageType)
+            {
+                case StorageType.Double:
+                    if (double.TryParse(value, out double doubleValue))
+                    {
+                        parameter.Set(doubleValue);
+                    }
+                    break;
+                case StorageType.Integer:
+                    if (int.TryParse(value, out int intValue))
+                    {
+                        parameter.Set(intValue);
+                    }
+                    break;
+                case StorageType.String:
+                    parameter.Set(value);
+                    break;
+                case StorageType.ElementId:
+                    if (int.TryParse(value, out int elementIdValue))
+                    {
+                        parameter.Set(new ElementId(elementIdValue));
+                    }
+                    break;
+            }
+        }
     }
 }

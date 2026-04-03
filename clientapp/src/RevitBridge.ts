@@ -1,4 +1,5 @@
-import { ApplyCombinedParametersPayload, UpdatePayload } from "./stores/types";
+import { UpdatePayload } from "./stores/types";
+import type { SetDataToParameters } from "./stores/types";
 import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
 
 export type WebViewMessage = {
@@ -14,7 +15,7 @@ export interface CommandPayloads {
   [Commands.GetDataByCategoryName]: { categoryName: string };
   [Commands.GetDocumentHealth]: DocumentHealthPayload;
   [Commands.CheckUpdate]: UpdatePayload;
-  [Commands.ApplyCombinedParameters]: ApplyCombinedParametersPayload;
+  [Commands.SetDataToParameters]: SetDataToParameters;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
@@ -24,7 +25,7 @@ export const Commands = {
   GetDataByCategoryName: "GetDataByCategoryName",
   GetDocumentHealth: "GetDocumentHealth",
   CheckUpdate: "CheckUpdate",
-  ApplyCombinedParameters: "ApplyCombinedParameters",
+  SetDataToParameters: "SetDataToParameters",
 } as const;
 
 export const enum MessageType {

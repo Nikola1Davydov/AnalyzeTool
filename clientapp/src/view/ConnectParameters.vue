@@ -2,11 +2,12 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Commands, sendRequest } from "@/RevitBridge";
+import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
-import type { ApplyCombinedParametersPayload, ElementItem, ParameterData } from "@/stores/types";
+import type { ElementItem, ParameterData, SetDataToParameters } from "@/stores/types";
 
-type ApplyMode = "Overwrite" | "OnlyIfEmpty" | "SkipIfEqual";
+type ApplyMode = (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 type TargetKind = "Text" | "Number" | "Unknown";
 type TargetNumberKind = "int" | "double" | "unknown";
 
@@ -47,7 +48,7 @@ const selectedCategory = ref<string | null>(null);
 const searchQuery = ref("");
 const selectedFilters = ref<string[]>([]);
 const targetParameterName = ref<string | null>(null);
-const applyMode = ref<ApplyMode>("Overwrite");
+const applyMode = ref<ApplyMode>(SetDataToParametersModes.Overwrite);
 
 const loading = ref(false);
 const applying = ref(false);
@@ -60,9 +61,9 @@ const blocks = ref<RuleBlock[]>([{ id: 1, kind: "parameter", parameterName: null
 
 const filterOptions = ["Instance", "Type", "BuildIn", "Schared", "Project"];
 const applyModes: { label: string; value: ApplyMode }[] = [
-  { label: "Overwrite", value: "Overwrite" },
-  { label: "Only if target empty", value: "OnlyIfEmpty" },
-  { label: "Skip if equal", value: "SkipIfEqual" },
+  { label: "Overwrite", value: SetDataToParametersModes.Overwrite },
+  { label: "Only if target empty", value: SetDataToParametersModes.OnlyIfEmpty },
+  { label: "Skip if equal", value: SetDataToParametersModes.SkipIfEqual },
 ];
 
 function normalizeStorageType(storageType: string | null | undefined): string {
@@ -104,9 +105,9 @@ const filteredElements = computed(() => {
 
   function matchOrigin(param: ParameterData): boolean {
     if (originFilters.length === 0) return true;
-    if (param.orgin === 0) return originFilters.includes("Schared");
-    if (param.orgin === 1) return originFilters.includes("Project");
-    if (param.orgin === 2) return originFilters.includes("BuildIn");
+    if (param.orgin === ParameterOrgin.Shared) return originFilters.includes("Schared");
+    if (param.orgin === ParameterOrgin.Project) return originFilters.includes("Project");
+    if (param.orgin === ParameterOrgin.BuiltIn) return originFilters.includes("BuildIn");
     return false;
   }
 
@@ -133,11 +134,11 @@ const parameterOptions = computed(() => {
     for (const param of element.parameters || []) {
       const scopeLabel: ParameterOption["scopeLabel"] = param.isTypeParameter ? "Type" : "Instance";
       const originLabel: ParameterOption["originLabel"] =
-        param.orgin === 0
+        param.orgin === ParameterOrgin.Shared
           ? "Shared"
-          : param.orgin === 1
+          : param.orgin === ParameterOrgin.Project
             ? "Project"
-            : param.orgin === 2
+            : param.orgin === ParameterOrgin.BuiltIn
               ? "BuildIn"
               : "Unknown";
 
@@ -561,24 +562,17 @@ function sendApplyCombinedParameters() {
     })
     .filter(Boolean) as ParameterData[];
 
-  const payload = {
-    categoryName: selectedCategory.value,
-    targetParameterName: targetParameterName.value,
-    mode: applyMode.value,
-    rules: validBlocks.value.map((block, index) => ({
-      kind: block.kind,
-      value: block.kind === "parameter" ? String(block.parameterName) : block.literal,
-      order: index,
-    })),
+  const payload: SetDataToParameters = {
     items: parameterItems,
-  } as ApplyCombinedParametersPayload;
+    mode: applyMode.value,
+  };
 
-  sendRequest(Commands.ApplyCombinedParameters, payload).catch((err) => {
+  sendRequest(Commands.SetDataToParameters, payload).catch((err) => {
     console.error("Failed to send ApplyCombinedParameters", err);
   });
 
   applying.value = false;
-  sendInfo.value = `ApplyCombinedParameters sent. Items: ${payload.items.length}`;
+  sendInfo.value = `ApplyCombinedParameters sent. Items: ${parameterItems.length}`;
 }
 </script>
 

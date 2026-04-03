@@ -10,5 +10,6 @@
         GetWarnings,
         GetDocumentHealth,
         CheckUpdate,
+        SetDataToParameters,
     }
 }

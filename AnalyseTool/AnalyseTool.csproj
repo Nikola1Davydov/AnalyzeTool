@@ -63,6 +63,10 @@
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Helper\" />
+	</ItemGroup>
+
 	<!--<Target Name="CopyToRevitFolder" >
 		<MakeDir Directories="$(RevitAddinDeployDir)" />
 		<ItemGroup>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import { ParameterOrgin } from "@/stores/types";
 
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
@@ -73,9 +74,9 @@ const filteredItems = computed(() => {
     return filters.every((filter) => {
       if (filter === "Instance") return p.isTypeParameter === false;
       if (filter === "Type") return p.isTypeParameter === true;
-      if (filter === "Schared") return p.orgin === 0;
-      if (filter === "Project") return p.orgin === 1;
-      if (filter === "BuildIn") return p.orgin === 2;
+      if (filter === "Schared") return p.orgin === ParameterOrgin.Shared;
+      if (filter === "Project") return p.orgin === ParameterOrgin.Project;
+      if (filter === "BuildIn") return p.orgin === ParameterOrgin.BuiltIn;
       return false;
     });
   }

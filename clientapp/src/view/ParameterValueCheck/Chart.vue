@@ -2,6 +2,7 @@
 import { computed, ref, nextTick } from "vue";
 import Chart from "primevue/chart";
 import { Commands, sendRequest } from "@/RevitBridge";
+import { ParameterOrgin } from "@/stores/types";
 import type { ElementItem, ParameterData } from "@/stores/types";
 
 type ParamChart = {
@@ -25,7 +26,7 @@ const activeSearch = computed(() => (props.search ?? "").trim().toLowerCase());
 const hasItems = computed(() => Array.isArray(props.items) && props.items.length > 0);
 const expanded = ref<string | null>(null);
 const activeClickAction = computed(() =>
-  props.clickAction && props.clickAction.toLowerCase() === "isolation" ? "Isolation" : "Selection"
+  props.clickAction && props.clickAction.toLowerCase() === "isolation" ? "Isolation" : "Selection",
 );
 
 function matchesFilters(param: ParameterData, filters: string[]): boolean {
@@ -34,9 +35,9 @@ function matchesFilters(param: ParameterData, filters: string[]): boolean {
   return filters.every((filter) => {
     if (filter === "Instance") return param.isTypeParameter === false;
     if (filter === "Type") return param.isTypeParameter === true;
-    if (filter === "Schared") return param.orgin === 0;
-    if (filter === "Project") return param.orgin === 1;
-    if (filter === "BuildIn") return param.orgin === 2;
+    if (filter === "Schared") return param.orgin === ParameterOrgin.Shared;
+    if (filter === "Project") return param.orgin === ParameterOrgin.Project;
+    if (filter === "BuildIn") return param.orgin === ParameterOrgin.BuiltIn;
     return false;
   });
 }
@@ -56,7 +57,9 @@ const parameterCharts = computed(() => {
       const paramName = param?.name ?? "Unknown";
       const rawValue = param?.value;
       const valueLabel =
-        rawValue === undefined || rawValue === null || rawValue === "" ? "(empty)" : String(rawValue);
+        rawValue === undefined || rawValue === null || rawValue === ""
+          ? "(empty)"
+          : String(rawValue);
 
       if (!grouped.has(paramName)) grouped.set(paramName, new Map());
       const valueMap = grouped.get(paramName)!;
@@ -110,7 +113,12 @@ const parameterCharts = computed(() => {
           },
         },
         onClick: (evt, elements, chart) => {
-          const points = chart?.getElementsAtEventForMode(evt, "nearest", { intersect: true }, false);
+          const points = chart?.getElementsAtEventForMode(
+            evt,
+            "nearest",
+            { intersect: true },
+            false,
+          );
           if (!points?.length) return;
           const idx = points[0].index;
           const entry = filteredEntries[idx];
@@ -158,18 +166,16 @@ function toggleExpand(parameter: string) {
       class="grid gap-4"
       :class="expanded ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'"
     >
-      <Panel
-        v-for="chart in visibleCharts"
-        :key="chart.parameter"
-        class="w-full"
-      >
+      <Panel v-for="chart in visibleCharts" :key="chart.parameter" class="w-full">
         <template #header>
           <div class="flex justify-between items-center w-full gap-2">
             <span class="font-semibold truncate">{{ chart.parameter }}</span>
             <Button
               size="small"
               severity="secondary"
-              :icon="expanded === chart.parameter ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
+              :icon="
+                expanded === chart.parameter ? 'pi pi-window-minimize' : 'pi pi-window-maximize'
+              "
               :label="expanded === chart.parameter ? 'Collapse' : 'Expand'"
               @click.stop="toggleExpand(chart.parameter)"
             />

@@ -6,6 +6,13 @@ export interface ElementItem {
   isElementType: boolean;
   parameters: ParameterData[];
 }
+
+export const ParameterOrgin = {
+  Shared: "Shared",
+  Project: "Project",
+  BuiltIn: "BuiltIn",
+} as const;
+
 export interface ParameterData {
   name: string; // parameter name
   id: number; // parameter id
@@ -13,7 +20,7 @@ export interface ParameterData {
   level: string; // level name
   elementId: number; // Revit element id
   isTypeParameter: boolean;
-  orgin: number;
+  orgin: (typeof ParameterOrgin)[keyof typeof ParameterOrgin];
   storageType: string;
   isReadOnly: boolean;
 }
@@ -29,22 +36,13 @@ export interface KeyValuePair {
   value: number;
 }
 
-export interface CombineRulePayload {
-  kind: "parameter" | "text" | "number";
-  value: string;
-  order: number;
-}
+export const SetDataToParametersModes = {
+  Overwrite: "Overwrite",
+  OnlyIfEmpty: "OnlyIfEmpty",
+  SkipIfEqual: "SkipIfEqual",
+} as const;
 
-export interface ApplyCombinedParameterItem {
-  elementId: number;
-  oldValue: string;
-  newValue: string;
-}
-
-export interface ApplyCombinedParametersPayload {
-  categoryName: string;
-  targetParameterName: string;
-  mode: "Overwrite" | "OnlyIfEmpty" | "SkipIfEqual";
-  rules: CombineRulePayload[];
+export interface SetDataToParameters {
   items: ParameterData[];
+  mode: (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 }
