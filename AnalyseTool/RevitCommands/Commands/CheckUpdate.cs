@@ -1,6 +1,6 @@
-﻿using AnalyseTool.RevitCommands.Commands.Base;
+﻿using AnalyseTool.Helper.Updater;
+using AnalyseTool.RevitCommands.Commands.Base;
 using AnalyseTool.RevitCommands.Model;
-using AnalyseTool.Updater;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -17,7 +17,7 @@ namespace AnalyseTool.RevitCommands.Commands
             string json = JsonConvert.SerializeObject(new WebViewMessage()
             {
                 Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(CommandsEnum.CheckUpdate),
+                Command = nameof(CheckUpdate),
                 Payload = JObject.FromObject(UpdateInfo)
             });
 

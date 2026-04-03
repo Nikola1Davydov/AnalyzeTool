@@ -4,6 +4,7 @@ export interface ElementItem {
   level: string; // level name
   categoryName: string; // category name
   isElementType: boolean;
+  elementTypeId: number;
   parameters: ParameterData[];
 }
 

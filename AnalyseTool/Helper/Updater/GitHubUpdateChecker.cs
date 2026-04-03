@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 
-namespace AnalyseTool.Updater
+namespace AnalyseTool.Helper.Updater
 {
     internal class GitHubUpdateChecker
     {

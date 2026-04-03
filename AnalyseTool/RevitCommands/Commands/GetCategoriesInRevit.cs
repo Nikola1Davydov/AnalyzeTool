@@ -16,7 +16,7 @@ namespace AnalyseTool.RevitCommands.Commands
             string json = JsonConvert.SerializeObject(new WebViewMessage()
             {
                 Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(CommandsEnum.GetCategories),
+                Command = nameof(GetCategoriesInRevit),
                 Payload = JArray.FromObject(allCategories)
             });
 

@@ -1,26 +1,28 @@
 ﻿using AnalyseTool.Services;
+using System.Reflection;
 
 namespace AnalyseTool.RevitCommands.Commands.Base
 {
     internal class CommandsFactory
     {
+        private static readonly Dictionary<string, Type> _commands = Assembly
+            .GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && typeof(IRevitTask).IsAssignableFrom(t))
+            .ToDictionary(
+                x => x.Name,
+                x => x,
+                StringComparer.OrdinalIgnoreCase);
+
         public static IRevitTask CreateRevitCommand(string command)
         {
-            bool result = Enum.TryParse<CommandsEnum>(command, ignoreCase: true, out CommandsEnum parsedCommand);
-            if (!result) UserDialogService.Error($"The command {command} is not recognized.");
-
-            return parsedCommand switch
+            if (!_commands.TryGetValue(command, out Type? commandType))
             {
-                CommandsEnum.Selection => new SelectionInRevit(),
-                CommandsEnum.Isolation => new IsolationInRevit(),
-                CommandsEnum.GetCategories => new GetCategoriesInRevit(),
-                CommandsEnum.GetDataByCategoryName => new GetDataByCategoryName(),
-                CommandsEnum.CheckUpdate => new CheckUpdate(),
-                CommandsEnum.GetDocumentHealth => new GetDocumentHealthStatus(),
-                CommandsEnum.SetDataToParameters => new SetDataToParameters(),
+                UserDialogService.Error($"The command {command} is not recognized.");
+                throw new NotImplementedException($"The command {command} is not registered.");
+            }
 
-                _ => throw new NotImplementedException($"The command {command} is not implemented in the CommandsFactory."),
-            };
+            return (IRevitTask)Activator.CreateInstance(commandType)!;
         }
     }
 }

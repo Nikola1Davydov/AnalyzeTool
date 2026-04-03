@@ -22,57 +22,58 @@ namespace AnalyseTool.RevitCommands.Commands
             {
                 RevitTransactions.Run("Connect Parameters Execute", () =>
                 {
-                    SetData(list);
+                    foreach (ParameterData parameterData in list.Items)
+                    {
+                        if (parameterData == null) continue;
+
+                        SetData(parameterData, list.Mode);
+                    }
                 });
             };
 
             ExternalEventHub.RevitEvent.Raise();
         }
 
-        private void SetData(SetDataToParametersDto list)
+        private void SetData(ParameterData parameterData, SetDataMode mode)
         {
-            foreach (ParameterData item in list.Items)
+            Element revitElement = Context.Document.GetElement(new ElementId(parameterData.ElementId));
+            if (revitElement == null) return;
+
+            Parameter parameter = null;
+
+            if (ParameterUtils.IsBuiltInParameter(new ElementId(parameterData.Id)))
             {
-                if (item == null) continue;
-
-                Element revitElement = Context.Document.GetElement(new ElementId(item.ElementId));
-                if (revitElement == null) continue;
-
-                Parameter parameter = null;
-
-                if (ParameterUtils.IsBuiltInParameter(new ElementId(item.Id)))
-                {
-                    BuiltInParameter builtInParameter = (BuiltInParameter)item.Id;
-                    parameter = revitElement.get_Parameter(builtInParameter);
-                }
-                else
-                {
-                    foreach (Parameter elementParameter in revitElement.Parameters)
-                    {
-                        if (elementParameter?.Id != null && elementParameter.Id.Value == item.Id)
-                        {
-                            parameter = elementParameter;
-                            break;
-                        }
-                    }
-
-                    if (parameter == null)
-                    {
-                        ParameterElement parameterElement = Context.Document.GetElement(new ElementId(item.Id)) as ParameterElement;
-                        Definition definition = parameterElement?.GetDefinition();
-
-                        if (definition != null)
-                        {
-                            parameter = revitElement.get_Parameter(definition);
-                        }
-                    }
-                }
-
-                if (parameter == null || parameter.IsReadOnly) continue;
-
-                parameter.SetParameterValue(item.Value);
+                BuiltInParameter builtInParameter = (BuiltInParameter)parameterData.Id;
+                parameter = revitElement.get_Parameter(builtInParameter);
             }
+            else
+            {
+                foreach (Parameter elementParameter in revitElement.Parameters)
+                {
+                    if (elementParameter?.Id != null && elementParameter.Id.Value == parameterData.Id)
+                    {
+                        parameter = elementParameter;
+                        break;
+                    }
+                }
+
+                if (parameter == null)
+                {
+                    ParameterElement parameterElement = Context.Document.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
+                    Definition definition = parameterElement?.GetDefinition();
+
+                    if (definition != null)
+                    {
+                        parameter = revitElement.get_Parameter(definition);
+                    }
+                }
+            }
+
+            if (parameter == null || parameter.IsReadOnly) return;
+
+            parameter.SetParameterValue(parameterData.Value);
         }
+
         private sealed record SetDataToParametersDto()
         {
             [JsonProperty("items")]

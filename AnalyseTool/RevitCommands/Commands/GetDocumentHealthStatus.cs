@@ -44,7 +44,7 @@ namespace AnalyseTool.RevitCommands.Commands
             string json = JsonConvert.SerializeObject(new WebViewMessage()
             {
                 Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(CommandsEnum.GetDocumentHealth),
+                Command = nameof(GetDocumentHealthStatus),
                 Payload = JObject.FromObject(docHealth)
             });
 

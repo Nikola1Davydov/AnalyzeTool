@@ -169,10 +169,32 @@ const numericParameterNameOptions = computed(() =>
   parameterOptions.value.filter((x) => x.valueTypeLabel === "Number").map((x) => x.name),
 );
 
-function getParameterValue(element: ElementItem | null, parameterName: string | null): string {
+const elementsById = computed(() => {
+  const map = new Map<number, ElementItem>();
+  for (const element of items.value || []) {
+    map.set(element.id, element);
+  }
+  return map;
+});
+
+function getLinkedTypeElement(element: ElementItem | null): ElementItem | null {
+  if (!element || element.isElementType) return null;
+  if (!element.elementTypeId) return null;
+  return elementsById.value.get(element.elementTypeId) || null;
+}
+
+function getOwnParameterValue(element: ElementItem | null, parameterName: string | null): string {
   if (!element || !parameterName) return "";
   const found = (element.parameters || []).find((p) => p.name === parameterName);
   return found?.value == null ? "" : String(found.value);
+}
+
+function getRuleParameterValue(element: ElementItem | null, parameterName: string | null): string {
+  const ownValue = getOwnParameterValue(element, parameterName);
+  if (ownValue !== "") return ownValue;
+
+  const linkedTypeElement = getLinkedTypeElement(element);
+  return getOwnParameterValue(linkedTypeElement, parameterName);
 }
 
 function getParameterData(
@@ -197,7 +219,7 @@ const targetKind = computed<TargetKind>(() => {
 const targetNumberKind = computed<TargetNumberKind>(() => {
   if (targetKind.value !== "Number" || !targetParameterName.value) return "unknown";
   const values = filteredElements.value
-    .map((el) => getParameterValue(el, targetParameterName.value))
+    .map((el) => getOwnParameterValue(el, targetParameterName.value))
     .map((x) => x.trim())
     .filter((x) => x !== "");
 
@@ -285,7 +307,7 @@ function buildNewValue(element: ElementItem): { value: string; errors: string[] 
         continue;
       }
 
-      const value = getParameterValue(element, block.parameterName);
+      const value = getRuleParameterValue(element, block.parameterName);
       if (value.trim() === "") continue;
 
       const n = parseNumeric(value);
@@ -318,7 +340,7 @@ function buildNewValue(element: ElementItem): { value: string; errors: string[] 
         continue;
       }
 
-      const value = getParameterValue(element, block.parameterName);
+      const value = getRuleParameterValue(element, block.parameterName);
       if (value.trim() === "") continue;
       const n = parseNumeric(value);
       if (n == null) {
@@ -344,7 +366,7 @@ function buildNewValue(element: ElementItem): { value: string; errors: string[] 
       textValue += block.literal;
       continue;
     }
-    textValue += getParameterValue(element, block.parameterName);
+    textValue += getRuleParameterValue(element, block.parameterName);
   }
 
   return { value: textValue, errors };
@@ -353,7 +375,7 @@ function buildNewValue(element: ElementItem): { value: string; errors: string[] 
 const previewRows = computed<PreviewRow[]>(() => {
   if (!targetParameterName.value) return [];
   return filteredElements.value.map((element) => {
-    const oldValue = getParameterValue(element, targetParameterName.value);
+    const oldValue = getOwnParameterValue(element, targetParameterName.value);
     const built = buildNewValue(element);
 
     return {

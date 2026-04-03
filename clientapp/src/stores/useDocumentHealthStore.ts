@@ -37,7 +37,7 @@ export const useDocumentHealthStore = defineStore("documentHealth", () => {
   };
 
   function loadDocumentHealth(): void {
-    sendRequest(Commands.GetDocumentHealth, null);
+    sendRequest(Commands.GetDocumentHealthStatus, null);
   }
 
   const reset = () => {

@@ -13,7 +13,7 @@ export const useCategoriesStore = defineStore("categories", () => {
 
   async function loadCategories(): Promise<void> {
     // Ask Revit for categories
-    const result = await sendRequest(Commands.GetCategories, null);
+    const result = await sendRequest(Commands.GetCategoriesInRevit, null);
     if (Array.isArray(result)) {
       categories.value = result.filter((x) => typeof x === "string") as string[];
     } else {

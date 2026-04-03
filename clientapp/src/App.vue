@@ -38,7 +38,7 @@ onMounted(() => {
       try {
         const payload = event.data as WebViewMessage;
 
-        if (payload.Command === Commands.GetCategories) {
+        if (payload.Command === Commands.GetCategoriesInRevit) {
           categoriesStore.setCategories(payload.Payload as string[]);
           return;
         }
@@ -50,7 +50,7 @@ onMounted(() => {
           updateStore.setUpdateInfo(payload.Payload as UpdateInfo);
           return;
         }
-        if (payload.Command == Commands.GetDocumentHealth) {
+        if (payload.Command == Commands.GetDocumentHealthStatus) {
           useDocumentHealthStore().setHealth(payload.Payload as DocumentHealthPayload);
         }
       } catch (err) {
@@ -86,6 +86,8 @@ provide("sidebarActions", {
 <style>
 .layout-wrapper {
   background-color: var(--p-surface-0); /* фон из Aura */
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 </style>

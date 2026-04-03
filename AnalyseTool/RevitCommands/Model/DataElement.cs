@@ -16,6 +16,8 @@ namespace AnalyseTool.RevitCommands.Model
         public string Level { get; }
         [JsonProperty("isElementType")]
         public bool IsElementType { get; }
+        [JsonProperty("elementTypeId")]
+        public long ElementTypeId { get; }
         [JsonProperty("categoryName")]
         public string CategoryName { get; }
         [JsonProperty("parameters")]
@@ -28,6 +30,7 @@ namespace AnalyseTool.RevitCommands.Model
             Id = Element.Id.Value;
             Level = Element.Document.GetElement(Element.LevelId)?.Name ?? string.Empty;
             IsElementType = Element.GetTypeId() == ElementId.InvalidElementId;
+            ElementTypeId = Element.GetTypeId().Value;
             Parameters = GetParameters(Element.Parameters).ToList();
         }
         private IEnumerable<ParameterData> GetParameters(ParameterSet parameterSet)

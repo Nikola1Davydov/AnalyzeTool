@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AnalyseTool.Updater
+namespace AnalyseTool.Helper.Updater
 {
     internal record GitHubReleaseDto
     {
