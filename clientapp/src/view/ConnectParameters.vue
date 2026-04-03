@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Commands, sendRequest } from "@/RevitBridge";
 import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
@@ -16,6 +16,17 @@ type RuleBlock = {
   kind: "parameter" | "text" | "number";
   parameterName: string | null;
   literal: string;
+};
+
+type SavedRule = {
+  id: string;
+  name: string;
+  categoryName: string | null;
+  targetParameterName: string | null;
+  mode: ApplyMode;
+  blocks: RuleBlock[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 type ParameterOption = {
@@ -55,6 +66,12 @@ const applying = ref(false);
 const sendInfo = ref("");
 const draggedBlockIndex = ref<number | null>(null);
 const editableRowMap = ref<Record<number, boolean>>({});
+const isApplyingSavedRule = ref(false);
+
+const RULES_STORAGE_KEY = "connect-parameters-rules-v1";
+const savedRules = ref<SavedRule[]>([]);
+const selectedSavedRuleId = ref<string | null>(null);
+const ruleName = ref("");
 
 const blockIdCounter = ref(1);
 const blocks = ref<RuleBlock[]>([{ id: 1, kind: "parameter", parameterName: null, literal: "" }]);
@@ -65,6 +82,10 @@ const applyModes: { label: string; value: ApplyMode }[] = [
   { label: "Only if target empty", value: SetDataToParametersModes.OnlyIfEmpty },
   { label: "Skip if equal", value: SetDataToParametersModes.SkipIfEqual },
 ];
+
+const savedRulesSorted = computed(() =>
+  [...savedRules.value].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+);
 
 function normalizeStorageType(storageType: string | null | undefined): string {
   return (storageType || "").trim().toLowerCase();
@@ -203,6 +224,236 @@ function getParameterData(
 ): ParameterData | null {
   if (!element || !parameterName) return null;
   return (element.parameters || []).find((p) => p.name === parameterName) || null;
+}
+
+function cloneBlocks(source: RuleBlock[]): RuleBlock[] {
+  return source.map((b) => ({
+    id: b.id,
+    kind: b.kind,
+    parameterName: b.parameterName,
+    literal: b.literal,
+  }));
+}
+
+function normalizeLoadedBlocks(rawBlocks: unknown): RuleBlock[] {
+  if (!Array.isArray(rawBlocks)) return [];
+
+  const result: RuleBlock[] = [];
+  for (const raw of rawBlocks) {
+    const kind = (raw as any)?.kind;
+    if (kind !== "parameter" && kind !== "text" && kind !== "number") continue;
+
+    result.push({
+      id: Number((raw as any)?.id) || result.length + 1,
+      kind,
+      parameterName:
+        typeof (raw as any)?.parameterName === "string" ? (raw as any).parameterName : null,
+      literal: typeof (raw as any)?.literal === "string" ? (raw as any).literal : "",
+    });
+  }
+
+  return result;
+}
+
+function persistSavedRules() {
+  try {
+    localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(savedRules.value));
+  } catch (err) {
+    console.error("Failed to persist saved rules", err);
+  }
+}
+
+function loadSavedRulesFromStorage() {
+  try {
+    const raw = localStorage.getItem(RULES_STORAGE_KEY);
+    if (!raw) {
+      savedRules.value = [];
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      savedRules.value = [];
+      return;
+    }
+
+    const modes = Object.values(SetDataToParametersModes);
+    savedRules.value = parsed
+      .map((x): SavedRule | null => {
+        const mode = (x as any)?.mode;
+        if (!modes.includes(mode)) return null;
+
+        return {
+          id: String((x as any)?.id || crypto.randomUUID()),
+          name: String((x as any)?.name || "Unnamed rule"),
+          categoryName:
+            typeof (x as any)?.categoryName === "string" ? (x as any).categoryName : null,
+          targetParameterName:
+            typeof (x as any)?.targetParameterName === "string"
+              ? (x as any).targetParameterName
+              : null,
+          mode,
+          blocks: normalizeLoadedBlocks((x as any)?.blocks),
+          createdAt: String((x as any)?.createdAt || new Date().toISOString()),
+          updatedAt: String((x as any)?.updatedAt || new Date().toISOString()),
+        };
+      })
+      .filter(Boolean) as SavedRule[];
+  } catch (err) {
+    console.error("Failed to load saved rules", err);
+    savedRules.value = [];
+  }
+}
+
+function buildCurrentRuleDraft(id: string, createdAt: string): SavedRule {
+  const name = ruleName.value.trim() || `Rule ${savedRules.value.length + 1}`;
+  return {
+    id,
+    name,
+    categoryName: selectedCategory.value,
+    targetParameterName: targetParameterName.value,
+    mode: applyMode.value,
+    blocks: cloneBlocks(blocks.value),
+    createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function saveAsNewRule() {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const rule = buildCurrentRuleDraft(id, now);
+  savedRules.value.unshift(rule);
+  selectedSavedRuleId.value = rule.id;
+  ruleName.value = rule.name;
+  persistSavedRules();
+  sendInfo.value = `Rule saved: ${rule.name}`;
+}
+
+function updateSelectedRule() {
+  if (!selectedSavedRuleId.value) return;
+
+  const idx = savedRules.value.findIndex((x) => x.id === selectedSavedRuleId.value);
+  if (idx < 0) return;
+
+  const existing = savedRules.value[idx];
+  const updated = buildCurrentRuleDraft(existing.id, existing.createdAt);
+  savedRules.value.splice(idx, 1, updated);
+  ruleName.value = updated.name;
+  persistSavedRules();
+  sendInfo.value = `Rule updated: ${updated.name}`;
+}
+
+function loadRule(rule: SavedRule) {
+  selectedSavedRuleId.value = rule.id;
+  ruleName.value = rule.name;
+
+  isApplyingSavedRule.value = true;
+  selectedCategory.value = rule.categoryName;
+  targetParameterName.value = rule.targetParameterName;
+  applyMode.value = rule.mode;
+
+  const loadedBlocks = cloneBlocks(rule.blocks);
+  blocks.value = loadedBlocks.length
+    ? loadedBlocks
+    : [{ id: 1, kind: "parameter", parameterName: null, literal: "" }];
+
+  blockIdCounter.value = blocks.value.reduce((max, b) => Math.max(max, b.id), 1);
+
+  nextTick(() => {
+    isApplyingSavedRule.value = false;
+  });
+
+  sendInfo.value = `Rule loaded: ${rule.name}`;
+}
+
+function deleteRule(ruleId: string) {
+  const target = savedRules.value.find((x) => x.id === ruleId);
+  if (!target) return;
+
+  const ok = window.confirm(`Delete rule '${target.name}'?`);
+  if (!ok) return;
+
+  savedRules.value = savedRules.value.filter((x) => x.id !== ruleId);
+  if (selectedSavedRuleId.value === ruleId) {
+    selectedSavedRuleId.value = null;
+    ruleName.value = "";
+  }
+
+  persistSavedRules();
+}
+
+function renameRule(ruleId: string) {
+  const target = savedRules.value.find((x) => x.id === ruleId);
+  if (!target) return;
+
+  const next = window.prompt("New rule name", target.name);
+  if (!next) return;
+
+  target.name = next.trim() || target.name;
+  target.updatedAt = new Date().toISOString();
+  if (selectedSavedRuleId.value === target.id) {
+    ruleName.value = target.name;
+  }
+  persistSavedRules();
+}
+
+function exportRulesJson() {
+  const json = JSON.stringify(savedRules.value, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "connect-parameter-rules.json";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
+
+function importRulesJson() {
+  const text = window.prompt("Paste JSON array of rules");
+  if (!text) return;
+
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return;
+
+    const modes = Object.values(SetDataToParametersModes);
+    const imported = parsed
+      .map((x): SavedRule | null => {
+        const mode = (x as any)?.mode;
+        if (!modes.includes(mode)) return null;
+
+        return {
+          id: String((x as any)?.id || crypto.randomUUID()),
+          name: String((x as any)?.name || "Imported rule"),
+          categoryName:
+            typeof (x as any)?.categoryName === "string" ? (x as any).categoryName : null,
+          targetParameterName:
+            typeof (x as any)?.targetParameterName === "string"
+              ? (x as any).targetParameterName
+              : null,
+          mode,
+          blocks: normalizeLoadedBlocks((x as any)?.blocks),
+          createdAt: String((x as any)?.createdAt || new Date().toISOString()),
+          updatedAt: String((x as any)?.updatedAt || new Date().toISOString()),
+        };
+      })
+      .filter(Boolean) as SavedRule[];
+
+    const byId = new Map<string, SavedRule>();
+    for (const item of savedRules.value) byId.set(item.id, item);
+    for (const item of imported) byId.set(item.id, item);
+
+    savedRules.value = Array.from(byId.values());
+    persistSavedRules();
+    sendInfo.value = `Rules imported: ${imported.length}`;
+  } catch (err) {
+    console.error("Failed to import rules JSON", err);
+  }
 }
 
 const targetOption = computed(() =>
@@ -439,6 +690,7 @@ onMounted(() => {
   categoriesStore.loadCategories().catch((err) => {
     console.error("Failed to load categories", err);
   });
+  loadSavedRulesFromStorage();
 });
 
 function resetBuilderState() {
@@ -450,6 +702,7 @@ function resetBuilderState() {
 
 watch(selectedCategory, (next, prev) => {
   if (next === prev) return;
+  if (isApplyingSavedRule.value) return;
   elementsStore.clear();
   resetBuilderState();
 });
@@ -767,6 +1020,82 @@ function sendApplyCombinedParameters() {
         </div>
       </section>
     </section>
+
+    <section class="card flex flex-col gap-3">
+      <h3 class="text-base font-semibold">Saved Rules</h3>
+
+      <div class="flex flex-wrap gap-2 items-end">
+        <div class="flex flex-col gap-1 min-w-[260px] flex-1">
+          <label class="text-sm font-medium">Rule Name</label>
+          <InputText
+            placeholder="e.g. Door Mark from Type + Prefix"
+            :modelValue="ruleName"
+            @update:modelValue="(val) => (ruleName = val || '')"
+          />
+        </div>
+
+        <Button icon="pi pi-save" label="Save New" @click="saveAsNewRule" />
+        <Button
+          icon="pi pi-pencil"
+          label="Update Selected"
+          outlined
+          :disabled="!selectedSavedRuleId"
+          @click="updateSelectedRule"
+        />
+        <Button icon="pi pi-download" label="Export JSON" outlined @click="exportRulesJson" />
+        <Button icon="pi pi-upload" label="Import JSON" outlined @click="importRulesJson" />
+      </div>
+
+      <div class="overflow-auto border border-surface-200 rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="bg-surface-100">
+            <tr>
+              <th class="text-left p-2">Name</th>
+              <th class="text-left p-2">Category</th>
+              <th class="text-left p-2">Target</th>
+              <th class="text-left p-2">Mode</th>
+              <th class="text-left p-2">Blocks</th>
+              <th class="text-left p-2">Updated</th>
+              <th class="text-left p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="rule in savedRulesSorted"
+              :key="rule.id"
+              class="border-t border-surface-200"
+              :class="selectedSavedRuleId === rule.id ? 'bg-blue-50/50' : ''"
+            >
+              <td class="p-2 font-medium">{{ rule.name }}</td>
+              <td class="p-2">{{ rule.categoryName || '-' }}</td>
+              <td class="p-2">{{ rule.targetParameterName || '-' }}</td>
+              <td class="p-2">{{ rule.mode }}</td>
+              <td class="p-2">{{ rule.blocks.length }}</td>
+              <td class="p-2">{{ new Date(rule.updatedAt).toLocaleString() }}</td>
+              <td class="p-2">
+                <div class="flex gap-1 flex-wrap">
+                  <Button size="small" label="Load" @click="loadRule(rule)" />
+                  <Button size="small" label="Rename" outlined @click="renameRule(rule.id)" />
+                  <Button
+                    size="small"
+                    label="Delete"
+                    severity="danger"
+                    outlined
+                    @click="deleteRule(rule.id)"
+                  />
+                </div>
+              </td>
+            </tr>
+            <tr v-if="savedRulesSorted.length === 0">
+              <td colspan="7" class="p-3 text-surface-500">
+                No saved rules yet. Save the current builder as a new rule.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="card flex flex-col gap-3">
       <h3 class="text-base font-semibold">All Elements (Old vs New)</h3>
 
