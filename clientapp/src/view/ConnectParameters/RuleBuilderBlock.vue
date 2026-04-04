@@ -127,14 +127,14 @@ function onUpdateLiteral(value: string | null | undefined) {
 }
 
 .rule-block--parameter {
-  border-top: 3px solid #60a5fa;
+  border-top: 3px solid var(--p-blue-400, #60a5fa);
 }
 
 .rule-block--number {
-  border-top: 3px solid #34d399;
+  border-top: 3px solid var(--p-emerald-400, #34d399);
 }
 
 .rule-block--text {
-  border-top: 3px solid #f59e0b;
+  border-top: 3px solid var(--p-amber-500, #f59e0b);
 }
 </style>

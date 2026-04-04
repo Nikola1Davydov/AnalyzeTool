@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 
 import { storeToRefs } from "pinia";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
+import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import type { ElementItem } from "@/stores/types";
 
 const InfiniteCanvas = defineAsyncComponent(() => import("./components/InfiniteCanvas.vue") as any);
@@ -42,20 +43,50 @@ type PersistedViewportState = {
   panY: number;
 };
 
-const CANVAS_STATE_STORAGE_KEY = "infinite-canvas-state-v1";
+type PersistedChartActionState = {
+  command: string;
+};
+
+type GeneratorDraftRow = {
+  id: number;
+  parameter: string;
+  category: string | null;
+  useAllCategories: boolean;
+};
+
+const CANVAS_STATE_STORAGE_KEY_PREFIX = "infinite-canvas-state-v1";
 
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
+const documentDataStore = useDocumentDataStore();
 const { sortedCategories } = storeToRefs(categoriesStore);
 const { items } = storeToRefs(elementsStore);
+const { documentId, documentName } = storeToRefs(documentDataStore);
 
 const cards = ref<CanvasCardConfig[]>([]);
 const nextCardId = ref(1);
 const showCreatePanel = ref(false);
+const showGeneratorDrawer = ref(false);
+const generatingFromDrawer = ref(false);
+const generationInfo = ref("");
 const refreshingAll = ref(false);
 const categorySnapshots = ref<Record<string, ElementItem[]>>({});
 const draftCategoryLoading = ref(false);
 const draftCategoryError = ref("");
+const generationRows = ref<GeneratorDraftRow[]>([
+  {
+    id: 1,
+    parameter: "",
+    category: null,
+    useAllCategories: false,
+  },
+]);
+const nextGenerationRowId = ref(2);
+const chartActionOptions = [
+  { label: "Select", value: "SelectionInRevit" },
+  { label: "Isolate", value: "IsolationInRevit" },
+];
+const selectedChartActionCommand = ref("SelectionInRevit");
 
 const draft = reactive<{
   category: string | null;
@@ -87,13 +118,39 @@ const availableParameters = computed(() => {
 });
 
 const canCreateCard = computed(() => !!draft.category && !!draft.parameter);
+const canGenerateFromDrawer = computed(() => {
+  return generationRows.value.some((row) => {
+    const hasParameter = row.parameter.trim().length > 0;
+    if (!hasParameter) return false;
+    if (row.useAllCategories) return sortedCategories.value.length > 0;
+    return !!row.category;
+  });
+});
 
 let persistTimer: number | null = null;
+const activeStorageKey = ref("");
+const suppressPersist = ref(false);
 const viewportState = ref<PersistedViewportState>({
   zoom: 1,
   panX: 0,
   panY: 0,
 });
+
+const projectScope = computed(() => {
+  const id = String(documentId.value || "").trim();
+  if (id) return `id:${id}`;
+
+  const name = String(documentName.value || "")
+    .trim()
+    .toLowerCase();
+  if (name) return `name:${name}`;
+
+  return "unknown-project";
+});
+
+function getCanvasStorageKey(): string {
+  return `${CANVAS_STATE_STORAGE_KEY_PREFIX}::${projectScope.value}`;
+}
 
 function cloneElements(source: ElementItem[]): ElementItem[] {
   function toStr(value: unknown): string {
@@ -180,15 +237,19 @@ function applyPersistedCards(source: PersistedCanvasCard[]): CanvasCardConfig[] 
 
 function persistCanvasState() {
   if (typeof localStorage === "undefined") return;
+  if (suppressPersist.value) return;
+
+  const storageKey = activeStorageKey.value || getCanvasStorageKey();
 
   const payload = {
     cards: toPersistedCards(cards.value),
     nextCardId: nextCardId.value,
     viewport: viewportState.value,
+    chartAction: { command: selectedChartActionCommand.value },
   };
 
   try {
-    localStorage.setItem(CANVAS_STATE_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(storageKey, JSON.stringify(payload));
   } catch (err) {
     console.error("Failed to persist canvas state", err);
   }
@@ -205,14 +266,26 @@ function queuePersistCanvasState() {
 function restoreCanvasState() {
   if (typeof localStorage === "undefined") return;
 
+  const storageKey = getCanvasStorageKey();
+  activeStorageKey.value = storageKey;
+  suppressPersist.value = true;
+
   try {
-    const raw = localStorage.getItem(CANVAS_STATE_STORAGE_KEY);
-    if (!raw) return;
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) {
+      cards.value = [];
+      nextCardId.value = 1;
+      categorySnapshots.value = {};
+      viewportState.value = { zoom: 1, panX: 0, panY: 0 };
+      selectedChartActionCommand.value = "SelectionInRevit";
+      return;
+    }
 
     const parsed = JSON.parse(raw) as {
       cards?: PersistedCanvasCard[];
       nextCardId?: number;
       viewport?: PersistedViewportState;
+      chartAction?: PersistedChartActionState;
     };
 
     const restoredCards = applyPersistedCards(parsed.cards || []);
@@ -233,8 +306,29 @@ function restoreCanvasState() {
         panY: Number.isFinite(nextPanY) ? nextPanY : 0,
       };
     }
+
+    if (parsed.chartAction && typeof parsed.chartAction === "object") {
+      const nextCommand = String((parsed.chartAction as any).command || "").trim();
+      if (nextCommand) selectedChartActionCommand.value = nextCommand;
+    }
   } catch (err) {
     console.error("Failed to restore canvas state", err);
+    cards.value = [];
+    nextCardId.value = 1;
+    categorySnapshots.value = {};
+    viewportState.value = { zoom: 1, panX: 0, panY: 0 };
+    selectedChartActionCommand.value = "SelectionInRevit";
+  } finally {
+    suppressPersist.value = false;
+  }
+}
+
+function warmCardsCategories() {
+  const categoriesToWarm = Array.from(new Set(cards.value.map((card) => card.category)));
+  for (const category of categoriesToWarm) {
+    loadCategorySnapshot(category, true).catch((err) => {
+      console.error("Failed to warm category snapshot", err);
+    });
   }
 }
 
@@ -253,6 +347,182 @@ function updateCardLayout(
 
 function onViewportChange(state: PersistedViewportState) {
   viewportState.value = state;
+}
+
+function addGenerationRow() {
+  generationRows.value.push({
+    id: nextGenerationRowId.value,
+    parameter: "",
+    category: null,
+    useAllCategories: false,
+  });
+  nextGenerationRowId.value += 1;
+}
+
+function removeGenerationRow(rowId: number) {
+  if (generationRows.value.length === 1) {
+    generationRows.value[0] = {
+      ...generationRows.value[0],
+      parameter: "",
+      category: null,
+      useAllCategories: false,
+    };
+    return;
+  }
+
+  generationRows.value = generationRows.value.filter((row) => row.id !== rowId);
+}
+
+function onGeneratorRowAllCategoriesChange(row: GeneratorDraftRow, nextValue: boolean) {
+  row.useAllCategories = nextValue;
+  if (nextValue) row.category = null;
+}
+
+function buildGenerationPairs(): { parameter: string; category: string }[] {
+  const pairs: { parameter: string; category: string }[] = [];
+
+  for (const row of generationRows.value) {
+    const parameter = row.parameter.trim();
+    if (!parameter) continue;
+
+    const categories = row.useAllCategories
+      ? sortedCategories.value
+      : row.category
+        ? [row.category]
+        : [];
+
+    for (const category of categories) {
+      if (!category) continue;
+      pairs.push({ parameter, category });
+    }
+  }
+
+  return pairs;
+}
+
+function hasParameterDataInCategory(category: string, parameter: string): boolean {
+  const normalizedParameter = parameter.trim().toLowerCase();
+  if (!normalizedParameter) return false;
+
+  const snapshot = categorySnapshots.value[category] || [];
+  return snapshot.some((element) =>
+    (element.parameters || []).some(
+      (param) =>
+        String(param?.name || "")
+          .trim()
+          .toLowerCase() === normalizedParameter,
+    ),
+  );
+}
+
+function getPairKey(category: string, parameter: string): string {
+  return `${String(category || "")
+    .trim()
+    .toLowerCase()}|${String(parameter || "")
+    .trim()
+    .toLowerCase()}`;
+}
+
+async function generateCardsFromDrawer() {
+  generationInfo.value = "";
+  const pairs = buildGenerationPairs();
+  if (pairs.length === 0) return;
+
+  generatingFromDrawer.value = true;
+  try {
+    const categoriesToLoad = Array.from(new Set(pairs.map((pair) => pair.category)));
+
+    for (const category of categoriesToLoad) {
+      await loadCategorySnapshot(category, true).catch((err) => {
+        console.error("Failed to load category before bulk generation", err);
+      });
+    }
+
+    const existingPairKeys = new Set(
+      cards.value.map((card) => getPairKey(card.category, card.parameter)),
+    );
+
+    const acceptedPairKeys = new Set<string>();
+    const validPairs = pairs.filter((pair) => {
+      const key = getPairKey(pair.category, pair.parameter);
+      if (existingPairKeys.has(key)) return false;
+      if (acceptedPairKeys.has(key)) return false;
+      if (!hasParameterDataInCategory(pair.category, pair.parameter)) return false;
+
+      acceptedPairKeys.add(key);
+      return true;
+    });
+
+    const skippedCount = pairs.length - validPairs.length;
+    if (validPairs.length === 0) {
+      generationInfo.value = "Nothing was generated: no data or pairs already exist.";
+      return;
+    }
+
+    const startY = cards.value.length
+      ? Math.max(...cards.value.map((card) => card.y + card.height)) + 28
+      : 80;
+
+    const newCards: CanvasCardConfig[] = [];
+    const baseX = 90;
+    const chartWidth = 560;
+    const chartHeight = 420;
+    const tableWidth = 700;
+    const tableHeight = 520;
+    const pairGapX = 24;
+    const pairGapY = 28;
+    const tableX = baseX + chartWidth + pairGapX;
+    let cursorY = startY;
+
+    for (const pair of validPairs) {
+      const chartId = nextCardId.value;
+      nextCardId.value += 1;
+      newCards.push({
+        id: chartId,
+        category: pair.category,
+        parameter: pair.parameter,
+        viewType: "chart",
+        x: baseX,
+        y: cursorY,
+        width: chartWidth,
+        height: chartHeight,
+        loading: true,
+        error: null,
+      });
+
+      const tableId = nextCardId.value;
+      nextCardId.value += 1;
+      newCards.push({
+        id: tableId,
+        category: pair.category,
+        parameter: pair.parameter,
+        viewType: "table",
+        x: tableX,
+        y: cursorY,
+        width: tableWidth,
+        height: tableHeight,
+        loading: true,
+        error: null,
+      });
+
+      cursorY += Math.max(chartHeight, tableHeight) + pairGapY;
+    }
+
+    cards.value = [...cards.value, ...newCards];
+
+    for (const category of categoriesToLoad) {
+      await refreshCategoryForCards(category, true);
+    }
+
+    generationInfo.value =
+      skippedCount > 0
+        ? `Generated ${validPairs.length} row(s). Skipped ${skippedCount} row(s) (no data or already exists).`
+        : `Generated ${validPairs.length} row(s).`;
+
+    showGeneratorDrawer.value = false;
+  } finally {
+    generatingFromDrawer.value = false;
+  }
 }
 
 function waitForItemsUpdate(expectedCategory: string, timeoutMs = 3000): Promise<void> {
@@ -388,6 +658,15 @@ function removeCard(cardId: number) {
   cards.value = cards.value.filter((x) => x.id !== cardId);
 }
 
+function removeAllCards() {
+  const confirmed = window.confirm("Delete all generated cards?");
+  if (!confirmed) return;
+
+  cards.value = [];
+  categorySnapshots.value = {};
+  nextCardId.value = 1;
+}
+
 async function refreshCard(cardId: number) {
   const card = cards.value.find((x) => x.id === cardId);
   if (!card) return;
@@ -395,6 +674,11 @@ async function refreshCard(cardId: number) {
 }
 
 async function refreshAllCards() {
+  // Explicitly request latest project context so project-scoped canvas can switch when needed.
+  documentDataStore.loadDocumentData().catch((err) => {
+    console.error("Failed to refresh document context", err);
+  });
+
   const categories = Array.from(new Set(cards.value.map((c) => c.category)));
   if (categories.length === 0) return;
 
@@ -419,12 +703,13 @@ onMounted(() => {
     console.error("Failed to load categories", err);
   });
 
-  const categoriesToWarm = Array.from(new Set(cards.value.map((card) => card.category)));
-  for (const category of categoriesToWarm) {
-    loadCategorySnapshot(category, true).catch((err) => {
-      console.error("Failed to warm category snapshot", err);
-    });
-  }
+  warmCardsCategories();
+});
+
+watch(projectScope, (nextScope, prevScope) => {
+  if (nextScope === prevScope) return;
+  restoreCanvasState();
+  warmCardsCategories();
 });
 
 watch(
@@ -446,6 +731,10 @@ watch(
   },
   { deep: true },
 );
+
+watch(selectedChartActionCommand, () => {
+  queuePersistCanvasState();
+});
 </script>
 
 <template>
@@ -480,6 +769,7 @@ watch(
         v-else-if="card.viewType === 'chart'"
         :items="getCardItems(card)"
         :selectedParameter="card.parameter"
+        :actionCommand="selectedChartActionCommand"
       />
 
       <BodyTable v-else :items="getCardItems(card)" :selectedParameter="card.parameter" />
@@ -487,8 +777,24 @@ watch(
 
     <template #toolbar>
       <div class="toolbar">
+        <SelectButton
+          class="chart-action-switch"
+          :options="chartActionOptions"
+          optionLabel="label"
+          optionValue="value"
+          :modelValue="selectedChartActionCommand"
+          aria-label="Chart click action"
+          @update:modelValue="(v) => (selectedChartActionCommand = v || 'SelectionInRevit')"
+        />
         <button type="button" class="toolbar-btn" @click="showCreatePanel = !showCreatePanel">
           <i class="pi pi-plus" />
+        </button>
+        <button
+          type="button"
+          class="toolbar-btn toolbar-btn--accent"
+          @click="showGeneratorDrawer = true"
+        >
+          <i class="pi pi-sparkles" />
         </button>
         <button
           type="button"
@@ -497,6 +803,14 @@ watch(
           @click="refreshAllCards"
         >
           <i class="pi pi-refresh" :class="refreshingAll ? 'pi-spin' : ''" />
+        </button>
+        <button
+          type="button"
+          class="toolbar-btn toolbar-btn--danger"
+          :disabled="cards.length === 0"
+          @click="removeAllCards"
+        >
+          <i class="pi pi-trash" />
         </button>
 
         <div v-if="showCreatePanel" class="creator-panel">
@@ -557,6 +871,67 @@ watch(
       </div>
     </template>
   </InfiniteCanvas>
+
+  <Drawer
+    v-model:visible="showGeneratorDrawer"
+    header="Bulk Generator"
+    position="right"
+    :modal="false"
+    :dismissable="true"
+    :style="{ width: 'min(48rem, 94vw)' }"
+  >
+    <div class="generator-panel">
+      <div class="generator-table-head">
+        <span>Parameter</span>
+        <span>Category</span>
+        <span>Action</span>
+      </div>
+
+      <div v-for="row in generationRows" :key="row.id" class="generator-row">
+        <InputText
+          :modelValue="row.parameter"
+          placeholder="Parameter name"
+          @update:modelValue="(v) => (row.parameter = String(v || ''))"
+        />
+
+        <div class="generator-category-cell">
+          <Select
+            :options="sortedCategories"
+            placeholder="Category"
+            :modelValue="row.category"
+            :disabled="row.useAllCategories"
+            @update:modelValue="(v) => (row.category = v)"
+          />
+          <label class="generator-all-toggle">
+            <Checkbox
+              binary
+              :modelValue="row.useAllCategories"
+              @update:modelValue="(v) => onGeneratorRowAllCategoriesChange(row, Boolean(v))"
+            />
+            <span>All categories</span>
+          </label>
+        </div>
+
+        <button type="button" class="secondary-btn" @click="removeGenerationRow(row.id)">
+          Remove
+        </button>
+      </div>
+
+      <div class="generator-actions">
+        <button type="button" class="secondary-btn" @click="addGenerationRow">+ Add row</button>
+        <button
+          type="button"
+          class="primary-btn"
+          :disabled="!canGenerateFromDrawer || generatingFromDrawer"
+          @click="generateCardsFromDrawer"
+        >
+          {{ generatingFromDrawer ? "Generating..." : "Start generation" }}
+        </button>
+      </div>
+
+      <div v-if="generationInfo" class="generator-info">{{ generationInfo }}</div>
+    </div>
+  </Drawer>
 </template>
 
 <style scoped>
@@ -564,6 +939,10 @@ watch(
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+}
+
+.chart-action-switch {
+  min-width: 12.5rem;
 }
 
 .toolbar-btn {
@@ -586,6 +965,24 @@ watch(
 .toolbar-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.toolbar-btn--accent {
+  border-color: var(--p-primary-500, #0284c7);
+  color: var(--p-primary-500, #0284c7);
+}
+
+.toolbar-btn--accent:hover {
+  background: var(--p-primary-100, #e0f2fe);
+}
+
+.toolbar-btn--danger {
+  border-color: var(--p-red-500, #dc2626);
+  color: var(--p-red-500, #dc2626);
+}
+
+.toolbar-btn--danger:hover {
+  background: var(--p-red-100, #fee2e2);
 }
 
 .creator-panel {
@@ -653,9 +1050,9 @@ watch(
 }
 
 .primary-btn {
-  border: 1px solid #0284c7;
-  background: #0284c7;
-  color: #ffffff;
+  border: 1px solid var(--p-primary-500, #0284c7);
+  background: var(--p-primary-500, #0284c7);
+  color: var(--p-primary-contrast-color, #ffffff);
 }
 
 .primary-btn:disabled {
@@ -666,5 +1063,53 @@ watch(
 .card-state {
   font-size: 0.82rem;
   color: var(--p-surface-600, #475569);
+}
+
+.generator-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.generator-table-head,
+.generator-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) auto;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.generator-table-head {
+  font-size: 0.72rem;
+  color: var(--p-surface-600, #475569);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.generator-category-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.generator-all-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  color: var(--p-surface-700, #334155);
+}
+
+.generator-actions {
+  margin-top: 0.45rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.generator-info {
+  font-size: 0.76rem;
+  color: var(--p-surface-600, #475569);
+  line-height: 1.35;
 }
 </style>

@@ -15,7 +15,9 @@ export const useDocumentDataStore = defineStore("documentData", () => {
   const documentId = computed(() => data.value?.id || "");
 
   async function loadDocumentData(): Promise<void> {
-    await sendRequest(Commands.GetDocumentData, null);
+    sendRequest(Commands.GetDocumentData, null).catch((err) => {
+      console.error("Failed to request document data", err);
+    });
   }
 
   function setDocumentData(payload: DocumentData | null): void {

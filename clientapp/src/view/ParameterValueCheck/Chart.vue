@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from "vue";
+import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import Chart from "primevue/chart";
 import { Commands, sendRequest } from "@/RevitBridge";
 import { ParameterOrgin } from "@/stores/types";
@@ -20,7 +20,27 @@ const props = defineProps<{
   selectedParameter?: string | null;
 }>();
 
-const palette = ["#42A5F5", "#66BB6A", "#FFA726", "#AB47BC", "#26C6DA", "#EF5350", "#FFCA28"];
+const themeVersion = ref(0);
+let themeObserver: MutationObserver | null = null;
+
+function resolveCssVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+const palette = computed(() => {
+  void themeVersion.value;
+  return [
+    resolveCssVar("--p-blue-500", "#42A5F5"),
+    resolveCssVar("--p-emerald-500", "#66BB6A"),
+    resolveCssVar("--p-amber-500", "#FFA726"),
+    resolveCssVar("--p-violet-500", "#AB47BC"),
+    resolveCssVar("--p-cyan-500", "#26C6DA"),
+    resolveCssVar("--p-red-500", "#EF5350"),
+    resolveCssVar("--p-yellow-500", "#FFCA28"),
+  ];
+});
 
 const activeFilters = computed(() => props.filters ?? []);
 const activeSearch = computed(() => (props.search ?? "").trim().toLowerCase());
@@ -99,7 +119,9 @@ const parameterCharts = computed(() => {
           {
             label: "Count",
             data: filteredEntries.map((e) => e.count),
-            backgroundColor: filteredEntries.map((_, idx) => palette[idx % palette.length]),
+            backgroundColor: filteredEntries.map(
+              (_, idx) => palette.value[idx % palette.value.length],
+            ),
           },
         ],
       };
@@ -158,6 +180,24 @@ function toggleExpand(parameter: string) {
     window.dispatchEvent(new Event("resize"));
   });
 }
+
+onMounted(() => {
+  if (typeof window === "undefined") return;
+  themeObserver = new MutationObserver(() => {
+    themeVersion.value += 1;
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style", "data-theme"],
+  });
+});
+
+onBeforeUnmount(() => {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
+});
 </script>
 
 <template>

@@ -70,7 +70,6 @@ const gridStyle = computed(() => ({
   overflow: hidden;
   border: 1px solid var(--p-surface-300, #d1d5db);
   border-radius: 0.75rem;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
 .grid {
@@ -95,7 +94,7 @@ const gridStyle = computed(() => ({
   padding: 0.2rem 0.5rem;
   border-radius: 0.5rem;
   border: 1px solid var(--p-surface-300, #d1d5db);
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--p-surface-0, #ffffff) 92%, transparent);
   font-size: 0.75rem;
   color: var(--p-surface-700, #334155);
 }

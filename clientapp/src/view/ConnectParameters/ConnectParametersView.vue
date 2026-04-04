@@ -946,7 +946,7 @@ function sendApplyCombinedParameters() {
             :severity="targetOption.isReadOnly ? 'danger' : 'success'"
           />
         </div>
-        <div v-if="shouldSumForTextTarget" class="text-xs text-emerald-700">
+        <div v-if="shouldSumForTextTarget" class="text-xs status-success">
           Text target with numeric-only sources: values will be summed.
         </div>
 
@@ -1005,7 +1005,7 @@ function sendApplyCombinedParameters() {
     <section class="card flex flex-col gap-3">
       <h3 class="text-base font-semibold">All Elements (Old vs New)</h3>
 
-      <div class="text-sm text-red-600" v-for="(err, index) in configErrors" :key="`cfg-${index}`">
+      <div class="text-sm status-error" v-for="(err, index) in configErrors" :key="`cfg-${index}`">
         {{ err }}
       </div>
 
@@ -1053,7 +1053,7 @@ function sendApplyCombinedParameters() {
               <td class="p-2">{{ row.oldValue || "(empty)" }}</td>
               <td
                 class="p-2"
-                :class="getDisplayStatus(row) === Status.Changed ? 'text-orange-500' : ''"
+                :class="getDisplayStatus(row) === Status.Changed ? 'status-changed' : ''"
               >
                 {{ getDisplayNewValue(row) || "(empty)" }}
               </td>
@@ -1061,15 +1061,15 @@ function sendApplyCombinedParameters() {
                 <span
                   :class="
                     getDisplayStatus(row) === Status.Error
-                      ? 'text-red-600'
+                      ? 'status-error'
                       : getDisplayStatus(row) === Status.Changed
-                        ? 'text-orange-700'
-                        : 'text-surface-600'
+                        ? 'status-changed-strong'
+                        : 'status-neutral'
                   "
                 >
                   {{ getDisplayStatus(row) }}
                 </span>
-                <div v-if="row.errors.length" class="text-xs text-red-600 mt-1">
+                <div v-if="row.errors.length" class="text-xs status-error mt-1">
                   {{ row.errors.join("; ") }}
                 </div>
               </td>
@@ -1098,7 +1098,7 @@ function sendApplyCombinedParameters() {
         />
       </div>
 
-      <div v-if="sendInfo" class="text-sm text-emerald-700">
+      <div v-if="sendInfo" class="text-sm status-success">
         {{ sendInfo }}
       </div>
     </section>
@@ -1108,5 +1108,25 @@ function sendApplyCombinedParameters() {
 <style scoped>
 .rule-block-separator {
   color: var(--p-surface-500, #9ca3af);
+}
+
+.status-error {
+  color: var(--p-red-500, #ef4444);
+}
+
+.status-success {
+  color: var(--p-emerald-500, #10b981);
+}
+
+.status-changed {
+  color: var(--p-amber-500, #f59e0b);
+}
+
+.status-changed-strong {
+  color: var(--p-amber-600, #d97706);
+}
+
+.status-neutral {
+  color: var(--p-surface-600, #475569);
 }
 </style>

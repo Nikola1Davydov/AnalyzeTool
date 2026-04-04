@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import WarningCard from "@/components/WarningCard.vue";
+import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
 import { sendRequest, Commands } from "@/RevitBridge";
 import type { KeyValuePair } from "@/stores/types";
 import { useDocumentHealthStore } from "@/stores/useDocumentHealthStore";
 import type { DocumentHealthPayload } from "@/stores/useDocumentHealthStore";
+
+const WarningCard = defineAsyncComponent(() => import("@/components/WarningCard.vue") as any);
 
 const loading = ref(true);
 const store = useDocumentHealthStore();
@@ -24,11 +25,11 @@ const format = (item?: KeyValuePair) => (item ? `${item.value}` : "–");
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold">Revit Document Health</h1>
-      <p class="text-sm text-gray-500">Technical overview of model complexity and quality</p>
+      <p class="text-sm text-surface-500">Technical overview of model complexity and quality</p>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-gray-400">Loading document health…</div>
+    <div v-if="loading" class="text-surface-400">Loading document health…</div>
 
     <!-- Dashboard -->
     <div v-else-if="health" class="space-y-8">

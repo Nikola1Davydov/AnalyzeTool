@@ -7,12 +7,12 @@ const { closeSidebar } = inject("sidebarActions");
 const router = useRouter();
 
 const menuItems = [
-  { label: "Home", icon: "pi pi-home", to: "/" },
-  { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
+  { label: "Home", icon: "pi pi-th-large", to: "/parameterCanvasView" },
+  { label: "Parameter Empty Check", icon: "pi pi-home", to: "/" },
   { label: "Parameter Value Check", icon: "pi pi-check-square", to: "/parametervaluecheck" },
+  // { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
   // { label: "Families", icon: "pi-objects-column", to: "/families" },
-  { label: "ConnectParameters", icon: "pi pi-info-circle", to: "/connectParameters" },
-  { label: "ParameterCanvasView", icon: "pi pi-info-circle", to: "/parameterCanvasView" },
+  // { label: "ConnectParameters", icon: "pi pi-info-circle", to: "/connectParameters" },
   { label: "About", icon: "pi pi-info-circle", to: "/about" },
 ];
 

@@ -8,12 +8,21 @@ export default defineComponent({
 
 <script setup>
 import Chart from "primevue/chart";
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { sendRequest } from "@/RevitBridge";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
 });
+
+const themeVersion = ref(0);
+let themeObserver = null;
+
+function resolveCssVar(name, fallback) {
+  if (typeof window === "undefined") return fallback;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
 
 const parameterStats = computed(() => {
   if (!props.items || !Array.isArray(props.items)) return [];
@@ -35,18 +44,19 @@ const parameterStats = computed(() => {
 });
 
 const chartData = computed(() => ({
+  ...(void themeVersion.value, {}),
   labels: parameterStats.value.map((s) => s.parameter),
   datasets: [
     {
       label: "Filled",
       data: parameterStats.value.map((s) => s.filled),
-      backgroundColor: "#42A5F5",
+      backgroundColor: resolveCssVar("--p-blue-500", "#42A5F5"),
       stack: "params",
     },
     {
       label: "Empty",
       data: parameterStats.value.map((s) => s.empty),
-      backgroundColor: "#EF5350",
+      backgroundColor: resolveCssVar("--p-red-500", "#EF5350"),
       stack: "params",
     },
   ],
@@ -117,6 +127,25 @@ const chartOptions = {
   },
   onClick: handleChartClick,
 };
+
+onMounted(() => {
+  if (typeof window === "undefined") return;
+  themeObserver = new MutationObserver(() => {
+    themeVersion.value += 1;
+  });
+
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style", "data-theme"],
+  });
+});
+
+onBeforeUnmount(() => {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
+});
 </script>
 
 <template>

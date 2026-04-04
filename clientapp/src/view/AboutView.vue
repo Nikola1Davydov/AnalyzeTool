@@ -23,7 +23,7 @@
       <a
         href="https://github.com/Nikola1Davydov/AnalyzeTool"
         target="_blank"
-        class="text-blue-600"
+        class="text-primary hover:underline"
         rel="noopener noreferrer"
         >https://github.com/Nikola1Davydov/AnalyzeTool</a
       >
@@ -39,7 +39,7 @@
       <a
         href="https://github.com/Nikola1Davydov/AnalyzeTool/issues"
         target="_blank"
-        class="text-blue-600"
+        class="text-primary hover:underline"
         rel="noopener noreferrer"
         >https://github.com/Nikola1Davydov/AnalyzeTool/issues</a
       >

@@ -1,10 +1,15 @@
 <script setup>
 import Chart from "primevue/chart";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useElements } from "@/stores/useElementsStore";
-import { display } from "@primeuix/themes/aura/inplace";
 const { filtered } = storeToRefs(useElements());
+
+function resolveCssVar(name, fallback) {
+  if (typeof window === "undefined") return fallback;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
 
 const categories = computed(() => {
   const list = Array.isArray(filtered.value) ? filtered.value : [];
@@ -14,7 +19,7 @@ const categories = computed(() => {
 
 const counts = computed(() => {
   return categories.value.map(
-    (cat) => filtered.value.filter((e) => e?.CategoryName === cat).length
+    (cat) => filtered.value.filter((e) => e?.CategoryName === cat).length,
   );
 });
 
@@ -24,7 +29,7 @@ const chartData = computed(() => ({
     {
       label: "Elements count",
       data: counts.value,
-      backgroundColor: "#42A5F5",
+      backgroundColor: resolveCssVar("--p-primary-500", "#42A5F5"),
     },
   ],
 }));

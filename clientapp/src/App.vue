@@ -90,12 +90,3 @@ provide("sidebarActions", {
     </div>
   </div>
 </template>
-
-<style>
-.layout-wrapper {
-  background-color: var(--p-surface-0); /* фон из Aura */
-  transition:
-    background-color 0.3s,
-    color 0.3s;
-}
-</style>
