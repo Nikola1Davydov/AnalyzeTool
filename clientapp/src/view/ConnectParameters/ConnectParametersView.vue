@@ -1106,14 +1106,6 @@ function sendApplyCombinedParameters() {
 </template>
 
 <style scoped>
-.preview-action-bar {
-  background: var(--p-surface-0, #ffffff);
-  border: 1px solid var(--p-surface-200, #e5e7eb);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
-  box-shadow: 0 -8px 20px -18px rgba(0, 0, 0, 0.35);
-}
-
 .rule-block-separator {
   color: var(--p-surface-500, #9ca3af);
 }

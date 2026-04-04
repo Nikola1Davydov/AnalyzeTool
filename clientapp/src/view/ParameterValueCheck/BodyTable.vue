@@ -4,6 +4,7 @@ import type { ElementItem } from "@/stores/types";
 
 const props = defineProps<{
   items: ElementItem[];
+  selectedParameter?: string | null;
 }>();
 
 // Group by parameter and parameter value for the table view
@@ -18,9 +19,12 @@ const tableData = computed(() => {
 
     for (const param of parameters) {
       const paramName = param?.name ?? "Unknown";
+      if (props.selectedParameter && paramName !== props.selectedParameter) continue;
       const rawValue = param?.value;
       const valueLabel =
-        rawValue === undefined || rawValue === null || rawValue === "" ? "(empty)" : String(rawValue);
+        rawValue === undefined || rawValue === null || rawValue === ""
+          ? "(empty)"
+          : String(rawValue);
 
       if (!grouped.has(paramName)) grouped.set(paramName, new Map());
       const valueMap = grouped.get(paramName)!;

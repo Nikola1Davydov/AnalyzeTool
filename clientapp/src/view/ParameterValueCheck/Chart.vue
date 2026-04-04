@@ -17,6 +17,7 @@ const props = defineProps<{
   filters?: string[];
   search?: string;
   clickAction?: string;
+  selectedParameter?: string | null;
 }>();
 
 const palette = ["#42A5F5", "#66BB6A", "#FFA726", "#AB47BC", "#26C6DA", "#EF5350", "#FFCA28"];
@@ -55,6 +56,7 @@ const parameterCharts = computed(() => {
       if (!matchesFilters(param, activeFilters.value)) continue;
 
       const paramName = param?.name ?? "Unknown";
+      if (props.selectedParameter && paramName !== props.selectedParameter) continue;
       const rawValue = param?.value;
       const valueLabel =
         rawValue === undefined || rawValue === null || rawValue === ""

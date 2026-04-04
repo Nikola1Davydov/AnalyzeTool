@@ -56,7 +56,7 @@ function onUpdateLiteral(value: string | null | undefined) {
     @dragover.prevent
     @drop="emit('drop', props.index)"
     :class="[
-      'rule-block border rounded-lg p-3 min-w-[220px] shadow-sm',
+      'rule-block border rounded-lg p-3 min-w-[220px] shadow-sm bg-surface-0',
       props.block.kind === 'parameter'
         ? 'rule-block--parameter'
         : props.block.kind === 'number'
@@ -115,8 +115,6 @@ function onUpdateLiteral(value: string | null | undefined) {
 
 <style scoped>
 .rule-block {
-  background: var(--p-surface-0, #ffffff);
-  border-color: var(--p-surface-300, #d1d5db);
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,

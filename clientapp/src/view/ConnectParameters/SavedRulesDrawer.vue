@@ -259,7 +259,7 @@ watch(
         <article
           v-for="rule in visibleRules"
           :key="rule.id"
-          class="saved-rule-card rounded-xl border p-4 shadow-sm"
+          class="rounded-xl border p-4 shadow-sm"
           :class="props.selectedRuleId === rule.id ? 'saved-rule-card--active' : ''"
         >
           <div class="flex items-start justify-between gap-3">
@@ -282,7 +282,7 @@ watch(
           </div>
 
           <div class="mt-4 flex flex-wrap gap-2">
-            <Button size="small" label="Load" @click="emit('load', rule)" />
+            <Button size="small" label="Select" @click="emit('load', rule)" />
             <Button size="small" label="Rename" outlined @click="emit('rename', rule.id)" />
             <Button
               size="small"
@@ -299,13 +299,9 @@ watch(
 </template>
 
 <style scoped>
-.saved-rule-card {
-  background: var(--p-surface-0, #ffffff);
-  border-color: var(--p-surface-200, #e5e7eb);
-}
-
 .saved-rule-card--active {
   border-color: var(--p-primary-300, #93c5fd);
+  border-top: 5px solid rgba(59, 130, 246, 0.45);
   box-shadow: 0 12px 24px -20px rgba(59, 130, 246, 0.45);
 }
 </style>
