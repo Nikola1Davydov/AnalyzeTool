@@ -1067,8 +1067,8 @@ function sendApplyCombinedParameters() {
               :class="selectedSavedRuleId === rule.id ? 'bg-blue-50/50' : ''"
             >
               <td class="p-2 font-medium">{{ rule.name }}</td>
-              <td class="p-2">{{ rule.categoryName || '-' }}</td>
-              <td class="p-2">{{ rule.targetParameterName || '-' }}</td>
+              <td class="p-2">{{ rule.categoryName || "-" }}</td>
+              <td class="p-2">{{ rule.targetParameterName || "-" }}</td>
               <td class="p-2">{{ rule.mode }}</td>
               <td class="p-2">{{ rule.blocks.length }}</td>
               <td class="p-2">{{ new Date(rule.updatedAt).toLocaleString() }}</td>

@@ -23,7 +23,7 @@ namespace AnalyseTool.RevitCommands.Commands
                 RevitTransactions.Run("Connect Parameters Execute", () =>
                 {
                     foreach (ParameterData parameterData in list.Items)
-                    {
+                    {async<
                         if (parameterData == null) continue;
 
                         SetData(parameterData, list.Mode);
@@ -70,8 +70,21 @@ namespace AnalyseTool.RevitCommands.Commands
             }
 
             if (parameter == null || parameter.IsReadOnly) return;
-
-            parameter.SetParameterValue(parameterData.Value);
+            
+            SetData(parameter, parameterData.Value, mode);
+        }
+        private void SetData(Parameter parameter, string value, SetDataMode mode)
+        {
+            switch (mode)
+            {
+                case SetDataMode.Overwrite:
+                    break;
+                case SetDataMode.OnlyIfEmpty when parameter.HasValue:
+                    return;
+                case SetDataMode.SkipIfEqual when parameter.AsString() == value:
+                    return;
+            }
+            parameter.SetParameterValue(value);
         }
 
         private sealed record SetDataToParametersDto()
