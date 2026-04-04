@@ -5,7 +5,7 @@ import ParameterFilledEmptyPage from "@/view/ParameterFilledEmptyView.vue";
 import RevitDocumentHealthView from "@/view/RevitDocumentHealthView.vue";
 import ParameterValueCheckView from "@/view/ParameterValueCheckView.vue";
 import FamiliesView from "@/view/FamiliesView.vue";
-import ConnectParameters from "@/view/ConnectParameters.vue";
+import ConnectParameters from "@/view/ConnectParameters/ConnectParametersView.vue";
 
 const routes = [
   { path: "/", component: ParameterFilledEmptyPage },

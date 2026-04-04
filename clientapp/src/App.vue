@@ -4,7 +4,9 @@ import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { UpdateInfo, useUpdateStore } from "@/stores/useUpdateStore";
 import type { WebViewMessage } from "@/RevitBridge";
-import type { DocumentHealthPayload, ElementItem } from "@/stores/types";
+import type { ElementItem } from "@/stores/types";
+import { useDocumentDataStore, type DocumentData } from "@/stores/useDocumentDataStore";
+import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
 import { Commands, MessageType } from "@/RevitBridge";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
@@ -32,6 +34,7 @@ onMounted(() => {
     }
 
     updateStore.loadUpdateData();
+    useDocumentDataStore().loadDocumentData();
 
     (window as any).chrome.webview.addEventListener("message", (event) => {
       console.log("Data from Revit:", event.data, "type:", typeof event.data);
@@ -52,6 +55,11 @@ onMounted(() => {
         }
         if (payload.Command == Commands.GetDocumentHealthStatus) {
           useDocumentHealthStore().setHealth(payload.Payload as DocumentHealthPayload);
+          return;
+        }
+        if (payload.Command == Commands.GetDocumentData) {
+          useDocumentDataStore().setDocumentData(payload.Payload as DocumentData);
+          return;
         }
       } catch (err) {
         console.error("Parse error", err);

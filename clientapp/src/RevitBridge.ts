@@ -9,22 +9,24 @@ export type WebViewMessage = {
 };
 
 export interface CommandPayloads {
-  [Commands.Selection]: { elementIds: number[] };
-  [Commands.Isolation]: { elementIds: number[] };
+  [Commands.SelectionInRevit]: { elementIds: number[] };
+  [Commands.IsolationInRevit]: { elementIds: number[] };
   [Commands.GetCategoriesInRevit]: { null: null };
   [Commands.GetDataByCategoryName]: { categoryName: string };
   [Commands.GetDocumentHealthStatus]: DocumentHealthPayload;
   [Commands.CheckUpdate]: UpdatePayload;
+  [Commands.GetDocumentData]: null;
   [Commands.SetDataToParameters]: SetDataToParameters;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
-  Selection: "Selection",
-  Isolation: "Isolation",
+  SelectionInRevit: "SelectionInRevit",
+  IsolationInRevit: "IsolationInRevit",
   GetCategoriesInRevit: "GetCategoriesInRevit",
   GetDataByCategoryName: "GetDataByCategoryName",
   GetDocumentHealthStatus: "GetDocumentHealthStatus",
   CheckUpdate: "CheckUpdate",
+  GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
 } as const;
 

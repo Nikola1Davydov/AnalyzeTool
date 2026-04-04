@@ -4,32 +4,30 @@ import { storeToRefs } from "pinia";
 import { Commands, sendRequest } from "@/RevitBridge";
 import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useElementsStore } from "@/stores/useElementsStore";
+import {
+  getScopeTagSeverity,
+  getStorageTypeTagSeverity,
+  getValueTypeTagSeverity,
+} from "@/view/ConnectParameters/tagSeverity";
+import { parseSavedRules } from "@/view/ConnectParameters/savedRulesUtils";
+import type { RuleBlock, SavedRule } from "@/view/ConnectParameters/ruleTypes";
 import type { ElementItem, ParameterData, SetDataToParameters } from "@/stores/types";
 
 const TopFiltersBar = defineAsyncComponent(() => import("@/components/TopFiltersBar.vue") as any);
+const RuleBuilderBlock = defineAsyncComponent(() => import("./RuleBuilderBlock.vue") as any);
+const SavedRulesDrawer = defineAsyncComponent(() => import("./SavedRulesDrawer.vue") as any);
 
 type ApplyMode = (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 type TargetKind = "Text" | "Number" | "Unknown";
 type TargetNumberKind = "int" | "double" | "unknown";
-
-type RuleBlock = {
-  id: number;
-  kind: "parameter" | "text" | "number";
-  parameterName: string | null;
-  literal: string;
-};
-
-type SavedRule = {
-  id: string;
-  name: string;
-  categoryName: string | null;
-  targetParameterName: string | null;
-  mode: ApplyMode;
-  blocks: RuleBlock[];
-  createdAt: string;
-  updatedAt: string;
-};
+const Status = {
+  Changed: "Changed",
+  Same: "Same",
+  Error: "Error",
+} as const;
+type Status = (typeof Status)[keyof typeof Status];
 
 type ParameterOption = {
   key: string;
@@ -47,14 +45,16 @@ type PreviewRow = {
   elementScope: "Type" | "Instance";
   oldValue: string;
   newValue: string;
-  status: "Changed" | "Same" | "Error";
+  status: Status;
   errors: string[];
 };
 
 const categoriesStore = useCategoriesStore();
+const documentDataStore = useDocumentDataStore();
 const elementsStore = useElementsStore();
 
 const { sortedCategories } = storeToRefs(categoriesStore);
+const { documentName } = storeToRefs(documentDataStore);
 const { items } = storeToRefs(elementsStore);
 
 const selectedCategory = ref<string | null>(null);
@@ -69,11 +69,14 @@ const sendInfo = ref("");
 const draggedBlockIndex = ref<number | null>(null);
 const editableRowMap = ref<Record<number, boolean>>({});
 const isApplyingSavedRule = ref(false);
+const previewDisplayMode = ref<"all" | "changed" | "errors">("all");
 
 const RULES_STORAGE_KEY = "connect-parameters-rules-v1";
-const savedRules = ref<SavedRule[]>([]);
+const savedRules = ref<SavedRule<ApplyMode>[]>([]);
 const selectedSavedRuleId = ref<string | null>(null);
 const ruleName = ref("");
+const ruleGroupTag = ref("");
+const isSavedRulesDrawerOpen = ref(false);
 
 const blockIdCounter = ref(1);
 const blocks = ref<RuleBlock[]>([{ id: 1, kind: "parameter", parameterName: null, literal: "" }]);
@@ -237,26 +240,6 @@ function cloneBlocks(source: RuleBlock[]): RuleBlock[] {
   }));
 }
 
-function normalizeLoadedBlocks(rawBlocks: unknown): RuleBlock[] {
-  if (!Array.isArray(rawBlocks)) return [];
-
-  const result: RuleBlock[] = [];
-  for (const raw of rawBlocks) {
-    const kind = (raw as any)?.kind;
-    if (kind !== "parameter" && kind !== "text" && kind !== "number") continue;
-
-    result.push({
-      id: Number((raw as any)?.id) || result.length + 1,
-      kind,
-      parameterName:
-        typeof (raw as any)?.parameterName === "string" ? (raw as any).parameterName : null,
-      literal: typeof (raw as any)?.literal === "string" ? (raw as any).literal : "",
-    });
-  }
-
-  return result;
-}
-
 function persistSavedRules() {
   try {
     localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(savedRules.value));
@@ -274,44 +257,22 @@ function loadSavedRulesFromStorage() {
     }
 
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      savedRules.value = [];
-      return;
-    }
-
-    const modes = Object.values(SetDataToParametersModes);
-    savedRules.value = parsed
-      .map((x): SavedRule | null => {
-        const mode = (x as any)?.mode;
-        if (!modes.includes(mode)) return null;
-
-        return {
-          id: String((x as any)?.id || crypto.randomUUID()),
-          name: String((x as any)?.name || "Unnamed rule"),
-          categoryName:
-            typeof (x as any)?.categoryName === "string" ? (x as any).categoryName : null,
-          targetParameterName:
-            typeof (x as any)?.targetParameterName === "string"
-              ? (x as any).targetParameterName
-              : null,
-          mode,
-          blocks: normalizeLoadedBlocks((x as any)?.blocks),
-          createdAt: String((x as any)?.createdAt || new Date().toISOString()),
-          updatedAt: String((x as any)?.updatedAt || new Date().toISOString()),
-        };
-      })
-      .filter(Boolean) as SavedRule[];
+    const modes = Object.values(SetDataToParametersModes) as ApplyMode[];
+    savedRules.value = parseSavedRules<ApplyMode>(parsed, modes, "Unnamed rule");
   } catch (err) {
     console.error("Failed to load saved rules", err);
     savedRules.value = [];
   }
 }
 
-function buildCurrentRuleDraft(id: string, createdAt: string): SavedRule {
+function buildCurrentRuleDraft(id: string, createdAt: string): SavedRule<ApplyMode> {
   const name = ruleName.value.trim() || `Rule ${savedRules.value.length + 1}`;
+  const projectTag = documentName.value.trim() || null;
   return {
     id,
     name,
+    projectTag,
+    groupTag: ruleGroupTag.value.trim() || null,
     categoryName: selectedCategory.value,
     targetParameterName: targetParameterName.value,
     mode: applyMode.value,
@@ -328,6 +289,7 @@ function saveAsNewRule() {
   savedRules.value.unshift(rule);
   selectedSavedRuleId.value = rule.id;
   ruleName.value = rule.name;
+  ruleGroupTag.value = rule.groupTag || "";
   persistSavedRules();
   sendInfo.value = `Rule saved: ${rule.name}`;
 }
@@ -342,13 +304,15 @@ function updateSelectedRule() {
   const updated = buildCurrentRuleDraft(existing.id, existing.createdAt);
   savedRules.value.splice(idx, 1, updated);
   ruleName.value = updated.name;
+  ruleGroupTag.value = updated.groupTag || "";
   persistSavedRules();
   sendInfo.value = `Rule updated: ${updated.name}`;
 }
 
-function loadRule(rule: SavedRule) {
+function loadRule(rule: SavedRule<ApplyMode>) {
   selectedSavedRuleId.value = rule.id;
   ruleName.value = rule.name;
+  ruleGroupTag.value = rule.groupTag || "";
 
   isApplyingSavedRule.value = true;
   selectedCategory.value = rule.categoryName;
@@ -380,6 +344,7 @@ function deleteRule(ruleId: string) {
   if (selectedSavedRuleId.value === ruleId) {
     selectedSavedRuleId.value = null;
     ruleName.value = "";
+    ruleGroupTag.value = "";
   }
 
   persistSavedRules();
@@ -421,32 +386,11 @@ function importRulesJson() {
 
   try {
     const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) return;
+    const modes = Object.values(SetDataToParametersModes) as ApplyMode[];
+    const imported = parseSavedRules<ApplyMode>(parsed, modes, "Imported rule");
+    if (imported.length === 0) return;
 
-    const modes = Object.values(SetDataToParametersModes);
-    const imported = parsed
-      .map((x): SavedRule | null => {
-        const mode = (x as any)?.mode;
-        if (!modes.includes(mode)) return null;
-
-        return {
-          id: String((x as any)?.id || crypto.randomUUID()),
-          name: String((x as any)?.name || "Imported rule"),
-          categoryName:
-            typeof (x as any)?.categoryName === "string" ? (x as any).categoryName : null,
-          targetParameterName:
-            typeof (x as any)?.targetParameterName === "string"
-              ? (x as any).targetParameterName
-              : null,
-          mode,
-          blocks: normalizeLoadedBlocks((x as any)?.blocks),
-          createdAt: String((x as any)?.createdAt || new Date().toISOString()),
-          updatedAt: String((x as any)?.updatedAt || new Date().toISOString()),
-        };
-      })
-      .filter(Boolean) as SavedRule[];
-
-    const byId = new Map<string, SavedRule>();
+    const byId = new Map<string, SavedRule<ApplyMode>>();
     for (const item of savedRules.value) byId.set(item.id, item);
     for (const item of imported) byId.set(item.id, item);
 
@@ -637,18 +581,22 @@ const previewRows = computed<PreviewRow[]>(() => {
       elementScope: element.isElementType ? "Type" : "Instance",
       oldValue,
       newValue: built.value,
-      status: built.errors.length ? "Error" : oldValue === built.value ? "Same" : "Changed",
+      status: built.errors.length
+        ? Status.Error
+        : oldValue === built.value
+          ? Status.Same
+          : Status.Changed,
       errors: built.errors,
     };
   });
 });
 
 const editableRows = computed(() =>
-  previewRows.value.filter((row) => row.status === "Changed" && row.errors.length === 0),
+  previewRows.value.filter((row) => row.status === Status.Changed && row.errors.length === 0),
 );
 
 const selectedEditableRows = computed(() =>
-  editableRows.value.filter((row) => editableRowMap.value[row.elementId] !== false),
+  editableRows.value.filter((row) => isRowSelectedForApply(row)),
 );
 
 const configErrors = computed(() => {
@@ -666,14 +614,24 @@ const rowErrors = computed(() =>
   previewRows.value.reduce((acc: string[], row) => acc.concat(row.errors), []),
 );
 const hasErrors = computed(() => configErrors.value.length > 0 || rowErrors.value.length > 0);
-const changedRows = computed(() => previewRows.value.filter((x) => x.status === "Changed"));
+const changedRows = computed(() =>
+  previewRows.value.filter((row) => getDisplayStatus(row) === Status.Changed),
+);
+const errorRows = computed(() =>
+  previewRows.value.filter((x) => x.status === Status.Error || x.errors.length > 0),
+);
+const visiblePreviewRows = computed(() => {
+  if (previewDisplayMode.value === "changed") return changedRows.value;
+  if (previewDisplayMode.value === "errors") return errorRows.value;
+  return previewRows.value;
+});
 
 watch(
   previewRows,
   (rows) => {
     const nextMap: Record<number, boolean> = {};
     for (const row of rows) {
-      const isEditable = row.status === "Changed" && row.errors.length === 0;
+      const isEditable = row.status === Status.Changed && row.errors.length === 0;
       nextMap[row.elementId] = isEditable ? (editableRowMap.value[row.elementId] ?? true) : false;
     }
     editableRowMap.value = nextMap;
@@ -762,6 +720,26 @@ function removeBlock(id: number) {
   blocks.value = blocks.value.filter((x) => x.id !== id);
 }
 
+function updateBlockParameterName(blockId: number, value: string | null) {
+  const block = blocks.value.find((item) => item.id === blockId);
+  if (!block) return;
+  block.parameterName = value;
+}
+
+function updateBlockLiteral(blockId: number, value: string) {
+  const block = blocks.value.find((item) => item.id === blockId);
+  if (!block) return;
+  block.literal = value;
+}
+
+function onBlockParameterNameUpdate(blockId: number, value: string | null) {
+  updateBlockParameterName(blockId, value);
+}
+
+function onBlockLiteralUpdate(blockId: number, value: string) {
+  updateBlockLiteral(blockId, value);
+}
+
 function getOptionLabel(name: string): string {
   const option = parameterOptions.value.find((x) => x.name === name);
   if (!option) return name;
@@ -797,7 +775,29 @@ function onDrop(targetIndex: number) {
 }
 
 function isRowEditable(row: PreviewRow): boolean {
-  return row.status === "Changed" && row.errors.length === 0;
+  return row.errors.length === 0;
+}
+
+function isRowSelectedForApply(row: PreviewRow): boolean {
+  return (
+    isRowEditable(row) &&
+    row.status === Status.Changed &&
+    editableRowMap.value[row.elementId] !== false
+  );
+}
+
+function getDisplayStatus(row: PreviewRow): Status {
+  if (row.status === Status.Changed && !isRowSelectedForApply(row)) {
+    return Status.Same;
+  }
+  return row.status;
+}
+
+function getDisplayNewValue(row: PreviewRow): string {
+  if (row.status === Status.Changed && !isRowSelectedForApply(row)) {
+    return row.oldValue;
+  }
+  return row.newValue;
 }
 
 function setEditableSelection(mode: "all" | "none" | "type" | "instance" | "changed") {
@@ -917,14 +917,29 @@ function sendApplyCombinedParameters() {
               @click="addTextBlock"
             />
             <Button icon="pi pi-plus" label="Add Number" @click="addNumberBlock" />
+
+            <Button
+              icon="pi pi-folder-open"
+              label="Rule Library"
+              type="button"
+              size="small"
+              :badge="String(savedRulesSorted.length)"
+              badgeSeverity="contrast"
+              @click="isSavedRulesDrawerOpen = true"
+            />
           </div>
         </div>
 
         <div class="text-xs text-color">{{ targetTypeInfo }}</div>
         <div v-if="targetOption" class="flex flex-wrap gap-1">
-          <Tag :value="targetOption.valueTypeLabel" severity="info" />
-          <Tag :value="targetOption.storageTypeLabel" severity="contrast" />
-          <Tag :value="targetOption.scopeLabel" severity="warn" />
+          <Tag
+            :value="targetOption.valueTypeLabel"
+            :severity="getValueTypeTagSeverity(targetOption.valueTypeLabel)"
+          />
+          <Tag
+            :value="targetOption.scopeLabel"
+            :severity="getScopeTagSeverity(targetOption.scopeLabel)"
+          />
           <Tag :value="targetOption.originLabel" severity="secondary" />
           <Tag
             :value="targetOption.isReadOnly ? 'ReadOnly' : 'Writable'"
@@ -939,152 +954,53 @@ function sendApplyCombinedParameters() {
           Drag blocks to reorder. Empty parameter values are allowed and are not treated as errors.
         </div>
 
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(block, idx) in blocks"
-            :key="block.id"
-            draggable="true"
-            @dragstart="onDragStart(idx)"
-            @dragover.prevent
-            @drop="onDrop(idx)"
-            class="border border-surface rounded-lg p-2 min-w-[220px] bg-surface shadow-sm"
-          >
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="text-xs font-medium text-surface-600">{{ block.kind.toUpperCase() }}</div>
-              <Button
-                icon="pi pi-times"
-                text
-                severity="danger"
-                :disabled="blocks.length === 1"
-                @click="removeBlock(block.id)"
-              />
-            </div>
-
-            <Select
-              v-if="block.kind === 'parameter'"
-              :options="
-                targetKind === 'Number' ? numericParameterNameOptions : parameterNameOptions
-              "
-              :modelValue="block.parameterName"
-              placeholder="Select parameter"
-              @update:modelValue="(val) => (block.parameterName = val)"
-            />
-
-            <InputText
-              v-else
-              :modelValue="block.literal"
-              :placeholder="block.kind === 'number' ? 'Enter number' : 'Enter text (e.g. _)'"
-              @update:modelValue="(val) => (block.literal = val || '')"
+        <div class="flex flex-wrap items-stretch gap-2">
+          <template v-for="(block, idx) in blocks" :key="block.id">
+            <RuleBuilderBlock
+              :block="block"
+              :index="idx"
+              :blocksCount="blocks.length"
+              :targetKind="targetKind"
+              :numericParameterNameOptions="numericParameterNameOptions"
+              :parameterNameOptions="parameterNameOptions"
+              :parameterOption="findOptionByName(block.parameterName)"
+              :blockTitle="getBlockTitle(block)"
+              @dragstart="onDragStart"
+              @drop="onDrop"
+              @remove="removeBlock"
+              @updateParameterName="onBlockParameterNameUpdate(block.id, $event)"
+              @updateLiteral="onBlockLiteralUpdate(block.id, $event)"
             />
 
             <div
-              v-if="block.kind === 'parameter' && block.parameterName"
-              class="mt-2 flex flex-wrap gap-1"
+              v-if="idx < blocks.length - 1"
+              class="rule-block-separator self-center px-1 text-base font-semibold"
+              aria-hidden="true"
             >
-              <Tag
-                :value="findOptionByName(block.parameterName)?.valueTypeLabel || 'Unknown'"
-                severity="info"
-              />
-              <Tag
-                :value="findOptionByName(block.parameterName)?.storageTypeLabel || 'Unknown'"
-                severity="contrast"
-              />
-              <Tag
-                :value="findOptionByName(block.parameterName)?.scopeLabel || 'Unknown'"
-                severity="warn"
-              />
-              <Tag
-                :value="findOptionByName(block.parameterName)?.originLabel || 'Unknown'"
-                severity="secondary"
-              />
+              +
             </div>
-
-            <div
-              v-else
-              class="text-[11px] text-surface-500 mt-2 truncate"
-              :title="getBlockTitle(block)"
-            >
-              {{ getBlockTitle(block) }}
-            </div>
-          </div>
+          </template>
         </div>
       </section>
     </section>
 
-    <section class="card flex flex-col gap-3">
-      <h3 class="text-base font-semibold">Saved Rules</h3>
-
-      <div class="flex flex-wrap gap-2 items-end">
-        <div class="flex flex-col gap-1 min-w-[260px] flex-1">
-          <label class="text-sm font-medium">Rule Name</label>
-          <InputText
-            placeholder="e.g. Door Mark from Type + Prefix"
-            :modelValue="ruleName"
-            @update:modelValue="(val) => (ruleName = val || '')"
-          />
-        </div>
-
-        <Button icon="pi pi-save" label="Save New" @click="saveAsNewRule" />
-        <Button
-          icon="pi pi-pencil"
-          label="Update Selected"
-          outlined
-          :disabled="!selectedSavedRuleId"
-          @click="updateSelectedRule"
-        />
-        <Button icon="pi pi-download" label="Export JSON" outlined @click="exportRulesJson" />
-        <Button icon="pi pi-upload" label="Import JSON" outlined @click="importRulesJson" />
-      </div>
-
-      <div class="overflow-auto border border-surface-200 rounded-lg">
-        <table class="w-full text-sm">
-          <thead class="bg-emphasis">
-            <tr>
-              <th class="text-left p-2">Name</th>
-              <th class="text-left p-2">Category</th>
-              <th class="text-left p-2">Target</th>
-              <th class="text-left p-2">Mode</th>
-              <th class="text-left p-2">Blocks</th>
-              <th class="text-left p-2">Updated</th>
-              <th class="text-left p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="rule in savedRulesSorted"
-              :key="rule.id"
-              class="border-t border-surface-200"
-              :class="selectedSavedRuleId === rule.id ? 'bg-blue-50/50' : ''"
-            >
-              <td class="p-2 font-medium">{{ rule.name }}</td>
-              <td class="p-2">{{ rule.categoryName || "-" }}</td>
-              <td class="p-2">{{ rule.targetParameterName || "-" }}</td>
-              <td class="p-2">{{ rule.mode }}</td>
-              <td class="p-2">{{ rule.blocks.length }}</td>
-              <td class="p-2">{{ new Date(rule.updatedAt).toLocaleString() }}</td>
-              <td class="p-2">
-                <div class="flex gap-1 flex-wrap">
-                  <Button size="small" label="Load" @click="loadRule(rule)" />
-                  <Button size="small" label="Rename" outlined @click="renameRule(rule.id)" />
-                  <Button
-                    size="small"
-                    label="Delete"
-                    severity="danger"
-                    outlined
-                    @click="deleteRule(rule.id)"
-                  />
-                </div>
-              </td>
-            </tr>
-            <tr v-if="savedRulesSorted.length === 0">
-              <td colspan="7" class="p-3 text-surface-500">
-                No saved rules yet. Save the current builder as a new rule.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <SavedRulesDrawer
+      :visible="isSavedRulesDrawerOpen"
+      :rules="savedRulesSorted"
+      :selectedRuleId="selectedSavedRuleId"
+      :ruleName="ruleName"
+      :groupTag="ruleGroupTag"
+      @update:visible="isSavedRulesDrawerOpen = $event"
+      @update:ruleName="ruleName = $event"
+      @update:groupTag="ruleGroupTag = $event"
+      @load="loadRule"
+      @rename="renameRule"
+      @delete="deleteRule"
+      @saveNew="saveAsNewRule"
+      @updateSelected="updateSelectedRule"
+      @exportJson="exportRulesJson"
+      @importJson="importRulesJson"
+    />
 
     <section class="card flex flex-col gap-3">
       <h3 class="text-base font-semibold">All Elements (Old vs New)</h3>
@@ -1116,7 +1032,11 @@ function sendApplyCombinedParameters() {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in previewRows" :key="row.elementId" class="border-t border-surface-200">
+            <tr
+              v-for="row in visiblePreviewRows"
+              :key="row.elementId"
+              class="border-t border-surface-200"
+            >
               <td class="p-2">
                 <Checkbox
                   binary
@@ -1128,33 +1048,33 @@ function sendApplyCombinedParameters() {
               <td class="p-2">{{ row.elementId }}</td>
               <td class="p-2">{{ row.elementName }}</td>
               <td class="p-2">
-                <Tag
-                  :value="row.elementScope"
-                  :severity="row.elementScope === 'Type' ? 'warn' : 'info'"
-                />
+                <Tag :value="row.elementScope" :severity="getScopeTagSeverity(row.elementScope)" />
               </td>
               <td class="p-2">{{ row.oldValue || "(empty)" }}</td>
-              <td class="p-2" :class="row.status === 'Changed' ? 'text-orange-500' : ''">
-                {{ row.newValue || "(empty)" }}
+              <td
+                class="p-2"
+                :class="getDisplayStatus(row) === Status.Changed ? 'text-orange-500' : ''"
+              >
+                {{ getDisplayNewValue(row) || "(empty)" }}
               </td>
               <td class="p-2">
                 <span
                   :class="
-                    row.status === 'Error'
+                    getDisplayStatus(row) === Status.Error
                       ? 'text-red-600'
-                      : row.status === 'Changed'
+                      : getDisplayStatus(row) === Status.Changed
                         ? 'text-orange-700'
                         : 'text-surface-600'
                   "
                 >
-                  {{ row.status }}
+                  {{ getDisplayStatus(row) }}
                 </span>
                 <div v-if="row.errors.length" class="text-xs text-red-600 mt-1">
                   {{ row.errors.join("; ") }}
                 </div>
               </td>
             </tr>
-            <tr v-if="previewRows.length === 0">
+            <tr v-if="visiblePreviewRows.length === 0">
               <td colspan="7" class="p-3 text-surface-500">
                 No rows to preview. Load category data and complete blocks.
               </td>
@@ -1163,7 +1083,9 @@ function sendApplyCombinedParameters() {
         </table>
       </div>
 
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        class="preview-action-bar sticky bottom-0 z-10 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between"
+      >
         <div class="text-sm text-surface-600">
           Editable rows selected: {{ selectedEditableRows.length }} / {{ editableRows.length }}
         </div>
@@ -1182,3 +1104,17 @@ function sendApplyCombinedParameters() {
     </section>
   </div>
 </template>
+
+<style scoped>
+.preview-action-bar {
+  background: var(--p-surface-0, #ffffff);
+  border: 1px solid var(--p-surface-200, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  box-shadow: 0 -8px 20px -18px rgba(0, 0, 0, 0.35);
+}
+
+.rule-block-separator {
+  color: var(--p-surface-500, #9ca3af);
+}
+</style>

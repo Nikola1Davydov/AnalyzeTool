@@ -124,7 +124,9 @@ const parameterCharts = computed(() => {
           const entry = filteredEntries[idx];
           if (!entry) return;
           const command =
-            activeClickAction.value === "Isolation" ? Commands.Isolation : Commands.Selection;
+            activeClickAction.value === "Isolation"
+              ? Commands.IsolationInRevit
+              : Commands.SelectionInRevit;
           sendRequest(command, { elementIds: entry.elementIds }).catch((err) => {
             console.error("Failed to send selection request", err);
           });
