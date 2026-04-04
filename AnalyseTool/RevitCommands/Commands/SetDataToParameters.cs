@@ -20,10 +20,10 @@ namespace AnalyseTool.RevitCommands.Commands
 
             ExternalEventHub.RevitExternalEvent.action = () =>
             {
-                RevitTransactions.Run("Connect Parameters Execute", () =>
+                RevitTransactions.Run("Set data to parameters", () =>
                 {
                     foreach (ParameterData parameterData in list.Items)
-                    {async<
+                    {
                         if (parameterData == null) continue;
 
                         SetData(parameterData, list.Mode);
@@ -81,7 +81,7 @@ namespace AnalyseTool.RevitCommands.Commands
                     break;
                 case SetDataMode.OnlyIfEmpty when parameter.HasValue:
                     return;
-                case SetDataMode.SkipIfEqual when parameter.AsString() == value:
+                case SetDataMode.SkipIfEqual when parameter.GetParameterValue() == value:
                     return;
             }
             parameter.SetParameterValue(value);

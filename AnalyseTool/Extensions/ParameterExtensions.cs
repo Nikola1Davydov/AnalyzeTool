@@ -1,5 +1,6 @@
 ﻿using AnalyseTool.RevitCommands.Model;
 using Autodesk.Revit.DB;
+using System.Globalization;
 
 namespace AnalyseTool.Extensions
 {
@@ -23,7 +24,7 @@ namespace AnalyseTool.Extensions
             switch (parameter.StorageType)
             {
                 case StorageType.Double:
-                    return parameter.AsDouble().ToString();
+                    return GetDoubleParameterValue(parameter);
                 case StorageType.Integer:
                     return parameter.AsInteger().ToString();
                 case StorageType.String:
@@ -34,14 +35,16 @@ namespace AnalyseTool.Extensions
                     return string.Empty;
             }
         }
+
         public static void SetParameterValue(this Parameter parameter, string value)
         {
             switch (parameter.StorageType)
             {
                 case StorageType.Double:
-                    if (double.TryParse(value, out double doubleValue))
+                    string normalizedValue = value.Trim().Replace(',', '.');
+                    if (double.TryParse(normalizedValue, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
                     {
-                        parameter.Set(doubleValue);
+                        parameter.Set(GetDoubleInternalValue(parameter, doubleValue));
                     }
                     break;
                 case StorageType.Integer:
@@ -60,6 +63,38 @@ namespace AnalyseTool.Extensions
                     }
                     break;
             }
+        }
+
+        private static string GetDoubleParameterValue(Parameter parameter)
+        {
+            double value = parameter.AsDouble();
+            ForgeTypeId unitTypeId = GetProjectUnitTypeId(parameter);
+
+            if (unitTypeId != null)
+            {
+                value = UnitUtils.ConvertFromInternalUnits(value, unitTypeId);
+            }
+
+            return value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static double GetDoubleInternalValue(Parameter parameter, double value)
+        {
+            ForgeTypeId unitTypeId = GetProjectUnitTypeId(parameter);
+            return unitTypeId == null ? value : UnitUtils.ConvertToInternalUnits(value, unitTypeId);
+        }
+
+        private static ForgeTypeId GetProjectUnitTypeId(Parameter parameter)
+        {
+            ForgeTypeId specTypeId = parameter.Definition.GetDataType();
+            if (!UnitUtils.IsMeasurableSpec(specTypeId))
+            {
+                return null;
+            }
+
+            Units units = parameter.Element.Document.GetUnits();
+            FormatOptions formatOptions = units.GetFormatOptions(specTypeId);
+            return formatOptions?.GetUnitTypeId();
         }
     }
 }

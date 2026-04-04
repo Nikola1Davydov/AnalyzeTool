@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { defineAsyncComponent, ref, computed, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
+import TopFiltersBar from "@/components/TopFiltersBar.vue";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { ParameterOrgin } from "@/stores/types";
+
+const Cart = defineAsyncComponent(() => import("@/components/Cart.vue") as any);
+const Chart = defineAsyncComponent(
+  () => import("@/view/ParameterFilledEmptyPage/Chart.vue") as any,
+);
+const BodyTable = defineAsyncComponent(
+  () => import("@/view/ParameterFilledEmptyPage/BodyTable.vue") as any,
+);
 
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
@@ -123,6 +132,23 @@ async function handleUpdateData() {
     loading.value = false;
   }
 }
+
+function onUpdateCategory(value: string | null) {
+  selectedCategory.value = value;
+}
+
+function onUpdateSearch(value: string) {
+  searchQuery.value = value;
+}
+
+function onUpdateFilters(value: string[]) {
+  selectedFilters.value = value;
+}
+
+function onUpdateLevel(value: string | null) {
+  selectedLevel.value = value;
+}
+
 watch(
   () => items.value,
   () => {
@@ -134,15 +160,20 @@ watch(
 
 <template>
   <div class="p-5 gap-5">
-    <TopPanel
+    <TopFiltersBar
       :categories="sortedCategories"
-      v-model:category="selectedCategory"
-      v-model:level="selectedLevel"
+      :category="selectedCategory"
+      :search="searchQuery"
+      :filters="selectedFilters"
+      :filterOptions="filterParameter"
       :levels="levels"
-      v-model:search="searchQuery"
-      v-model:filters="selectedFilters"
-      :filteredParamters="filterParameter"
+      :level="selectedLevel"
+      :showLevel="true"
       :loading="loading"
+      @update:category="onUpdateCategory"
+      @update:search="onUpdateSearch"
+      @update:filters="onUpdateFilters"
+      @update:level="onUpdateLevel"
       @update-data="handleUpdateData"
     />
     <Cart title="Parameters by Category">

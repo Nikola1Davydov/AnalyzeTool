@@ -1,3 +1,11 @@
+<script>
+import { defineComponent } from "vue";
+
+export default defineComponent({
+  name: "Cart",
+});
+</script>
+
 <script setup>
 defineProps({
   title: String,

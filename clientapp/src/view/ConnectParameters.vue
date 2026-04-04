@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Commands, sendRequest } from "@/RevitBridge";
 import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
 import type { ElementItem, ParameterData, SetDataToParameters } from "@/stores/types";
+
+const TopFiltersBar = defineAsyncComponent(() => import("@/components/TopFiltersBar.vue") as any);
 
 type ApplyMode = (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 type TargetKind = "Text" | "Number" | "Unknown";
@@ -723,6 +725,18 @@ async function updateData() {
   }
 }
 
+function onUpdateCategory(value: string | null) {
+  selectedCategory.value = value;
+}
+
+function onUpdateSearch(value: string) {
+  searchQuery.value = value;
+}
+
+function onUpdateFilters(value: string[]) {
+  selectedFilters.value = value;
+}
+
 function addParameterBlock() {
   blockIdCounter.value += 1;
   blocks.value.push({
@@ -825,7 +839,7 @@ function sendApplyCombinedParameters() {
 
   const parameterItems = selectedEditableRows.value
     .map((row) => {
-      const element = filteredElements.value.find((item) => item.id === row.elementId) || null;
+      const element = elementsById.value.get(row.elementId) || null;
       const targetParameter = getParameterData(element, targetParameterName.value);
 
       if (!targetParameter) return null;
@@ -853,46 +867,22 @@ function sendApplyCombinedParameters() {
 
 <template>
   <div class="p-5 flex flex-col gap-4">
-    <header
-      class="card flex flex-row items-start lg:items-center w-full gap-3 flex-wrap lg:flex-nowrap"
-    >
-      <Select
-        class="min-w-[180px] flex-1 w-full"
-        :options="sortedCategories"
-        placeholder="Select category"
-        :modelValue="selectedCategory"
-        @update:modelValue="(val) => (selectedCategory = val)"
-      />
-
-      <IconField class="flex-1 min-w-[220px] w-full">
-        <InputIcon class="pi pi-search" />
-        <InputText
-          placeholder="Search parameters"
-          class="min-w-[40px] shrink w-full"
-          :modelValue="searchQuery"
-          @update:modelValue="(val) => (searchQuery = val || '')"
-        />
-      </IconField>
-
-      <SelectButton
-        class="flex-1 min-w-[220px]"
-        :modelValue="selectedFilters"
-        @update:modelValue="(val) => (selectedFilters = val)"
-        :options="filterOptions"
-        multiple
-        aria-labelledby="parameter-filters"
-      />
-
-      <Button
-        class="flex-none w-full lg:w-auto"
-        icon="pi pi-sync"
-        label="Update Data"
-        :loading="loading"
-        :disabled="loading"
-        @click="updateData"
-      />
-    </header>
-    <section class="bg-blue-50/50 border border-blue-200 rounded-lg p-4 flex flex-col gap-4">
+    <TopFiltersBar
+      :categories="sortedCategories"
+      :category="selectedCategory"
+      :search="searchQuery"
+      :filters="selectedFilters"
+      :filterOptions="filterOptions"
+      :loading="loading"
+      updateButtonLabel="Update Data"
+      categoryPlaceholder="Select category"
+      searchPlaceholder="Search parameters"
+      @update:category="onUpdateCategory"
+      @update:search="onUpdateSearch"
+      @update:filters="onUpdateFilters"
+      @update-data="updateData"
+    />
+    <section class="bg-emphasis border border-surface rounded-lg p-4 flex flex-col gap-4">
       <section class="card flex flex-col gap-3">
         <div class="flex items-end gap-3 flex-wrap">
           <div class="flex flex-col gap-1 min-w-[280px] flex-1">
@@ -930,7 +920,7 @@ function sendApplyCombinedParameters() {
           </div>
         </div>
 
-        <div class="text-xs text-surface-600">{{ targetTypeInfo }}</div>
+        <div class="text-xs text-color">{{ targetTypeInfo }}</div>
         <div v-if="targetOption" class="flex flex-wrap gap-1">
           <Tag :value="targetOption.valueTypeLabel" severity="info" />
           <Tag :value="targetOption.storageTypeLabel" severity="contrast" />
@@ -957,7 +947,7 @@ function sendApplyCombinedParameters() {
             @dragstart="onDragStart(idx)"
             @dragover.prevent
             @drop="onDrop(idx)"
-            class="border border-surface-300 rounded-lg p-2 min-w-[220px] bg-surface-0 shadow-sm"
+            class="border border-surface rounded-lg p-2 min-w-[220px] bg-surface shadow-sm"
           >
             <div class="flex items-center justify-between gap-2 mb-2">
               <div class="text-xs font-medium text-surface-600">{{ block.kind.toUpperCase() }}</div>
@@ -1048,7 +1038,7 @@ function sendApplyCombinedParameters() {
 
       <div class="overflow-auto border border-surface-200 rounded-lg">
         <table class="w-full text-sm">
-          <thead class="bg-surface-100">
+          <thead class="bg-emphasis">
             <tr>
               <th class="text-left p-2">Name</th>
               <th class="text-left p-2">Category</th>
@@ -1114,7 +1104,7 @@ function sendApplyCombinedParameters() {
 
       <div class="overflow-auto border border-surface-200 rounded-lg">
         <table class="w-full text-sm">
-          <thead class="bg-surface-100">
+          <thead class="bg-emphasis">
             <tr>
               <th class="text-left p-2">Edit</th>
               <th class="text-left p-2">Element Id</th>
@@ -1144,7 +1134,7 @@ function sendApplyCombinedParameters() {
                 />
               </td>
               <td class="p-2">{{ row.oldValue || "(empty)" }}</td>
-              <td class="p-2" :class="row.status === 'Changed' ? 'bg-emerald-50' : ''">
+              <td class="p-2" :class="row.status === 'Changed' ? 'text-orange-500' : ''">
                 {{ row.newValue || "(empty)" }}
               </td>
               <td class="p-2">
@@ -1153,7 +1143,7 @@ function sendApplyCombinedParameters() {
                     row.status === 'Error'
                       ? 'text-red-600'
                       : row.status === 'Changed'
-                        ? 'text-emerald-700'
+                        ? 'text-orange-700'
                         : 'text-surface-600'
                   "
                 >

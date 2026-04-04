@@ -1,3 +1,11 @@
+<script>
+import { defineComponent } from "vue";
+
+export default defineComponent({
+  name: "ParameterFilledEmptyChart",
+});
+</script>
+
 <script setup>
 import Chart from "primevue/chart";
 import { computed } from "vue";
@@ -79,7 +87,7 @@ const handleChartClick = (evt, elements, chart) => {
 
     console.log(
       `Sending ${elementIds.length} elements for parameter "${paramName}" (dataset ${datasetIndex}):`,
-      elementIds
+      elementIds,
     );
 
     sendRequest("Selection", {

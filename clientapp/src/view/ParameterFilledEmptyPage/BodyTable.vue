@@ -1,3 +1,11 @@
+<script>
+import { defineComponent } from "vue";
+
+export default defineComponent({
+  name: "ParameterFilledEmptyBodyTable",
+});
+</script>
+
 <script setup>
 import { computed, ref } from "vue";
 
