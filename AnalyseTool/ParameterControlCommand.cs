@@ -10,7 +10,6 @@ using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using System.Windows;
 using System.Windows.Interop;
-using TaskDialog = Autodesk.Revit.UI.TaskDialog;
 
 namespace AnalyseTool
 {

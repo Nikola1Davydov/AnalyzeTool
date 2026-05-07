@@ -2,6 +2,13 @@
 import { computed, provide, ref, watch } from "vue";
 import { useCanvas } from "../composables/useCanvas";
 
+type SelectionRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 const props = defineProps<{
   initialZoom?: number;
   initialPanX?: number;
@@ -10,10 +17,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   viewportChange: [{ zoom: number; panX: number; panY: number }];
+  selectionChange: [SelectionRect];
+  selectionEnd: [SelectionRect | null];
 }>();
 
 const { zoom, pan, transform, onWheel, startPan } = useCanvas();
 const viewportRef = ref<HTMLElement | null>(null);
+const selectionBox = ref({
+  active: false,
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+});
 
 provide("canvasZoom", zoom);
 
@@ -38,6 +54,113 @@ function onViewportWheel(e: WheelEvent) {
   onWheel(e, viewportRef.value);
 }
 
+function getCanvasPoint(e: MouseEvent) {
+  if (!viewportRef.value) return null;
+
+  const rect = viewportRef.value.getBoundingClientRect();
+  const viewportX = e.clientX - rect.left;
+  const viewportY = e.clientY - rect.top;
+
+  return {
+    viewportX,
+    viewportY,
+    canvasX: (viewportX - pan.x) / zoom.value,
+    canvasY: (viewportY - pan.y) / zoom.value,
+  };
+}
+
+function buildSelectionRect(startX: number, startY: number, endX: number, endY: number) {
+  return {
+    x: Math.min(startX, endX),
+    y: Math.min(startY, endY),
+    width: Math.abs(endX - startX),
+    height: Math.abs(endY - startY),
+  };
+}
+
+function startSelection(e: MouseEvent) {
+  if (e.button !== 0) return;
+
+  const startPoint = getCanvasPoint(e);
+  if (!startPoint) return;
+
+  e.preventDefault();
+
+  const minCanvasSize = 4 / zoom.value;
+  selectionBox.value = {
+    active: true,
+    x: startPoint.viewportX,
+    y: startPoint.viewportY,
+    width: 0,
+    height: 0,
+  };
+
+  const move = (ev: MouseEvent) => {
+    const nextPoint = getCanvasPoint(ev);
+    if (!nextPoint) return;
+
+    selectionBox.value = {
+      active: true,
+      ...buildSelectionRect(
+        startPoint.viewportX,
+        startPoint.viewportY,
+        nextPoint.viewportX,
+        nextPoint.viewportY,
+      ),
+    };
+
+    emit(
+      "selectionChange",
+      buildSelectionRect(
+        startPoint.canvasX,
+        startPoint.canvasY,
+        nextPoint.canvasX,
+        nextPoint.canvasY,
+      ),
+    );
+  };
+
+  const up = (ev: MouseEvent) => {
+    window.removeEventListener("mousemove", move);
+    window.removeEventListener("mouseup", up);
+
+    const endPoint = getCanvasPoint(ev) || startPoint;
+    const finalRect = buildSelectionRect(
+      startPoint.canvasX,
+      startPoint.canvasY,
+      endPoint.canvasX,
+      endPoint.canvasY,
+    );
+
+    selectionBox.value = {
+      active: false,
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    };
+
+    if (finalRect.width < minCanvasSize && finalRect.height < minCanvasSize) {
+      emit("selectionEnd", null);
+      return;
+    }
+
+    emit("selectionEnd", finalRect);
+  };
+
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", up);
+}
+
+function onViewportMouseDown(e: MouseEvent) {
+  if (e.button === 2) {
+    startPan(e);
+    return;
+  }
+
+  if (e.button === 0) startSelection(e);
+}
+
 // Grid follows pan offset so dots feel stationary
 const gridStyle = computed(() => ({
   backgroundPosition: `${pan.x % 32}px ${pan.y % 32}px`,
@@ -45,7 +168,13 @@ const gridStyle = computed(() => ({
 </script>
 
 <template>
-  <div ref="viewportRef" class="viewport" @wheel.prevent="onViewportWheel" @mousedown="startPan">
+  <div
+    ref="viewportRef"
+    class="viewport"
+    @wheel.prevent="onViewportWheel"
+    @contextmenu.prevent
+    @mousedown="onViewportMouseDown"
+  >
     <!-- Grid background (doesn't scale, uses bg-size trick) -->
     <div class="grid" :style="gridStyle" />
 
@@ -54,9 +183,20 @@ const gridStyle = computed(() => ({
       <slot />
     </div>
 
+    <div
+      v-if="selectionBox.active"
+      class="selection-box"
+      :style="{
+        left: `${selectionBox.x}px`,
+        top: `${selectionBox.y}px`,
+        width: `${selectionBox.width}px`,
+        height: `${selectionBox.height}px`,
+      }"
+    />
+
     <!-- HUD overlay -->
     <div class="hud">{{ Math.round(zoom * 100) }}%</div>
-    <div class="toolbar-slot">
+    <div class="toolbar-slot" @mousedown.stop>
       <slot name="toolbar" />
     </div>
   </div>
@@ -87,6 +227,14 @@ const gridStyle = computed(() => ({
   will-change: transform;
 }
 
+.selection-box {
+  position: absolute;
+  border: 1px solid var(--p-primary-500, #0284c7);
+  background: color-mix(in srgb, var(--p-primary-500, #0284c7) 14%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .hud {
   position: absolute;
   top: 0.75rem;
@@ -103,5 +251,6 @@ const gridStyle = computed(() => ({
   position: absolute;
   top: 0.75rem;
   left: 0.75rem;
+  z-index: 3;
 }
 </style>

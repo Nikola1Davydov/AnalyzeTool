@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Chart from "primevue/chart";
 import { Commands, sendRequest } from "@/RevitBridge";
-import type { ElementItem } from "@/stores/types";
+import type { ElementItem, ParameterData } from "@/stores/types";
+import { resolveInstanceActionElementIds, type RevitActionMatch } from "@/utils/revitActionTargets";
 
 const props = defineProps<{
   items: ElementItem[];
@@ -52,25 +53,31 @@ const barHoverColors = computed(() => {
 });
 
 const chartRows = computed(() => {
-  const buckets = new Map<string, Set<number>>();
+  const buckets = new Map<string, RevitActionMatch[]>();
 
   for (const element of props.items || []) {
-    const elementId = Number((element as any).id ?? 0);
-    const parameters = (element.parameters || []) as any[];
+    const parameters = (element.parameters || []) as ParameterData[];
     for (const parameter of parameters) {
       const name = String(parameter?.name ?? "");
       if (props.selectedParameter && name !== props.selectedParameter) continue;
 
       const raw = parameter?.value;
       const label = raw === undefined || raw === null || raw === "" ? "(empty)" : String(raw);
-      if (!buckets.has(label)) buckets.set(label, new Set<number>());
-      const fromParam = Number(parameter?.elementId ?? 0);
-      buckets.get(label)!.add(fromParam || elementId);
+      if (!buckets.has(label)) buckets.set(label, []);
+      buckets.get(label)!.push({ element, parameter });
     }
   }
 
   return Array.from(buckets.entries())
-    .map(([label, ids]) => ({ label, value: ids.size, elementIds: Array.from(ids) }))
+    .map(([label, matches]) => {
+      const elementIds = resolveInstanceActionElementIds(props.items || [], matches);
+      return {
+        label,
+        value: elementIds.length,
+        elementIds,
+      };
+    })
+    .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 24);
 });

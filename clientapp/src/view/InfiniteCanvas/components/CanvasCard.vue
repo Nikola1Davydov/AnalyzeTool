@@ -8,6 +8,7 @@ const props = defineProps<{
   initialY: number;
   initialWidth?: number;
   initialHeight?: number;
+  selected?: boolean;
   closable?: boolean;
   refreshable?: boolean;
   refreshing?: boolean;
@@ -69,7 +70,9 @@ function startResize(e: MouseEvent) {
 <template>
   <article
     class="card"
+    :class="{ 'card--selected': props.selected }"
     :style="{ left: `${pos.x}px`, top: `${pos.y}px`, width: `${width}px`, height: `${height}px` }"
+    @mousedown.stop
   >
     <header class="card-header" @mousedown="startDrag">
       <span class="title">{{ props.title }}</span>
@@ -116,6 +119,17 @@ function startResize(e: MouseEvent) {
   background: var(--p-surface-0, #ffffff);
   box-shadow: 0 14px 34px -26px rgba(15, 23, 42, 0.55);
   overflow: hidden;
+}
+
+.card--selected {
+  border-color: var(--p-primary-500, #0284c7);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--p-primary-500, #0284c7) 30%, transparent),
+    0 18px 34px -26px rgba(2, 132, 199, 0.65);
+}
+
+.card--selected .card-header {
+  background: color-mix(in srgb, var(--p-primary-100, #e0f2fe) 78%, #ffffff);
 }
 
 .card-header {

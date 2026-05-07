@@ -21,6 +21,9 @@ export function useCanvas() {
 
   // Pan by dragging the background
   function startPan(e: MouseEvent) {
+    if (e.button !== 2) return;
+    e.preventDefault();
+
     const ox = pan.x,
       oy = pan.y;
     const sx = e.clientX,

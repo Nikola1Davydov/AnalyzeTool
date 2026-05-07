@@ -9,7 +9,8 @@ export default defineComponent({
 <script setup>
 import Chart from "primevue/chart";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { sendRequest } from "@/RevitBridge";
+import { Commands, sendRequest } from "@/RevitBridge";
+import { resolveInstanceActionElementIds } from "@/utils/revitActionTargets";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -77,30 +78,30 @@ const handleChartClick = (evt, elements, chart) => {
 
     if (!paramName) return;
 
-    // Собираем все параметры и фильтруем по имени
-    const allParams = (props.items || []).flatMap((el) => el.parameters || []);
-    const matchedParams = allParams.filter((p) => p.name === paramName);
+    const matchedEntries = (props.items || []).flatMap((element) =>
+      (element.parameters || [])
+        .filter((parameter) => parameter.name === paramName)
+        .map((parameter) => ({ element, parameter })),
+    );
 
     // В зависимости от datasetIndex отбираем filled или empty элементы
-    let elementIds = [];
+    let matches = [];
     if (datasetIndex === 0) {
-      elementIds = matchedParams
-        .filter((p) => p.value)
-        .map((p) => Number(p.ElementId ?? p.elementId));
+      matches = matchedEntries.filter((entry) => entry.parameter.value);
     } else if (datasetIndex === 1) {
-      elementIds = matchedParams
-        .filter((p) => !p.value)
-        .map((p) => Number(p.ElementId ?? p.elementId));
+      matches = matchedEntries.filter((entry) => !entry.parameter.value);
     } else {
-      elementIds = matchedParams.map((p) => Number(p.ElementId ?? p.elementId));
+      matches = matchedEntries;
     }
+
+    const elementIds = resolveInstanceActionElementIds(props.items || [], matches);
 
     console.log(
       `Sending ${elementIds.length} elements for parameter "${paramName}" (dataset ${datasetIndex}):`,
       elementIds,
     );
 
-    sendRequest("Selection", {
+    sendRequest(Commands.SelectionInRevit, {
       elementIds: elementIds,
     }).catch((err) => console.error("Error sending chart click:", err));
   } catch (e) {

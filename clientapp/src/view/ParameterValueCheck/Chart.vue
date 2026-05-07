@@ -4,6 +4,7 @@ import Chart from "primevue/chart";
 import { Commands, sendRequest } from "@/RevitBridge";
 import { ParameterOrgin } from "@/stores/types";
 import type { ElementItem, ParameterData } from "@/stores/types";
+import { resolveInstanceActionElementIds, type RevitActionMatch } from "@/utils/revitActionTargets";
 
 type ParamChart = {
   parameter: string;
@@ -66,10 +67,9 @@ function matchesFilters(param: ParameterData, filters: string[]): boolean {
 const parameterCharts = computed(() => {
   if (!props.items || !Array.isArray(props.items)) return [];
 
-  const grouped = new Map<string, Map<string, Set<number>>>();
+  const grouped = new Map<string, Map<string, RevitActionMatch[]>>();
 
   for (const element of props.items) {
-    const elementId = Number((element as any).id ?? (element as any).elementId);
     const parameters: ParameterData[] = (element as any).parameters ?? [];
 
     for (const param of parameters) {
@@ -86,19 +86,23 @@ const parameterCharts = computed(() => {
       if (!grouped.has(paramName)) grouped.set(paramName, new Map());
       const valueMap = grouped.get(paramName)!;
 
-      if (!valueMap.has(valueLabel)) valueMap.set(valueLabel, new Set());
-      valueMap.get(valueLabel)!.add(Number(param.elementId ?? elementId));
+      if (!valueMap.has(valueLabel)) valueMap.set(valueLabel, []);
+      valueMap.get(valueLabel)!.push({ element, parameter: param });
     }
   }
 
   return Array.from(grouped.entries())
     .map(([parameter, valueMap]) => {
       const entries = Array.from(valueMap.entries())
-        .map(([value, ids]) => ({
-          value,
-          count: ids.size,
-          elementIds: Array.from(ids),
-        }))
+        .map(([value, matches]) => {
+          const elementIds = resolveInstanceActionElementIds(props.items, matches);
+          return {
+            value,
+            count: elementIds.length,
+            elementIds,
+          };
+        })
+        .filter((entry) => entry.count > 0)
         .sort((a, b) => b.count - a.count);
 
       // Apply search: match parameter name or value label

@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from "vue";
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import { storeToRefs } from "pinia";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
@@ -47,6 +55,13 @@ type PersistedChartActionState = {
   command: string;
 };
 
+type CanvasSelectionRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type GeneratorDraftRow = {
   id: number;
   parameter: string;
@@ -64,6 +79,7 @@ const { items } = storeToRefs(elementsStore);
 const { documentId, documentName } = storeToRefs(documentDataStore);
 
 const cards = ref<CanvasCardConfig[]>([]);
+const selectedCardIds = ref<number[]>([]);
 const nextCardId = ref(1);
 const showCreatePanel = ref(false);
 const showGeneratorDrawer = ref(false);
@@ -118,6 +134,8 @@ const availableParameters = computed(() => {
 });
 
 const canCreateCard = computed(() => !!draft.category && !!draft.parameter);
+const hasSelectedCards = computed(() => selectedCardIds.value.length > 0);
+const selectedCardIdSet = computed(() => new Set(selectedCardIds.value));
 const canGenerateFromDrawer = computed(() => {
   return generationRows.value.some((row) => {
     const hasParameter = row.parameter.trim().length > 0;
@@ -269,6 +287,7 @@ function restoreCanvasState() {
   const storageKey = getCanvasStorageKey();
   activeStorageKey.value = storageKey;
   suppressPersist.value = true;
+  selectedCardIds.value = [];
 
   try {
     const raw = localStorage.getItem(storageKey);
@@ -343,6 +362,34 @@ function updateCardLayout(
   target.y = layout.y;
   target.width = layout.width;
   target.height = layout.height;
+}
+
+function intersectsSelection(card: CanvasCardConfig, rect: CanvasSelectionRect): boolean {
+  return !(
+    card.x + card.width < rect.x ||
+    rect.x + rect.width < card.x ||
+    card.y + card.height < rect.y ||
+    rect.y + rect.height < card.y
+  );
+}
+
+function syncSelectedCards(rect: CanvasSelectionRect) {
+  selectedCardIds.value = cards.value
+    .filter((card) => intersectsSelection(card, rect))
+    .map((card) => card.id);
+}
+
+function onCanvasSelectionChange(rect: CanvasSelectionRect) {
+  syncSelectedCards(rect);
+}
+
+function onCanvasSelectionEnd(rect: CanvasSelectionRect | null) {
+  if (!rect) {
+    selectedCardIds.value = [];
+    return;
+  }
+
+  syncSelectedCards(rect);
 }
 
 function onViewportChange(state: PersistedViewportState) {
@@ -656,6 +703,15 @@ async function createCard() {
 
 function removeCard(cardId: number) {
   cards.value = cards.value.filter((x) => x.id !== cardId);
+  selectedCardIds.value = selectedCardIds.value.filter((id) => id !== cardId);
+}
+
+function removeSelectedCards() {
+  if (!selectedCardIds.value.length) return;
+
+  const ids = new Set(selectedCardIds.value);
+  cards.value = cards.value.filter((card) => !ids.has(card.id));
+  selectedCardIds.value = [];
 }
 
 function removeAllCards() {
@@ -665,6 +721,7 @@ function removeAllCards() {
   cards.value = [];
   categorySnapshots.value = {};
   nextCardId.value = 1;
+  selectedCardIds.value = [];
 }
 
 async function refreshCard(cardId: number) {
@@ -696,14 +753,48 @@ function getCardItems(card: CanvasCardConfig): ElementItem[] {
   return categorySnapshots.value[card.category] || [];
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+}
+
+function onWindowKeyDown(e: KeyboardEvent) {
+  if (isEditableTarget(e.target)) return;
+
+  if (e.key === "Escape") {
+    if (!selectedCardIds.value.length) return;
+    selectedCardIds.value = [];
+    e.preventDefault();
+    return;
+  }
+
+  if (e.key !== "Delete" && e.key !== "Backspace") return;
+  if (!selectedCardIds.value.length) return;
+
+  e.preventDefault();
+  removeSelectedCards();
+}
+
 onMounted(() => {
   restoreCanvasState();
+  window.addEventListener("keydown", onWindowKeyDown);
 
   categoriesStore.loadCategories().catch((err) => {
     console.error("Failed to load categories", err);
   });
 
   warmCardsCategories();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onWindowKeyDown);
 });
 
 watch(projectScope, (nextScope, prevScope) => {
@@ -743,6 +834,8 @@ watch(selectedChartActionCommand, () => {
     :initialPanX="viewportState.panX"
     :initialPanY="viewportState.panY"
     @viewportChange="onViewportChange"
+    @selectionChange="onCanvasSelectionChange"
+    @selectionEnd="onCanvasSelectionEnd"
   >
     <CanvasCard
       v-for="card in cards"
@@ -752,6 +845,7 @@ watch(selectedChartActionCommand, () => {
       :initialY="card.y"
       :initialWidth="card.width"
       :initialHeight="card.height"
+      :selected="selectedCardIdSet.has(card.id)"
       :closable="true"
       :refreshable="true"
       :refreshing="card.loading"
@@ -772,7 +866,12 @@ watch(selectedChartActionCommand, () => {
         :actionCommand="selectedChartActionCommand"
       />
 
-      <BodyTable v-else :items="getCardItems(card)" :selectedParameter="card.parameter" />
+      <BodyTable
+        v-else-if="card.viewType === 'table'"
+        :items="getCardItems(card)"
+        :selectedParameter="card.parameter"
+      />
+      <div v-else class="card-state text-surface-400">Unbekannter Kartentyp.</div>
     </CanvasCard>
 
     <template #toolbar>
@@ -803,6 +902,15 @@ watch(selectedChartActionCommand, () => {
           @click="refreshAllCards"
         >
           <i class="pi pi-refresh" :class="refreshingAll ? 'pi-spin' : ''" />
+        </button>
+        <button
+          type="button"
+          class="toolbar-btn toolbar-btn--danger"
+          title="Delete selected cards"
+          :disabled="!hasSelectedCards"
+          @click="removeSelectedCards"
+        >
+          <i class="pi pi-times" />
         </button>
         <button
           type="button"
