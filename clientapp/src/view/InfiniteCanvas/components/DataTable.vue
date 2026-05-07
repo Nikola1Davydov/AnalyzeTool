@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import type { ParameterData, SetDataToParameters } from "@/stores/types";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+import type { ParameterData, ParameterEdit, SetDataToParameters } from "@/stores/types";
 import { SetDataToParametersModes } from "@/stores/types";
 import type { ElementItem } from "@/stores/types";
 import { Commands, sendRequest } from "@/RevitBridge";
+const emit = defineEmits<{ refresh: [] }>();
 
 const props = defineProps<{
   items: ElementItem[];
@@ -35,7 +36,8 @@ const AI_CHIPS = [
 const mode = ref<EditMode>("read");
 const aiPrompt = ref("");
 const aiRunning = ref(false);
-const applying = ref(false);
+const rawAiResponse = ref<string | null>(null);
+const showRawDialog = ref(false);
 const rowState = ref<RowState[]>([]);
 const applyError = ref("");
 
@@ -52,30 +54,38 @@ watch(
   { immediate: true },
 );
 
-const rows = computed(() =>
-  (props.items || []).map((element, i) => {
-    const selectedValue = (element.parameters || []).find(
-      (p) => p?.name === props.selectedParameter,
-    )?.value;
-    return {
+const rows = computed(() => {
+  const result: {
+    index: number;
+    id: number;
+    name: string;
+    level: string;
+    category: string;
+    parameterValue: string;
+    state: RowState;
+  }[] = [];
+
+  (props.items || []).forEach((element, i) => {
+    const param = (element.parameters || []).find((p) => p?.name === props.selectedParameter);
+    if (!param) return;
+    result.push({
       index: i,
       id: element.id,
       name: element.name,
       level: element.level,
       category: element.categoryName,
-      parameterValue:
-        selectedValue === undefined || selectedValue === null || selectedValue === ""
-          ? "(empty)"
-          : String(selectedValue),
+      parameterValue: param.value === "" ? "(empty)" : String(param.value),
       state: rowState.value[i] ?? {
         pendingValue: "",
         comment: "",
         reason: "",
         decision: "idle" as RowDecision,
       },
-    };
-  }),
-);
+    });
+  });
+
+  return result;
+});
 
 const totalCount = computed(() => rows.value.length);
 const acceptedCount = computed(
@@ -87,9 +97,10 @@ const rejectedCount = computed(
 const filledCount = computed(
   () => rowState.value.filter((s) => s.pendingValue.trim() !== "").length,
 );
-const canApply = computed(() =>
-  mode.value !== "read" &&
-  rowState.value.some((s) => s.decision !== "rejected" && s.pendingValue.trim() !== ""),
+const canApply = computed(
+  () =>
+    mode.value !== "read" &&
+    rowState.value.some((s) => s.decision !== "rejected" && s.pendingValue.trim() !== ""),
 );
 
 function getRowClass(data: (typeof rows.value)[number]) {
@@ -118,25 +129,64 @@ function onModeChange(v: string) {
 function onPendingInput(index: number, e: Event) {
   rowState.value[index].pendingValue = (e.target as HTMLInputElement).value;
 }
-// TODO: Replace mock with real AI backend call — requires new C# command "AnalyzeParameters"
-async function runAI() {
+let aiMessageCleanup: (() => void) | null = null;
+
+function runAI() {
   if (!aiPrompt.value.trim()) return;
+
+  aiMessageCleanup?.();
+
   aiRunning.value = true;
 
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const paramItems = props.items
+    .map((el) => el.parameters.find((p) => p.name === props.selectedParameter))
+    .filter((p): p is ParameterData => p != null);
 
-  rowState.value = rowState.value.map((s, i) => ({
-    ...s,
-    pendingValue:
-      rows.value[i]?.parameterValue === "(empty)" ? "—" : (rows.value[i]?.parameterValue ?? ""),
-    reason: `KI-Vorschlag basierend auf: „${aiPrompt.value}"`,
-    decision: "accepted",
-  }));
+  function onAiResult(event: Event) {
+    cleanup();
 
-  aiRunning.value = false;
+    const detail = (event as CustomEvent).detail as {
+      edits: ParameterEdit[] | null;
+      raw: string | null;
+      error: string | null;
+    };
+
+    rawAiResponse.value = detail.raw ?? null;
+
+    if (detail.error) {
+      applyError.value = detail.error;
+      return;
+    }
+
+    if (!detail.edits || !Array.isArray(detail.edits)) return;
+
+    const byElementId = new Map(detail.edits.map((e) => [e.ElementId, e]));
+    rowState.value = rowState.value.map((s, i) => {
+      const edit = byElementId.get(props.items[i]?.id);
+      if (!edit) return s;
+      return {
+        ...s,
+        pendingValue: String(edit.NewValue ?? ""),
+        reason: String(edit.Reason ?? ""),
+        decision: "accepted",
+      };
+    });
+  }
+
+  function cleanup() {
+    window.removeEventListener("revit:ai-analysis", onAiResult);
+    aiRunning.value = false;
+    aiMessageCleanup = null;
+  }
+
+  aiMessageCleanup = cleanup;
+  window.addEventListener("revit:ai-analysis", onAiResult);
+  sendRequest(Commands.AnalyzeWithAi, { items: paramItems, prompt: aiPrompt.value });
 }
 
-async function applyToRevit() {
+onBeforeUnmount(() => aiMessageCleanup?.());
+
+function applyToRevit() {
   applyError.value = "";
   const paramItems: ParameterData[] = [];
 
@@ -156,13 +206,11 @@ async function applyToRevit() {
     mode: SetDataToParametersModes.Overwrite,
   };
 
-  applying.value = true;
   try {
-    await sendRequest(Commands.SetDataToParameters, payload);
+    sendRequest(Commands.SetDataToParameters, payload);
+    setTimeout(() => emit("refresh"), 800);
   } catch (err) {
     applyError.value = String(err);
-  } finally {
-    applying.value = false;
   }
 }
 </script>
@@ -193,10 +241,9 @@ async function applyToRevit() {
         <Button
           size="small"
           :loading="aiRunning"
-          disabled
+          :disabled="!aiPrompt.trim() || aiRunning"
           label="Analysieren"
           icon="pi pi-sparkles"
-          title="KI-Analyse noch nicht verfügbar"
           @click="runAI"
         />
         <div class="flex gap-1 flex-wrap">
@@ -339,16 +386,27 @@ async function applyToRevit() {
               &nbsp;·&nbsp;<span class="text-red-400">✕ {{ rejectedCount }}</span>
             </template>
           </span>
-          <div v-if="mode !== 'read'" class="flex items-center gap-2">
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="rawAiResponse"
+              icon="pi pi-eye"
+              severity="warn"
+              text
+              rounded
+              size="small"
+              class="!w-6 !h-6 shrink-0"
+              title="LLM-Rohantwort anzeigen"
+              @click="showRawDialog = true"
+            />
             <span v-if="applyError" class="text-[0.65rem] text-red-400">{{ applyError }}</span>
             <Button
+              v-if="mode !== 'read'"
               size="small"
               label="In Revit übernehmen"
               icon="pi pi-send"
               severity="success"
               outlined
-              :disabled="!canApply || applying"
-              :loading="applying"
+              :disabled="!canApply"
               class="!text-[0.7rem]"
               @click="applyToRevit"
             />
@@ -356,6 +414,18 @@ async function applyToRevit() {
         </div>
       </template>
     </DataTable>
+    <!-- Raw LLM response dialog -->
+    <Dialog
+      v-model:visible="showRawDialog"
+      header="LLM-Rohantwort"
+      :modal="true"
+      :style="{ width: '600px', maxWidth: '90vw' }"
+    >
+      <pre
+        class="text-[0.7rem] whitespace-pre-wrap break-all max-h-80 overflow-auto font-mono text-surface-700 bg-surface-100 p-3 rounded"
+        >{{ rawAiResponse }}</pre
+      >
+    </Dialog>
   </div>
 </template>
 

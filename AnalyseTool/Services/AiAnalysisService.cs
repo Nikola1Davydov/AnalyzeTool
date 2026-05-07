@@ -1,4 +1,4 @@
-﻿using AnalyseTool.RevitCommands.Model;
+using AnalyseTool.RevitCommands.Model;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
 using System.Text.Json;
@@ -12,40 +12,63 @@ namespace AnalyseTool.Services
         {
             _chat = new OllamaApiClient(
                 new Uri("http://localhost:11434"),
-                "phi3:mini");
+                "gemma4:latest");
         }
-        public async Task<List<ParameterEdit>> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
+        public async Task<AiResponce> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
         {
+            var simplified = elements.Select(e => new
+            {
+                ElementId = e.ElementId,
+                ParameterName = e.Name,
+                CurrentValue = e.Value
+            }).ToList();
+
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
                 new(ChatRole.System, """
                     You are a BIM data quality assistant.
-                    Return ONLY a valid JSON array, no extra text.
-                    Schema: [{ "elementId": int, "parameter": string,
-                               "oldValue": string, "newValue": string,
-                               "reason": string }]
+                    INPUT: a JSON array where each item has { ElementId, ParameterName, CurrentValue }.
+                    OUTPUT: a JSON array where each item has exactly these fields:
+                      "ElementId"   — copy from input, do not change
+                      "Parameter"   — copy ParameterName from input, do not change
+                      "OldValue"    — copy CurrentValue from input, do not change
+                      "NewValue"    — your suggested new value (string)
+                      "Reason"      — one sentence why you changed it (string)
+                    STRICT RULES:
+                    - Include every input element in the output (same count).
+                    - Output ONLY the raw JSON array. No markdown, no ```, no explanation before or after.
+                    - First character of your response must be '[', last must be ']'.
                     """),
 
                 new(ChatRole.User, $"""
                     Request: {userPrompt}
-                    Elements: {JsonSerializer.Serialize(elements)}
+                    Elements: {JsonSerializer.Serialize(simplified)}
                     """)
             };
-            string response = "";
 
-            await foreach (ChatResponseUpdate item in
-                _chat.GetStreamingResponseAsync(chatHistory))
+            string raw = "";
+            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory))
             {
-                response += item.Text;
+                raw += item.Text;
             }
 
-            // Clean markdown if model wraps in ```json
-            response = response.Trim();
-            if (response.StartsWith("```"))
-                response = response.Replace("```json", "").Replace("```", "").Trim();
+            int start = raw.IndexOf('[');
+            int end = raw.LastIndexOf(']');
+            if (start == -1 || end == -1 || end <= start)
+                return new AiResponce(raw, []);
 
-            return JsonSerializer.Deserialize<List<ParameterEdit>>(response) ?? [];
+            string json = raw[start..(end + 1)];
+            List<ParameterAiEdit> edits = JsonSerializer.Deserialize<List<ParameterAiEdit>>(json,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+                }) ?? [];
+
+            return new AiResponce(raw, edits);
         }
-        public record ParameterEdit(int ElementId, string Parameter, string OldValue, string NewValue, string Reason);
+
+        public record AiResponce(string Raw, List<ParameterAiEdit> Edits);
+        public record ParameterAiEdit(long ElementId, string Parameter, string OldValue, string NewValue, string Reason);
     }
 }

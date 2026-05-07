@@ -11,21 +11,43 @@ namespace AnalyseTool.RevitCommands.Commands
     {
         public async void Execute(JToken payload, WebView2 webView)
         {
-            AnalyzeWithAiDto? list = payload.ToObject<AnalyzeWithAiDto>();
+            AnalyzeWithAiRequest? list = payload.ToObject<AnalyzeWithAiRequest>();
+            if (list == null) return;
 
-            AiAnalysisService ai = new AiAnalysisService();
-            List<AiAnalysisService.ParameterEdit> edits = await ai.AnalyzeAsync(list.Items, list.Prompt);
-
-            string json = JsonConvert.SerializeObject(new WebViewMessage()
+            try
             {
-                Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(AnalyzeWithAi),
-                Payload = JObject.FromObject(edits)
-            });
+                AiAnalysisService ai = new AiAnalysisService();
+                AiAnalysisService.AiResponce result = await ai.AnalyzeAsync(list.Items, list.Prompt);
 
-            webView.CoreWebView2.PostWebMessageAsJson(json);
+                var resultPayload = new JObject
+                {
+                    ["edits"] = JArray.FromObject(result.Edits),
+                    ["raw"] = result.Raw,
+                    ["error"] = JValue.CreateNull()
+                };
+
+                string json = JsonConvert.SerializeObject(new WebViewMessage()
+                {
+                    Type = WebMessageTypeEnum.Response.ToString(),
+                    Command = nameof(AnalyzeWithAi),
+                    Payload = resultPayload
+                });
+
+                webView.CoreWebView2.PostWebMessageAsJson(json);
+            }
+            catch (Exception ex)
+            {
+                string errorJson = JsonConvert.SerializeObject(new WebViewMessage()
+                {
+                    Type = WebMessageTypeEnum.Response.ToString(),
+                    Command = nameof(AnalyzeWithAi),
+                    Payload = JObject.FromObject(new { error = ex.Message, raw = (string?)null })
+                });
+
+                webView.CoreWebView2.PostWebMessageAsJson(errorJson);
+            }
         }
-        private sealed record AnalyzeWithAiDto()
+        private sealed record AnalyzeWithAiRequest()
         {
             [JsonProperty("items")]
             public List<ParameterData> Items { get; set; } = new();

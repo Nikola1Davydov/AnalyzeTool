@@ -61,6 +61,10 @@ onMounted(() => {
           useDocumentDataStore().setDocumentData(payload.Payload as DocumentData);
           return;
         }
+        if (payload.Command === Commands.AnalyzeWithAi) {
+          window.dispatchEvent(new CustomEvent("revit:ai-analysis", { detail: payload.Payload }));
+          return;
+        }
       } catch (err) {
         console.error("Parse error", err);
       }

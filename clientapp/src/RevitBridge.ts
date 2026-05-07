@@ -1,5 +1,5 @@
 import { UpdatePayload } from "./stores/types";
-import type { SetDataToParameters } from "./stores/types";
+import type { SetDataToParameters, AnalyzeWithAi } from "./stores/types";
 import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
 
 export type WebViewMessage = {
@@ -17,6 +17,7 @@ export interface CommandPayloads {
   [Commands.CheckUpdate]: UpdatePayload;
   [Commands.GetDocumentData]: null;
   [Commands.SetDataToParameters]: SetDataToParameters;
+  [Commands.AnalyzeWithAi]: AnalyzeWithAi;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
@@ -28,6 +29,7 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
+  AnalyzeWithAi: "AnalyzeWithAi",
 } as const;
 
 export const enum MessageType {

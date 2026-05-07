@@ -870,6 +870,7 @@ watch(selectedChartActionCommand, () => {
         v-else-if="card.viewType === 'table'"
         :items="getCardItems(card)"
         :selectedParameter="card.parameter"
+        @refresh="refreshCard(card.id)"
       />
       <div v-else class="card-state text-surface-400">Unbekannter Kartentyp.</div>
     </CanvasCard>

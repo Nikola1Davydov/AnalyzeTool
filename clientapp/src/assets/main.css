@@ -1,3 +1,11 @@
 @import "tailwindcss";
 @import "tailwindcss-primeui";
 @import "primeicons/primeicons.css";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--p-surface-50, #f8fafc);
+  color: var(--p-surface-900, #0f172a);
+}

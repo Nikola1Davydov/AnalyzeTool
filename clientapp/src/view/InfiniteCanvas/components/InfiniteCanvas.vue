@@ -210,6 +210,7 @@ const gridStyle = computed(() => ({
   overflow: hidden;
   border: 1px solid var(--p-surface-300, #d1d5db);
   border-radius: 0.75rem;
+  background: var(--p-surface-0, #ffffff);
 }
 
 .grid {

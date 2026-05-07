@@ -47,3 +47,16 @@ export interface SetDataToParameters {
   items: ParameterData[];
   mode: (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 }
+
+export interface AnalyzeWithAi {
+  items: ParameterData[];
+  prompt: string;
+}
+
+export interface ParameterEdit {
+  ElementId: number;
+  Parameter: string;
+  OldValue: string;
+  NewValue: string;
+  Reason: string;
+}
