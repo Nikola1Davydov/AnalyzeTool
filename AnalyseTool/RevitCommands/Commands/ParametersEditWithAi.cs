@@ -7,17 +7,17 @@ using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.RevitCommands.Commands
 {
-    internal class AnalyzeWithAi : IRevitTask
+    internal class ParametersEditWithAi : IRevitTask
     {
         public async void Execute(JToken payload, WebView2 webView)
         {
-            AnalyzeWithAiRequest? list = payload.ToObject<AnalyzeWithAiRequest>();
+            AnalyzeParameterWithAiRequest? list = payload.ToObject<AnalyzeParameterWithAiRequest>();
             if (list == null) return;
 
             try
             {
-                AiAnalysisService ai = new AiAnalysisService();
-                AiAnalysisService.AiResponce result = await ai.AnalyzeAsync(list.Items, list.Prompt);
+                AiAnalysisService ai = new AiAnalysisService(list.Model);
+                AiAnalysisService.AiResponce result = await ai.AnalyzeAndEditAsync(list.Items, list.Prompt);
 
                 var resultPayload = new JObject
                 {
@@ -29,7 +29,7 @@ namespace AnalyseTool.RevitCommands.Commands
                 string json = JsonConvert.SerializeObject(new WebViewMessage()
                 {
                     Type = WebMessageTypeEnum.Response.ToString(),
-                    Command = nameof(AnalyzeWithAi),
+                    Command = nameof(ParametersEditWithAi),
                     Payload = resultPayload
                 });
 
@@ -37,23 +37,8 @@ namespace AnalyseTool.RevitCommands.Commands
             }
             catch (Exception ex)
             {
-                string errorJson = JsonConvert.SerializeObject(new WebViewMessage()
-                {
-                    Type = WebMessageTypeEnum.Response.ToString(),
-                    Command = nameof(AnalyzeWithAi),
-                    Payload = JObject.FromObject(new { error = ex.Message, raw = (string?)null })
-                });
-
-                webView.CoreWebView2.PostWebMessageAsJson(errorJson);
+                WebViewErrorHelper.SendError(webView, nameof(ParametersEditWithAi), ex.Message);
             }
-        }
-        private sealed record AnalyzeWithAiRequest()
-        {
-            [JsonProperty("items")]
-            public List<ParameterData> Items { get; set; } = new();
-
-            [JsonProperty("prompt")]
-            public string Prompt { get; set; }
         }
     }
 }

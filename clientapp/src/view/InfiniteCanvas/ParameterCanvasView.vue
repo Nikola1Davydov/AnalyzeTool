@@ -12,6 +12,8 @@ import { storeToRefs } from "pinia";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
+import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
+import { Commands, sendRequest } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
 
 const InfiniteCanvas = defineAsyncComponent(() => import("./components/InfiniteCanvas.vue") as any);
@@ -83,6 +85,14 @@ const selectedCardIds = ref<number[]>([]);
 const nextCardId = ref(1);
 const showCreatePanel = ref(false);
 const showGeneratorDrawer = ref(false);
+const showAiSettings = ref(false);
+const aiSettingsStore = useAiSettingsStore();
+
+function loadOllamaModels() {
+  aiSettingsStore.modelsLoading = true;
+  aiSettingsStore.availableModels = [];
+  sendRequest(Commands.GetOllamaModels, null);
+}
 const generatingFromDrawer = ref(false);
 const generationInfo = ref("");
 const refreshingAll = ref(false);
@@ -853,9 +863,12 @@ watch(selectedChartActionCommand, () => {
       @refresh="refreshCard(card.id)"
       @layoutChange="updateCardLayout(card.id, $event)"
     >
-      <div v-if="card.loading" class="card-state">Loading category data...</div>
+      <!-- Initial load: no data yet -->
+      <div v-if="card.loading && getCardItems(card).length === 0" class="card-state">
+        Loading category data...
+      </div>
       <div v-else-if="card.error" class="card-state text-red-600">{{ card.error }}</div>
-      <div v-else-if="getCardItems(card).length === 0" class="card-state">
+      <div v-else-if="!card.loading && getCardItems(card).length === 0" class="card-state">
         No data for this category.
       </div>
 
@@ -866,6 +879,7 @@ watch(selectedChartActionCommand, () => {
         :actionCommand="selectedChartActionCommand"
       />
 
+      <!-- Table stays mounted during refresh — only props.items updates -->
       <BodyTable
         v-else-if="card.viewType === 'table'"
         :items="getCardItems(card)"
@@ -920,6 +934,9 @@ watch(selectedChartActionCommand, () => {
           @click="removeAllCards"
         >
           <i class="pi pi-trash" />
+        </button>
+        <button type="button" class="toolbar-btn" title="KI-Einstellungen" @click="showAiSettings = true">
+          <i class="pi pi-cog" />
         </button>
 
         <div v-if="showCreatePanel" class="creator-panel">
@@ -1041,6 +1058,50 @@ watch(selectedChartActionCommand, () => {
       <div v-if="generationInfo" class="generator-info">{{ generationInfo }}</div>
     </div>
   </Drawer>
+
+  <!-- AI Settings Drawer -->
+  <Drawer
+    v-model:visible="showAiSettings"
+    header="KI-Einstellungen"
+    position="right"
+    :modal="true"
+    :style="{ width: '22rem' }"
+  >
+    <div class="ai-settings-panel">
+      <div class="ai-settings-section">
+        <div class="ai-settings-label">Ollama-Modell</div>
+
+        <Button
+          size="small"
+          icon="pi pi-refresh"
+          label="Modelle laden"
+          :loading="aiSettingsStore.modelsLoading"
+          class="mb-3"
+          @click="loadOllamaModels"
+        />
+
+        <div v-if="!aiSettingsStore.modelsLoading && aiSettingsStore.availableModels.length === 0" class="ai-settings-empty">
+          <i class="pi pi-exclamation-triangle" />
+          Ollama nicht verfügbar oder keine Modelle installiert.
+          KI-Funktionen sind deaktiviert.
+        </div>
+
+        <Select
+          v-else-if="aiSettingsStore.availableModels.length > 0"
+          :options="aiSettingsStore.availableModels"
+          :modelValue="aiSettingsStore.selectedModel"
+          placeholder="Modell wählen…"
+          class="w-full"
+          @update:modelValue="aiSettingsStore.setModel($event)"
+        />
+
+        <div v-if="aiSettingsStore.selectedModel" class="ai-settings-active">
+          <i class="pi pi-check-circle text-emerald-500" />
+          Aktives Modell: <b>{{ aiSettingsStore.selectedModel }}</b>
+        </div>
+      </div>
+    </div>
+  </Drawer>
 </template>
 
 <style scoped>
@@ -1052,6 +1113,50 @@ watch(selectedChartActionCommand, () => {
 
 .chart-action-switch {
   min-width: 12.5rem;
+}
+
+.ai-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+
+.ai-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ai-settings-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--p-surface-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.ai-settings-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--p-surface-500);
+  background: var(--p-surface-100);
+  border-radius: 0.5rem;
+}
+
+.ai-settings-active {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--p-surface-600);
+  margin-top: 0.25rem;
 }
 
 .toolbar-btn {

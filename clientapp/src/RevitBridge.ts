@@ -17,7 +17,9 @@ export interface CommandPayloads {
   [Commands.CheckUpdate]: UpdatePayload;
   [Commands.GetDocumentData]: null;
   [Commands.SetDataToParameters]: SetDataToParameters;
-  [Commands.AnalyzeWithAi]: AnalyzeWithAi;
+  [Commands.AnalyseWithAi]: AnalyzeWithAi;
+  [Commands.ParametersEditWithAi]: AnalyzeWithAi;
+  [Commands.GetOllamaModels]: null;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
@@ -29,7 +31,9 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
-  AnalyzeWithAi: "AnalyzeWithAi",
+  AnalyseWithAi: "AnalyseWithAi",
+  ParametersEditWithAi: "ParametersEditWithAi",
+  GetOllamaModels: "GetOllamaModels",
 } as const;
 
 export const enum MessageType {

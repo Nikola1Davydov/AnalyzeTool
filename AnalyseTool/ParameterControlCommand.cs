@@ -1,6 +1,7 @@
 ﻿using AnalyseTool.RevitCommands;
 using AnalyseTool.RevitCommands.Commands.Base;
 using AnalyseTool.RevitCommands.Model;
+using AnalyseTool.RevitCommands.Model;
 using AnalyseTool.RevitCommands.ParameterControl.MVVM.MainTab;
 using AnalyseTool.Services;
 using AnalyseTool.Utils;
@@ -39,7 +40,14 @@ namespace AnalyseTool
                     if (request == null || !string.Equals(request.Type, WebMessageTypeEnum.Request.ToString(), StringComparison.OrdinalIgnoreCase)) return;
 
                     IRevitTask task = CommandsFactory.CreateRevitCommand(request.Command);
-                    task.Execute(request.Payload, window.webView);
+                    try
+                    {
+                        task.Execute(request.Payload, window.webView);
+                    }
+                    catch (Exception ex)
+                    {
+                        WebViewErrorHelper.SendError(window.webView, request.Command, ex.Message);
+                    }
                 };
 
                 Show(window);
