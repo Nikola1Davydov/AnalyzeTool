@@ -51,6 +51,7 @@ export interface SetDataToParameters {
 export interface AnalyzeWithAi {
   items: ParameterData[];
   prompt: string;
+  model: string;
 }
 
 export interface ParameterEdit {

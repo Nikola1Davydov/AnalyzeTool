@@ -1,6 +1,7 @@
 using AnalyseTool.RevitCommands.Model;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
+using System.Text;
 using System.Text.Json;
 
 namespace AnalyseTool.Services
@@ -12,24 +13,29 @@ namespace AnalyseTool.Services
         {
             _chat = new OllamaApiClient(new Uri("http://localhost:11434"), model);
         }
+        private const int AiTimeoutSeconds = 120;
+
         public async Task<string> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
         {
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
                 new(ChatRole.System, """
-                    You are a BIM data quality assistant. 
+                    You are a BIM data quality assistant.
                     """),
                 new(ChatRole.User, $"""
                     Request: {userPrompt}
                     Elements: {JsonSerializer.Serialize(elements)}
                     """)
             };
-            string raw = "";
-            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory))
+
+            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
+            StringBuilder stringBuilder = new StringBuilder();
+            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, cancellationToken: cts.Token))
             {
-                raw += item.Text;
+                if (!string.IsNullOrEmpty(item.Text))
+                    stringBuilder.Append(item.Text);
             }
-            return raw;
+            return stringBuilder.ToString();
         }
         public async Task<AiResponce> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
         {
@@ -45,14 +51,18 @@ namespace AnalyseTool.Services
                 new(ChatRole.System, """
                     You are a BIM data quality assistant.
                     INPUT: a JSON array where each item has { ElementId, ParameterName, CurrentValue }.
-                    OUTPUT: a JSON array where each item has exactly these fields:
-                      "ElementId"   — copy from input, do not change
-                      "Parameter"   — copy ParameterName from input, do not change
-                      "OldValue"    — copy CurrentValue from input, do not change
-                      "NewValue"    — your suggested new value (string)
-                      "Reason"      — one sentence why you changed it (string)
-                    STRICT RULES:
-                    - Include every input element in the output (same count).
+                    OUTPUT: respond with ONLY a raw JSON array (no wrapper object, no key, no markdown).
+                    The array must start with '[' and end with ']'.
+                    Each element of the array must have exactly these fields:
+                      "ElementId"  — integer, copy from input unchanged
+                      "Parameter"  — string, copy ParameterName from input unchanged
+                      "OldValue"   — string, copy CurrentValue from input unchanged
+                      "NewValue"   — string, your suggested new value
+                      "Reason"     — string, one sentence explaining the change
+                    RULES:
+                    - Every input element must appear in the output (same count, same order).
+                    - Do NOT wrap the array in any object like {"output":...} or {"result":...}.
+                    - Do NOT add any text before or after the array.
                     """),
 
                 new(ChatRole.User, $"""
@@ -61,18 +71,20 @@ namespace AnalyseTool.Services
                     """)
             };
 
-            ChatOptions jsonOptions = new ChatOptions 
-            { 
+            ChatOptions jsonOptions = new ChatOptions
+            {
                 ResponseFormat = ChatResponseFormat.Json, 
-                Instructions= "Include every input element in the output (same count)." 
+                Instructions = "Include every input element in the output (same count)."
             };
 
-            string raw = "";
-            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, jsonOptions))
+            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
+            StringBuilder stringBuilder = new StringBuilder();
+            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, jsonOptions, cts.Token))
             {
-                raw += item.Text;
+                if (!string.IsNullOrEmpty(item.Text))
+                    stringBuilder.Append(item.Text);
             }
-
+            string raw = stringBuilder.ToString();
             return new AiResponce(raw, ParseEdits(raw));
         }
 
@@ -88,9 +100,33 @@ namespace AnalyseTool.Services
         /// </summary>
         private static List<ParameterAiEdit> ParseEdits(string json)
         {
+            // Try direct array parse
             try
             {
                 return JsonSerializer.Deserialize<List<ParameterAiEdit>>(json, _jsonOptions) ?? [];
+            }
+            catch { }
+
+            // Model sometimes wraps the array: {"output":[...]} / {"result":[...]} / {"data":[...]}
+            // Find the first '[' inside the JSON and extract everything up to the matching ']'
+            try
+            {
+                int arrayStart = json.IndexOf('[');
+                if (arrayStart >= 0)
+                {
+                    int depth = 0;
+                    int arrayEnd = -1;
+                    for (int j = arrayStart; j < json.Length; j++)
+                    {
+                        if (json[j] == '[') depth++;
+                        else if (json[j] == ']') { depth--; if (depth == 0) { arrayEnd = j; break; } }
+                    }
+                    if (arrayEnd > arrayStart)
+                    {
+                        string extracted = json[arrayStart..(arrayEnd + 1)];
+                        return JsonSerializer.Deserialize<List<ParameterAiEdit>>(extracted, _jsonOptions) ?? [];
+                    }
+                }
             }
             catch { }
 

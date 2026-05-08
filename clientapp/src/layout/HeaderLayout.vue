@@ -25,7 +25,7 @@ const { openSidebar } = sidebarActions;
 
       <ul class="flex items-center gap-6 m-0 p-0 list-none">
         <li class="flex items-center gap-2">
-          <Button icon="pi pi-sun" severity="secondary" text @click="toggleDarkMode" />
+          <!-- <Button icon="pi pi-sun" severity="secondary" text @click="toggleDarkMode" /> -->
         </li>
         <li class="flex items-center gap-2">
           <Button icon="pi pi-print" severity="secondary" text @click="printePage" />

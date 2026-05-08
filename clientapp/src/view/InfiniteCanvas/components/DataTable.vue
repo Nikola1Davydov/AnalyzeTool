@@ -26,17 +26,12 @@ type RowState = {
 };
 
 const MODE_OPTIONS = [
-  { label: "Lesen", value: "read" },
-  { label: "✎ Manuell", value: "manual" },
-  { label: "✦ KI", value: "ai" },
+  { label: "Read", value: "read" },
+  { label: "✎ Manual", value: "manual" },
+  { label: "✦ AI", value: "ai" },
 ];
 
-const AI_CHIPS = [
-  "Fehlende Werte ergänzen",
-  "Grammatik prüfen",
-  "Werte normalisieren",
-  "Duplikate erkennen",
-];
+const AI_CHIPS = ["Fill missing values", "Check grammar", "Normalize values", "Detect duplicates"];
 
 const mode = ref<EditMode>("read");
 const aiPrompt = ref("");
@@ -49,7 +44,7 @@ const rowState = ref<RowState[]>([]);
 watch(
   () => props.items,
   (next, prev) => {
-    // Сохраняем существующее состояние по elementId, чтобы refresh не сбрасывал правки
+    // Preserve existing state by elementId so refresh does not reset edits
     const prevById = new Map<number, RowState>();
     (prev || []).forEach((element, i) => {
       if (rowState.value[i]) prevById.set(element.id, rowState.value[i]);
@@ -205,7 +200,7 @@ function runAI() {
         decision: "accepted",
       };
     });
-    notificationStore.success(`KI fertig — ${appliedCount} Vorschläge bereit`);
+    notificationStore.success(`AI complete - ${appliedCount} suggestions ready`);
   }
 
   function cleanup() {
@@ -245,7 +240,7 @@ function runAIRaw() {
     }
     rawAiResponse.value = typeof detail === "string" ? detail : JSON.stringify(detail);
     showRawPanel.value = true;
-    notificationStore.info("KI-Analyse abgeschlossen");
+    notificationStore.info("AI analysis completed");
   }
 
   function cleanupRaw() {
@@ -291,7 +286,7 @@ function applyToRevit() {
   try {
     sendRequest(Commands.SetDataToParameters, payload);
 
-    // Сбрасываем состояние применённых строк
+    // Reset state for applied rows
     rowState.value = rowState.value.map((s, i) => {
       if (readOnlyIndices.value.has(i)) return s;
       if (s.decision === "rejected" || s.pendingValue.trim() === "") return s;
@@ -326,7 +321,7 @@ function applyToRevit() {
           <InputText
             v-model="aiPrompt"
             size="small"
-            placeholder="Prompt eingeben…"
+            placeholder="Enter prompt..."
             class="flex-1 min-w-24 !text-xs"
             @keydown.enter="runAI"
           />
@@ -334,7 +329,7 @@ function applyToRevit() {
             size="small"
             :loading="aiRawRunning"
             :disabled="!aiPrompt.trim() || aiRawRunning || aiRunning"
-            label="Analysieren"
+            label="Analyze"
             icon="pi pi-sparkles"
             @click="runAIRaw"
           />
@@ -342,7 +337,7 @@ function applyToRevit() {
             size="small"
             :loading="aiRunning"
             :disabled="!aiPrompt.trim() || aiRunning || aiRawRunning || !hasEditableRows"
-            label="Bearbeiten"
+            label="Edit"
             icon="pi pi-pen-to-square"
             @click="runAI"
           />
@@ -364,7 +359,7 @@ function applyToRevit() {
           class="flex items-center gap-1.5 text-xs text-surface-400"
         >
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-          Werte manuell eingeben und bestätigen
+          Enter values manually and confirm
         </span>
       </div>
 
@@ -392,12 +387,6 @@ function applyToRevit() {
           </template>
         </Column>
 
-        <Column field="category" header="Category" headerClass="!text-[0.65rem]">
-          <template #body="{ data }">
-            <span class="text-surface-400 text-[0.72rem]">{{ data.category }}</span>
-          </template>
-        </Column>
-
         <Column
           field="parameterValue"
           sortable
@@ -408,7 +397,7 @@ function applyToRevit() {
         <!-- Edit columns (manual / ai mode only) -->
         <Column
           v-if="mode !== 'read'"
-          :header="mode === 'ai' ? '✦ KI-Vorschlag' : 'Neuer Wert'"
+          :header="mode === 'ai' ? '✦ AI Suggestion' : 'New Value'"
           headerClass="col-new-header !text-[0.65rem]"
           class="col-new-cell"
         >
@@ -418,14 +407,14 @@ function applyToRevit() {
               class="flex items-center gap-1 text-[0.68rem] text-surface-400 italic"
             >
               <i class="pi pi-lock text-[0.6rem]" />
-              schreibgeschützt
+              read-only
             </span>
             <InputText
               v-else
               size="small"
               fluid
               :value="data.state.pendingValue"
-              :placeholder="mode === 'ai' ? '—' : 'Wert eingeben…'"
+              :placeholder="mode === 'ai' ? '—' : 'Enter value...'"
               :disabled="data.state.decision === 'rejected'"
               :class="[
                 'cell-input !text-[0.7rem]',
@@ -440,7 +429,7 @@ function applyToRevit() {
 
         <Column
           v-if="mode === 'ai'"
-          :header="'Begründung'"
+          :header="'Reason'"
           headerClass="col-reason-header !text-[0.65rem]"
           class="col-reason-cell"
         >
@@ -467,7 +456,7 @@ function applyToRevit() {
                 rounded
                 size="small"
                 class="!w-6 !h-6"
-                title="Ausschließen"
+                title="Exclude"
                 @click="reject(data.index)"
               />
               <Button
@@ -477,7 +466,7 @@ function applyToRevit() {
                 rounded
                 size="small"
                 class="!w-6 !h-6"
-                title="Wiederherstellen"
+                title="Restore"
                 @click="undo(data.index)"
               />
             </template>
@@ -488,7 +477,7 @@ function applyToRevit() {
         <template #footer>
           <div class="flex items-center justify-between px-1">
             <span class="font-mono text-[0.65rem] text-surface-400">
-              Gesamt: <b class="text-surface-700 font-semibold">{{ totalCount }}</b>
+              Total: <b class="text-surface-700 font-semibold">{{ totalCount }}</b>
               <template v-if="mode === 'manual'">
                 &nbsp;·&nbsp;<span class="text-emerald-400">✎ {{ filledCount }}</span>
               </template>
@@ -506,14 +495,14 @@ function applyToRevit() {
                 rounded
                 size="small"
                 class="!w-6 !h-6 shrink-0"
-                title="KI-Antwort anzeigen"
+                title="Show AI response"
                 @click="showRawPanel = true"
               />
 
               <Button
                 v-if="mode !== 'read'"
                 size="small"
-                label="In Revit übernehmen"
+                label="Apply to Revit"
                 icon="pi pi-send"
                 severity="success"
                 outlined
@@ -539,7 +528,7 @@ function applyToRevit() {
         >
           <span class="text-[0.7rem] font-semibold text-amber-500 flex items-center gap-1">
             <i class="pi pi-sparkles text-[0.65rem]" />
-            KI-Antwort
+            AI Response
           </span>
           <Button
             icon="pi pi-times"
@@ -553,7 +542,7 @@ function applyToRevit() {
         <div class="flex-1 overflow-auto p-3">
           <pre
             class="text-[0.68rem] whitespace-pre-wrap break-words font-mono text-surface-600 leading-relaxed"
-            >{{ rawAiResponse ?? (aiRawRunning ? "Lädt…" : "") }}</pre
+            >{{ rawAiResponse ?? (aiRawRunning ? "Loading..." : "") }}</pre
           >
         </div>
       </div>

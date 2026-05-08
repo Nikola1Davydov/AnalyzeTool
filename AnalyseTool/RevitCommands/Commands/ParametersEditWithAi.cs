@@ -35,6 +35,10 @@ namespace AnalyseTool.RevitCommands.Commands
 
                 webView.CoreWebView2.PostWebMessageAsJson(json);
             }
+            catch (OperationCanceledException)
+            {
+                WebViewErrorHelper.SendError(webView, nameof(ParametersEditWithAi), "KI-Zeitüberschreitung: Das Modell hat nicht rechtzeitig geantwortet.");
+            }
             catch (Exception ex)
             {
                 WebViewErrorHelper.SendError(webView, nameof(ParametersEditWithAi), ex.Message);
