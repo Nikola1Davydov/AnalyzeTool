@@ -355,6 +355,8 @@ function requestOllamaModels() {
 }
 
 function checkAiAvailabilityOnCanvasEnter() {
+  if (aiSettingsStore.modelSource !== "local") return;
+
   requestOllamaModels();
 
   const stop = watch(
@@ -366,7 +368,7 @@ function checkAiAvailabilityOnCanvasEnter() {
       if (aiSettingsStore.availableModels.length === 0) {
         aiSettingsStore.setModel(null);
         notificationStore.warn(
-          "Ollama ist nicht verfügbar oder es sind keine Modelle installiert. KI-Funktionen wurden deaktiviert.",
+          "Ollama is unavailable or no models are installed. AI features were disabled.",
         );
       }
     },

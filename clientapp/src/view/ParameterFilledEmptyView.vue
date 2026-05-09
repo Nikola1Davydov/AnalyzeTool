@@ -125,7 +125,7 @@ async function handleUpdateData() {
       console.warn("No category selected");
       return;
     }
-    await elementsStore.loadByCategory(selectedCategory.value);
+    await elementsStore.loadByCategory(selectedCategory.value, true);
   } catch (err) {
     console.error("Failed to load elements", err);
   } finally {

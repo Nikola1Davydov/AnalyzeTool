@@ -9,9 +9,10 @@ import ConnectParameters from "@/view/ConnectParameters/ConnectParametersView.vu
 import ParameterCanvasView from "@/view/InfiniteCanvas/ParameterCanvasView.vue";
 
 const routes = [
-  { path: "/", component: ParameterFilledEmptyPage },
+  { path: "/", component: ParameterCanvasView },
   { path: "/index.html", redirect: "/" },
   { path: "/about", component: AboutView },
+  { path: "/parameterFilledEmptyPage", component: ParameterFilledEmptyPage },
   { path: "/documenthealth", component: RevitDocumentHealthView },
   { path: "/parametervaluecheck", component: ParameterValueCheckView },
   { path: "/families", component: FamiliesView },

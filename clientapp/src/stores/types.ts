@@ -48,7 +48,7 @@ export interface SetDataToParameters {
   mode: (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 }
 
-export interface AnalyzeWithAi {
+export interface AnalyzeParameterWithAi {
   items: ParameterData[];
   prompt: string;
   model: string;

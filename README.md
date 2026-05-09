@@ -1,109 +1,95 @@
 # AnalyseTool for Revit
 
-[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) [![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE) ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue) [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
+[![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest)
+[![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE)
+![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue)
+[![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
-## Overview
+AnalyseTool is a free Revit plugin for parameter analysis, filtering, bulk editing, and AI-assisted workflows.
 
-AnalyseTool is a Revit plugin that inspects element parameters and lets you act on them right from a modern WebView2 UI. The new frontend is built with Vue + PrimeVue, so anyone who knows only JavaScript or TypeScript can extend the UI and business logic without touching C#.
+The project focuses on free AI usage through local Ollama models, so you can run AI workflows without paid subscriptions.
+
 ![AnalyseTool Screenshot](img/Overview.png)
 
 ## Compatibility
 
-- Revit 2025�2026
-- Windows with WebView2 and .NET 8
+- Revit 2025-2026
 
-## Features
+## Key Features
 
-- View every parameter grouped by category; filter by Instance/Type or BuiltIn/Shared/Project.
-- Clickable fill/empty chart to select elements with or without values.
-- Select or temporarily isolate elements directly from the web UI.
-- Update checker against GitHub releases.
+- Free plugin with built-in AI workflows.
+- Free local AI support with Ollama models.
+- Category-based parameter exploration with filters (Instance/Type, BuiltIn/Shared/Project).
+- Parameter Filled/Empty analytics with chart-driven selection.
+- Parameter Value Check workflow.
+- Infinite Canvas workflow with AI-assisted edits.
+- Select/Isolate actions directly in Revit.
+- Update check against GitHub Releases.
+
+## Free Plugin + Free AI
+
+- AnalyseTool is free to use.
+- Core AI scenarios are designed to work with free local models via Ollama.
+- No mandatory paid AI subscription is required for local AI workflows.
+- Cloud model mode is optional and depends on your provider setup.
 
 ## Installation
 
-1. Download the latest installer/zip from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest).
-2. Close Revit and install.
+1. Download the latest package from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest).
+2. Close Revit.
+3. Install the plugin package.
+4. Start Revit and open `Add-Ins -> AnalyseTool`.
 
-## How to Use
+## AI Requirement
 
-1. Open your project and start `Add-Ins -> AnalyseTool`.
-2. Pick a category; parameters and elements load automatically.
-3. Use filters to narrow results. Click the chart to select elements with filled/empty values; use isolate to focus the view.
+To use AI features, you must install Ollama first:
 
-## Architecture
+- Download Ollama: https://ollama.com/download
+- Keep Ollama running, so the plugin can access models.
 
-- Backend: `AnalyseTool/RevitCommands` (C#) handles Selection, Isolation, category queries, data retrieval, and update checks.
-- Frontend: `clientapp` (Vue 3 + Vite + TypeScript) runs in WebView2 and talks to Revit over a simple message bridge.
-- Messaging: `chrome.webview.postMessage` (frontend) ? `WebMessageReceived` (C#).
+## AI Model Settings
 
-## Frontend for JS/TS Developers
+In Canvas AI settings:
 
-You can extend the plugin using only JS/TS:
+- `Local models` (recommended): load local Ollama models for free AI usage.
+- `Cloud models` (optional): input model name manually if you want to use an external provider.
 
-- All web UI code lives in `clientapp` (Vue + PrimeVue).
-- Revit interactions go through `clientapp/src/RevitBridge.ts`.
+## Project Structure
 
-## RevitBridge API (clientapp/src/RevitBridge.ts)
+- `AnalyseTool/`: C# Revit plugin logic.
+- `clientapp/`: Vue 3 + Vite + PrimeVue frontend.
+- `Installer/`: packaging and installation assets.
 
-Available commands and payloads:
+## Frontend Development
 
-- `GetCategories` � payload: `null` ? response: `string[]` of category names.
-- `GetDataByCategoryName` � payload: `{ categoryName: string }` ? response: `ElementItem[]`.
-- `Selection` � payload: `{ elementIds: number[] }` ? selects elements in Revit.
-- `Isolation` � payload: `{ elementIds: number[] }` ? isolates elements in the active view.
-- `CheckUpdate` � payload: `null` ? response: `{ currentVersion?, latestVersion?, isUpdateAvailable?, releaseUrl? }`.
+## Revit Bridge API (Frontend)
 
-Data contracts (`clientapp/src/stores/types.ts`):
+Bridge file: `clientapp/src/RevitBridge.ts`
 
-```ts
-export interface ElementItem {
-  name: string;
-  id: number;
-  level: string;
-  categoryName: string;
-  isElementType: boolean;
-  parameters: ParameterData[];
-}
+Current command names:
 
-export interface ParameterData {
-  name: string;
-  id: number;
-  value: string;
-  level: string;
-  elementId: number;
-  isTypeParameter: boolean;
-  orgin: number;
-}
-```
+- `SelectionInRevit`
+- `IsolationInRevit`
+- `GetCategoriesInRevit`
+- `GetDataByCategoryName`
+- `GetDocumentHealthStatus`
+- `CheckUpdate`
+- `GetDocumentData`
+- `SetDataToParameters`
+- `AiAnalyse`
+- `AiEditParameters`
+- `GetOllamaModels`
 
-### JS/TS usage examples
+Basic usage:
 
 ```ts
-import { Commands, sendRequest } from "./src/RevitBridge";
+import { Commands, sendRequest } from "@/RevitBridge";
 
-// Get categories
-const categories = await sendRequest(Commands.GetCategories, null);
-
-// Load elements by category
-const walls = await sendRequest(Commands.GetDataByCategoryName, {
-  categoryName: "Walls",
-});
-
-// Select all loaded elements
-await sendRequest(Commands.Selection, { elementIds: walls.map((x) => x.id) });
-
-// Isolate elements with empty parameters
-const emptyElementIds = walls
-  .filter((el) => el.parameters.some((p) => !p.value))
-  .map((el) => el.id);
-await sendRequest(Commands.Isolation, { elementIds: emptyElementIds });
-
-// Check for updates
-await sendRequest(Commands.CheckUpdate, null);
+await sendRequest(Commands.GetCategoriesInRevit, null);
+await sendRequest(Commands.GetDataByCategoryName, { categoryName: "Walls" });
+await sendRequest(Commands.SelectionInRevit, { elementIds: [123, 456] });
 ```
-
-Responses are also delivered via `chrome.webview.addEventListener("message", ...)` � see handling in `clientapp/src/App.vue`.
 
 ## Feedback
 
-Open an issue or PR in this repo. If you need more JS/TS APIs or samples, feel free to ask.
+Issues and PRs are welcome.

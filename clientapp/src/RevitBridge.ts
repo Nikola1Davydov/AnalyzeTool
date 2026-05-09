@@ -1,5 +1,5 @@
 import { UpdatePayload } from "./stores/types";
-import type { SetDataToParameters, AnalyzeWithAi } from "./stores/types";
+import type { SetDataToParameters, AnalyzeParameterWithAi } from "./stores/types";
 import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
 
 export type WebViewMessage = {
@@ -17,8 +17,8 @@ export interface CommandPayloads {
   [Commands.CheckUpdate]: UpdatePayload;
   [Commands.GetDocumentData]: null;
   [Commands.SetDataToParameters]: SetDataToParameters;
-  [Commands.AnalyseWithAi]: AnalyzeWithAi;
-  [Commands.ParametersEditWithAi]: AnalyzeWithAi;
+  [Commands.AiAnalyse]: AnalyzeParameterWithAi;
+  [Commands.AiEditParameters]: AnalyzeParameterWithAi;
   [Commands.GetOllamaModels]: null;
   // … add hier a new commads and their payloads
 }
@@ -31,8 +31,8 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
-  AnalyseWithAi: "AnalyseWithAi",
-  ParametersEditWithAi: "ParametersEditWithAi",
+  AiAnalyse: "AiAnalyse",
+  AiEditParameters: "AiEditParameters",
   GetOllamaModels: "GetOllamaModels",
 } as const;
 

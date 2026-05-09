@@ -76,11 +76,11 @@ onMounted(() => {
           useDocumentDataStore().setDocumentData(payload.Payload as DocumentData);
           return;
         }
-        if (payload.Command === Commands.ParametersEditWithAi) {
+        if (payload.Command === Commands.AiEditParameters) {
           window.dispatchEvent(new CustomEvent("revit:ai-edit", { detail: payload.Payload }));
           return;
         }
-        if (payload.Command === Commands.AnalyseWithAi) {
+        if (payload.Command === Commands.AiAnalyse) {
           window.dispatchEvent(new CustomEvent("revit:ai-raw", { detail: payload.Payload }));
           return;
         }
@@ -120,7 +120,11 @@ provide("sidebarActions", {
         <Sidebar />
       </div>
       <div class="layout-main-container">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <KeepAlive>
+            <component :is="Component" />
+          </KeepAlive>
+        </router-view>
         <div class="layout-footer"></div>
       </div>
       <FooterLayout />

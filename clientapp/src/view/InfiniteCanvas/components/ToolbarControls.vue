@@ -69,12 +69,7 @@ function onChartActionChange(value: string | null | undefined) {
     >
       <i class="pi pi-trash" />
     </button>
-    <button
-      type="button"
-      class="toolbar-btn"
-      title="KI-Einstellungen"
-      @click="emit('openSettings')"
-    >
+    <button type="button" class="toolbar-btn" title="AI settings" @click="emit('openSettings')">
       <i class="pi pi-cog" />
     </button>
   </div>

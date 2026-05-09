@@ -154,7 +154,7 @@ function undo(i: number) {
 
 function onModeChange(v: string) {
   if (v === "ai" && !aiAvailable.value) {
-    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    notificationStore.warn("AI is currently unavailable. Please check your model settings.");
     mode.value = "read";
     return;
   }
@@ -168,7 +168,7 @@ let aiMessageCleanup: (() => void) | null = null;
 
 function runAI() {
   if (!aiAvailable.value) {
-    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    notificationStore.warn("AI is currently unavailable. Please check your model settings.");
     return;
   }
   if (!aiPrompt.value.trim()) return;
@@ -224,7 +224,7 @@ function runAI() {
 
   aiMessageCleanup = cleanup;
   window.addEventListener("revit:ai-edit", onAiResult);
-  sendRequest(Commands.ParametersEditWithAi, {
+  sendRequest(Commands.AiEditParameters, {
     items: paramItems,
     prompt: aiPrompt.value,
     model: aiSettingsStore.selectedModel!,
@@ -235,7 +235,7 @@ let aiRawCleanup: (() => void) | null = null;
 
 function runAIRaw() {
   if (!aiAvailable.value) {
-    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    notificationStore.warn("AI is currently unavailable. Please check your model settings.");
     return;
   }
   if (!aiPrompt.value.trim()) return;
@@ -268,7 +268,7 @@ function runAIRaw() {
 
   aiRawCleanup = cleanupRaw;
   window.addEventListener("revit:ai-raw", onRawResult);
-  sendRequest(Commands.AnalyseWithAi, {
+  sendRequest(Commands.AiAnalyse, {
     items: paramItems,
     prompt: aiPrompt.value,
     model: aiSettingsStore.selectedModel!,
@@ -394,6 +394,7 @@ function applyToRevit() {
         size="small"
         scrollable
         scrollHeight="flex"
+        :virtualScrollerOptions="{ itemSize: 36 }"
         :rowClass="getRowClass"
         class="flex-1 min-h-0 text-xs"
       >

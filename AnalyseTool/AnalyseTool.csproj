@@ -7,7 +7,6 @@
         <ImplicitUsings>true</ImplicitUsings>
         <Configurations>Debug R25;Debug R26</Configurations>
         <Configurations>$(Configurations);Release R25;Release R26</Configurations>
-		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<Nullable>enable</Nullable>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
@@ -46,18 +45,22 @@
 	<ItemGroup>
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
+		<Compile Remove="archiv\**" />
 		<Compile Remove="Config\**" />
 		<Compile Remove="Resources\**" />
 		<Compile Remove="Web\**" />
 		<EmbeddedResource Remove="AboutMe\**" />
+		<EmbeddedResource Remove="archiv\**" />
 		<EmbeddedResource Remove="Config\**" />
 		<EmbeddedResource Remove="Resources\**" />
 		<EmbeddedResource Remove="Web\**" />
 		<None Remove="AboutMe\**" />
+		<None Remove="archiv\**" />
 		<None Remove="Config\**" />
 		<None Remove="Resources\**" />
 		<None Remove="Web\**" />
 		<Page Remove="AboutMe\**" />
+		<Page Remove="archiv\**" />
 		<Page Remove="Config\**" />
 		<Page Remove="Resources\**" />
 		<Page Remove="Web\**" />

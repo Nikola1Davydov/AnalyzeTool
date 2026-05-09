@@ -8,7 +8,7 @@ const router = useRouter();
 
 const menuItems = [
   { label: "Home", icon: "pi pi-th-large", to: "/parameterCanvasView" },
-  { label: "Parameter Empty Check", icon: "pi pi-home", to: "/" },
+  { label: "Parameter Empty Check", icon: "pi pi-home", to: "/parameterFilledEmptyPage" },
   { label: "Parameter Value Check", icon: "pi pi-check-square", to: "/parametervaluecheck" },
   // { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
   // { label: "Families", icon: "pi-objects-column", to: "/families" },

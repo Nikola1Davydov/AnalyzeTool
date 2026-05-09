@@ -1,6 +1,4 @@
-﻿using AnalyseTool.RevitCommands;
-using AnalyseTool.Services;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Utils
@@ -22,7 +20,7 @@ namespace AnalyseTool.Utils
                 catch (Exception ex)
                 {
                     transaction.RollBack();
-                    UserDialogService.Error(ex.Message);
+                    UserDialogUtils.Error(ex.Message);
                 }
             }
         }

@@ -675,7 +675,7 @@ async function updateData() {
       elementsStore.clear();
       return;
     }
-    await elementsStore.loadByCategory(selectedCategory.value);
+    await elementsStore.loadByCategory(selectedCategory.value, true);
   } catch (err) {
     console.error("Failed to load elements", err);
   } finally {

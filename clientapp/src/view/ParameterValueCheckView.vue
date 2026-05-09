@@ -61,7 +61,7 @@ async function updateData() {
   loading.value = true;
   try {
     if (selectedCategory.value) {
-      await elementsStore.loadByCategory(selectedCategory.value);
+      await elementsStore.loadByCategory(selectedCategory.value, true);
     } else {
       elementsStore.clear();
     }
