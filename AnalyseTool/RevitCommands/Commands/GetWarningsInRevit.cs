@@ -9,7 +9,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetWarningsInRevit : IRevitTask
     {
-        public void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             List<WarningInRevitModel> warningInRevitModels = new List<WarningInRevitModel>();
             IList<FailureMessage> allWarningsInDocument = Context.Document.GetWarnings();

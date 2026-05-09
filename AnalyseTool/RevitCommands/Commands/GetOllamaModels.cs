@@ -10,7 +10,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetOllamaModels : IRevitTask
     {
-        public async void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             List<string> models = new();
             try

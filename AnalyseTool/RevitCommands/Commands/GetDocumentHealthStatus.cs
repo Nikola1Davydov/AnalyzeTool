@@ -11,7 +11,7 @@ namespace AnalyseTool.RevitCommands.Commands
     internal class GetDocumentHealthStatus : IRevitTask
     {
         Document _doc = Context.Document;
-        public void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             int allWarningsInDocument = Context.Document.GetWarnings().Count;
             var path =  Context.Document.PathName;

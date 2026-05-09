@@ -9,7 +9,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetDataByCategoryName : IRevitTask
     {
-        public void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             UpdateDataParameterFilledEmptyPagePayload? data = payload.ToObject<UpdateDataParameterFilledEmptyPagePayload>();
             if (string.IsNullOrEmpty(data.CategoryName)) return;

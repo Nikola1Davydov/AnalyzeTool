@@ -10,7 +10,7 @@ namespace AnalyseTool.RevitCommands.Commands
     internal class CheckUpdate : IRevitTask
     {
         public UpdateInfo? UpdateInfo { get; private set; }
-        public async void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             await GetUpdateData();
 

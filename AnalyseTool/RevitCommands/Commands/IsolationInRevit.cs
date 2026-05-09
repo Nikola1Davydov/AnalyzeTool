@@ -8,7 +8,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class IsolationInRevit : IRevitTask
     {
-        public void Execute(JToken data, WebView2 webView)
+        public async Task Execute(JToken data, WebView2 webView)
         {
             
             IsolationPayload? list = data.ToObject<IsolationPayload>();

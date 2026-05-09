@@ -9,7 +9,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class ParametersEditWithAi : IRevitTask
     {
-        public async void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             AnalyzeParameterWithAiRequest? list = payload.ToObject<AnalyzeParameterWithAiRequest>();
             if (list == null) return;

@@ -9,7 +9,7 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetDocumentData : IRevitTask
     {
-        public void Execute(JToken payload, WebView2 webView)
+        public async Task Execute(JToken payload, WebView2 webView)
         {
             Document doc = Context.Document;
             DocumentData documentData = new DocumentData()

@@ -5,6 +5,6 @@ namespace AnalyseTool.RevitCommands.Commands.Base
 {
     internal interface IRevitTask
     {
-        void Execute(JToken payload, WebView2 webView);
+        Task Execute(JToken payload, WebView2 webView);
     }
 }
