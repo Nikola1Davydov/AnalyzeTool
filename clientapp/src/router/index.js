@@ -4,13 +4,20 @@ import AboutView from "@/view/AboutView.vue";
 import ParameterFilledEmptyPage from "@/view/ParameterFilledEmptyView.vue";
 import RevitDocumentHealthView from "@/view/RevitDocumentHealthView.vue";
 import ParameterValueCheckView from "@/view/ParameterValueCheckView.vue";
+import FamiliesView from "@/view/FamiliesView.vue";
+import ConnectParameters from "@/view/ConnectParameters/ConnectParametersView.vue";
+import ParameterCanvasView from "@/view/InfiniteCanvas/ParameterCanvasView.vue";
 
 const routes = [
-  { path: "/", component: ParameterFilledEmptyPage },
-  { path: "/index.html", redirect: "/" }, // чтобы загрузка index.html попадала на главную
+  { path: "/", component: ParameterCanvasView },
+  { path: "/index.html", redirect: "/" },
   { path: "/about", component: AboutView },
+  { path: "/parameterFilledEmptyPage", component: ParameterFilledEmptyPage },
   { path: "/documenthealth", component: RevitDocumentHealthView },
   { path: "/parametervaluecheck", component: ParameterValueCheckView },
+  { path: "/families", component: FamiliesView },
+  { path: "/connectParameters", component: ConnectParameters },
+  { path: "/parameterCanvasView", component: ParameterCanvasView },
 ];
 
 const router = createRouter({

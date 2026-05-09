@@ -7,7 +7,6 @@
         <ImplicitUsings>true</ImplicitUsings>
         <Configurations>Debug R25;Debug R26</Configurations>
         <Configurations>$(Configurations);Release R25;Release R26</Configurations>
-		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<Nullable>enable</Nullable>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
@@ -33,10 +32,12 @@
 		
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
+        <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+        <PackageReference Include="OllamaSharp" Version="5.4.25" />
     </ItemGroup>
 
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
@@ -44,18 +45,22 @@
 	<ItemGroup>
 		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
+		<Compile Remove="archiv\**" />
 		<Compile Remove="Config\**" />
 		<Compile Remove="Resources\**" />
 		<Compile Remove="Web\**" />
 		<EmbeddedResource Remove="AboutMe\**" />
+		<EmbeddedResource Remove="archiv\**" />
 		<EmbeddedResource Remove="Config\**" />
 		<EmbeddedResource Remove="Resources\**" />
 		<EmbeddedResource Remove="Web\**" />
 		<None Remove="AboutMe\**" />
+		<None Remove="archiv\**" />
 		<None Remove="Config\**" />
 		<None Remove="Resources\**" />
 		<None Remove="Web\**" />
 		<Page Remove="AboutMe\**" />
+		<Page Remove="archiv\**" />
 		<Page Remove="Config\**" />
 		<Page Remove="Resources\**" />
 		<Page Remove="Web\**" />

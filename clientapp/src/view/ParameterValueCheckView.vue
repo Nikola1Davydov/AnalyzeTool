@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import ValueChart from "@/view/ParameterValueCheck/Chart.vue";
-import TopPanel from "@/view/ParameterValueCheck/TopPanel.vue";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+
+const TopFiltersBar = defineAsyncComponent(() => import("@/components/TopFiltersBar.vue") as any);
+const ValueChart = defineAsyncComponent(
+  () => import("@/view/ParameterValueCheck/Chart.vue") as any,
+);
 
 const elementsStore = useElementsStore();
 const categoriesStore = useCategoriesStore();
@@ -58,7 +61,7 @@ async function updateData() {
   loading.value = true;
   try {
     if (selectedCategory.value) {
-      await elementsStore.loadByCategory(selectedCategory.value);
+      await elementsStore.loadByCategory(selectedCategory.value, true);
     } else {
       elementsStore.clear();
     }
@@ -69,18 +72,38 @@ async function updateData() {
   }
 }
 
+function onUpdateCategory(value: string | null) {
+  selectedCategory.value = value;
+}
+
+function onUpdateFilters(value: string[]) {
+  selectedFilters.value = value;
+}
+
+function onUpdateSearch(value: string) {
+  searchQuery.value = value;
+}
+
+function onUpdateLevel(value: string | null) {
+  selectedLevel.value = value;
+}
+
+function onUpdateClickAction(value: string | null) {
+  clickAction.value = value || "Selection";
+}
+
 watch(
   () => items.value,
   () => {
     // Stop spinner once store updates with new data
     if (loading.value) loading.value = false;
-  }
+  },
 );
 </script>
 
 <template>
   <div class="p-5 flex flex-col gap-4">
-    <TopPanel
+    <TopFiltersBar
       :categories="sortedCategories"
       :category="selectedCategory"
       :filters="selectedFilters"
@@ -88,13 +111,15 @@ watch(
       :search="searchQuery"
       :levels="levels"
       :level="selectedLevel"
+      :showLevel="true"
       :clickAction="clickAction"
+      :showClickAction="true"
       :loading="loading"
-      @update:category="(val) => (selectedCategory = val)"
-      @update:filters="(val) => (selectedFilters = val)"
-      @update:search="(val) => (searchQuery = val)"
-      @update:level="(val) => (selectedLevel = val)"
-      @update:clickAction="(val) => (clickAction = val || 'Selection')"
+      @update:category="onUpdateCategory"
+      @update:filters="onUpdateFilters"
+      @update:search="onUpdateSearch"
+      @update:level="onUpdateLevel"
+      @update:clickAction="onUpdateClickAction"
       @update-data="updateData"
     />
 

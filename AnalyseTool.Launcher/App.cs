@@ -49,13 +49,14 @@ namespace AnalyseTool.Launcher
             RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");
 
             PushButtonData b1Data = new PushButtonData(
-                nameof(ParameterControlCommand),
+                nameof(AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand),
                 SharedData.ToolData.PLUGIN_NAME,
                 GetType().Assembly!.Location,
-                typeof(ParameterControlCommand).FullName);
+                typeof(AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand).FullName);
 
             PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
             BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            pb1.Image = pb1Image;
             pb1.LargeImage = pb1Image;
         }
 

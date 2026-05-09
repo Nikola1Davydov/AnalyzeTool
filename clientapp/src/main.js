@@ -21,6 +21,13 @@ import SelectButton from "primevue/selectbutton";
 import Drawer from "primevue/drawer";
 import Panel from "primevue/panel";
 import ContextMenu from "primevue/contextmenu";
+import Tag from "primevue/tag";
+import Checkbox from "primevue/checkbox";
+import AutoComplete from "primevue/autocomplete";
+import DataTable from "primevue/datatable";
+import Dialog from "primevue/dialog";
+import Toast from "primevue/toast";
+import ToastService from "primevue/toastservice";
 
 import { definePreset } from "@primeuix/themes";
 
@@ -40,26 +47,9 @@ const stylePreset = definePreset(Aura, {
       900: "{blue.900}",
       950: "{blue.950}",
     },
-    colorScheme: {
-      dark: {
-        surface: {
-          0: "{neutral.0}",
-          50: "{neutral.50}",
-          100: "{neutral.100}",
-          200: "{neutral.200}",
-          300: "{neutral.300}",
-          400: "{neutral.400}",
-          500: "{neutral.500}",
-          600: "{neutral.600}",
-          700: "{neutral.700}",
-          800: "{neutral.800}",
-          900: "{neutral.900}",
-          950: "{neutral.950}",
-        },
-      },
-    },
   },
 });
+app.use(ToastService);
 app.use(PrimeVue, {
   theme: {
     preset: stylePreset,
@@ -83,6 +73,12 @@ app.component("Slider", Slider);
 app.component("Drawer", Drawer);
 app.component("Panel", Panel);
 app.component("ContextMenu", ContextMenu);
+app.component("Tag", Tag);
+app.component("Checkbox", Checkbox);
+app.component("AutoComplete", AutoComplete);
+app.component("DataTable", DataTable);
+app.component("Dialog", Dialog);
+app.component("Toast", Toast);
 
 app.use(createPinia());
 app.use(router).mount("#app");

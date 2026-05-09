@@ -1,30 +1,39 @@
+import { UpdatePayload } from "./stores/types";
+import type { SetDataToParameters, AnalyzeParameterWithAi } from "./stores/types";
+import type { DocumentHealthPayload } from "./stores/useDocumentHealthStore";
+
 export type WebViewMessage = {
   Type: string;
   Command: string;
   Payload: any;
 };
 
-export interface UpdatePayload {
-  currentVersion?: string;
-  latestVersion?: string;
-  isUpdateAvailable?: boolean;
-  releaseUrl?: string;
-}
-
 export interface CommandPayloads {
-  [Commands.Selection]: { elementIds: number[] };
-  [Commands.Isolation]: { elementIds: number[] };
-  [Commands.GetCategories]: { null: null };
+  [Commands.SelectionInRevit]: { elementIds: number[] };
+  [Commands.IsolationInRevit]: { elementIds: number[] };
+  [Commands.GetCategoriesInRevit]: { null: null };
   [Commands.GetDataByCategoryName]: { categoryName: string };
+  [Commands.GetDocumentHealthStatus]: DocumentHealthPayload;
   [Commands.CheckUpdate]: UpdatePayload;
+  [Commands.GetDocumentData]: null;
+  [Commands.SetDataToParameters]: SetDataToParameters;
+  [Commands.AiAnalyse]: AnalyzeParameterWithAi;
+  [Commands.AiEditParameters]: AnalyzeParameterWithAi;
+  [Commands.GetOllamaModels]: null;
   // … add hier a new commads and their payloads
 }
 export const Commands = {
-  Selection: "Selection",
-  Isolation: "Isolation",
-  GetCategories: "GetCategories",
+  SelectionInRevit: "SelectionInRevit",
+  IsolationInRevit: "IsolationInRevit",
+  GetCategoriesInRevit: "GetCategoriesInRevit",
   GetDataByCategoryName: "GetDataByCategoryName",
+  GetDocumentHealthStatus: "GetDocumentHealthStatus",
   CheckUpdate: "CheckUpdate",
+  GetDocumentData: "GetDocumentData",
+  SetDataToParameters: "SetDataToParameters",
+  AiAnalyse: "AiAnalyse",
+  AiEditParameters: "AiEditParameters",
+  GetOllamaModels: "GetOllamaModels",
 } as const;
 
 export const enum MessageType {
@@ -34,7 +43,7 @@ export const enum MessageType {
 
 export function sendRequest<C extends keyof CommandPayloads>(
   command: C,
-  payload: CommandPayloads[C]
+  payload: CommandPayloads[C],
 ): Promise<any> {
   return new Promise((reject) => {
     if (!(window as any).chrome?.webview) {

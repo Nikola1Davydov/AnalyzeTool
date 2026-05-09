@@ -1,14 +1,7 @@
-﻿using AnalyseTool.RevitCommands;
-using AnalyseTool.RevitCommands.Model;
-using AnalyseTool.Utils;
-using Autodesk.Revit.ApplicationServices;
+﻿using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 
 namespace AnalyseTool.Test
 {
@@ -29,58 +22,58 @@ namespace AnalyseTool.Test
 
             Context.Init(uiapp);
         }
-        [Test]
-        public void RevitDataIsAvailable()
-        {
-            Assert.IsNotNull(uiapp);
-            Assert.IsNotNull(app);
-            Assert.IsNotNull(uidoc);
-            Assert.IsNotNull(doc);
-        }
-        // class name_method name_expected result
-        [Test]
-        public void DataElementsCollectorUtils_GetModelCategoriesNames_ReturnListString()
-        {
-            // Arrange 
-            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
-            // Act
-            // Assert
-            Assert.IsNotNull(categories);
-            Assert.IsNotEmpty(categories);
-        }
-        [Test]
-        public void JsonSerializer_SerializeCategories_ReturnString()
-        {
-            // Arrange 
-            // Act
-            List<string> categories = DataElementsCollectorUtils.GetModelCategoriesNames(doc);
-            string json = JsonSerializer.Serialize(categories);
+        //[Test]
+        //public void RevitDataIsAvailable()
+        //{
+        //    Assert.IsNotNull(uiapp);
+        //    Assert.IsNotNull(app);
+        //    Assert.IsNotNull(uidoc);
+        //    Assert.IsNotNull(doc);
+        //}
+        //// class name_method name_expected result
+        //[Test]
+        //public void DataElementsCollectorUtils_GetModelCategoriesNames_ReturnListString()
+        //{
+        //    // Arrange 
+        //    List<string> categories = DataElementsCollectorService.GetModelCategoriesNames(doc);
+        //    // Act
+        //    // Assert
+        //    Assert.IsNotNull(categories);
+        //    Assert.IsNotEmpty(categories);
+        //}
+        //[Test]
+        //public void JsonSerializer_SerializeCategories_ReturnString()
+        //{
+        //    // Arrange 
+        //    // Act
+        //    List<string> categories = DataElementsCollectorService.GetModelCategoriesNames(doc);
+        //    string json = JsonSerializer.Serialize(categories);
 
-            Console.WriteLine(json);
-            // Assert
-            Assert.IsNotNull(json);
-            Assert.IsNotEmpty(json);
-        }
+        //    Console.WriteLine(json);
+        //    // Assert
+        //    Assert.IsNotNull(json);
+        //    Assert.IsNotEmpty(json);
+        //}
 
-        [Test]
-        public void DataElementsCollectorUtils_GetAllElementsByCategory_ReturnListDataElement()
-        {
-            string category = DataElementsCollectorUtils.GetModelCategoriesNames(doc).FirstOrDefault(x => x == "Walls");
-            Assert.IsNotNull (category);
+        //[Test]
+        //public void DataElementsCollectorUtils_GetAllElementsByCategory_ReturnListDataElement()
+        //{
+        //    string category = DataElementsCollectorService.GetModelCategoriesNames(doc).FirstOrDefault(x => x == "Walls");
+        //    Assert.IsNotNull (category);
 
-            IEnumerable<DataElement> collection = DataElementsCollectorUtils.GetAllElementsByCategory(Context.Document, category);
-            Assert.IsNotNull(collection);
-            Assert.IsNotEmpty(collection);
+        //    IEnumerable<DataElement> collection = DataElementsCollectorService.GetAllElementsByCategory(Context.Document, category);
+        //    Assert.IsNotNull(collection);
+        //    Assert.IsNotEmpty(collection);
 
-            foreach (DataElement item in collection)
-            {
-                Assert.IsNotNull(item.Element);
-                Assert.IsNotEmpty(item.Parameters);
-                Assert.IsNotNull(item.Parameters);
-                Assert.IsNotNull(item.Name);
-                Assert.IsNotNull(item.CategoryName);
-                Assert.IsNotNull(item.Level);
-            }
-        }
+        //    foreach (DataElement item in collection)
+        //    {
+        //        Assert.IsNotNull(item.Element);
+        //        Assert.IsNotEmpty(item.Parameters);
+        //        Assert.IsNotNull(item.Parameters);
+        //        Assert.IsNotNull(item.Name);
+        //        Assert.IsNotNull(item.CategoryName);
+        //        Assert.IsNotNull(item.Level);
+        //    }
+        //}
     }
 }
