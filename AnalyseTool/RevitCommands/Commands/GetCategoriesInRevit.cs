@@ -9,9 +9,9 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetCategoriesInRevit : IRevitTask
     {
-        public void Execute(JToken data, WebView2 webView)
+        public async void Execute(JToken data, WebView2 webView)
         {
-            List<string> allCategories = DataElementsCollectorUtils.GetModelCategoriesNames(Context.Document);
+            List<string> allCategories = await Task.Run(() => DataElementsCollectorUtils.GetModelCategoriesNames(Context.Document));
 
             string json = JsonConvert.SerializeObject(new WebViewMessage()
             {

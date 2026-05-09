@@ -4,18 +4,20 @@ using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
+using System.Windows.Media;
 
 namespace AnalyseTool.RevitCommands.Commands
 {
     internal class GetOllamaModels : IRevitTask
     {
-        public void Execute(JToken payload, WebView2 webView)
+        public async void Execute(JToken payload, WebView2 webView)
         {
             List<string> models = new();
             try
             {
                 using HttpClient http = new() { Timeout = TimeSpan.FromSeconds(5) };
-                string json = http.GetStringAsync("http://localhost:11434/api/tags").GetAwaiter().GetResult();
+                string json = await http.GetStringAsync("http://localhost:11434/api/tags");
+
                 JObject obj = JObject.Parse(json);
                 models = obj["models"]!
                     .Select(m => m["name"]!.Value<string>()!)
@@ -30,8 +32,7 @@ namespace AnalyseTool.RevitCommands.Commands
                 Payload = JArray.FromObject(models)
             });
 
-            webView.Dispatcher.Invoke(() =>
-                webView.CoreWebView2.PostWebMessageAsJson(response));
+            webView.CoreWebView2.PostWebMessageAsJson(response);
         }
     }
 }

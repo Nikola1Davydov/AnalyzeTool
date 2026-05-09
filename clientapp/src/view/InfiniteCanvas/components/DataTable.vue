@@ -9,7 +9,7 @@ import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
 const emit = defineEmits<{ refresh: [] }>();
 const notificationStore = useNotificationStore();
 const aiSettingsStore = useAiSettingsStore();
-const aiAvailable = computed(() => !!aiSettingsStore.selectedModel);
+const aiAvailable = computed(() => aiSettingsStore.aiEnabled);
 
 const props = defineProps<{
   items: ElementItem[];
@@ -30,6 +30,10 @@ const MODE_OPTIONS = [
   { label: "✎ Manual", value: "manual" },
   { label: "✦ AI", value: "ai" },
 ];
+
+const modeOptions = computed(() =>
+  MODE_OPTIONS.map((o) => (o.value === "ai" ? { ...o, disabled: !aiAvailable.value } : o)),
+);
 
 const AI_CHIPS = ["Fill missing values", "Check grammar", "Normalize values", "Detect duplicates"];
 
@@ -149,6 +153,11 @@ function undo(i: number) {
 }
 
 function onModeChange(v: string) {
+  if (v === "ai" && !aiAvailable.value) {
+    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    mode.value = "read";
+    return;
+  }
   setMode(v as EditMode);
 }
 
@@ -158,6 +167,10 @@ function onPendingInput(index: number, e: Event) {
 let aiMessageCleanup: (() => void) | null = null;
 
 function runAI() {
+  if (!aiAvailable.value) {
+    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    return;
+  }
   if (!aiPrompt.value.trim()) return;
 
   aiMessageCleanup?.();
@@ -221,6 +234,10 @@ function runAI() {
 let aiRawCleanup: (() => void) | null = null;
 
 function runAIRaw() {
+  if (!aiAvailable.value) {
+    notificationStore.warn("KI ist aktuell nicht verfügbar. Bitte Ollama-Modell prüfen.");
+    return;
+  }
   if (!aiPrompt.value.trim()) return;
 
   aiRawCleanup?.();
@@ -261,6 +278,11 @@ function runAIRaw() {
 onBeforeUnmount(() => {
   aiMessageCleanup?.();
   aiRawCleanup?.();
+});
+
+watch(aiAvailable, (ok) => {
+  if (ok) return;
+  if (mode.value === "ai") mode.value = "read";
 });
 
 function applyToRevit() {
@@ -309,9 +331,10 @@ function applyToRevit() {
         class="flex items-center gap-1.5 px-2 py-1.5 border-b border-surface-200 shrink-0 flex-wrap bg-surface-50"
       >
         <SelectButton
-          :options="MODE_OPTIONS"
+          :options="modeOptions"
           optionLabel="label"
           optionValue="value"
+          optionDisabled="disabled"
           :modelValue="mode"
           size="small"
           @update:modelValue="onModeChange"
@@ -328,7 +351,7 @@ function applyToRevit() {
           <Button
             size="small"
             :loading="aiRawRunning"
-            :disabled="!aiPrompt.trim() || aiRawRunning || aiRunning"
+            :disabled="!aiAvailable || !aiPrompt.trim() || aiRawRunning || aiRunning"
             label="Analyze"
             icon="pi pi-sparkles"
             @click="runAIRaw"
@@ -336,7 +359,9 @@ function applyToRevit() {
           <Button
             size="small"
             :loading="aiRunning"
-            :disabled="!aiPrompt.trim() || aiRunning || aiRawRunning || !hasEditableRows"
+            :disabled="
+              !aiAvailable || !aiPrompt.trim() || aiRunning || aiRawRunning || !hasEditableRows
+            "
             label="Edit"
             icon="pi pi-pen-to-square"
             @click="runAI"

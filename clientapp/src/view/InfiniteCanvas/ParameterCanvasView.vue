@@ -1,25 +1,35 @@
 <script setup lang="ts">
-import {
-  computed,
-  defineAsyncComponent,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 import { Commands, sendRequest } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
+import { useBulkGenerator } from "./composables/useBulkGenerator";
+import { useCardCreator } from "./composables/useCardCreator";
+import { useCardActions } from "./composables/useCardActions";
+import {
+  useCanvasPersistence,
+  type PersistedViewportState,
+} from "./composables/useCanvasPersistence";
 
 const InfiniteCanvas = defineAsyncComponent(() => import("./components/InfiniteCanvas.vue") as any);
 const CanvasCard = defineAsyncComponent(() => import("./components/CanvasCard.vue") as any);
 const ValueChart = defineAsyncComponent(() => import("./components/BarChart.vue") as any);
 const BodyTable = defineAsyncComponent(() => import("./components/DataTable.vue") as any);
+const SettingsView = defineAsyncComponent(() => import("./components/SettingsView.vue") as any);
+const ToolbarControls = defineAsyncComponent(
+  () => import("./components/ToolbarControls.vue") as any,
+);
+const CreateCardPanel = defineAsyncComponent(
+  () => import("./components/CreateCardPanel.vue") as any,
+);
+const BulkGeneratorDrawer = defineAsyncComponent(
+  () => import("./components/BulkGeneratorDrawer.vue") as any,
+);
 
 type CardViewType = "chart" | "table";
 
@@ -36,27 +46,6 @@ type CanvasCardConfig = {
   error: string | null;
 };
 
-type PersistedCanvasCard = {
-  id: number;
-  category: string;
-  parameter: string;
-  viewType: CardViewType;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type PersistedViewportState = {
-  zoom: number;
-  panX: number;
-  panY: number;
-};
-
-type PersistedChartActionState = {
-  command: string;
-};
-
 type CanvasSelectionRect = {
   x: number;
   y: number;
@@ -64,18 +53,11 @@ type CanvasSelectionRect = {
   height: number;
 };
 
-type GeneratorDraftRow = {
-  id: number;
-  parameter: string;
-  category: string | null;
-  useAllCategories: boolean;
-};
-
-const CANVAS_STATE_STORAGE_KEY_PREFIX = "infinite-canvas-state-v1";
-
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
 const documentDataStore = useDocumentDataStore();
+const aiSettingsStore = useAiSettingsStore();
+const notificationStore = useNotificationStore();
 const { sortedCategories } = storeToRefs(categoriesStore);
 const { items } = storeToRefs(elementsStore);
 const { documentId, documentName } = storeToRefs(documentDataStore);
@@ -84,101 +66,83 @@ const cards = ref<CanvasCardConfig[]>([]);
 const selectedCardIds = ref<number[]>([]);
 const nextCardId = ref(1);
 const showCreatePanel = ref(false);
-const showGeneratorDrawer = ref(false);
 const showAiSettings = ref(false);
-const aiSettingsStore = useAiSettingsStore();
-
-function loadOllamaModels() {
-  aiSettingsStore.modelsLoading = true;
-  aiSettingsStore.availableModels = [];
-  sendRequest(Commands.GetOllamaModels, null);
-}
-const generatingFromDrawer = ref(false);
-const generationInfo = ref("");
 const refreshingAll = ref(false);
 const categorySnapshots = ref<Record<string, ElementItem[]>>({});
-const draftCategoryLoading = ref(false);
-const draftCategoryError = ref("");
-const generationRows = ref<GeneratorDraftRow[]>([
-  {
-    id: 1,
-    parameter: "",
-    category: null,
-    useAllCategories: false,
-  },
-]);
-const nextGenerationRowId = ref(2);
 const chartActionOptions = [
   { label: "Select", value: "SelectionInRevit" },
   { label: "Isolate", value: "IsolationInRevit" },
 ];
 const selectedChartActionCommand = ref("SelectionInRevit");
-
-const draft = reactive<{
-  category: string | null;
-  parameter: string | null;
-  viewType: CardViewType;
-}>({
-  category: null,
-  parameter: null,
-  viewType: "chart",
-});
-
-const viewTypeOptions: { label: string; value: CardViewType }[] = [
-  { label: "Chart", value: "chart" },
-  { label: "Table", value: "table" },
-];
-
-const availableParameters = computed(() => {
-  const category = draft.category;
-  if (!category) return [];
-
-  const categoryItems = categorySnapshots.value[category] || [];
-  const set = new Set<string>();
-  for (const element of categoryItems) {
-    for (const param of element.parameters || []) {
-      if (param?.name) set.add(String(param.name));
-    }
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b));
-});
-
-const canCreateCard = computed(() => !!draft.category && !!draft.parameter);
 const hasSelectedCards = computed(() => selectedCardIds.value.length > 0);
 const selectedCardIdSet = computed(() => new Set(selectedCardIds.value));
-const canGenerateFromDrawer = computed(() => {
-  return generationRows.value.some((row) => {
-    const hasParameter = row.parameter.trim().length > 0;
-    if (!hasParameter) return false;
-    if (row.useAllCategories) return sortedCategories.value.length > 0;
-    return !!row.category;
-  });
+const {
+  showGeneratorDrawer,
+  generatingFromDrawer,
+  generationInfo,
+  generationRows,
+  canGenerateFromDrawer,
+  addGenerationRow,
+  removeGenerationRow,
+  updateGenerationRowParameter,
+  updateGenerationRowCategory,
+  updateGenerationRowAllCategories,
+  generateCardsFromDrawer,
+} = useBulkGenerator({
+  sortedCategories,
+  cards,
+  nextCardId,
+  categorySnapshots,
+  loadCategorySnapshot,
+  refreshCategoryForCards,
 });
-
-let persistTimer: number | null = null;
-const activeStorageKey = ref("");
-const suppressPersist = ref(false);
-const viewportState = ref<PersistedViewportState>({
-  zoom: 1,
-  panX: 0,
-  panY: 0,
+const {
+  draft,
+  draftCategoryLoading,
+  draftCategoryError,
+  viewTypeOptions,
+  availableParameters,
+  canCreateCard,
+  onDraftCategoryChange,
+  createCard,
+} = useCardCreator({
+  showCreatePanel,
+  cards,
+  nextCardId,
+  categorySnapshots,
+  loadCategorySnapshot,
+  refreshCategoryForCards,
 });
-
-const projectScope = computed(() => {
-  const id = String(documentId.value || "").trim();
-  if (id) return `id:${id}`;
-
-  const name = String(documentName.value || "")
-    .trim()
-    .toLowerCase();
-  if (name) return `name:${name}`;
-
-  return "unknown-project";
+const {
+  updateCardLayout,
+  removeCard,
+  removeSelectedCards,
+  removeAllCards,
+  refreshCard,
+  refreshAllCards,
+  getCardItems,
+} = useCardActions({
+  cards,
+  selectedCardIds,
+  nextCardId,
+  refreshingAll,
+  categorySnapshots,
+  refreshCategoryForCards,
+  loadDocumentData: () =>
+    documentDataStore.loadDocumentData().catch((err) => {
+      console.error("Failed to refresh document context", err);
+    }),
 });
-
-function getCanvasStorageKey(): string {
-  return `${CANVAS_STATE_STORAGE_KEY_PREFIX}::${projectScope.value}`;
-}
+const { viewportState, projectScope, restoreCanvasState } = useCanvasPersistence({
+  cards,
+  nextCardId,
+  selectedCardIds,
+  categorySnapshots,
+  selectedChartActionCommand,
+  documentId,
+  documentName,
+  storageKeyPrefix: "infinite-canvas-state-v1",
+});
 
 function cloneElements(source: ElementItem[]): ElementItem[] {
   function toStr(value: unknown): string {
@@ -226,132 +190,6 @@ function hasExpectedCategory(list: ElementItem[], expectedCategory: string): boo
   return known.every((x) => x === expectedCategory);
 }
 
-function toPersistedCards(source: CanvasCardConfig[]): PersistedCanvasCard[] {
-  return source.map((card) => ({
-    id: card.id,
-    category: card.category,
-    parameter: card.parameter,
-    viewType: card.viewType,
-    x: Number(card.x) || 0,
-    y: Number(card.y) || 0,
-    width: Number(card.width) || 560,
-    height: Number(card.height) || 420,
-  }));
-}
-
-function applyPersistedCards(source: PersistedCanvasCard[]): CanvasCardConfig[] {
-  return source
-    .filter(
-      (card) =>
-        !!card &&
-        typeof card.id === "number" &&
-        typeof card.category === "string" &&
-        typeof card.parameter === "string" &&
-        (card.viewType === "chart" || card.viewType === "table"),
-    )
-    .map((card) => ({
-      id: card.id,
-      category: card.category,
-      parameter: card.parameter,
-      viewType: card.viewType,
-      x: Number(card.x) || 0,
-      y: Number(card.y) || 0,
-      width: Math.max(320, Number(card.width) || (card.viewType === "table" ? 700 : 560)),
-      height: Math.max(220, Number(card.height) || (card.viewType === "table" ? 520 : 420)),
-      loading: false,
-      error: null,
-    }));
-}
-
-function persistCanvasState() {
-  if (typeof localStorage === "undefined") return;
-  if (suppressPersist.value) return;
-
-  const storageKey = activeStorageKey.value || getCanvasStorageKey();
-
-  const payload = {
-    cards: toPersistedCards(cards.value),
-    nextCardId: nextCardId.value,
-    viewport: viewportState.value,
-    chartAction: { command: selectedChartActionCommand.value },
-  };
-
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(payload));
-  } catch (err) {
-    console.error("Failed to persist canvas state", err);
-  }
-}
-
-function queuePersistCanvasState() {
-  if (persistTimer !== null) window.clearTimeout(persistTimer);
-  persistTimer = window.setTimeout(() => {
-    persistTimer = null;
-    persistCanvasState();
-  }, 120);
-}
-
-function restoreCanvasState() {
-  if (typeof localStorage === "undefined") return;
-
-  const storageKey = getCanvasStorageKey();
-  activeStorageKey.value = storageKey;
-  suppressPersist.value = true;
-  selectedCardIds.value = [];
-
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) {
-      cards.value = [];
-      nextCardId.value = 1;
-      categorySnapshots.value = {};
-      viewportState.value = { zoom: 1, panX: 0, panY: 0 };
-      selectedChartActionCommand.value = "SelectionInRevit";
-      return;
-    }
-
-    const parsed = JSON.parse(raw) as {
-      cards?: PersistedCanvasCard[];
-      nextCardId?: number;
-      viewport?: PersistedViewportState;
-      chartAction?: PersistedChartActionState;
-    };
-
-    const restoredCards = applyPersistedCards(parsed.cards || []);
-    cards.value = restoredCards;
-
-    const maxId = restoredCards.reduce((max, card) => Math.max(max, card.id), 0);
-    const savedNext = Number(parsed.nextCardId) || 0;
-    nextCardId.value = Math.max(maxId + 1, savedNext, 1);
-
-    if (parsed.viewport && typeof parsed.viewport === "object") {
-      const nextZoom = Number((parsed.viewport as any).zoom);
-      const nextPanX = Number((parsed.viewport as any).panX);
-      const nextPanY = Number((parsed.viewport as any).panY);
-
-      viewportState.value = {
-        zoom: Number.isFinite(nextZoom) ? Math.min(3, Math.max(0.2, nextZoom)) : 1,
-        panX: Number.isFinite(nextPanX) ? nextPanX : 0,
-        panY: Number.isFinite(nextPanY) ? nextPanY : 0,
-      };
-    }
-
-    if (parsed.chartAction && typeof parsed.chartAction === "object") {
-      const nextCommand = String((parsed.chartAction as any).command || "").trim();
-      if (nextCommand) selectedChartActionCommand.value = nextCommand;
-    }
-  } catch (err) {
-    console.error("Failed to restore canvas state", err);
-    cards.value = [];
-    nextCardId.value = 1;
-    categorySnapshots.value = {};
-    viewportState.value = { zoom: 1, panX: 0, panY: 0 };
-    selectedChartActionCommand.value = "SelectionInRevit";
-  } finally {
-    suppressPersist.value = false;
-  }
-}
-
 function warmCardsCategories() {
   const categoriesToWarm = Array.from(new Set(cards.value.map((card) => card.category)));
   for (const category of categoriesToWarm) {
@@ -359,19 +197,6 @@ function warmCardsCategories() {
       console.error("Failed to warm category snapshot", err);
     });
   }
-}
-
-function updateCardLayout(
-  cardId: number,
-  layout: { x: number; y: number; width: number; height: number },
-) {
-  const target = cards.value.find((card) => card.id === cardId);
-  if (!target) return;
-
-  target.x = layout.x;
-  target.y = layout.y;
-  target.width = layout.width;
-  target.height = layout.height;
 }
 
 function intersectsSelection(card: CanvasCardConfig, rect: CanvasSelectionRect): boolean {
@@ -404,182 +229,6 @@ function onCanvasSelectionEnd(rect: CanvasSelectionRect | null) {
 
 function onViewportChange(state: PersistedViewportState) {
   viewportState.value = state;
-}
-
-function addGenerationRow() {
-  generationRows.value.push({
-    id: nextGenerationRowId.value,
-    parameter: "",
-    category: null,
-    useAllCategories: false,
-  });
-  nextGenerationRowId.value += 1;
-}
-
-function removeGenerationRow(rowId: number) {
-  if (generationRows.value.length === 1) {
-    generationRows.value[0] = {
-      ...generationRows.value[0],
-      parameter: "",
-      category: null,
-      useAllCategories: false,
-    };
-    return;
-  }
-
-  generationRows.value = generationRows.value.filter((row) => row.id !== rowId);
-}
-
-function onGeneratorRowAllCategoriesChange(row: GeneratorDraftRow, nextValue: boolean) {
-  row.useAllCategories = nextValue;
-  if (nextValue) row.category = null;
-}
-
-function buildGenerationPairs(): { parameter: string; category: string }[] {
-  const pairs: { parameter: string; category: string }[] = [];
-
-  for (const row of generationRows.value) {
-    const parameter = row.parameter.trim();
-    if (!parameter) continue;
-
-    const categories = row.useAllCategories
-      ? sortedCategories.value
-      : row.category
-        ? [row.category]
-        : [];
-
-    for (const category of categories) {
-      if (!category) continue;
-      pairs.push({ parameter, category });
-    }
-  }
-
-  return pairs;
-}
-
-function hasParameterDataInCategory(category: string, parameter: string): boolean {
-  const normalizedParameter = parameter.trim().toLowerCase();
-  if (!normalizedParameter) return false;
-
-  const snapshot = categorySnapshots.value[category] || [];
-  return snapshot.some((element) =>
-    (element.parameters || []).some(
-      (param) =>
-        String(param?.name || "")
-          .trim()
-          .toLowerCase() === normalizedParameter,
-    ),
-  );
-}
-
-function getPairKey(category: string, parameter: string): string {
-  return `${String(category || "")
-    .trim()
-    .toLowerCase()}|${String(parameter || "")
-    .trim()
-    .toLowerCase()}`;
-}
-
-async function generateCardsFromDrawer() {
-  generationInfo.value = "";
-  const pairs = buildGenerationPairs();
-  if (pairs.length === 0) return;
-
-  generatingFromDrawer.value = true;
-  try {
-    const categoriesToLoad = Array.from(new Set(pairs.map((pair) => pair.category)));
-
-    for (const category of categoriesToLoad) {
-      await loadCategorySnapshot(category, true).catch((err) => {
-        console.error("Failed to load category before bulk generation", err);
-      });
-    }
-
-    const existingPairKeys = new Set(
-      cards.value.map((card) => getPairKey(card.category, card.parameter)),
-    );
-
-    const acceptedPairKeys = new Set<string>();
-    const validPairs = pairs.filter((pair) => {
-      const key = getPairKey(pair.category, pair.parameter);
-      if (existingPairKeys.has(key)) return false;
-      if (acceptedPairKeys.has(key)) return false;
-      if (!hasParameterDataInCategory(pair.category, pair.parameter)) return false;
-
-      acceptedPairKeys.add(key);
-      return true;
-    });
-
-    const skippedCount = pairs.length - validPairs.length;
-    if (validPairs.length === 0) {
-      generationInfo.value = "Nothing was generated: no data or pairs already exist.";
-      return;
-    }
-
-    const startY = cards.value.length
-      ? Math.max(...cards.value.map((card) => card.y + card.height)) + 28
-      : 80;
-
-    const newCards: CanvasCardConfig[] = [];
-    const baseX = 90;
-    const chartWidth = 560;
-    const chartHeight = 420;
-    const tableWidth = 700;
-    const tableHeight = 520;
-    const pairGapX = 24;
-    const pairGapY = 28;
-    const tableX = baseX + chartWidth + pairGapX;
-    let cursorY = startY;
-
-    for (const pair of validPairs) {
-      const chartId = nextCardId.value;
-      nextCardId.value += 1;
-      newCards.push({
-        id: chartId,
-        category: pair.category,
-        parameter: pair.parameter,
-        viewType: "chart",
-        x: baseX,
-        y: cursorY,
-        width: chartWidth,
-        height: chartHeight,
-        loading: true,
-        error: null,
-      });
-
-      const tableId = nextCardId.value;
-      nextCardId.value += 1;
-      newCards.push({
-        id: tableId,
-        category: pair.category,
-        parameter: pair.parameter,
-        viewType: "table",
-        x: tableX,
-        y: cursorY,
-        width: tableWidth,
-        height: tableHeight,
-        loading: true,
-        error: null,
-      });
-
-      cursorY += Math.max(chartHeight, tableHeight) + pairGapY;
-    }
-
-    cards.value = [...cards.value, ...newCards];
-
-    for (const category of categoriesToLoad) {
-      await refreshCategoryForCards(category, true);
-    }
-
-    generationInfo.value =
-      skippedCount > 0
-        ? `Generated ${validPairs.length} row(s). Skipped ${skippedCount} row(s) (no data or already exists).`
-        : `Generated ${validPairs.length} row(s).`;
-
-    showGeneratorDrawer.value = false;
-  } finally {
-    generatingFromDrawer.value = false;
-  }
 }
 
 function waitForItemsUpdate(expectedCategory: string, timeoutMs = 3000): Promise<void> {
@@ -635,23 +284,6 @@ async function loadCategorySnapshot(category: string, force = false): Promise<El
   return snapshot;
 }
 
-async function onDraftCategoryChange(value: string | null) {
-  draft.category = value;
-  draft.parameter = null;
-  draftCategoryError.value = "";
-  if (!value) return;
-
-  draftCategoryLoading.value = true;
-  try {
-    await loadCategorySnapshot(value, true);
-  } catch (err) {
-    draftCategoryError.value = "Failed to load category parameters.";
-    console.error("Failed to load category data for card draft", err);
-  } finally {
-    draftCategoryLoading.value = false;
-  }
-}
-
 async function refreshCategoryForCards(category: string, force = true) {
   const relatedIds = cards.value.filter((c) => c.category === category).map((c) => c.id);
   cards.value = cards.value.map((card) =>
@@ -688,81 +320,6 @@ async function refreshCategoryForCards(category: string, force = true) {
   }
 }
 
-async function createCard() {
-  if (!canCreateCard.value || !draft.category || !draft.parameter) return;
-
-  const id = nextCardId.value;
-  nextCardId.value += 1;
-
-  cards.value.push({
-    id,
-    category: draft.category,
-    parameter: draft.parameter,
-    viewType: draft.viewType,
-    x: 90 + (id % 4) * 80,
-    y: 90 + (id % 3) * 60,
-    width: draft.viewType === "table" ? 700 : 560,
-    height: draft.viewType === "table" ? 520 : 420,
-    loading: false,
-    error: null,
-  });
-
-  showCreatePanel.value = false;
-  await refreshCategoryForCards(draft.category, true);
-}
-
-function removeCard(cardId: number) {
-  cards.value = cards.value.filter((x) => x.id !== cardId);
-  selectedCardIds.value = selectedCardIds.value.filter((id) => id !== cardId);
-}
-
-function removeSelectedCards() {
-  if (!selectedCardIds.value.length) return;
-
-  const ids = new Set(selectedCardIds.value);
-  cards.value = cards.value.filter((card) => !ids.has(card.id));
-  selectedCardIds.value = [];
-}
-
-function removeAllCards() {
-  const confirmed = window.confirm("Delete all generated cards?");
-  if (!confirmed) return;
-
-  cards.value = [];
-  categorySnapshots.value = {};
-  nextCardId.value = 1;
-  selectedCardIds.value = [];
-}
-
-async function refreshCard(cardId: number) {
-  const card = cards.value.find((x) => x.id === cardId);
-  if (!card) return;
-  await refreshCategoryForCards(card.category, true);
-}
-
-async function refreshAllCards() {
-  // Explicitly request latest project context so project-scoped canvas can switch when needed.
-  documentDataStore.loadDocumentData().catch((err) => {
-    console.error("Failed to refresh document context", err);
-  });
-
-  const categories = Array.from(new Set(cards.value.map((c) => c.category)));
-  if (categories.length === 0) return;
-
-  refreshingAll.value = true;
-  try {
-    for (const category of categories) {
-      await refreshCategoryForCards(category, true);
-    }
-  } finally {
-    refreshingAll.value = false;
-  }
-}
-
-function getCardItems(card: CanvasCardConfig): ElementItem[] {
-  return categorySnapshots.value[card.category] || [];
-}
-
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -792,6 +349,31 @@ function onWindowKeyDown(e: KeyboardEvent) {
   removeSelectedCards();
 }
 
+function requestOllamaModels() {
+  aiSettingsStore.startLoadingModels();
+  sendRequest(Commands.GetOllamaModels, null);
+}
+
+function checkAiAvailabilityOnCanvasEnter() {
+  requestOllamaModels();
+
+  const stop = watch(
+    () => aiSettingsStore.modelsLoading,
+    (isLoading) => {
+      if (isLoading) return;
+      stop();
+
+      if (aiSettingsStore.availableModels.length === 0) {
+        aiSettingsStore.setModel(null);
+        notificationStore.warn(
+          "Ollama ist nicht verfügbar oder es sind keine Modelle installiert. KI-Funktionen wurden deaktiviert.",
+        );
+      }
+    },
+    { immediate: true },
+  );
+}
+
 onMounted(() => {
   restoreCanvasState();
   window.addEventListener("keydown", onWindowKeyDown);
@@ -800,6 +382,7 @@ onMounted(() => {
     console.error("Failed to load categories", err);
   });
 
+  checkAiAvailabilityOnCanvasEnter();
   warmCardsCategories();
 });
 
@@ -811,30 +394,6 @@ watch(projectScope, (nextScope, prevScope) => {
   if (nextScope === prevScope) return;
   restoreCanvasState();
   warmCardsCategories();
-});
-
-watch(
-  () => cards.value,
-  () => {
-    queuePersistCanvasState();
-  },
-  { deep: true },
-);
-
-watch(nextCardId, () => {
-  queuePersistCanvasState();
-});
-
-watch(
-  () => viewportState.value,
-  () => {
-    queuePersistCanvasState();
-  },
-  { deep: true },
-);
-
-watch(selectedChartActionCommand, () => {
-  queuePersistCanvasState();
 });
 </script>
 
@@ -891,217 +450,59 @@ watch(selectedChartActionCommand, () => {
 
     <template #toolbar>
       <div class="toolbar">
-        <SelectButton
-          class="chart-action-switch"
-          :options="chartActionOptions"
-          optionLabel="label"
-          optionValue="value"
-          :modelValue="selectedChartActionCommand"
-          aria-label="Chart click action"
-          @update:modelValue="(v) => (selectedChartActionCommand = v || 'SelectionInRevit')"
+        <ToolbarControls
+          :chartActionOptions="chartActionOptions"
+          :chartAction="selectedChartActionCommand"
+          :refreshingAll="refreshingAll"
+          :hasSelectedCards="hasSelectedCards"
+          :hasCards="cards.length > 0"
+          @update:chartAction="selectedChartActionCommand = $event"
+          @toggleCreate="showCreatePanel = !showCreatePanel"
+          @openGenerator="showGeneratorDrawer = true"
+          @refreshAll="refreshAllCards"
+          @removeSelected="removeSelectedCards"
+          @removeAll="removeAllCards"
+          @openSettings="showAiSettings = true"
         />
-        <button type="button" class="toolbar-btn" @click="showCreatePanel = !showCreatePanel">
-          <i class="pi pi-plus" />
-        </button>
-        <button
-          type="button"
-          class="toolbar-btn toolbar-btn--accent"
-          @click="showGeneratorDrawer = true"
-        >
-          <i class="pi pi-sparkles" />
-        </button>
-        <button
-          type="button"
-          class="toolbar-btn"
-          :disabled="refreshingAll"
-          @click="refreshAllCards"
-        >
-          <i class="pi pi-refresh" :class="refreshingAll ? 'pi-spin' : ''" />
-        </button>
-        <button
-          type="button"
-          class="toolbar-btn toolbar-btn--danger"
-          title="Delete selected cards"
-          :disabled="!hasSelectedCards"
-          @click="removeSelectedCards"
-        >
-          <i class="pi pi-times" />
-        </button>
-        <button
-          type="button"
-          class="toolbar-btn toolbar-btn--danger"
-          :disabled="cards.length === 0"
-          @click="removeAllCards"
-        >
-          <i class="pi pi-trash" />
-        </button>
-        <button type="button" class="toolbar-btn" title="KI-Einstellungen" @click="showAiSettings = true">
-          <i class="pi pi-cog" />
-        </button>
 
-        <div v-if="showCreatePanel" class="creator-panel">
-          <div class="creator-title">Create Card</div>
-
-          <div class="creator-grid">
-            <div class="creator-field">
-              <label>Category</label>
-              <Select
-                :options="sortedCategories"
-                placeholder="Select category"
-                :modelValue="draft.category"
-                @update:modelValue="onDraftCategoryChange"
-              />
-            </div>
-
-            <div class="creator-field">
-              <label>Parameter</label>
-              <Select
-                :options="availableParameters"
-                placeholder="Select parameter"
-                :modelValue="draft.parameter"
-                :disabled="!draft.category || draftCategoryLoading"
-                @update:modelValue="(v) => (draft.parameter = v)"
-              />
-              <span v-if="draftCategoryLoading" class="creator-meta">Loading parameters...</span>
-              <span v-else-if="draftCategoryError" class="creator-meta creator-meta--error">{{
-                draftCategoryError
-              }}</span>
-            </div>
-
-            <div class="creator-field">
-              <label>View</label>
-              <Select
-                :options="viewTypeOptions"
-                optionLabel="label"
-                optionValue="value"
-                :modelValue="draft.viewType"
-                @update:modelValue="(v) => (draft.viewType = v || 'chart')"
-              />
-            </div>
-          </div>
-
-          <div class="creator-actions">
-            <button type="button" class="secondary-btn" @click="showCreatePanel = false">
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="primary-btn"
-              :disabled="!canCreateCard"
-              @click="createCard"
-            >
-              Create
-            </button>
-          </div>
-        </div>
+        <CreateCardPanel
+          :visible="showCreatePanel"
+          :sortedCategories="sortedCategories"
+          :availableParameters="availableParameters"
+          :draftCategory="draft.category"
+          :draftParameter="draft.parameter"
+          :draftViewType="draft.viewType"
+          :viewTypeOptions="viewTypeOptions"
+          :draftCategoryLoading="draftCategoryLoading"
+          :draftCategoryError="draftCategoryError"
+          :canCreateCard="canCreateCard"
+          @update:category="onDraftCategoryChange"
+          @update:parameter="draft.parameter = $event"
+          @update:viewType="draft.viewType = $event || 'chart'"
+          @close="showCreatePanel = false"
+          @create="createCard"
+        />
       </div>
     </template>
   </InfiniteCanvas>
 
-  <Drawer
-    v-model:visible="showGeneratorDrawer"
-    header="Bulk Generator"
-    position="right"
-    :modal="false"
-    :dismissable="true"
-    :style="{ width: 'min(48rem, 94vw)' }"
-  >
-    <div class="generator-panel">
-      <div class="generator-table-head">
-        <span>Parameter</span>
-        <span>Category</span>
-        <span>Action</span>
-      </div>
+  <BulkGeneratorDrawer
+    :visible="showGeneratorDrawer"
+    :generationRows="generationRows"
+    :sortedCategories="sortedCategories"
+    :canGenerateFromDrawer="canGenerateFromDrawer"
+    :generatingFromDrawer="generatingFromDrawer"
+    :generationInfo="generationInfo"
+    @update:visible="showGeneratorDrawer = $event"
+    @addRow="addGenerationRow"
+    @removeRow="removeGenerationRow"
+    @update:parameter="updateGenerationRowParameter($event.rowId, $event.value)"
+    @update:category="updateGenerationRowCategory($event.rowId, $event.value)"
+    @update:allCategories="updateGenerationRowAllCategories($event.rowId, $event.value)"
+    @startGeneration="generateCardsFromDrawer"
+  />
 
-      <div v-for="row in generationRows" :key="row.id" class="generator-row">
-        <InputText
-          :modelValue="row.parameter"
-          placeholder="Parameter name"
-          @update:modelValue="(v) => (row.parameter = String(v || ''))"
-        />
-
-        <div class="generator-category-cell">
-          <Select
-            :options="sortedCategories"
-            placeholder="Category"
-            :modelValue="row.category"
-            :disabled="row.useAllCategories"
-            @update:modelValue="(v) => (row.category = v)"
-          />
-          <label class="generator-all-toggle">
-            <Checkbox
-              binary
-              :modelValue="row.useAllCategories"
-              @update:modelValue="(v) => onGeneratorRowAllCategoriesChange(row, Boolean(v))"
-            />
-            <span>All categories</span>
-          </label>
-        </div>
-
-        <button type="button" class="secondary-btn" @click="removeGenerationRow(row.id)">
-          Remove
-        </button>
-      </div>
-
-      <div class="generator-actions">
-        <button type="button" class="secondary-btn" @click="addGenerationRow">+ Add row</button>
-        <button
-          type="button"
-          class="primary-btn"
-          :disabled="!canGenerateFromDrawer || generatingFromDrawer"
-          @click="generateCardsFromDrawer"
-        >
-          {{ generatingFromDrawer ? "Generating..." : "Start generation" }}
-        </button>
-      </div>
-
-      <div v-if="generationInfo" class="generator-info">{{ generationInfo }}</div>
-    </div>
-  </Drawer>
-
-  <!-- AI Settings Drawer -->
-  <Drawer
-    v-model:visible="showAiSettings"
-    header="KI-Einstellungen"
-    position="right"
-    :modal="true"
-    :style="{ width: '22rem' }"
-  >
-    <div class="ai-settings-panel">
-      <div class="ai-settings-section">
-        <div class="ai-settings-label">Ollama-Modell</div>
-
-        <Button
-          size="small"
-          icon="pi pi-refresh"
-          label="Modelle laden"
-          :loading="aiSettingsStore.modelsLoading"
-          class="mb-3"
-          @click="loadOllamaModels"
-        />
-
-        <div v-if="!aiSettingsStore.modelsLoading && aiSettingsStore.availableModels.length === 0" class="ai-settings-empty">
-          <i class="pi pi-exclamation-triangle" />
-          Ollama nicht verfügbar oder keine Modelle installiert.
-          KI-Funktionen sind deaktiviert.
-        </div>
-
-        <Select
-          v-else-if="aiSettingsStore.availableModels.length > 0"
-          :options="aiSettingsStore.availableModels"
-          :modelValue="aiSettingsStore.selectedModel"
-          placeholder="Modell wählen…"
-          class="w-full"
-          @update:modelValue="aiSettingsStore.setModel($event)"
-        />
-
-        <div v-if="aiSettingsStore.selectedModel" class="ai-settings-active">
-          <i class="pi pi-check-circle text-emerald-500" />
-          Aktives Modell: <b>{{ aiSettingsStore.selectedModel }}</b>
-        </div>
-      </div>
-    </div>
-  </Drawer>
+  <SettingsView v-model:visible="showAiSettings" />
 </template>
 
 <style scoped>
@@ -1111,219 +512,8 @@ watch(selectedChartActionCommand, () => {
   gap: 0.5rem;
 }
 
-.chart-action-switch {
-  min-width: 12.5rem;
-}
-
-.ai-settings-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.25rem 0;
-}
-
-.ai-settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.ai-settings-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--p-surface-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-}
-
-.ai-settings-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--p-surface-500);
-  background: var(--p-surface-100);
-  border-radius: 0.5rem;
-}
-
-.ai-settings-active {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  color: var(--p-surface-600);
-  margin-top: 0.25rem;
-}
-
-.toolbar-btn {
-  width: 2.2rem;
-  height: 2.2rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.6rem;
-  background: var(--p-surface-0, #ffffff);
-  color: var(--p-surface-800, #1e293b);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.toolbar-btn:hover {
-  background: var(--p-surface-100, #f1f5f9);
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.toolbar-btn--accent {
-  border-color: var(--p-primary-500, #0284c7);
-  color: var(--p-primary-500, #0284c7);
-}
-
-.toolbar-btn--accent:hover {
-  background: var(--p-primary-100, #e0f2fe);
-}
-
-.toolbar-btn--danger {
-  border-color: var(--p-red-500, #dc2626);
-  color: var(--p-red-500, #dc2626);
-}
-
-.toolbar-btn--danger:hover {
-  background: var(--p-red-100, #fee2e2);
-}
-
-.creator-panel {
-  width: min(34rem, calc(100vw - 4rem));
-  padding: 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.7rem;
-  background: var(--p-surface-0, #ffffff);
-  box-shadow: 0 16px 30px -26px rgba(15, 23, 42, 0.6);
-}
-
-.creator-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--p-surface-800, #1e293b);
-  margin-bottom: 0.6rem;
-}
-
-.creator-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.creator-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.creator-field label {
-  font-size: 0.7rem;
-  color: var(--p-surface-600, #475569);
-}
-
-.creator-meta {
-  font-size: 0.7rem;
-  color: var(--p-surface-500, #64748b);
-}
-
-.creator-meta--error {
-  color: #dc2626;
-}
-
-.creator-actions {
-  margin-top: 0.7rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.primary-btn,
-.secondary-btn {
-  border-radius: 0.55rem;
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 0.35rem 0.7rem;
-  cursor: pointer;
-}
-
-.secondary-btn {
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #ffffff);
-  color: var(--p-surface-700, #334155);
-}
-
-.primary-btn {
-  border: 1px solid var(--p-primary-500, #0284c7);
-  background: var(--p-primary-500, #0284c7);
-  color: var(--p-primary-contrast-color, #ffffff);
-}
-
-.primary-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .card-state {
   font-size: 0.82rem;
   color: var(--p-surface-600, #475569);
-}
-
-.generator-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.generator-table-head,
-.generator-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) auto;
-  gap: 0.55rem;
-  align-items: start;
-}
-
-.generator-table-head {
-  font-size: 0.72rem;
-  color: var(--p-surface-600, #475569);
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.generator-category-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.generator-all-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.74rem;
-  color: var(--p-surface-700, #334155);
-}
-
-.generator-actions {
-  margin-top: 0.45rem;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.generator-info {
-  font-size: 0.76rem;
-  color: var(--p-surface-600, #475569);
-  line-height: 1.35;
 }
 </style>

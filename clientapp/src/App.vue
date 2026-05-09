@@ -85,8 +85,10 @@ onMounted(() => {
           return;
         }
         if (payload.Command === Commands.GetOllamaModels) {
-          aiSettingsStore.availableModels = payload.Payload as string[];
-          aiSettingsStore.modelsLoading = false;
+          const models = Array.isArray(payload.Payload)
+            ? (payload.Payload as unknown[]).map((m) => String(m))
+            : [];
+          aiSettingsStore.setAvailableModels(models);
           return;
         }
 

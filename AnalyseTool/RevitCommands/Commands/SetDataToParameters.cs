@@ -13,9 +13,9 @@ namespace AnalyseTool.RevitCommands.Commands
 {
     internal class SetDataToParameters : IRevitTask
     {
-        public void Execute(JToken payload, WebView2 webView)
+        public async void Execute(JToken payload, WebView2 webView)
         {
-            SetDataToParametersDto list = payload.ToObject<SetDataToParametersDto>();
+            SetDataToParametersDto? list = payload.ToObject<SetDataToParametersDto>();
             if (list == null) return;
 
             ExternalEventHub.RevitExternalEvent.action = () =>
