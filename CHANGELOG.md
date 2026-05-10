@@ -2,13 +2,11 @@
 
 ## [1.3.0] / 2026-05-10
 
-- 🆕 Added a new "Parameter Value Check" page.
+- 🆕 Added a new "Home" page. Infinite Kanban, where you can view diagrams and tables in one place.
 - 🔄 Added a visual "thinking" indicator for buttons during background operations.
-- 🔧 Fixed compatibility with Revit 2026.
 - 🔧 Fixed minor bugs in parameter validation and background operations.
 - ⚙️ Improved internal processes to make UI actions more responsive.
 - ⚙️ Made minor UI refinements for better clarity and consistency.
-- 🆕 Added a new page: Infinite Kanban, where you can view diagrams and tables in one place.
 - ✏️ Added parameter editing functionality.
 - 🤖 Added Ollama integration, which enables free local AI usage (Ollama installation is required).
 - 🧠 Added AI mode: you can edit parameters with AI or analyze them with AI.
