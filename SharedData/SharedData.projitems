@@ -12,9 +12,9 @@
     <Resource Include="$(MSBuildThisFileDirectory)Resources\Icons\AnalyzeTool_Icon.png" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Resources\" />
+    <Compile Include="..\SharedData\ToolData.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\SharedData\ToolData.cs" />
+    <Content Include="$(MSBuildThisFileDirectory)Resources\Icons\Icon.png" />
   </ItemGroup>
 </Project>

@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 
-namespace AnalyseTool.Features.Commands.Get
+namespace AnalyseTool.Features.Get
 {
     internal class GetDocumentHealthStatus : IRevitTask
     {

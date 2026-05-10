@@ -45,7 +45,7 @@ export function sendRequest<C extends keyof CommandPayloads>(
   command: C,
   payload: CommandPayloads[C],
 ): Promise<any> {
-  return new Promise((reject) => {
+  return new Promise((resolve, reject) => {
     if (!(window as any).chrome?.webview) {
       reject(new Error("WebView2 messaging not available"));
       return;

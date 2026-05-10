@@ -6,7 +6,7 @@ using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands.Get
+namespace AnalyseTool.Features.Get
 {
     internal class GetWarningsInRevit : IRevitTask
     {

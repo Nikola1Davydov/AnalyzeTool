@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands.Actions
+namespace AnalyseTool.Features.Actions
 {
     internal class SelectionInRevit : IRevitTask
     {
