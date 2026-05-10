@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
 
-namespace AnalyseTool.Features.Commands.Ai
+namespace AnalyseTool.Features.Ai
 {
     internal class GetOllamaModels : IRevitTask
     {

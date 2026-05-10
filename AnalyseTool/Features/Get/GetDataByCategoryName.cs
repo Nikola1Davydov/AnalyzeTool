@@ -1,12 +1,13 @@
 ﻿using AnalyseTool.Common.FeaturesBase;
 using AnalyseTool.Common.Model;
+using AnalyseTool.Infrastructure;
 using AnalyseTool.Infrastructure.Model;
 using AnalyseTool.Utils;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands.Get
+namespace AnalyseTool.Features.Get
 {
     internal class GetDataByCategoryName : IRevitTask
     {

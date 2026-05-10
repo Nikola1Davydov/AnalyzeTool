@@ -1,7 +1,7 @@
 ﻿using AnalyseTool.Infrastructure.Model;
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Utils
+namespace AnalyseTool.Infrastructure
 {
     public class DataElementsCollectorService
     {

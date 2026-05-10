@@ -4,7 +4,7 @@ using Autodesk.Revit.DB;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands.Actions
+namespace AnalyseTool.Features.Actions
 {
     internal class IsolationInRevit : IRevitTask
     {
@@ -20,7 +20,7 @@ namespace AnalyseTool.Features.Commands.Actions
             string transactionName = "Isolate";
             ExternalEventHub.RevitExternalEvent.action = () =>
             {
-                RevitTransactions.Run(transactionName, () =>
+                RevitTransactions.Run(transactionName, webView, () =>
                 {
                     if (!Context.Document.ActiveView.IsModifiable) return;
 

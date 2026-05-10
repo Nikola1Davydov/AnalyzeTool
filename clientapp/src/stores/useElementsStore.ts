@@ -7,50 +7,36 @@ export const useElementsStore = defineStore("elements", () => {
   const items = ref<ElementItem[]>([]); // full list of elements
   const lastLoadedCategory = ref<string | null>(null);
   const loading = ref(false);
-  let pendingCategory: string | null = null;
-  let pendingRequest: Promise<void> | null = null;
 
   const count = computed(() => {
     return items.value.length;
   });
 
+  // Fire-and-forget: sendRequest just posts to WebView2; the response
+  // arrives asynchronously via App.vue's message listener → setItems().
   async function loadByCategory(categoryName: string, force = false): Promise<void> {
     if (!force && lastLoadedCategory.value === categoryName) return;
-    if (pendingRequest && pendingCategory === categoryName) return pendingRequest;
 
-    const payload = { categoryName };
     loading.value = true;
-    pendingCategory = categoryName;
-    pendingRequest = (async () => {
-      const result = await sendRequest(Commands.GetDataByCategoryName, payload);
+    lastLoadedCategory.value = categoryName;
 
-      if (Array.isArray(result)) {
-        items.value = result as ElementItem[];
-      } else {
-        items.value = [];
-      }
-
-      lastLoadedCategory.value = categoryName;
-    })().finally(() => {
+    try {
+      sendRequest(Commands.GetDataByCategoryName, { categoryName });
+    } catch (err) {
       loading.value = false;
-      pendingCategory = null;
-      pendingRequest = null;
-    });
-
-    return pendingRequest;
+      throw err;
+    }
   }
 
   function setItems(list: ElementItem[] = []): void {
     items.value = list ?? [];
+    loading.value = false;
   }
 
   function clear() {
-    // Clear elements list
     items.value = [];
     lastLoadedCategory.value = null;
     loading.value = false;
-    pendingCategory = null;
-    pendingRequest = null;
   }
 
   return {

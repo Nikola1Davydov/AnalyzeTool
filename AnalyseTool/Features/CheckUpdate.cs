@@ -1,11 +1,12 @@
 ﻿using AnalyseTool.Common.FeaturesBase;
 using AnalyseTool.Common.Helper.Updater;
 using AnalyseTool.Common.Model;
+using AnalyseTool.Utils;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands
+namespace AnalyseTool.Features
 {
     internal class CheckUpdate : IRevitTask
     {
@@ -14,12 +15,7 @@ namespace AnalyseTool.Features.Commands
         {
             await GetUpdateData();
 
-            string json = JsonConvert.SerializeObject(new WebViewMessage()
-            {
-                Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(CheckUpdate),
-                Payload = JObject.FromObject(UpdateInfo)
-            });
+            string json = JsonUtils.BuildResponce(nameof(CheckUpdate), UpdateInfo);
 
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }

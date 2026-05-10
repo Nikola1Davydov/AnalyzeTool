@@ -9,7 +9,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
-namespace AnalyseTool.Features.Commands.Actions
+namespace AnalyseTool.Features.Actions
 {
     internal class SetDataToParameters : IRevitTask
     {
@@ -20,20 +20,13 @@ namespace AnalyseTool.Features.Commands.Actions
 
             ExternalEventHub.RevitExternalEvent.action = () =>
             {
-                RevitTransactions.Run("Set data to parameters", () =>
+                RevitTransactions.Run("Set data to parameters", webView, () =>
                 {
-                    try
+                    foreach (ParameterData parameterData in list.Items)
                     {
-                        foreach (ParameterData parameterData in list.Items)
-                        {
-                            if (parameterData == null) continue;
+                        if (parameterData == null) continue;
 
-                            SetData(parameterData, list.Mode);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        WebViewErrorHelper.SendError(webView, nameof(SetDataToParameters), ex.Message);
+                        SetData(parameterData, list.Mode);
                     }
                 });
             };

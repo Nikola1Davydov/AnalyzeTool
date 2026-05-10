@@ -55,7 +55,7 @@ namespace AnalyseTool.Launcher
                 typeof(AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand).FullName);
 
             PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
-            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.ico"));
+            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.png"));
             pb1.Image = pb1Image;
             pb1.LargeImage = pb1Image;
         }

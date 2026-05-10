@@ -5,7 +5,7 @@ using AnalyseTool.Utils;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Commands.Ai
+namespace AnalyseTool.Features.Ai
 {
     internal class AiEditParameters : IRevitTask
     {
