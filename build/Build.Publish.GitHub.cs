@@ -1,11 +1,12 @@
 ﻿using Nuke.Common;
-using Nuke.Common.ChangeLog;
 using Nuke.Common.IO;
 using Nuke.Common.Tools.GitHub;
 using Octokit;
 using Serilog;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 sealed partial class Build
@@ -39,15 +40,13 @@ sealed partial class Build
             Assert.NotEmpty(artifacts, "No artifacts were found to create the Release");
 
             AbsolutePath changelogFile = RootDirectory / "CHANGELOG.md";
-            ChangeLog changelog = ChangelogTasks.ReadChangelog(changelogFile);
-            IReadOnlyList<ReleaseNotes> releaseNotes = changelog.ReleaseNotes;
-
-            Log.Information(changelog.Path);
+            string releaseNotesBody = ReadReleaseNotesBody(changelogFile, ReleaseVersion);
+            Log.Information("Using release notes from {Path}", changelogFile);
 
             NewRelease newRelease = new NewRelease(ReleaseVersion)
             {
                 Name = ReleaseVersion,
-                Body = changelog.ToString(),
+                Body = releaseNotesBody,
                 TargetCommitish = GitRepository.Commit,
                 Prerelease = IsPrerelease
             };
@@ -73,5 +72,34 @@ sealed partial class Build
             await GitHubTasks.GitHubClient.Repository.Release.UploadAsset(createdRelease, releaseAssetUpload);
             Log.Information("Artifact: {Path}", file);
         }
+    }
+
+    static string ReadReleaseNotesBody(string changelogFile, string releaseVersion)
+    {
+        Assert.True(!string.IsNullOrWhiteSpace(releaseVersion), "Release version must be provided");
+
+        string[] lines = File.ReadAllLines(changelogFile);
+        string[] acceptedHeaders =
+        [
+            $"## [{releaseVersion}]",
+            $"## [v{releaseVersion}]"
+        ];
+
+        int start = Array.FindIndex(lines, line => acceptedHeaders.Any(header => line.StartsWith(header, StringComparison.OrdinalIgnoreCase)));
+        Assert.True(start >= 0, $"Version section for '{releaseVersion}' was not found in {changelogFile}");
+
+        int end = Array.FindIndex(lines, start + 1, line => line.StartsWith("## [", StringComparison.Ordinal));
+        if (end < 0)
+            end = lines.Length;
+
+        var notes = lines
+            .Skip(start + 1)
+            .Take(end - start - 1)
+            .Where(line => line.TrimStart().StartsWith("- "))
+            .Select(line => line.Trim())
+            .ToArray();
+
+        Assert.NotEmpty(notes, $"Release Notes should not be empty for version '{releaseVersion}'");
+        return string.Join(Environment.NewLine, notes);
     }
 }
