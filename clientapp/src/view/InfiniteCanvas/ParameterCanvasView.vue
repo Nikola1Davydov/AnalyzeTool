@@ -261,8 +261,11 @@ function waitForItemsUpdate(expectedCategory: string, timeoutMs = 3000): Promise
 }
 
 async function loadCategorySnapshot(category: string, force = false): Promise<ElementItem[]> {
+  const existing = categorySnapshots.value[category];
+  if (!force && existing) return existing;
+
   const waitPromise = waitForItemsUpdate(category);
-  const loadPromise = elementsStore.loadByCategory(category, true).catch((err) => {
+  const loadPromise = elementsStore.loadByCategory(category).catch((err) => {
     console.error("Failed to request category data", err);
   });
   await waitPromise;
@@ -270,6 +273,7 @@ async function loadCategorySnapshot(category: string, force = false): Promise<El
 
   const snapshot = cloneElements(items.value || []);
   if (!hasExpectedCategory(snapshot, category)) {
+    if (existing) return existing;
     throw new Error("Received stale data for another category.");
   }
 
