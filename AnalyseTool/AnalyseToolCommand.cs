@@ -10,9 +10,6 @@ using System.Windows.Interop;
 
 namespace AnalyseTool
 {
-    /// <summary>
-    ///     External command entry point invoked from the Revit interface
-    /// </summary>
     [Transaction(TransactionMode.Manual)]
     public class AnalyseToolCommand : IExternalCommand
     {
@@ -58,7 +55,6 @@ namespace AnalyseTool
         {
             _openedWindow = null;
         }
-
         private void Show(Window window)
         {
             WindowInteropHelper helper = new WindowInteropHelper(window);
