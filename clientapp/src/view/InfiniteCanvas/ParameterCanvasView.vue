@@ -265,7 +265,7 @@ async function loadCategorySnapshot(category: string, force = false): Promise<El
   if (!force && existing) return existing;
 
   const waitPromise = waitForItemsUpdate(category);
-  const loadPromise = elementsStore.loadByCategory(category).catch((err) => {
+  const loadPromise = elementsStore.loadByCategory(category, true).catch((err) => {
     console.error("Failed to request category data", err);
   });
   await waitPromise;

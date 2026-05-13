@@ -19,13 +19,7 @@ export const useElementsStore = defineStore("elements", () => {
 
     loading.value = true;
     lastLoadedCategory.value = categoryName;
-
-    try {
-      sendRequest(Commands.GetDataByCategoryName, { categoryName });
-    } catch (err) {
-      loading.value = false;
-      throw err;
-    }
+    sendRequest(Commands.GetDataByCategoryName, { categoryName });
   }
 
   function setItems(list: ElementItem[] = []): void {
