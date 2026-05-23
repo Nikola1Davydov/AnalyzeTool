@@ -6,7 +6,6 @@ import { useElementsStore } from "@/stores/useElementsStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
-import { Commands, sendRequest } from "@/RevitBridge";
 import type { ElementItem } from "@/stores/types";
 import { useBulkGenerator } from "./composables/useBulkGenerator";
 import { useCardCreator } from "./composables/useCardCreator";
@@ -350,8 +349,7 @@ function onWindowKeyDown(e: KeyboardEvent) {
 }
 
 function requestOllamaModels() {
-  aiSettingsStore.startLoadingModels();
-  sendRequest(Commands.GetOllamaModels, null);
+  aiSettingsStore.loadModels();
 }
 
 function checkAiAvailabilityOnCanvasEnter() {

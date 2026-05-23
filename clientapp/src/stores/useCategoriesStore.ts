@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 
 export const useCategoriesStore = defineStore("categories", () => {
   const categories = ref<string[]>([]); // full list of category names
@@ -20,14 +21,18 @@ export const useCategoriesStore = defineStore("categories", () => {
 
     categoriesLoading.value = true;
     categoriesRequest = (async () => {
-      // Ask Revit for categories
-      const result = await sendRequest(Commands.GetCategoriesInRevit, null);
-      if (Array.isArray(result)) {
-        categories.value = result.filter((x) => typeof x === "string") as string[];
-      } else {
+      try {
+        // Ask Revit for categories
+        const result = await invoke<unknown>(Commands.GetCategoriesInRevit, null);
+        categories.value = Array.isArray(result)
+          ? (result.filter((x) => typeof x === "string") as string[])
+          : [];
+        categoriesLoaded.value = true;
+      } catch (err) {
+        console.error("Failed to load categories", err);
+        useNotificationStore().error(`Failed to load categories: ${String((err as Error)?.message ?? err)}`);
         categories.value = [];
       }
-      categoriesLoaded.value = true;
     })().finally(() => {
       categoriesLoading.value = false;
       categoriesRequest = null;

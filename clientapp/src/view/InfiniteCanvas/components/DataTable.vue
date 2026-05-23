@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { ParameterData, ParameterEdit, SetDataToParameters } from "@/stores/types";
 import { SetDataToParametersModes } from "@/stores/types";
 import type { ElementItem } from "@/stores/types";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
 const emit = defineEmits<{ refresh: [] }>();
@@ -164,16 +164,12 @@ function onModeChange(v: string) {
 function onPendingInput(index: number, e: Event) {
   rowState.value[index].pendingValue = (e.target as HTMLInputElement).value;
 }
-let aiMessageCleanup: (() => void) | null = null;
-
-function runAI() {
+async function runAI() {
   if (!aiAvailable.value) {
     notificationStore.warn("AI is currently unavailable. Please check your model settings.");
     return;
   }
   if (!aiPrompt.value.trim()) return;
-
-  aiMessageCleanup?.();
 
   aiRunning.value = true;
 
@@ -181,14 +177,16 @@ function runAI() {
     .map((el) => el.parameters.find((p) => p.name === props.selectedParameter))
     .filter((p): p is ParameterData => p != null);
 
-  function onAiResult(event: Event) {
-    cleanup();
-
-    const detail = (event as CustomEvent).detail as {
+  try {
+    const detail = await invoke<{
       edits: ParameterEdit[] | null;
       raw: string | null;
       error: string | null;
-    };
+    }>(Commands.AiEditParameters, {
+      items: paramItems,
+      prompt: aiPrompt.value,
+      model: aiSettingsStore.selectedModel!,
+    });
 
     rawAiResponse.value = detail.raw ?? null;
 
@@ -196,7 +194,6 @@ function runAI() {
       notificationStore.error(detail.error);
       return;
     }
-
     if (!detail.edits || !Array.isArray(detail.edits)) return;
 
     const byElementId = new Map(detail.edits.map((e) => [e.ElementId, e]));
@@ -214,33 +211,20 @@ function runAI() {
       };
     });
     notificationStore.success(`AI complete - ${appliedCount} suggestions ready`);
-  }
-
-  function cleanup() {
-    window.removeEventListener("revit:ai-edit", onAiResult);
+  } catch (err) {
+    notificationStore.error(String((err as Error)?.message ?? err));
+  } finally {
     aiRunning.value = false;
-    aiMessageCleanup = null;
   }
-
-  aiMessageCleanup = cleanup;
-  window.addEventListener("revit:ai-edit", onAiResult);
-  sendRequest(Commands.AiEditParameters, {
-    items: paramItems,
-    prompt: aiPrompt.value,
-    model: aiSettingsStore.selectedModel!,
-  });
 }
 
-let aiRawCleanup: (() => void) | null = null;
-
-function runAIRaw() {
+async function runAIRaw() {
   if (!aiAvailable.value) {
     notificationStore.warn("AI is currently unavailable. Please check your model settings.");
     return;
   }
   if (!aiPrompt.value.trim()) return;
 
-  aiRawCleanup?.();
   aiRawRunning.value = true;
   rawAiResponse.value = null;
 
@@ -248,37 +232,21 @@ function runAIRaw() {
     .map((el) => el.parameters.find((p) => p.name === props.selectedParameter))
     .filter((p): p is ParameterData => p != null);
 
-  function onRawResult(event: Event) {
-    cleanupRaw();
-    const detail = (event as CustomEvent).detail;
-    if (detail?.error) {
-      notificationStore.error(detail.error);
-      return;
-    }
+  try {
+    const detail = await invoke<unknown>(Commands.AiAnalyse, {
+      items: paramItems,
+      prompt: aiPrompt.value,
+      model: aiSettingsStore.selectedModel!,
+    });
     rawAiResponse.value = typeof detail === "string" ? detail : JSON.stringify(detail);
     showRawPanel.value = true;
     notificationStore.info("AI analysis completed");
-  }
-
-  function cleanupRaw() {
-    window.removeEventListener("revit:ai-raw", onRawResult);
+  } catch (err) {
+    notificationStore.error(String((err as Error)?.message ?? err));
+  } finally {
     aiRawRunning.value = false;
-    aiRawCleanup = null;
   }
-
-  aiRawCleanup = cleanupRaw;
-  window.addEventListener("revit:ai-raw", onRawResult);
-  sendRequest(Commands.AiAnalyse, {
-    items: paramItems,
-    prompt: aiPrompt.value,
-    model: aiSettingsStore.selectedModel!,
-  });
 }
-
-onBeforeUnmount(() => {
-  aiMessageCleanup?.();
-  aiRawCleanup?.();
-});
 
 watch(aiAvailable, (ok) => {
   if (ok) return;
@@ -306,7 +274,9 @@ function applyToRevit() {
   };
 
   try {
-    sendRequest(Commands.SetDataToParameters, payload);
+    invoke(Commands.SetDataToParameters, payload).catch((err) =>
+      notificationStore.error(String((err as Error)?.message ?? err)),
+    );
 
     // Reset state for applied rows
     rowState.value = rowState.value.map((s, i) => {

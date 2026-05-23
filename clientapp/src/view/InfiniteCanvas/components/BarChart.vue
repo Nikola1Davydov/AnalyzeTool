@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Chart from "primevue/chart";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 import type { ElementItem, ParameterData } from "@/stores/types";
 import { resolveInstanceActionElementIds, type RevitActionMatch } from "@/utils/revitActionTargets";
 
@@ -104,7 +104,7 @@ function runActionForIds(elementIds: number[]) {
   if (!elementIds.length) return;
 
   const command = props.actionCommand || Commands.SelectionInRevit;
-  sendRequest(command as any, { elementIds } as any).catch((err) => {
+  invoke(command, { elementIds }).catch((err) => {
     console.error("Failed to execute chart action", err);
   });
 }

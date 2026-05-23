@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
-import { sendRequest, Commands } from "@/RevitBridge";
 import type { KeyValuePair } from "@/stores/types";
 import { useDocumentHealthStore } from "@/stores/useDocumentHealthStore";
 import type { DocumentHealthPayload } from "@/stores/useDocumentHealthStore";
@@ -12,7 +11,7 @@ const store = useDocumentHealthStore();
 
 // Load data
 onMounted(async () => {
-  store.loadDocumentHealth();
+  await store.loadDocumentHealth();
   loading.value = false;
 });
 

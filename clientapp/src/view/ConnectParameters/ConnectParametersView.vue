@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
@@ -856,7 +856,7 @@ function sendApplyCombinedParameters() {
     mode: applyMode.value,
   };
 
-  sendRequest(Commands.SetDataToParameters, payload).catch((err) => {
+  invoke(Commands.SetDataToParameters, payload).catch((err) => {
     console.error("Failed to send ApplyCombinedParameters", err);
   });
 

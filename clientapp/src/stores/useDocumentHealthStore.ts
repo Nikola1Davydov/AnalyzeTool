@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import type { KeyValuePair } from "@/stores/types";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 import { ref } from "vue";
 
 export interface DocumentHealthPayload {
@@ -36,8 +37,14 @@ export const useDocumentHealthStore = defineStore("documentHealth", () => {
     health.value = payload;
   };
 
-  function loadDocumentHealth(): void {
-    sendRequest(Commands.GetDocumentHealthStatus, null);
+  async function loadDocumentHealth(): Promise<void> {
+    try {
+      const payload = await invoke<DocumentHealthPayload>(Commands.GetDocumentHealthStatus, null);
+      setHealth(payload);
+    } catch (err) {
+      console.error("Failed to load document health", err);
+      useNotificationStore().error(`Failed to load document health: ${String((err as Error)?.message ?? err)}`);
+    }
   }
 
   const reset = () => {

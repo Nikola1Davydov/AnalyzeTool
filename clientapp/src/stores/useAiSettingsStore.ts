@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
+import { Commands, invoke } from "@/RevitBridge";
 
 const STORAGE_KEY = "ollama-model";
 const STORAGE_SOURCE_KEY = "ai-model-source";
@@ -58,6 +59,17 @@ export const useAiSettingsStore = defineStore("ai-settings", () => {
     }
   }
 
+  async function loadModels(): Promise<void> {
+    startLoadingModels();
+    try {
+      const models = await invoke<unknown>(Commands.GetOllamaModels, null);
+      setAvailableModels(Array.isArray(models) ? models.map((m) => String(m)) : []);
+    } catch (err) {
+      console.error("Failed to load Ollama models", err);
+      setAvailableModels([]);
+    }
+  }
+
   return {
     selectedModel,
     modelSource,
@@ -68,5 +80,6 @@ export const useAiSettingsStore = defineStore("ai-settings", () => {
     setModelSource,
     startLoadingModels,
     setAvailableModels,
+    loadModels,
   };
 });

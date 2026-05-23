@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 
 export interface UpdateInfo {
   currentVersion?: string;
@@ -23,7 +23,12 @@ export const useUpdateStore = defineStore("updateInfo", () => {
   };
 
   async function loadUpdateData(): Promise<void> {
-    sendRequest(Commands.CheckUpdate, null);
+    try {
+      const info = await invoke<UpdateInfo>(Commands.CheckUpdate, null);
+      if (info) setUpdateInfo(info);
+    } catch (err) {
+      console.error("Failed to check for updates", err);
+    }
   }
 
   const resetUpdateInfo = () => {

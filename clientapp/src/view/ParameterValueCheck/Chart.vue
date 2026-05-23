@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import Chart from "primevue/chart";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 import { ParameterOrgin } from "@/stores/types";
 import type { ElementItem, ParameterData } from "@/stores/types";
 import { resolveInstanceActionElementIds, type RevitActionMatch } from "@/utils/revitActionTargets";
@@ -155,7 +155,7 @@ const parameterCharts = computed(() => {
             activeClickAction.value === "Isolation"
               ? Commands.IsolationInRevit
               : Commands.SelectionInRevit;
-          sendRequest(command, { elementIds: entry.elementIds }).catch((err) => {
+          invoke(command, { elementIds: entry.elementIds }).catch((err) => {
             console.error("Failed to send selection request", err);
           });
         },

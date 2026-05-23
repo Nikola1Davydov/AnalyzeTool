@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
-import { Commands, sendRequest } from "@/RevitBridge";
 
 const props = defineProps<{
   visible: boolean;
@@ -32,8 +31,7 @@ const CLOUD_MODEL_SUGGESTIONS = [
 ];
 
 function loadOllamaModels() {
-  aiSettingsStore.startLoadingModels();
-  sendRequest(Commands.GetOllamaModels, null);
+  aiSettingsStore.loadModels();
 }
 </script>
 

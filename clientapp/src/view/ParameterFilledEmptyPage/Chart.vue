@@ -9,7 +9,7 @@ export default defineComponent({
 <script setup>
 import Chart from "primevue/chart";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { Commands, sendRequest } from "@/RevitBridge";
+import { Commands, invoke } from "@/RevitBridge";
 import { resolveInstanceActionElementIds } from "@/utils/revitActionTargets";
 
 const props = defineProps({
@@ -101,7 +101,7 @@ const handleChartClick = (evt, elements, chart) => {
       elementIds,
     );
 
-    sendRequest(Commands.SelectionInRevit, {
+    invoke(Commands.SelectionInRevit, {
       elementIds: elementIds,
     }).catch((err) => console.error("Error sending chart click:", err));
   } catch (e) {
