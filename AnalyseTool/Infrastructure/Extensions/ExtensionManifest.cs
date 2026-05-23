@@ -3,8 +3,9 @@ using Newtonsoft.Json;
 namespace AnalyseTool.Infrastructure.Extensions
 {
     /// <summary>
-    /// Shape of the per-extension <c>plugin.json</c> sitting next to the extension assembly.
-    /// The same file is reused later by JS extensions (UI fields added then).
+    /// Shape of the per-extension <c>plugin.json</c> sitting next to the extension files.
+    /// An extension may ship C# commands (<see cref="EntryAssembly"/>), a JS UI (<see cref="Ui"/>),
+    /// or both — every field except identity is optional.
     /// </summary>
     internal sealed record ExtensionManifest
     {
@@ -26,8 +27,46 @@ namespace AnalyseTool.Infrastructure.Extensions
         [JsonProperty("sdkVersion")]
         public string SdkVersion { get; init; } = string.Empty;
 
-        /// <summary>File name of the C# assembly to load (relative to the extension folder).</summary>
+        /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder).</summary>
         [JsonProperty("entryAssembly")]
-        public string EntryAssembly { get; init; } = string.Empty;
+        public string? EntryAssembly { get; init; }
+
+        /// <summary>Optional JS UI surfaced as a ribbon button opening a WebView page.</summary>
+        [JsonProperty("ui")]
+        public ExtensionUi? Ui { get; init; }
+    }
+
+    /// <summary>JS UI description for an extension.</summary>
+    internal sealed record ExtensionUi
+    {
+        /// <summary>Entry HTML file (relative to the extension folder), e.g. "index.html".</summary>
+        [JsonProperty("entryHtml")]
+        public string EntryHtml { get; init; } = "index.html";
+
+        /// <summary>Optional ribbon tab name. When omitted the host's default tab is used.</summary>
+        [JsonProperty("tab")]
+        public string? Tab { get; init; }
+
+        /// <summary>Optional ribbon panel name within the tab.</summary>
+        [JsonProperty("panel")]
+        public string? Panel { get; init; }
+
+        /// <summary>Ribbon button definition.</summary>
+        [JsonProperty("button")]
+        public ExtensionButton? Button { get; init; }
+    }
+
+    /// <summary>Ribbon button metadata for a JS extension.</summary>
+    internal sealed record ExtensionButton
+    {
+        [JsonProperty("text")]
+        public string Text { get; init; } = string.Empty;
+
+        [JsonProperty("tooltip")]
+        public string? Tooltip { get; init; }
+
+        /// <summary>Icon file relative to the extension folder (PNG).</summary>
+        [JsonProperty("icon")]
+        public string? Icon { get; init; }
     }
 }

@@ -1,22 +1,22 @@
 using AnalyseTool.Infrastructure.Dispatch;
 using AnalyseTool.Sdk;
 using AnalyseTool.Utils;
-using Newtonsoft.Json;
 using System.IO;
 using System.Reflection;
 
 namespace AnalyseTool.Infrastructure.Extensions
 {
     /// <summary>
-    /// Discovers and loads user-authored C# command extensions from the extensions folder.
-    /// Each extension lives in its own sub-folder with a <c>plugin.json</c> manifest and its
-    /// assembly. One bad extension is logged and skipped; the rest still load.
+    /// Loads the C# command half of user-authored extensions discovered by <see cref="ExtensionCatalog"/>.
+    /// Extensions without an entryAssembly (JS-only) are skipped here — their UI is handled by the
+    /// ribbon/window layer. One bad extension is logged and skipped; the rest still load.
     /// </summary>
     internal sealed class ExtensionLoader
     {
         private readonly CommandDispatcher _dispatcher;
         private readonly string _hostRevit;   // "R25" / "R26"
         private readonly int _hostSdkMajor;
+        private readonly List<ExtensionLoadContext> _contexts = new();
 
         public ExtensionLoader(CommandDispatcher dispatcher, string hostRevit)
         {
@@ -25,37 +25,39 @@ namespace AnalyseTool.Infrastructure.Extensions
             _hostSdkMajor = typeof(IRevitTask).Assembly.GetName().Version?.Major ?? 1;
         }
 
+        /// <summary>Drops loaded extension commands and unloads their (collectible) contexts so a
+        /// subsequent <see cref="LoadAll"/> picks up changed DLLs without restarting Revit.</summary>
+        public void UnloadAll()
+        {
+            _dispatcher.ClearExtensions();
+            foreach (ExtensionLoadContext context in _contexts)
+            {
+                try { context.Unload(); }
+                catch { /* references may still be alive; GC collects later */ }
+            }
+            _contexts.Clear();
+        }
+
         public void LoadAll(string extensionsRoot)
         {
-            if (!Directory.Exists(extensionsRoot)) return;
-
-            foreach (string dir in Directory.GetDirectories(extensionsRoot))
+            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(extensionsRoot, _hostRevit))
             {
+                if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
+
                 try
                 {
-                    LoadOne(dir);
+                    LoadCommands(descriptor);
                 }
                 catch (Exception ex)
                 {
-                    UserDialogUtils.Error($"Failed to load extension from '{dir}': {ex.Message}");
+                    UserDialogUtils.Error($"Failed to load extension '{descriptor.Manifest.Id}': {ex.Message}");
                 }
             }
         }
 
-        private void LoadOne(string dir)
+        private void LoadCommands(ExtensionDescriptor descriptor)
         {
-            string manifestPath = Path.Combine(dir, "plugin.json");
-            if (!File.Exists(manifestPath)) return;   // not an extension folder
-
-            ExtensionManifest? manifest = JsonConvert.DeserializeObject<ExtensionManifest>(File.ReadAllText(manifestPath));
-            if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id) || string.IsNullOrWhiteSpace(manifest.EntryAssembly))
-                throw new InvalidOperationException("plugin.json is missing required fields (id, entryAssembly).");
-
-            if (!string.Equals(manifest.TargetRevit, _hostRevit, StringComparison.OrdinalIgnoreCase))
-            {
-                UserDialogUtils.Error($"Extension '{manifest.Id}' targets {manifest.TargetRevit} but host is {_hostRevit}. Skipped.");
-                return;
-            }
+            ExtensionManifest manifest = descriptor.Manifest;
 
             if (!IsSdkCompatible(manifest.SdkVersion))
             {
@@ -63,11 +65,12 @@ namespace AnalyseTool.Infrastructure.Extensions
                 return;
             }
 
-            string entryPath = Path.Combine(dir, manifest.EntryAssembly);
+            string entryPath = Path.Combine(descriptor.Directory, manifest.EntryAssembly!);
             if (!File.Exists(entryPath))
                 throw new FileNotFoundException($"Entry assembly '{manifest.EntryAssembly}' not found.", entryPath);
 
             ExtensionLoadContext alc = new ExtensionLoadContext(entryPath, manifest.Id);
+            _contexts.Add(alc);
             Assembly assembly = alc.LoadFromAssemblyPath(entryPath);
             _dispatcher.RegisterExtension(assembly, manifest.Id);
         }

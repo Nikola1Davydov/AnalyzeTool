@@ -17,6 +17,18 @@ namespace AnalyseTool.Infrastructure.Dispatch
 
         public bool IsRegistered(string command) => _commands.ContainsKey(command);
 
+        /// <summary>Removes all extension-provided commands (keeps built-ins) so they can be reloaded.</summary>
+        public void ClearExtensions()
+        {
+            List<string> toRemove = _commands
+                .Where(kv => !string.Equals(kv.Value.Source, "core", StringComparison.Ordinal))
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach (string key in toRemove)
+                _commands.Remove(key);
+        }
+
         public void RegisterBuiltIns(Assembly coreAssembly)
         {
             foreach (Type type in coreAssembly.GetTypes())

@@ -4,5 +4,14 @@
   "version": "1.0.0",
   "targetRevit": "R25",
   "sdkVersion": "1.0",
-  "entryAssembly": "Acme.Sample.dll"
+  "entryAssembly": "Acme.Sample.dll",
+  "ui": {
+    "entryHtml": "index.html",
+    "tab": "AnalyseTool",
+    "panel": "Samples",
+    "button": {
+      "text": "Acme Sample",
+      "tooltip": "Open the Acme Sample extension page"
+    }
+  }
 }

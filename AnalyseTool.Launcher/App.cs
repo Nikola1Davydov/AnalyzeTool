@@ -2,19 +2,34 @@
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Windows.Media.Imaging;
 
 namespace AnalyseTool.Launcher
 {
     public class App : IExternalApplication
     {
         public static Assembly? _pluginAssembly;
+
+        private const string RibbonHostType = "AnalyseTool.Infrastructure.Extensions.RibbonHost";
+
         public Result OnStartup(UIControlledApplication application)
         {
             LoadIsolatedDlls();
 
-            RegisterUI(application);
+            // The ribbon (including dynamic extension buttons) is built by RibbonHost inside the
+            // isolated AnalyseTool assembly; we just forward the call and hand it our assembly path
+            // so it can point button commands at the slot classes Revit can load from this DLL.
+            InvokeRibbon("Build", application, typeof(App).Assembly.Location);
 
+            return Result.Succeeded;
+        }
+
+        /// <summary>Reflects into RibbonHost (isolated AnalyseTool) — the only way slot/Settings/Reload
+        /// commands, which Revit loads from this Launcher DLL, can reach the plugin's logic.</summary>
+        internal static Result InvokeRibbon(string method, params object[] args)
+        {
+            Type? ribbonHost = _pluginAssembly?.GetType(RibbonHostType);
+            MethodInfo? target = ribbonHost?.GetMethod(method, BindingFlags.Public | BindingFlags.Static);
+            target?.Invoke(null, args);
             return Result.Succeeded;
         }
 
@@ -41,23 +56,6 @@ namespace AnalyseTool.Launcher
             }
 
             _pluginAssembly = _isolatedContext.LoadFromAssemblyPath(basePath);
-        }
-
-        private void RegisterUI(UIControlledApplication application)
-        {
-            // Add a new ribbon panel
-            RibbonPanel ribbonPanel = application.CreateRibbonPanel("Parameter");
-
-            PushButtonData b1Data = new PushButtonData(
-                nameof(AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand),
-                SharedData.ToolData.PLUGIN_NAME,
-                GetType().Assembly!.Location,
-                typeof(AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand).FullName);
-
-            PushButton pb1 = ribbonPanel.AddItem(b1Data) as PushButton;
-            BitmapImage pb1Image = new BitmapImage(new Uri("pack://application:,,,/AnalyseTool;component/Resources/Icons/AnalyzeTool_Icon.png"));
-            pb1.Image = pb1Image;
-            pb1.LargeImage = pb1Image;
         }
 
         public Result OnShutdown(UIControlledApplication application)

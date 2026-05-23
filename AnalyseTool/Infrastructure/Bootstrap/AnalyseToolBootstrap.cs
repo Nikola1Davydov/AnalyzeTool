@@ -9,6 +9,7 @@ namespace AnalyseTool.Infrastructure.Bootstrap
     internal static class AnalyseToolBootstrap
     {
         private static bool _initialized;
+        private static ExtensionLoader _loader = null!;
         public static CommandDispatcher Dispatcher { get; private set; } = null!;
         public static RevitTaskHub RevitTaskHub { get; private set; } = null!;
 
@@ -27,10 +28,19 @@ namespace AnalyseTool.Infrastructure.Bootstrap
             Dispatcher.RegisterBuiltIns(Assembly.GetExecutingAssembly());
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\
-            ExtensionLoader loader = new ExtensionLoader(Dispatcher, HostRevitTag(uiApp));
-            loader.LoadAll(PathProvider.ExtensionsDirectory);
+            _loader = new ExtensionLoader(Dispatcher, HostRevitTag(uiApp));
+            _loader.LoadAll(PathProvider.ExtensionsDirectory);
 
             _initialized = true;
+        }
+
+        /// <summary>Reloads extension command DLLs (collectible contexts) so changed code takes effect
+        /// without restarting Revit. No-op until Initialize has run.</summary>
+        public static void ReloadExtensions()
+        {
+            if (!_initialized) return;
+            _loader.UnloadAll();
+            _loader.LoadAll(PathProvider.ExtensionsDirectory);
         }
 
         /// <summary>Maps the running Revit version to the manifest's targetRevit tag, e.g. "2025" -&gt; "R25".</summary>

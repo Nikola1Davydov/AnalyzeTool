@@ -23,7 +23,7 @@ namespace AnalyseTool.Infrastructure.Extensions
         private readonly AssemblyDependencyResolver _resolver;
 
         public ExtensionLoadContext(string entryAssemblyPath, string name)
-            : base(name, isCollectible: false)
+            : base(name, isCollectible: true) // collectible so Reload can unload + replace the DLL
         {
             _resolver = new AssemblyDependencyResolver(entryAssemblyPath);
         }
