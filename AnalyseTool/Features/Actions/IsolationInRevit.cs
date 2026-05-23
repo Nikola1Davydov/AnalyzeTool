@@ -1,42 +1,39 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Utils;
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.Features.Actions
 {
-    internal class IsolationInRevit : IRevitTask
+    internal sealed class IsolationInRevit : IRevitTask
     {
-        public async Task Execute(JToken data, WebView2 webView)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
+            Request? data = ctx.Payload.As<Request>();
+            List<ElementId> elementsIds = (data?.ElementIds ?? new List<long>())
+                .Select(x => new ElementId(x))
+                .ToList();
+            if (elementsIds.Count == 0) return Task.FromResult<object?>(null);
 
-            IsolationPayload? list = data.ToObject<IsolationPayload>();
-            if (list == null) return;
-
-            List<ElementId> elementsIds = list.ElementIds.Where(x => x != null).Select(x => new ElementId(x)).ToList();
-            if (!elementsIds.Any()) return;
-
-            string transactionName = "Isolate";
-            ExternalEventHub.RevitExternalEvent.action = () =>
+            return ctx.RunInRevitAsync<object?>(app =>
             {
-                RevitTransactions.Run(transactionName, webView, () =>
-                {
-                    if (!Context.Document.ActiveView.IsModifiable) return;
+                Document doc = app.ActiveUIDocument.Document;
+                View view = doc.ActiveView;
+                if (!view.IsModifiable) return null;
 
-                    if (Context.Document.ActiveView.IsTemporaryHideIsolateActive())
-                    {
-                        Context.Document.ActiveView.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
-                    }
-                    Context.Document.ActiveView.IsolateElementsTemporary(elementsIds);
-                });
-            };
+                using Transaction transaction = new Transaction(doc, "Isolate");
+                transaction.Start();
 
-            ExternalEventHub.RevitEvent.Raise();
+                if (view.IsTemporaryHideIsolateActive())
+                    view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
+
+                view.IsolateElementsTemporary(elementsIds);
+                transaction.Commit();
+                return null;
+            });
         }
-        private record IsolationPayload
+
+        private sealed record Request
         {
-            public List<long> ElementIds { get; set; }
+            public List<long> ElementIds { get; set; } = new();
         }
     }
 }

@@ -19,4 +19,20 @@
 
   <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
+  <ItemGroup>
+    <None Remove="..\build\Directory.Build.targets" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\build\Directory.Build.props" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\build\Directory.Build.props" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\build\Directory.Build.targets" />
+  </ItemGroup>
+
 </Project>

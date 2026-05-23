@@ -1,56 +1,44 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Common.Model;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 
 namespace AnalyseTool.Features.Get
 {
-    internal class GetDocumentHealthStatus : IRevitTask
+    internal sealed class GetDocumentHealthStatus : IRevitTask
     {
-        private Document _doc = Context.Document;
-        public async Task Execute(JToken payload, WebView2 webView)
-        {
-            int allWarningsInDocument = Context.Document.GetWarnings().Count;
-            string path = Context.Document.PathName;
-            DocumentHealth docHealth = new DocumentHealth()
+        private Document _doc = null!;
+
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            ctx.RunInRevitAsync<object?>(app =>
             {
-                // warnings
-                TotalWarnings = Create("Total warnings", GetTotalWarnings()),
-                FileSize = Create("File size (MB)", GetFileSize()),
-                TotalPlacedElements = Create("Total placed elements", GetPlacedElements()),
+                _doc = app.ActiveUIDocument.Document;
+                return new DocumentHealth()
+                {
+                    // warnings
+                    TotalWarnings = Create("Total warnings", GetTotalWarnings()),
+                    FileSize = Create("File size (MB)", GetFileSize()),
+                    TotalPlacedElements = Create("Total placed elements", GetPlacedElements()),
 
-                // models
-                ModelGroups = Create("Model groups", GetModelGroups()),
-                DetailGroups = Create("Detail groups", GetDetailGroups()),
-                InPlaceFamilies = Create("In-place families", GetInPlaceFamilies()),
+                    // models
+                    ModelGroups = Create("Model groups", GetModelGroups()),
+                    DetailGroups = Create("Detail groups", GetDetailGroups()),
+                    InPlaceFamilies = Create("In-place families", GetInPlaceFamilies()),
 
-                // views and sheets
-                TotalViews = Create("Total views", GetViews()),
-                HiddenElementsInViews = Create("Hidden elements in views", GetHiddenElements()),
-                ViewsNotOnSheets = Create("Views not on sheets", GetViewsNotOnSheets()),
-                Sheets = Create("Sheets", GetSheets()),
+                    // views and sheets
+                    TotalViews = Create("Total views", GetViews()),
+                    HiddenElementsInViews = Create("Hidden elements in views", GetHiddenElements()),
+                    ViewsNotOnSheets = Create("Views not on sheets", GetViewsNotOnSheets()),
+                    Sheets = Create("Sheets", GetSheets()),
 
-                // links
-                RevitLinks = Create("Revit links", GetRevitLinks()),
-                CadLinks = Create("CAD links", GetCadLinks()),
+                    // links
+                    RevitLinks = Create("Revit links", GetRevitLinks()),
+                    CadLinks = Create("CAD links", GetCadLinks()),
 
-                // imports
-                CadImports = Create("CAD imports", GetCadImports()),
-            };
-
-            string json = JsonConvert.SerializeObject(new WebViewMessage()
-            {
-                Type = WebMessageTypeEnum.Response.ToString(),
-                Command = nameof(GetDocumentHealthStatus),
-                Payload = JObject.FromObject(docHealth)
+                    // imports
+                    CadImports = Create("CAD imports", GetCadImports()),
+                };
             });
-
-            webView.CoreWebView2.PostWebMessageAsJson(json);
-        }
         private KeyValuePair<string, int> Create(string titel, int count) =>
             new KeyValuePair<string, int>(titel, count);
 

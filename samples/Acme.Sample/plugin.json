@@ -1,0 +1,8 @@
+{
+  "id": "acme.sample",
+  "displayName": "Acme Sample",
+  "version": "1.0.0",
+  "targetRevit": "R25",
+  "sdkVersion": "1.0",
+  "entryAssembly": "Acme.Sample.dll"
+}

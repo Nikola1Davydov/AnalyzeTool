@@ -1,22 +1,28 @@
-﻿using AnalyseTool.Common.FeaturesBase;
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.Features.Actions
 {
-    internal class SelectionInRevit : IRevitTask
+    internal sealed class SelectionInRevit : IRevitTask
     {
-        public async Task Execute(JToken data, WebView2 webView)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            SelectionPayload? list = data.ToObject<SelectionPayload>();
+            SelectionPayload? list = ctx.Payload.As<SelectionPayload>();
+            if (list == null) return Task.FromResult<object?>(null);
 
-            if (list == null) return;
+            List<ElementId> elementsIds = list.ElementIds
+                .Where(x => x != null)
+                .Select(x => new ElementId(x))
+                .ToList();
 
-            List<ElementId> elementsIds = list.ElementIds.Where(x => x != null).Select(x => new ElementId(x)).ToList();
-            Context.UiDocument.Selection.SetElementIds(elementsIds);
+            return ctx.RunInRevitAsync<object?>(app =>
+            {
+                app.ActiveUIDocument.Selection.SetElementIds(elementsIds);
+                return null;
+            });
         }
-        private record SelectionPayload
+
+        private sealed record SelectionPayload
         {
             public List<long> ElementIds { get; set; }
         }

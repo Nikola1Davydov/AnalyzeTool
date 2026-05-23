@@ -1,39 +1,24 @@
-﻿using AnalyseTool.Common.FeaturesBase;
 using AnalyseTool.Infrastructure;
 using AnalyseTool.Infrastructure.Model;
-using AnalyseTool.Utils;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json.Linq;
+using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Ai
 {
-    internal class AiAnalyse : IRevitTask
+    internal sealed class AiAnalyse : IRevitTask
     {
-        public async Task Execute(JToken payload, WebView2 webView)
+        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            AnalyzeParameterWithAiRequest? request = payload.ToObject<AnalyzeParameterWithAiRequest>();
-            if (request == null) return;
+            AnalyzeParameterWithAiRequest? request = ctx.Payload.As<AnalyzeParameterWithAiRequest>();
+            if (request == null) return null;
 
             try
             {
                 AiAnalysisService ai = new AiAnalysisService(request.Model);
-                string raw = await ai.AnalyzeAsync(request.Items, request.Prompt);
-
-                string json = JsonUtils.BuildResponce(nameof(AiAnalyse), raw);
-
-                webView.CoreWebView2.PostWebMessageAsJson(json);
+                return await ai.AnalyzeAsync(request.Items, request.Prompt);
             }
             catch (OperationCanceledException)
             {
-                WebViewErrorHelper.SendError(webView, nameof(AiAnalyse), "AI Timeout: The model did not respond in time.");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                WebViewErrorHelper.SendError(webView, nameof(AiAnalyse), ex.Message);
-            }
-            catch (Exception ex)
-            {
-                WebViewErrorHelper.SendError(webView, nameof(AiAnalyse), ex.Message);
+                throw new InvalidOperationException("AI Timeout: The model did not respond in time.");
             }
         }
     }

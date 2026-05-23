@@ -1,39 +1,34 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Common.Model;
-using AnalyseTool.Utils;
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.Features.Get
 {
-    internal class GetWarningsInRevit : IRevitTask
+    internal sealed class GetWarningsInRevit : IRevitTask
     {
-        public async Task Execute(JToken payload, WebView2 webView)
-        {
-            List<WarningInRevitModel> warningInRevitModels = new List<WarningInRevitModel>();
-            IList<FailureMessage> allWarningsInDocument = Context.Document.GetWarnings();
-            foreach (FailureMessage item in allWarningsInDocument)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            ctx.RunInRevitAsync<object?>(app =>
             {
-                WarningInRevitModel warningModel = new WarningInRevitModel()
+                Document doc = app.ActiveUIDocument.Document;
+                List<WarningInRevitModel> result = new();
+
+                foreach (FailureMessage item in doc.GetWarnings())
                 {
-                    AdditionalElements = item.GetAdditionalElements().Select(x => x.Value).ToList(),
-                    FailingElements = item.GetFailingElements().Select(x => x.Value).ToList(),
-                    WarningDescription = item.GetDescriptionText(),
-                };
-                warningInRevitModels.Add(warningModel);
-            }
+                    result.Add(new WarningInRevitModel
+                    {
+                        AdditionalElements = item.GetAdditionalElements().Select(x => x.Value).ToList(),
+                        FailingElements = item.GetFailingElements().Select(x => x.Value).ToList(),
+                        WarningDescription = item.GetDescriptionText(),
+                    });
+                }
 
-            string json = JsonUtils.BuildResponce(nameof(GetWarningsInRevit), warningInRevitModels);
+                return result;
+            });
 
-            webView.CoreWebView2.PostWebMessageAsJson(json);
-        }
-        private record WarningInRevitModel
+        private sealed record WarningInRevitModel
         {
-            public string WarningDescription { get; set; }
-            public List<long> FailingElements { get; set; }
-            public List<long> AdditionalElements { get; set; }
+            public string WarningDescription { get; set; } = string.Empty;
+            public List<long> FailingElements { get; set; } = new();
+            public List<long> AdditionalElements { get; set; } = new();
         }
     }
 }

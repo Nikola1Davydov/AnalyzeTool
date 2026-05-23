@@ -1,31 +1,28 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Common.Model;
 using AnalyseTool.Infrastructure;
 using AnalyseTool.Infrastructure.Model;
-using AnalyseTool.Utils;
-using Microsoft.Web.WebView2.Wpf;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Get
 {
-    internal class GetDataByCategoryName : IRevitTask
+    internal sealed class GetDataByCategoryName : IRevitTask
     {
-        public async Task Execute(JToken payload, WebView2 webView)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            UpdateDataParameterFilledEmptyPagePayload? data = payload.ToObject<UpdateDataParameterFilledEmptyPagePayload>();
-            if (string.IsNullOrEmpty(data.CategoryName)) return;
+            Request? data = ctx.Payload.As<Request>();
+            if (string.IsNullOrEmpty(data?.CategoryName))
+                return Task.FromResult<object?>(new List<DataElement>());
 
-            DataElementsCollectorService dataElementsCollectorService = new DataElementsCollectorService();
-            IEnumerable<DataElement> dataModels = dataElementsCollectorService.GetAllElementsByCategory(Context.Document, data.CategoryName)?.ToList() ?? new List<DataElement>();
-            
-            string json = JsonUtils.BuildResponce(nameof(GetDataByCategoryName), dataModels);
-
-            webView.CoreWebView2.PostWebMessageAsJson(json);
+            return ctx.RunInRevitAsync<object?>(app =>
+            {
+                DataElementsCollectorService collector = new DataElementsCollectorService();
+                return collector.GetAllElementsByCategory(app.ActiveUIDocument.Document, data.CategoryName)?.ToList()
+                       ?? new List<DataElement>();
+            });
         }
-        private record UpdateDataParameterFilledEmptyPagePayload
+
+        private sealed record Request
         {
-            public string CategoryName { get; set; }
+            public string CategoryName { get; set; } = string.Empty;
         }
     }
 }

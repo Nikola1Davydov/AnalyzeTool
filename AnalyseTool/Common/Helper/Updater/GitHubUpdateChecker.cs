@@ -54,5 +54,10 @@ namespace AnalyseTool.Common.Helper.Updater
                 return null;
             }
         }
+        private record GitHubReleaseDto
+        {
+            public string tag_name { get; set; } = string.Empty;
+            public string html_url { get; set; } = string.Empty;
+        }
     }
 }

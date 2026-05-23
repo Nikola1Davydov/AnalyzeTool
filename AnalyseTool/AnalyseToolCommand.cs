@@ -1,10 +1,9 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Common.Model;
+﻿using AnalyseTool.Infrastructure.Bootstrap;
+using AnalyseTool.Infrastructure.Transport;
 using AnalyseTool.Utils;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Newtonsoft.Json;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -19,28 +18,14 @@ namespace AnalyseTool
         {
             try
             {
-                Context.Init(commandData.Application);
-                ExternalEventHub.Initialize(commandData.Application);
+                AnalyseToolBootstrap.Initialize(commandData.Application);
 
                 MainWindow window = new MainWindow();
                 window.Closed += WindowClosed;
-                window.webView.WebMessageReceived += (sender, args) =>
-                {
-                    string json = args.WebMessageAsJson;
-                    WebViewMessage? request = JsonConvert.DeserializeObject<WebViewMessage>(json);
 
-                    if (request == null || !string.Equals(request.Type, WebMessageTypeEnum.Request.ToString(), StringComparison.OrdinalIgnoreCase)) return;
-
-                    IRevitTask task = CommandsFactory.CreateRevitCommand(request.Command);
-                    try
-                    {
-                        task.Execute(request.Payload, window.webView);
-                    }
-                    catch (Exception ex)
-                    {
-                        WebViewErrorHelper.SendError(window.webView, request.Command, ex.Message);
-                    }
-                };
+                // All commands (built-in + extensions) are dispatched via Sdk.IRevitTask.
+                WebView2Transport transport = new WebView2Transport(window.webView, AnalyseToolBootstrap.Dispatcher);
+                transport.Attach();
 
                 Show(window);
             }

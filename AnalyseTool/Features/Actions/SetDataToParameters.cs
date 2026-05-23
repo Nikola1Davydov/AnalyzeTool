@@ -1,42 +1,41 @@
-﻿using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.FeaturesBase;
+using AnalyseTool.Common.Extensions;
 using AnalyseTool.Infrastructure.Model;
-using AnalyseTool.Utils;
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
 using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Features.Actions
 {
-    internal class SetDataToParameters : IRevitTask
+    internal sealed class SetDataToParameters : IRevitTask
     {
-        public async Task Execute(JToken payload, WebView2 webView)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            SetDataToParametersDto? list = payload.ToObject<SetDataToParametersDto>();
-            if (list == null) return;
+            SetDataToParametersDto? list = ctx.Payload.As<SetDataToParametersDto>();
+            if (list == null) return Task.FromResult<object?>(null);
 
-            ExternalEventHub.RevitExternalEvent.action = () =>
+            return ctx.RunInRevitAsync<object?>(app =>
             {
-                RevitTransactions.Run("Set data to parameters", webView, () =>
+                Document doc = app.ActiveUIDocument.Document;
+
+                using Transaction transaction = new Transaction(doc, "Set data to parameters");
+                transaction.Start();
+
+                foreach (ParameterData parameterData in list.Items)
                 {
-                    foreach (ParameterData parameterData in list.Items)
-                    {
-                        if (parameterData == null) continue;
+                    if (parameterData == null) continue;
+                    SetData(doc, parameterData, list.Mode);
+                }
 
-                        SetData(parameterData, list.Mode);
-                    }
-                });
-            };
-
-            ExternalEventHub.RevitEvent.Raise();
+                transaction.Commit();
+                return null;
+            });
         }
 
-        private void SetData(ParameterData parameterData, SetDataMode mode)
+        private void SetData(Document doc, ParameterData parameterData, SetDataMode mode)
         {
-            Element revitElement = Context.Document.GetElement(new ElementId(parameterData.ElementId));
+            Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
             if (revitElement == null) return;
 
             Parameter parameter = null;
@@ -59,7 +58,7 @@ namespace AnalyseTool.Features.Actions
 
                 if (parameter == null)
                 {
-                    ParameterElement parameterElement = Context.Document.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
+                    ParameterElement parameterElement = doc.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
                     Definition definition = parameterElement?.GetDefinition();
 
                     if (definition != null)
@@ -73,6 +72,7 @@ namespace AnalyseTool.Features.Actions
 
             SetData(parameter, parameterData.Value, mode);
         }
+
         private void SetData(Parameter parameter, string value, SetDataMode mode)
         {
             switch (mode)
@@ -96,6 +96,7 @@ namespace AnalyseTool.Features.Actions
             [JsonConverter(typeof(StringEnumConverter))]
             public SetDataMode Mode { get; set; }
         }
+
         private enum SetDataMode
         {
             Overwrite,

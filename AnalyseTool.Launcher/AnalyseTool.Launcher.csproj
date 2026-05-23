@@ -1,37 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-      <UseWPF>true</UseWPF>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-	<PlatformTarget>x64</PlatformTarget>
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
-	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-	<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-	<Configurations>Debug R25;Debug R26</Configurations>
-	<Configurations>$(Configurations);Release R25;Release R26</Configurations>
-    <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
-    <PluginSubDir>AnalyseTool</PluginSubDir>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+    
+      <PropertyGroup>
+        <UseWPF>true</UseWPF>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+	    <PlatformTarget>x64</PlatformTarget>
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+	    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <PluginSubDir>AnalyseTool</PluginSubDir>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+      </PropertyGroup>
 
-	<PropertyGroup Condition="$(Configuration.Contains('R25'))">
-		<RevitVersion>2025</RevitVersion>
-		<TargetFramework>net8.0-windows</TargetFramework>
+    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
+        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
         <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
-		<RevitVersion>2026</RevitVersion>
-		<TargetFramework>net8.0-windows</TargetFramework>
+        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
         <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
 	</PropertyGroup>
-	
-  <ItemGroup>
-	  <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
-	  <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
-  </ItemGroup>
-	
+		
   <ItemGroup>
     <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj" />
   </ItemGroup>

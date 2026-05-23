@@ -1,34 +1,29 @@
-﻿using AnalyseTool.Common.FeaturesBase;
-using AnalyseTool.Common.Model;
-using AnalyseTool.Utils;
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
-using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace AnalyseTool.Features.Get
 {
-    internal class GetDocumentData : IRevitTask
+    internal sealed class GetDocumentData : IRevitTask
     {
-        public async Task Execute(JToken payload, WebView2 webView)
-        {
-            Document doc = Context.Document;
-            DocumentData documentData = new DocumentData()
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            ctx.RunInRevitAsync<object?>(app =>
             {
-                Name = doc.Title,
-                Id = doc.CreationGUID.ToString()
-            };
+                Document doc = app.ActiveUIDocument.Document;
+                return new DocumentData
+                {
+                    Name = doc.Title,
+                    Id = doc.CreationGUID.ToString()
+                };
+            });
 
-            string json = JsonUtils.BuildResponce(nameof(GetDocumentData), documentData);
-
-            webView.CoreWebView2.PostWebMessageAsJson(json);
-        }
-        private record DocumentData()
+        private sealed record DocumentData
         {
             [JsonProperty("name")]
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
+
             [JsonProperty("id")]
-            public string Id { get; set; }
+            public string Id { get; set; } = string.Empty;
         }
     }
 }
