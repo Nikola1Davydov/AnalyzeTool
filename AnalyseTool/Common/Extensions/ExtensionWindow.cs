@@ -1,13 +1,13 @@
 using AnalyseTool.Common;
-using AnalyseTool.Infrastructure.Bootstrap;
-using AnalyseTool.Infrastructure.Transport;
+using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.Common.Transport;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// Hosts one JS extension page in its own top-level WebView2 window: maps the extension folder
@@ -30,7 +30,7 @@ namespace AnalyseTool.Infrastructure.Extensions
             Height = 750;
             Content = _webView;
 
-            _ = new WindowInteropHelper(this) { Owner = AnalyseTool.Context.UiApplication.MainWindowHandle };
+            _ = new WindowInteropHelper(this) { Owner = Context.UiApplication.MainWindowHandle };
             Loaded += OnLoaded;
             Closed += (_, _) => _transport?.Detach();
         }
@@ -40,17 +40,30 @@ namespace AnalyseTool.Infrastructure.Extensions
             CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
             await _webView.EnsureCoreWebView2Async(env);
 
-            // Inject the bridge first so window.AT exists before the page's own scripts run.
+            // Inject the bridge first so window.AT exists before the page's own scripts run
+            // (works the same on a dev-server origin or the virtual host).
             await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ExtensionBridgeScript.Js);
-
-            string host = BuildHostName(_extension.Manifest.Id);
-            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                host, _extension.Directory, CoreWebView2HostResourceAccessKind.Allow);
 
             _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
             _transport.Attach();
 
-            string entryHtml = _extension.Manifest.Ui?.EntryHtml ?? "index.html";
+            string? devUrl = _extension.Manifest.Ui?.DevUrl;
+            if (!string.IsNullOrWhiteSpace(devUrl))
+            {
+                // Development: load the live dev server (Vite/HMR). Author removes devUrl for release.
+                _webView.CoreWebView2.Navigate(devUrl);
+                return;
+            }
+
+            // Production: serve the extension folder over a private virtual host.
+            string host = BuildHostName(_extension.Manifest.Id);
+            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                host, _extension.Directory, CoreWebView2HostResourceAccessKind.Allow);
+
+            // Accept sub-paths ("Acme/index.html"); tolerate backslashes and a leading slash.
+            string entryHtml = (_extension.Manifest.Ui?.EntryHtml ?? "index.html")
+                .Replace('\\', '/')
+                .TrimStart('/');
             _webView.CoreWebView2.Navigate($"https://{host}/{entryHtml}");
         }
 

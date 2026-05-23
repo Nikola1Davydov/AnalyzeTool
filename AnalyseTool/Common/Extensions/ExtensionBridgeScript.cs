@@ -1,4 +1,4 @@
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// JavaScript injected into every standalone extension page (via

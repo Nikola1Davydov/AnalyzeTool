@@ -2,7 +2,7 @@
 using Autodesk.Revit.DB;
 using System.Globalization;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Infrastructure
 {
     internal static class ParameterExtensions
     {

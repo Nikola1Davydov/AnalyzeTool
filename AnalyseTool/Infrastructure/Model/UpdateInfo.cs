@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace AnalyseTool.Common.Helper.Updater
+namespace AnalyseTool.Infrastructure.Model
 {
     public class UpdateInfo
     {

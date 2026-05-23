@@ -10,8 +10,9 @@ namespace Acme.Sample
     [RevitCommand("Hello")]
     public sealed class HelloRevit : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-            ctx.RunInRevitAsync<object?>(app =>
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        {
+            return ctx.RunInRevitAsync<object?>(app =>
             {
                 Autodesk.Revit.UI.UIDocument uiDoc = app.ActiveUIDocument;
                 int selectedCount = uiDoc.Selection.GetElementIds().Count;
@@ -24,5 +25,6 @@ namespace Acme.Sample
                     activeView
                 };
             });
+        }
     }
 }

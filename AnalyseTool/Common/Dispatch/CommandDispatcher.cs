@@ -1,9 +1,8 @@
 using AnalyseTool.Sdk;
-using AnalyseTool.Utils;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
-namespace AnalyseTool.Infrastructure.Dispatch
+namespace AnalyseTool.Common.Dispatch
 {
     internal sealed class CommandDispatcher
     {

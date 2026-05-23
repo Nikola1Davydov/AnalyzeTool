@@ -9,7 +9,7 @@ namespace AnalyseTool.Launcher
     {
         public static Assembly? _pluginAssembly;
 
-        private const string RibbonHostType = "AnalyseTool.Infrastructure.Extensions.RibbonHost";
+        private const string RibbonHostType = "AnalyseTool.Common.Extensions.RibbonHost";
 
         public Result OnStartup(UIControlledApplication application)
         {

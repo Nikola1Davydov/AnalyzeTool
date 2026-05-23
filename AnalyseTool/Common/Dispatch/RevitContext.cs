@@ -2,7 +2,7 @@ using AnalyseTool.Sdk;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Infrastructure.Dispatch
+namespace AnalyseTool.Common.Dispatch
 {
     internal sealed class RevitContext : IRevitContext
     {

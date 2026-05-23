@@ -1,11 +1,10 @@
-using AnalyseTool.Common.Model;
-using AnalyseTool.Infrastructure.Dispatch;
+using AnalyseTool.Common.Dispatch;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Infrastructure.Transport
+namespace AnalyseTool.Common.Transport
 {
     internal sealed class WebView2Transport
     {

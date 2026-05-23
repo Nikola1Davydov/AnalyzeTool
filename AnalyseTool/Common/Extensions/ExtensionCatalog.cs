@@ -1,8 +1,7 @@
-using AnalyseTool.Utils;
 using Newtonsoft.Json;
 using System.IO;
 
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>One discovered extension: its parsed manifest plus the folder it lives in.</summary>
     internal sealed record ExtensionDescriptor(ExtensionManifest Manifest, string Directory)

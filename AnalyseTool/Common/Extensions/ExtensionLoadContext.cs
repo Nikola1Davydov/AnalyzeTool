@@ -1,13 +1,18 @@
+using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// Isolated load context for one extension. Its private dependencies are loaded from the
     /// extension folder, but the contract assemblies are deferred to the host's default context so
     /// that types crossing the boundary (IRevitTask, Revit API types, JToken) share one identity —
     /// otherwise <c>is IRevitTask</c> would fail and Revit API types would not match.
+    ///
+    /// Assemblies are loaded from a byte copy (LoadFromStream), NOT LoadFromAssemblyPath, so the
+    /// files on disk are never locked. That lets the author rebuild/overwrite an extension while
+    /// Revit is running; Reload then re-reads the new bytes into a fresh context.
     /// </summary>
     internal sealed class ExtensionLoadContext : AssemblyLoadContext
     {
@@ -28,6 +33,9 @@ namespace AnalyseTool.Infrastructure.Extensions
             _resolver = new AssemblyDependencyResolver(entryAssemblyPath);
         }
 
+        /// <summary>Loads the extension's entry assembly without locking the file on disk.</summary>
+        public Assembly LoadEntry(string path) => LoadFromBytes(path);
+
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             // null => fall through to the default (host) context, preserving type identity.
@@ -35,7 +43,25 @@ namespace AnalyseTool.Infrastructure.Extensions
                 return null;
 
             string? path = _resolver.ResolveAssemblyToPath(assemblyName);
-            return path is not null ? LoadFromAssemblyPath(path) : null;
+            return path is not null ? LoadFromBytes(path) : null;
+        }
+
+        /// <summary>Reads the assembly (and its PDB, if present) into memory and loads from there, so
+        /// the on-disk files stay unlocked.</summary>
+        private Assembly LoadFromBytes(string path)
+        {
+            byte[] assemblyBytes = File.ReadAllBytes(path);
+
+            string pdbPath = Path.ChangeExtension(path, ".pdb");
+            if (File.Exists(pdbPath))
+            {
+                using MemoryStream assemblyStream = new(assemblyBytes);
+                using MemoryStream pdbStream = new(File.ReadAllBytes(pdbPath));
+                return LoadFromStream(assemblyStream, pdbStream);
+            }
+
+            using MemoryStream stream = new(assemblyBytes);
+            return LoadFromStream(stream);
         }
     }
 }

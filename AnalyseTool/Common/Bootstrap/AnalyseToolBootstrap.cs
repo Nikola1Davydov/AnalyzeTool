@@ -1,10 +1,10 @@
 using AnalyseTool.Common;
-using AnalyseTool.Infrastructure.Dispatch;
-using AnalyseTool.Infrastructure.Extensions;
+using AnalyseTool.Common.Dispatch;
+using AnalyseTool.Common.Extensions;
 using Autodesk.Revit.UI;
 using System.Reflection;
 
-namespace AnalyseTool.Infrastructure.Bootstrap
+namespace AnalyseTool.Common.Bootstrap
 {
     internal static class AnalyseToolBootstrap
     {
@@ -17,7 +17,7 @@ namespace AnalyseTool.Infrastructure.Bootstrap
         {
             if (_initialized) return;
 
-            AnalyseTool.Context.Init(uiApp);
+            Context.Init(uiApp);
 
             // Created here because ExternalEvent.Create requires a valid Revit API context,
             // and IExternalCommand.Execute (our caller) is one.

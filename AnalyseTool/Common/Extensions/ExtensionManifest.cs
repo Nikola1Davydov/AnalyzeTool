@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// Shape of the per-extension <c>plugin.json</c> sitting next to the extension files.
@@ -42,6 +42,11 @@ namespace AnalyseTool.Infrastructure.Extensions
         /// <summary>Entry HTML file (relative to the extension folder), e.g. "index.html".</summary>
         [JsonProperty("entryHtml")]
         public string EntryHtml { get; init; } = "index.html";
+
+        /// <summary>Optional dev-server URL (e.g. "http://localhost:5173"). When set, the window loads
+        /// it instead of the built files — enables Vite/HMR live development. Remove for release.</summary>
+        [JsonProperty("devUrl")]
+        public string? DevUrl { get; init; }
 
         /// <summary>Optional ribbon tab name. When omitted the host's default tab is used.</summary>
         [JsonProperty("tab")]

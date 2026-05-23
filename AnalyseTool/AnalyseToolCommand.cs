@@ -1,6 +1,6 @@
-﻿using AnalyseTool.Infrastructure.Bootstrap;
-using AnalyseTool.Infrastructure.Transport;
-using AnalyseTool.Utils;
+﻿using AnalyseTool.Common;
+using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.Common.Transport;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;

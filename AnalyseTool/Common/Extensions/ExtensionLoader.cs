@@ -1,10 +1,9 @@
-using AnalyseTool.Infrastructure.Dispatch;
+using AnalyseTool.Common.Dispatch;
 using AnalyseTool.Sdk;
-using AnalyseTool.Utils;
 using System.IO;
 using System.Reflection;
 
-namespace AnalyseTool.Infrastructure.Extensions
+namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// Loads the C# command half of user-authored extensions discovered by <see cref="ExtensionCatalog"/>.
@@ -71,7 +70,7 @@ namespace AnalyseTool.Infrastructure.Extensions
 
             ExtensionLoadContext alc = new ExtensionLoadContext(entryPath, manifest.Id);
             _contexts.Add(alc);
-            Assembly assembly = alc.LoadFromAssemblyPath(entryPath);
+            Assembly assembly = alc.LoadEntry(entryPath); // byte-load: does not lock the DLL on disk
             _dispatcher.RegisterExtension(assembly, manifest.Id);
         }
 
