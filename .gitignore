@@ -443,3 +443,5 @@ obj/
 # Vitest
 __screenshots__/
 
+/.github/copilot-instructions.md
+/.claude/settings.local.json
