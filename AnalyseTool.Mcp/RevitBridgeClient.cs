@@ -141,7 +141,11 @@ internal sealed class RevitBridgeClient : IAsyncDisposable
         try
         {
             if (_ws is { State: WebSocketState.Open })
-                await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
+            {
+                // Bound the graceful close so shutdown never blocks on the close handshake.
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", cts.Token);
+            }
         }
         catch { /* ignore */ }
         _ws?.Dispose();
