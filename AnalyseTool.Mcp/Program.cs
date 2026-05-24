@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -17,12 +16,6 @@ RevitBridgeClient bridge = new RevitBridgeClient(port);
 
 // Maps the (sanitized) MCP tool name back to the real Revit command name. Rebuilt on every list.
 ConcurrentDictionary<string, string> toolToCommand = new ConcurrentDictionary<string, string>();
-
-// The MCP server is owned by the AI client, not by Revit — so it must shut itself down when Revit
-// exits. The bridge tells us Revit's PID; we watch it and stop the host when it goes away. Held in
-// a variable so the watched Process isn't garbage-collected.
-IHostApplicationLifetime? appLifetime = null;
-Process? revitProcess = null;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -46,23 +39,6 @@ builder.Services
             // Discover the live command set from Revit. If Revit isn't running / MCP is disabled,
             // return an empty list rather than failing the whole server; tools appear once reachable.
             JsonNode? listed = await bridge.ListCommandsAsync(ct);
-
-            // Once we know Revit's PID, watch it and stop this server when Revit exits.
-            if (revitProcess is null && listed?["revitPid"]?.GetValue<int>() is int pid && pid > 0)
-            {
-                try
-                {
-                    revitProcess = Process.GetProcessById(pid);
-                    revitProcess.EnableRaisingEvents = true;
-                    revitProcess.Exited += (_, _) => appLifetime?.StopApplication();
-                    if (revitProcess.HasExited) appLifetime?.StopApplication();
-                }
-                catch
-                {
-                    appLifetime?.StopApplication(); // PID already gone
-                }
-            }
-
             if (listed?["commands"] is JsonArray commands)
             {
                 foreach (JsonNode? entry in commands)
@@ -98,9 +74,11 @@ builder.Services
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Bridge unreachable — surface no tools for now.
+            // Bridge unreachable/slow — return no tools (don't fail the whole server). Log to stderr,
+            // which shows up in the AI client's MCP server log for diagnosis.
+            Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {ex.Message}");
         }
 
         return new ListToolsResult { Tools = tools };
@@ -128,7 +106,6 @@ builder.Services
     });
 
 IHost host = builder.Build();
-appLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
 try
 {
     await host.RunAsync();

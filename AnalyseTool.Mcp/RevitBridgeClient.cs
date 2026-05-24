@@ -24,7 +24,14 @@ internal sealed class RevitBridgeClient : IAsyncDisposable
     private bool IsConnected => _ws is { State: WebSocketState.Open };
 
     public async Task<JsonNode?> ListCommandsAsync(CancellationToken ct)
-        => await SendAsync(new JsonObject { ["type"] = "list" }, ct);
+    {
+        // Discovery must never hang: if the bridge doesn't answer quickly, fail fast so the MCP
+        // server still finishes tools/list (with an empty list) instead of letting the AI client
+        // time the WHOLE server out (~30s) and mark it disconnected.
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(8));
+        return await SendAsync(new JsonObject { ["type"] = "list" }, timeout.Token);
+    }
 
     public async Task<JsonNode?> InvokeAsync(string command, JsonNode? payload, CancellationToken ct)
         => await SendAsync(new JsonObject { ["type"] = "invoke", ["command"] = command, ["payload"] = payload }, ct);
@@ -65,7 +72,12 @@ internal sealed class RevitBridgeClient : IAsyncDisposable
 
             _ws?.Dispose();
             var ws = new ClientWebSocket();
-            await ws.ConnectAsync(_uri, ct);
+            // Bound the connect so a half-open / wrong listener on the port can't hang us.
+            using (var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                connectTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                await ws.ConnectAsync(_uri, connectTimeout.Token);
+            }
             _ws = ws;
             _ = Task.Run(() => ReceiveLoopAsync(ws));
         }

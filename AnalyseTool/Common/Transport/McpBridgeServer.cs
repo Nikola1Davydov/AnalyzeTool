@@ -104,16 +104,41 @@ namespace AnalyseTool.Common.Transport
         private async Task PumpAsync(WebSocket ws, CancellationToken ct)
         {
             byte[] buffer = new byte[8192];
+            SemaphoreSlim sendLock = new(1, 1); // WebSocket sends must not overlap
 
             while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
             {
                 string? message = await ReceiveTextAsync(ws, buffer, ct).ConfigureAwait(false);
                 if (message == null) break; // close or error
 
+                // Handle each message on its own task so a slow command (e.g. a long Revit op or AI
+                // call) can't block subsequent messages — including "list". Receiving stays
+                // sequential (buffer reuse is safe); only dispatch + reply run concurrently.
+                _ = HandleAndReplyAsync(ws, message, sendLock, ct);
+            }
+        }
+
+        private async Task HandleAndReplyAsync(WebSocket ws, string message, SemaphoreSlim sendLock, CancellationToken ct)
+        {
+            try
+            {
                 string response = await HandleMessageAsync(message, ct).ConfigureAwait(false);
                 byte[] bytes = Encoding.UTF8.GetBytes(response);
-                await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, ct)
-                        .ConfigureAwait(false);
+
+                await sendLock.WaitAsync(ct).ConfigureAwait(false);
+                try
+                {
+                    await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, ct)
+                            .ConfigureAwait(false);
+                }
+                finally
+                {
+                    sendLock.Release();
+                }
+            }
+            catch
+            {
+                // Never let a reply failure crash the connection / Revit on a background thread.
             }
         }
 
@@ -139,13 +164,7 @@ namespace AnalyseTool.Common.Transport
                             ["destructive"] = c.Destructive,
                             ["inputSchema"] = JToken.Parse(c.InputSchemaJson),
                         }));
-                    // revitPid lets the out-of-process MCP server shut itself down when Revit exits
-                    // (the server is owned by the AI client, not by Revit, so it must watch us).
-                    return Ok(id, new JObject
-                    {
-                        ["commands"] = commands,
-                        ["revitPid"] = Environment.ProcessId,
-                    });
+                    return Ok(id, new JObject { ["commands"] = commands });
                 }
 
                 string command = (string?)req["command"] ?? string.Empty;

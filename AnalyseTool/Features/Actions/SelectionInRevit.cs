@@ -11,10 +11,8 @@ namespace AnalyseTool.Features.Actions
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             SelectionPayload? list = ctx.Payload.As<SelectionPayload>();
-            if (list == null) return Task.FromResult<object?>(null);
 
-            List<ElementId> elementsIds = list.ElementIds
-                .Where(x => x != null)
+            List<ElementId> elementsIds = (list?.ElementIds ?? new List<long>())
                 .Select(x => new ElementId(x))
                 .ToList();
 

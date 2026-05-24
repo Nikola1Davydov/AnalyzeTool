@@ -20,13 +20,14 @@ namespace AnalyseTool.Features.Get
                 };
             });
 
-        private sealed record DocumentData
-        {
-            [JsonProperty("name")]
-            public string Name { get; set; } = string.Empty;
 
-            [JsonProperty("id")]
-            public string Id { get; set; } = string.Empty;
-        }
+    }
+    internal sealed record DocumentData
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
     }
 }

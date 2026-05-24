@@ -472,8 +472,6 @@ The snippet looks like:
 Notes:
 - Start Revit (with the MCP server enabled) **before** the AI client lists tools — if Revit is down
   at that moment the tool list comes back empty until the client refetches.
-- The `AnalyseTool.Mcp.exe` process shuts itself down when Revit exits (it watches Revit's process),
-  so it won't linger after you close Revit.
 - Nothing extra is required in your extension. To make a command *useful* to an AI, give it a
   `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` (see §4.5)
   — that becomes the tool's description, safety hints, and input schema automatically.
