@@ -390,6 +390,51 @@ and **Reload** buttons.
 
 ---
 
+## 9. Using your commands from AI (MCP)
+
+Every command — built-in **and** from any C# extension — is also exposed to AI clients (Claude
+Desktop, etc.) over the **Model Context Protocol**, with **no extra work on your part**. The moment
+your command is registered, it shows up as an MCP tool.
+
+How it fits together:
+
+```
+AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost WebSocket──▶  in-Revit bridge
+                                                                                  │
+                                                                                  ▼
+                                                                          CommandDispatcher
+```
+
+- `AnalyseTool.Mcp.exe` is a tiny stdio server that ships with the plugin (at
+  `<plugin>\mcp\AnalyseTool.Mcp.exe`). The AI client spawns it.
+- It forwards each tool call over a localhost WebSocket to a bridge **inside Revit**, which calls
+  the same `CommandDispatcher` your commands are registered in.
+- It **discovers commands live**: when the AI lists tools, the bridge returns the current command
+  set, so your extension's commands appear as tools automatically (`acme.sample.Hello` →
+  a tool named `acme_sample_Hello`). Tool arguments are passed straight through as your command's
+  JSON payload (the same thing `ctx.Payload` deserializes).
+
+**To turn it on:** open the **AnalyseTool tab → Settings → MCP server**, pick a port, click
+**Start**, then copy the generated **Claude Desktop config** snippet into your client's MCP config.
+The snippet looks like:
+
+```json
+{
+  "mcpServers": {
+    "analysetool-revit": {
+      "command": "C:\\...\\AnalyseTool\\mcp\\AnalyseTool.Mcp.exe",
+      "args": ["--port", "17890"]
+    }
+  }
+}
+```
+
+Notes:
+- Start Revit (with the MCP server enabled) **before** the AI client lists tools — if Revit is down
+  at that moment the tool list comes back empty until the client refetches.
+- Nothing extra is required in your extension. If you want your command to be *useful* to an AI,
+  give it a clear, specific `[RevitCommand]` name and keep its arguments/return value simple JSON.
+
 ## Reference: the SDK surface
 
 ```csharp

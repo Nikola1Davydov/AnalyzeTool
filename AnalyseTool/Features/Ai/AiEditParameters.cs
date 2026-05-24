@@ -4,11 +4,14 @@ using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Ai
 {
-    internal sealed class AiEditParameters : IRevitTask
+    [RevitCommand("AiEditParameters",
+        Description = "Asks the AI to propose parameter edits for the given items and returns the edits " +
+                      "(apply them via SetDataToParameters). Payload: { model, prompt, items }.",
+        Destructive = true)]
+    internal sealed class AiEditParameters : RevitTask<AnalyzeParameterWithAiRequest>
     {
-        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public override async Task<object?> ExecuteAsync(AnalyzeParameterWithAiRequest request, IRevitContext ctx, CancellationToken ct)
         {
-            AnalyzeParameterWithAiRequest? request = ctx.Payload.As<AnalyzeParameterWithAiRequest>();
             if (request == null) return null;
 
             try

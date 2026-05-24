@@ -1,4 +1,5 @@
 using AnalyseTool.Sdk;
+using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -66,7 +67,8 @@ namespace AnalyseTool.Common.Dispatch
 
         private void TryRegister(Type type, string source, string? prefix)
         {
-            string baseName = type.GetCustomAttribute<RevitCommandAttribute>()?.Name ?? type.Name;
+            RevitCommandAttribute? attr = type.GetCustomAttribute<RevitCommandAttribute>();
+            string baseName = attr?.Name ?? type.Name;
             string name = string.IsNullOrEmpty(prefix) ? baseName : $"{prefix}.{baseName}";
             if (_commands.TryGetValue(name, out CommandRegistration? existing))
             {
@@ -75,9 +77,44 @@ namespace AnalyseTool.Common.Dispatch
                     $"Skipping registration from '{source}'.");
                 return;
             }
-            _commands[name] = new CommandRegistration(name, type, source);
+
+            Type? inputType = GetInputType(type);
+            _commands[name] = new CommandRegistration(
+                name, type, source,
+                attr?.Description,
+                attr?.ReadOnly ?? false,
+                attr?.Destructive ?? false,
+                BuildInputSchema(inputType));
+        }
+
+        /// <summary>If the command implements <c>IRevitTask&lt;TInput&gt;</c>, returns TInput (for schema gen).</summary>
+        private static Type? GetInputType(Type type)
+        {
+            Type? iface = type.GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRevitTask<>));
+            return iface?.GetGenericArguments().FirstOrDefault();
+        }
+
+        /// <summary>Generates a JSON Schema for the typed input (via Microsoft.Extensions.AI, already
+        /// referenced) so MCP clients know which arguments the command takes. No input → empty object.</summary>
+        private static string BuildInputSchema(Type? inputType)
+        {
+            try
+            {
+                if (inputType != null)
+                    return AIJsonUtilities.CreateJsonSchema(inputType).GetRawText();
+            }
+            catch { /* fall through to the empty-object schema */ }
+            return "{\"type\":\"object\",\"properties\":{}}";
         }
     }
 
-    internal sealed record CommandRegistration(string Name, Type CommandType, string Source);
+    internal sealed record CommandRegistration(
+        string Name,
+        Type CommandType,
+        string Source,
+        string? Description = null,
+        bool ReadOnly = false,
+        bool Destructive = false,
+        string InputSchemaJson = "{\"type\":\"object\",\"properties\":{}}");
 }

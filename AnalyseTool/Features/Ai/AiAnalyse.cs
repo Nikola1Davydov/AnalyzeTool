@@ -4,11 +4,13 @@ using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Ai
 {
-    internal sealed class AiAnalyse : IRevitTask
+    [RevitCommand("AiAnalyse",
+        Description = "Runs an AI analysis over the given parameter items using the named model and prompt; " +
+                      "returns the model's analysis. Does not modify the model. Payload: { model, prompt, items }.")]
+    internal sealed class AiAnalyse : RevitTask<AnalyzeParameterWithAiRequest>
     {
-        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public override async Task<object?> ExecuteAsync(AnalyzeParameterWithAiRequest request, IRevitContext ctx, CancellationToken ct)
         {
-            AnalyzeParameterWithAiRequest? request = ctx.Payload.As<AnalyzeParameterWithAiRequest>();
             if (request == null) return null;
 
             try

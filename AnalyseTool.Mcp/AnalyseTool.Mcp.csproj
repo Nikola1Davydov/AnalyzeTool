@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Out-of-process MCP server. The AI client (Claude Desktop, etc.) spawns this exe and talks MCP
+    over stdio; the exe forwards each tool call over a localhost WebSocket to the in-Revit bridge
+    (McpBridgeServer) which reaches the SAME CommandDispatcher. So every built-in AND user-extension
+    command is exposed to AI automatically (discovered live via the bridge's "list" message).
+
+    No Revit/SDK references on purpose: this process never loads the Revit API. It only speaks two
+    JSON protocols (MCP stdio <-> our tiny bridge envelope). net8.0 (not -windows): no UI.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>AnalyseTool.Mcp</AssemblyName>
+    <RootNamespace>AnalyseTool.Mcp</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Configurations>Debug R25;Debug R26;Release R25;Release R26</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('Release'))">
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="1.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -71,7 +71,6 @@
         </ItemGroup>
         <Copy SourceFiles="@(DistFiles)" DestinationFolder="$(DistTarget)\%(RecursiveDir)" SkipUnchangedFiles="true" />
     </Target>
-
     
     <Target Name="CopyToRevitFolder" AfterTargets="Publish;Build">
 		<ItemGroup>

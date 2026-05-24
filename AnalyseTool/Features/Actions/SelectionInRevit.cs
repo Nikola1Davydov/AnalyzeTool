@@ -3,11 +3,12 @@ using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Features.Actions
 {
-    internal sealed class SelectionInRevit : IRevitTask
+    [RevitCommand("SelectionInRevit",
+        Description = "Selects the given elements (by id) in the active document.")]
+    internal sealed class SelectionInRevit : RevitTask<SelectionInRevit.SelectionPayload>
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public override Task<object?> ExecuteAsync(SelectionPayload list, IRevitContext ctx, CancellationToken ct)
         {
-            SelectionPayload? list = ctx.Payload.As<SelectionPayload>();
             if (list == null) return Task.FromResult<object?>(null);
 
             List<ElementId> elementsIds = list.ElementIds
@@ -22,8 +23,9 @@ namespace AnalyseTool.Features.Actions
             });
         }
 
-        private sealed record SelectionPayload
+        public sealed record SelectionPayload
         {
+            /// <summary>Element ids (Revit ElementId values) to select.</summary>
             public List<long> ElementIds { get; set; }
         }
     }

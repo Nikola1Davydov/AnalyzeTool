@@ -1,6 +1,7 @@
 using AnalyseTool.Common;
 using AnalyseTool.Common.Dispatch;
 using AnalyseTool.Common.Extensions;
+using AnalyseTool.Common.Transport;
 using Autodesk.Revit.UI;
 using System.Reflection;
 
@@ -30,6 +31,10 @@ namespace AnalyseTool.Common.Bootstrap
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\
             _loader = new ExtensionLoader(Dispatcher, HostRevitTag(uiApp));
             _loader.LoadAll(PathProvider.ExtensionsDirectory);
+
+            // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
+            // auto-starts it if the user enabled it previously (persisted in mcp.json).
+            McpServerController.Initialize(Dispatcher);
 
             _initialized = true;
         }

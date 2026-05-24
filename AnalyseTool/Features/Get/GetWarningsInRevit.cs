@@ -3,6 +3,10 @@ using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Features.Get
 {
+    [RevitCommand("GetWarningsInRevit",
+        Description = "Returns the active document's review warnings, each with its description and the " +
+                      "failing/additional element ids.",
+        ReadOnly = true)]
     internal sealed class GetWarningsInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

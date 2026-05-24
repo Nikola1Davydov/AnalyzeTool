@@ -8,11 +8,14 @@ using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Features.Actions
 {
-    internal sealed class SetDataToParameters : IRevitTask
+    [RevitCommand("SetDataToParameters",
+        Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
+                      "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }.",
+        Destructive = true)]
+    internal sealed class SetDataToParameters : RevitTask<SetDataToParameters.SetDataToParametersDto>
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public override Task<object?> ExecuteAsync(SetDataToParametersDto list, IRevitContext ctx, CancellationToken ct)
         {
-            SetDataToParametersDto? list = ctx.Payload.As<SetDataToParametersDto>();
             if (list == null) return Task.FromResult<object?>(null);
 
             return ctx.RunInRevitAsync<object?>(app =>

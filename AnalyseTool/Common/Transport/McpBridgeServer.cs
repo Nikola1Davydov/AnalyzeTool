@@ -128,11 +128,18 @@ namespace AnalyseTool.Common.Transport
 
                 if (string.Equals(type, "list", StringComparison.OrdinalIgnoreCase))
                 {
-                    var commands = _dispatcher.RegisteredCommands
-                        .Select(c => new { name = c.Name, source = c.Source })
-                        .OrderBy(c => c.name, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-                    return Ok(id, JToken.FromObject(new { commands }));
+                    JArray commands = new(_dispatcher.RegisteredCommands
+                        .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(c => new JObject
+                        {
+                            ["name"] = c.Name,
+                            ["source"] = c.Source,
+                            ["description"] = c.Description,
+                            ["readOnly"] = c.ReadOnly,
+                            ["destructive"] = c.Destructive,
+                            ["inputSchema"] = JToken.Parse(c.InputSchemaJson),
+                        }));
+                    return Ok(id, new JObject { ["commands"] = commands });
                 }
 
                 string command = (string?)req["command"] ?? string.Empty;

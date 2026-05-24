@@ -3,6 +3,10 @@ using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Get
 {
+    [RevitCommand("GetCategoriesInRevit",
+        Description = "Returns the names of all element categories present in the active document. " +
+                      "Use these names with GetDataByCategoryName.",
+        ReadOnly = true)]
     internal sealed class GetCategoriesInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

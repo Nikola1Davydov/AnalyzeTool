@@ -4,11 +4,14 @@ using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Get
 {
-    internal sealed class GetDataByCategoryName : IRevitTask
+    [RevitCommand("GetDataByCategoryName",
+        Description = "Returns all elements of the given Revit category in the active document, " +
+                      "each with its parameters. Call GetCategoriesInRevit first to get valid category names.",
+        ReadOnly = true)]
+    internal sealed class GetDataByCategoryName : RevitTask<GetDataByCategoryName.Request>
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public override Task<object?> ExecuteAsync(Request data, IRevitContext ctx, CancellationToken ct)
         {
-            Request? data = ctx.Payload.As<Request>();
             if (string.IsNullOrEmpty(data?.CategoryName))
                 return Task.FromResult<object?>(new List<DataElement>());
 
@@ -20,8 +23,9 @@ namespace AnalyseTool.Features.Get
             });
         }
 
-        private sealed record Request
+        public sealed record Request
         {
+            /// <summary>Revit category name, e.g. "Walls", "Doors" (as returned by GetCategoriesInRevit).</summary>
             public string CategoryName { get; set; } = string.Empty;
         }
     }
