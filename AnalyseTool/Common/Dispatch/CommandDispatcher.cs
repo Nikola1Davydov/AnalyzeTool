@@ -93,7 +93,15 @@ namespace AnalyseTool.Common.Dispatch
             try
             {
                 if (inputType != null)
-                    return AIJsonUtilities.CreateJsonSchema(inputType).GetRawText();
+                {
+                    string json = AIJsonUtilities.CreateJsonSchema(inputType).GetRawText();
+                    // Keep tools/list small: deeply-nested DTOs (e.g. lists of element/parameter
+                    // models) generate huge schemas that bloat every listing without helping the AI
+                    // much. Over the cap, fall back to a permissive object schema; the command's
+                    // Description carries the shape instead.
+                    if (json.Length <= 4096) return json;
+                    return "{\"type\":\"object\",\"additionalProperties\":true}";
+                }
             }
             catch { /* fall through to the empty-object schema */ }
             return "{\"type\":\"object\",\"properties\":{}}";

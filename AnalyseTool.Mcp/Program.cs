@@ -12,6 +12,10 @@ using System.Text.RegularExpressions;
 // localhost WebSocket. Port comes from --port (default matches McpServerController.DefaultPort).
 int port = ParsePort(args) ?? 17890;
 
+// Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
+// client's MCP server log so it's unambiguous which build is running and which port it targets.
+Console.Error.WriteLine($"[AnalyseTool.Mcp] starting — {BuildStamp()}, bridge port {port}");
+
 RevitBridgeClient bridge = new RevitBridgeClient(port);
 
 // Maps the (sanitized) MCP tool name back to the real Revit command name. Rebuilt on every list.
@@ -106,18 +110,23 @@ builder.Services
     });
 
 IHost host = builder.Build();
-try
-{
-    await host.RunAsync();
-}
-finally
-{
-    await bridge.DisposeAsync();
-}
+await host.RunAsync();
 
 return;
 
 // ---- helpers ----
+
+// Identifies the running build: assembly version + the exe/dll build time (changes every rebuild),
+// so the log proves whether a fresh exe was deployed.
+static string BuildStamp()
+{
+    System.Reflection.Assembly asm = System.Reflection.Assembly.GetExecutingAssembly();
+    string ver = asm.GetName().Version?.ToString() ?? "?";
+    string built;
+    try { built = System.IO.File.GetLastWriteTime(asm.Location).ToString("yyyy-MM-dd HH:mm:ss"); }
+    catch { built = "?"; }
+    return $"v{ver} built {built}";
+}
 
 static int? ParsePort(string[] args)
 {
