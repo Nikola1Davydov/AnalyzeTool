@@ -28,6 +28,7 @@ import DataTable from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import Toast from "primevue/toast";
 import ToastService from "primevue/toastservice";
+import CreateExtensionTemplateDrawer from "@/view/System/CreateExtensionTemplateDrawer.vue";
 
 import { definePreset } from "@primeuix/themes";
 
@@ -79,6 +80,7 @@ app.component("AutoComplete", AutoComplete);
 app.component("DataTable", DataTable);
 app.component("Dialog", Dialog);
 app.component("Toast", Toast);
+app.component("CreateExtensionTemplateDrawer", CreateExtensionTemplateDrawer);
 
 app.use(createPinia());
 app.use(router).mount("#app");

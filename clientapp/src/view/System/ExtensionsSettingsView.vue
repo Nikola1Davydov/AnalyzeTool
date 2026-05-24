@@ -37,6 +37,11 @@ const loading = ref(true);
 const mcp = ref<McpStatus | null>(null);
 const mcpBusy = ref(false);
 const port = ref("17890");
+const templateDrawerVisible = ref(false);
+
+function openTemplateDrawer() {
+  templateDrawerVisible.value = true;
+}
 
 async function load() {
   loading.value = true;
@@ -132,6 +137,12 @@ onMounted(() => {
         </p>
       </div>
       <div class="flex gap-2 shrink-0">
+        <Button
+          label="New template"
+          icon="pi pi-plus"
+          severity="contrast"
+          @click="openTemplateDrawer"
+        />
         <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
         <Button
           label="Open folder"
@@ -169,6 +180,13 @@ onMounted(() => {
         <div class="text-surface-500 p-4">No extensions installed.</div>
       </template>
     </DataTable>
+
+    <CreateExtensionTemplateDrawer
+      v-model:visible="templateDrawerVisible"
+      :hostRevit="data?.hostRevit"
+      :extensionsRoot="data?.extensionsRoot"
+      @created="load"
+    />
 
     <!-- MCP server: exposes every command (built-in + extensions) to AI clients over MCP. -->
     <section class="mt-8 border-t border-surface-200 pt-6">
@@ -228,7 +246,8 @@ onMounted(() => {
         </div>
         <pre
           class="bg-surface-100 text-surface-700 text-xs rounded p-3 overflow-auto whitespace-pre-wrap break-all"
-        >{{ clientConfig }}</pre>
+          >{{ clientConfig }}</pre
+        >
       </div>
     </section>
   </div>
