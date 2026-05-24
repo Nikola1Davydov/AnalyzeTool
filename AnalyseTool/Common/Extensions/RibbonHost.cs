@@ -171,21 +171,8 @@ namespace AnalyseTool.Common.Extensions
 
         public static void OpenSettings(UIApplication uiApp)
         {
-            string folder = PathProvider.ExtensionsDirectory;
-            Directory.CreateDirectory(folder);
-
-            TaskDialog dialog = new("AnalyseTool — Extensions")
-            {
-                MainInstruction = "User extensions",
-                MainContent =
-                    $"Drop one folder per extension into:\n{folder}\n\n" +
-                    "Each folder needs a plugin.json (id, version, targetRevit, sdkVersion, " +
-                    "optional entryAssembly for C# commands and optional ui{ entryHtml, button } for a ribbon button). " +
-                    "Use Reload after changes.",
-            };
-            dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Open extensions folder");
-            if (dialog.Show() == TaskDialogResult.CommandLink1)
-                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+            AnalyseToolBootstrap.Initialize(uiApp);
+            new SettingsWindow().Show();
         }
 
         public static void Reload(UIApplication uiApp)

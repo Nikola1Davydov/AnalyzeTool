@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, provide, watch } from "vue";
+import { ref, onMounted, provide, watch, computed } from "vue";
+import { useRoute } from "vue-router";
 import { useToast } from "primevue/usetoast";
 import { useUpdateStore } from "@/stores/useUpdateStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
@@ -13,6 +14,10 @@ const toast = useToast();
 const notificationStore = useNotificationStore();
 const updateStore = useUpdateStore();
 const sidebarVisible = ref(false);
+
+// System pages (/system/*) render without the app chrome (header/sidebar/footer).
+const route = useRoute();
+const isBare = computed(() => route.meta.layout === "bare");
 
 watch(
   () => notificationStore.pending,
@@ -45,8 +50,13 @@ provide("sidebarActions", {
 </script>
 
 <template>
-  <div class="layout-wrapper">
-    <Toast position="bottom-right" />
+  <Toast position="bottom-right" />
+
+  <!-- Bare layout for system pages -->
+  <router-view v-if="isBare" />
+
+  <!-- Default layout with the app chrome -->
+  <div v-else class="layout-wrapper">
     <div>
       <HeaderLayout />
       <div class="layout-sidebar">

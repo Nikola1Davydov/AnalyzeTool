@@ -1,4 +1,4 @@
-import { createWebHistory, createRouter } from "vue-router";
+import { createWebHashHistory, createRouter } from "vue-router";
 
 import AboutView from "@/view/AboutView.vue";
 import ParameterFilledEmptyPage from "@/view/ParameterFilledEmptyView.vue";
@@ -7,6 +7,7 @@ import ParameterValueCheckView from "@/view/ParameterValueCheckView.vue";
 import FamiliesView from "@/view/FamiliesView.vue";
 import ConnectParameters from "@/view/ConnectParameters/ConnectParametersView.vue";
 import ParameterCanvasView from "@/view/InfiniteCanvas/ParameterCanvasView.vue";
+import ExtensionsSettingsView from "@/view/System/ExtensionsSettingsView.vue";
 
 const routes = [
   { path: "/", component: ParameterCanvasView },
@@ -18,10 +19,11 @@ const routes = [
   { path: "/families", component: FamiliesView },
   { path: "/connectParameters", component: ConnectParameters },
   { path: "/parameterCanvasView", component: ParameterCanvasView },
+  { path: "/system/settings", component: ExtensionsSettingsView, meta: { layout: "bare" } },
 ];
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes,
 });
 

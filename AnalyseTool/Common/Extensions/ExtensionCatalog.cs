@@ -49,5 +49,30 @@ namespace AnalyseTool.Common.Extensions
 
             return result;
         }
+
+        /// <summary>Enumerates every extension in the folder regardless of Revit compatibility and
+        /// without surfacing dialogs — for the Settings page listing. Unreadable folders are skipped.</summary>
+        public static IReadOnlyList<ExtensionDescriptor> EnumerateAll(string extensionsRoot)
+        {
+            List<ExtensionDescriptor> result = new();
+            if (!Directory.Exists(extensionsRoot)) return result;
+
+            foreach (string dir in Directory.GetDirectories(extensionsRoot))
+            {
+                try
+                {
+                    string manifestPath = Path.Combine(dir, "plugin.json");
+                    if (!File.Exists(manifestPath)) continue;
+
+                    ExtensionManifest? manifest = JsonConvert.DeserializeObject<ExtensionManifest>(File.ReadAllText(manifestPath));
+                    if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id)) continue;
+
+                    result.Add(new ExtensionDescriptor(manifest, dir));
+                }
+                catch { /* skip unreadable manifests */ }
+            }
+
+            return result;
+        }
     }
 }
