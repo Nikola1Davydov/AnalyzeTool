@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Features.Get
 {
-    [RevitCommand("GetWarningsInRevit",
+    [RevitCommand(
         Description = "Returns the active document's review warnings, each with its description and the " +
                       "failing/additional element ids.",
         ReadOnly = true)]

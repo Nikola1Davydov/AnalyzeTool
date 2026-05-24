@@ -8,14 +8,16 @@ using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Features.Actions
 {
-    [RevitCommand("SetDataToParameters",
+    [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
                       "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }.",
-        Destructive = true)]
-    internal sealed class SetDataToParameters : RevitTask<SetDataToParameters.SetDataToParametersDto>
+        Destructive = true,
+        InputType = typeof(SetDataToParameters.SetDataToParametersDto))]
+    internal sealed class SetDataToParameters : IRevitTask
     {
-        public override Task<object?> ExecuteAsync(SetDataToParametersDto list, IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
+            SetDataToParametersDto? list = ctx.Payload.As<SetDataToParametersDto>();
             if (list == null) return Task.FromResult<object?>(null);
 
             return ctx.RunInRevitAsync<object?>(app =>
@@ -90,7 +92,7 @@ namespace AnalyseTool.Features.Actions
             parameter.SetParameterValue(value);
         }
 
-        private sealed record SetDataToParametersDto()
+        internal sealed record SetDataToParametersDto()
         {
             [JsonProperty("items")]
             public List<ParameterData> Items { get; set; } = new();
@@ -100,7 +102,7 @@ namespace AnalyseTool.Features.Actions
             public SetDataMode Mode { get; set; }
         }
 
-        private enum SetDataMode
+        internal enum SetDataMode
         {
             Overwrite,
             OnlyIfEmpty,

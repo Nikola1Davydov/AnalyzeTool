@@ -139,7 +139,13 @@ namespace AnalyseTool.Common.Transport
                             ["destructive"] = c.Destructive,
                             ["inputSchema"] = JToken.Parse(c.InputSchemaJson),
                         }));
-                    return Ok(id, new JObject { ["commands"] = commands });
+                    // revitPid lets the out-of-process MCP server shut itself down when Revit exits
+                    // (the server is owned by the AI client, not by Revit, so it must watch us).
+                    return Ok(id, new JObject
+                    {
+                        ["commands"] = commands,
+                        ["revitPid"] = Environment.ProcessId,
+                    });
                 }
 
                 string command = (string?)req["command"] ?? string.Empty;

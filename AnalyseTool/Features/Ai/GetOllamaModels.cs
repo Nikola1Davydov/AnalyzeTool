@@ -4,6 +4,10 @@ using System.Net.Http;
 
 namespace AnalyseTool.Features.Ai
 {
+    [RevitCommand(
+        Description = "Returns the list of locally available Ollama model names (for the AI features). " +
+                      "Does not touch the Revit model.",
+        ReadOnly = true)]
     internal sealed class GetOllamaModels : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -3,9 +3,9 @@ using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Get
 {
-    [RevitCommand("GetCategoriesInRevit",
+    [RevitCommand(
         Description = "Returns the names of all element categories present in the active document. " +
-                      "Use these names with GetDataByCategoryName.",
+                      $"Use these names with {nameof(GetDataByCategoryName)}.",
         ReadOnly = true)]
     internal sealed class GetCategoriesInRevit : IRevitTask
     {

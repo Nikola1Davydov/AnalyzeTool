@@ -253,8 +253,10 @@ to reject it — the transport reports the exception message back to JS.
 ### 4.4 Command names
 
 The wire name is what JS calls and what the dispatcher registers. By default it's the **class
-name**; `[RevitCommand("Name")]` overrides it so you can rename the class without breaking
-callers. The dispatcher namespaces every extension command with your `id`:
+name** — whether you have no attribute at all, or `[RevitCommand]` with only metadata
+(`[RevitCommand(Description = "...", ReadOnly = true)]`). Pass a name only to *override* it,
+`[RevitCommand("OtherName")]`, e.g. to rename the class without breaking callers. The dispatcher
+namespaces every extension command with your `id`:
 
 ```
 plugin.json id  +  command name   ──▶   wire name
@@ -264,6 +266,44 @@ plugin.json id  +  command name   ──▶   wire name
 So the sample is called as `AT.invoke("acme.sample.Hello")`.
 
 ---
+
+### 4.5 Command metadata (powers MCP)
+
+`[RevitCommand]` carries everything MCP needs to make your command usable by an AI. You still read
+the payload yourself with `ctx.Payload.As<T>()`; you just *declare the input type* so the host can
+publish a JSON schema for it.
+
+```csharp
+[RevitCommand("SetWallComment",
+    Description = "Sets the Comments parameter on the given walls. Modifies the model.",
+    Destructive = true,                          // -> MCP destructiveHint
+    InputType = typeof(SetWallComment.Args))]    // -> generates the tool's input schema
+public sealed class SetWallComment : IRevitTask
+{
+    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+    {
+        Args? args = ctx.Payload.As<Args>();     // deserialize as usual
+        return ctx.RunInRevitAsync<object?>(app => { /* ...use args.ElementIds / args.Comment... */ return null; });
+    }
+
+    internal sealed record Args                  // must be at least `internal` (see note)
+    {
+        public List<long> ElementIds { get; set; } = new();
+        public string Comment { get; set; } = "";
+    }
+}
+```
+
+| `[RevitCommand]` field | Effect |
+| --- | --- |
+| `Description` | MCP tool description + appears to JS callers. Be specific: what it does, when, what it returns. |
+| `ReadOnly = true` | Marks the tool `readOnlyHint` — clients treat it as safe. Use for `Get*`/query commands. |
+| `Destructive = true` | Marks the tool `destructiveHint` — clients may warn/confirm. Use for writes/deletes. |
+| `InputType = typeof(T)` | The host generates the tool's JSON **input schema** from `T`, so an AI knows which arguments to send. Omit for no-argument commands. |
+
+Note: the type passed to `InputType` must be at least `internal` (so `typeof(...)` in the attribute
+can reference it) — a `private` nested type won't compile there. Commands with **no** arguments just
+omit `InputType`.
 
 ## 5. Writing a JS / UI extension
 
@@ -432,8 +472,9 @@ The snippet looks like:
 Notes:
 - Start Revit (with the MCP server enabled) **before** the AI client lists tools — if Revit is down
   at that moment the tool list comes back empty until the client refetches.
-- Nothing extra is required in your extension. If you want your command to be *useful* to an AI,
-  give it a clear, specific `[RevitCommand]` name and keep its arguments/return value simple JSON.
+- Nothing extra is required in your extension. To make a command *useful* to an AI, give it a
+  `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` (see §4.5)
+  — that becomes the tool's description, safety hints, and input schema automatically.
 
 ## Reference: the SDK surface
 

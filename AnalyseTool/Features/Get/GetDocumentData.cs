@@ -4,6 +4,9 @@ using Newtonsoft.Json;
 
 namespace AnalyseTool.Features.Get
 {
+    [RevitCommand(
+        Description = "Returns summary information about the active Revit document (title, path and related metadata).",
+        ReadOnly = true)]
     internal sealed class GetDocumentData : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

@@ -5,7 +5,7 @@ namespace AnalyseTool.Features.Mcp
 {
     /// <summary>Returns the MCP bridge status (running/port/enabled + the server exe path) for the
     /// Settings page.</summary>
-    [RevitCommand("GetMcpStatus",
+    [RevitCommand(
         Description = "Returns the MCP bridge status: running, enabled, port, the server exe path and whether it exists.",
         ReadOnly = true)]
     internal sealed class GetMcpStatus : IRevitTask
@@ -16,12 +16,13 @@ namespace AnalyseTool.Features.Mcp
 
     /// <summary>Enables/disables the MCP bridge (and sets its port), persisting the choice. Starts or
     /// stops the localhost WebSocket listener live.</summary>
-    [RevitCommand("SetMcpServer",
+    [RevitCommand(
         Description = "Enables/disables the MCP bridge and sets its port (persisted). Starts/stops the " +
-                      "localhost WebSocket listener live. Payload: { enabled: bool, port?: number }.")]
-    internal sealed class SetMcpServer : RevitTask<SetMcpServer.Args>
+                      "localhost WebSocket listener live. Payload: { enabled: bool, port?: number }.",
+        InputType = typeof(SetMcpServer.Args))]
+    internal sealed class SetMcpServer : IRevitTask
     {
-        public sealed class Args
+        internal sealed class Args
         {
             /// <summary>Turn the MCP bridge on (true) or off (false).</summary>
             public bool Enabled { get; set; }
@@ -30,7 +31,10 @@ namespace AnalyseTool.Features.Mcp
             public int? Port { get; set; }
         }
 
-        public override Task<object?> ExecuteAsync(Args args, IRevitContext ctx, CancellationToken ct)
-            => Task.FromResult<object?>(McpServerController.Apply(args?.Enabled ?? false, args?.Port));
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        {
+            Args args = ctx.Payload.As<Args>() ?? new Args();
+            return Task.FromResult<object?>(McpServerController.Apply(args.Enabled, args.Port));
+        }
     }
 }

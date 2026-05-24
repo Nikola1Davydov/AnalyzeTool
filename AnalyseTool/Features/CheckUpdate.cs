@@ -6,6 +6,10 @@ using System.Net.Http.Headers;
 
 namespace AnalyseTool.Features
 {
+    [RevitCommand(
+        Description = "Checks the release feed for a newer AnalyseTool version and returns update info. " +
+                      "Network call; does not touch the Revit model.",
+        ReadOnly = true)]
     internal sealed class CheckUpdate : IRevitTask
     {
         private static readonly HttpClient _httpClient = new HttpClient();

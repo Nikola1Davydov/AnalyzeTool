@@ -3,13 +3,15 @@ using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Features.Actions
 {
-    [RevitCommand("IsolationInRevit",
+    [RevitCommand(
         Description = "Temporarily isolates the given elements (by id) in the active view " +
-                      "(reversible temporary hide/isolate). Pass an empty list to do nothing.")]
-    internal sealed class IsolationInRevit : RevitTask<IsolationInRevit.Request>
+                      "(reversible temporary hide/isolate). Pass an empty list to do nothing.",
+        InputType = typeof(IsolationInRevit.Request))]
+    internal sealed class IsolationInRevit : IRevitTask
     {
-        public override Task<object?> ExecuteAsync(Request data, IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
+            Request? data = ctx.Payload.As<Request>();
             List<ElementId> elementsIds = (data?.ElementIds ?? new List<long>())
                 .Select(x => new ElementId(x))
                 .ToList();
@@ -33,7 +35,7 @@ namespace AnalyseTool.Features.Actions
             });
         }
 
-        public sealed record Request
+        internal sealed record Request
         {
             /// <summary>Element ids (Revit ElementId values) to isolate in the active view.</summary>
             public List<long> ElementIds { get; set; } = new();

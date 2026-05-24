@@ -1,14 +1,13 @@
 using AnalyseTool.Common;
-using AnalyseTool.Common.Bootstrap;
 using AnalyseTool.Common.Extensions;
 using AnalyseTool.Sdk;
-using System.Diagnostics;
-using System.IO;
 
 namespace AnalyseTool.Features.Extensions
 {
     /// <summary>Lists every installed extension (compatible or not) for the Settings page.</summary>
-    [RevitCommand("GetInstalledExtensions")]
+    [RevitCommand(
+        Description = "Lists every installed extension (compatible or not) with id, version, target Revit and capabilities.",
+        ReadOnly = true)]
     internal sealed class GetInstalledExtensions : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -44,32 +43,6 @@ namespace AnalyseTool.Features.Extensions
         {
             string version = AnalyseTool.Context.UiApplication.Application.VersionNumber;
             return version.Length >= 4 ? $"R{version.Substring(2)}" : version;
-        }
-    }
-
-    /// <summary>Opens the extensions folder in Explorer.</summary>
-    [RevitCommand("OpenExtensionsFolder")]
-    internal sealed class OpenExtensionsFolder : IRevitTask
-    {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
-        {
-            string folder = PathProvider.ExtensionsDirectory;
-            Directory.CreateDirectory(folder);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
-            return Task.FromResult<object?>(null);
-        }
-    }
-
-    /// <summary>Reloads extension command DLLs (collectible ALC) and refreshes the ribbon buttons,
-    /// all without restarting Revit.</summary>
-    [RevitCommand("ReloadExtensions")]
-    internal sealed class ReloadExtensionsCommand : IRevitTask
-    {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
-        {
-            AnalyseToolBootstrap.ReloadExtensions();
-            RibbonEventHub.Run(uiApp => RibbonHost.RefreshExtensionButtons(GetInstalledExtensions.HostTag()));
-            return Task.FromResult<object?>(null);
         }
     }
 }

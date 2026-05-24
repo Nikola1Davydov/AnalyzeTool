@@ -7,8 +7,7 @@ namespace AnalyseTool.Common.Dispatch
 {
     internal sealed class CommandDispatcher
     {
-        private readonly Dictionary<string, CommandRegistration> _commands
-            = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, CommandRegistration> _commands = new(StringComparer.OrdinalIgnoreCase);
         private readonly RevitTaskHub _hub;
 
         public CommandDispatcher(RevitTaskHub hub) => _hub = hub;
@@ -68,7 +67,8 @@ namespace AnalyseTool.Common.Dispatch
         private void TryRegister(Type type, string source, string? prefix)
         {
             RevitCommandAttribute? attr = type.GetCustomAttribute<RevitCommandAttribute>();
-            string baseName = attr?.Name ?? type.Name;
+            // No [RevitCommand] at all, or [RevitCommand] without an explicit name -> use the class name.
+            string baseName = string.IsNullOrEmpty(attr?.Name) ? type.Name : attr!.Name!;
             string name = string.IsNullOrEmpty(prefix) ? baseName : $"{prefix}.{baseName}";
             if (_commands.TryGetValue(name, out CommandRegistration? existing))
             {
@@ -78,24 +78,15 @@ namespace AnalyseTool.Common.Dispatch
                 return;
             }
 
-            Type? inputType = GetInputType(type);
             _commands[name] = new CommandRegistration(
                 name, type, source,
                 attr?.Description,
                 attr?.ReadOnly ?? false,
                 attr?.Destructive ?? false,
-                BuildInputSchema(inputType));
+                BuildInputSchema(attr?.InputType));
         }
 
-        /// <summary>If the command implements <c>IRevitTask&lt;TInput&gt;</c>, returns TInput (for schema gen).</summary>
-        private static Type? GetInputType(Type type)
-        {
-            Type? iface = type.GetInterfaces()
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRevitTask<>));
-            return iface?.GetGenericArguments().FirstOrDefault();
-        }
-
-        /// <summary>Generates a JSON Schema for the typed input (via Microsoft.Extensions.AI, already
+        /// <summary>Generates a JSON Schema for the declared input type (via Microsoft.Extensions.AI, already
         /// referenced) so MCP clients know which arguments the command takes. No input → empty object.</summary>
         private static string BuildInputSchema(Type? inputType)
         {

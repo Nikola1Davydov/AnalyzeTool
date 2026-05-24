@@ -5,6 +5,10 @@ using System.IO;
 
 namespace AnalyseTool.Features.Get
 {
+    [RevitCommand(
+        Description = "Returns health metrics for the active document (e.g. warnings count, file size, " +
+                      "element counts) used by the Document Health page.",
+        ReadOnly = true)]
     internal sealed class GetDocumentHealthStatus : IRevitTask
     {
         private Document _doc = null!;
