@@ -16,25 +16,30 @@ namespace AnalyseTool.Features.Extensions
             string hostRevit = CommonUtils.HostRevitTag(Context.UiApplication.Application.VersionNumber);
             string root = PathProvider.ExtensionsDirectory;
 
+            // Host environment info, surfaced in Settings so authors know what to build against.
+            string hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version?.ToString() ?? "?";
+            string pluginVersion = typeof(GetInstalledExtensions).Assembly.GetName().Version?.ToString() ?? "?";
+
             var extensions = ExtensionCatalog.EnumerateAll(root)
                 .Select(d => new
                 {
                     id = d.Manifest.Id,
-                    displayName = d.Manifest.DisplayName,
+                    name = string.IsNullOrWhiteSpace(d.Manifest.Ui?.Button?.Name) ? d.Manifest.Id : d.Manifest.Ui!.Button!.Name,
                     version = d.Manifest.Version,
                     targetRevit = d.Manifest.TargetRevit,
-                    sdkVersion = d.Manifest.SdkVersion,
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
                     compatible = string.Equals(d.Manifest.TargetRevit, hostRevit, StringComparison.OrdinalIgnoreCase),
                     directory = d.Directory,
                 })
-                .OrderBy(e => e.displayName)
+                .OrderBy(e => e.name)
                 .ToList();
 
             return Task.FromResult<object?>(new
             {
                 hostRevit,
+                hostSdkVersion,
+                pluginVersion,
                 extensionsRoot = root,
                 extensions,
             });

@@ -65,10 +65,8 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
 ```json
 {
   "id": "acme.sample",
-  "displayName": "Acme Sample",
   "version": "1.0.0",
   "targetRevit": "R25",
-  "sdkVersion": "1.0",
   "entryAssembly": "Acme.Sample.dll",
   "ui": {
     "entryHtml": "index.html",
@@ -76,7 +74,7 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
     "tab": "AnalyseTool",
     "panel": "Samples",
     "button": {
-      "text": "Acme Sample",
+      "name": "Acme Sample",
       "tooltip": "Open the Acme Sample extension page",
       "icon": "icon.png"
     }
@@ -87,17 +85,15 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
 | Field | Required | Notes |
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted (`acme.sample`). Becomes the command prefix and the folder name. |
-| `displayName` | ✔ | Shown in the Settings list. |
-| `version` | ✔ | SemVer string. |
+| `version` | ✔ | SemVer string. Shown in Settings and appended to the window title (`Name - 1.0.0`). |
 | `targetRevit` | ✔ | `"R25"` or `"R26"`. Used for a compatibility check against the running Revit. |
-| `sdkVersion` | ✔ | SDK contract version you built against (`"1.0"`). |
-| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** |
+| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field needed. The current host SDK version is shown in Settings → Environment. |
 | `ui` | — | **Omit for a command-only extension.** |
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
 | `ui.devUrl` | — | Dev server URL (Vite/HMR). When set, the window loads this instead of the built files. **Remove for release.** |
 | `ui.tab` | — | Ribbon tab to place the button on. Default `"AnalyseTool"`. |
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
-| `ui.button.text` | — | Button label. |
+| `ui.button.name` | — | Button label — also used as the extension's display name (Settings list, window title). |
 | `ui.button.tooltip` | — | Button tooltip. |
 | `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
 

@@ -13,10 +13,8 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 
 interface ExtensionTemplateManifest {
   id: string;
-  displayName: string;
   version: string;
   targetRevit: string;
-  sdkVersion: string;
   entryAssembly: string;
   ui: {
     entryHtml: string;
@@ -24,7 +22,7 @@ interface ExtensionTemplateManifest {
     tab: string;
     panel: string;
     button: {
-      text: string;
+      name: string;
       tooltip: string;
     };
   };
@@ -40,13 +38,12 @@ interface CreateExtensionTemplatePayload {
 interface TemplateFormState {
   folderName: string;
   id: string;
-  displayName: string;
+  name: string;
   version: string;
   targetRevit: string;
   devUrl: string;
   tab: string;
   panel: string;
-  buttonText: string;
   tooltip: string;
 }
 
@@ -97,13 +94,12 @@ function createDefaultTemplateForm(hostRevit?: string | null): TemplateFormState
   return {
     folderName: "sample-extension",
     id: "company.sample.extension",
-    displayName: "Sample Extension",
+    name: "Sample Extension",
     version: "1.0.0",
     targetRevit: resolveTargetRevit(hostRevit),
     devUrl: "",
     tab: "AnalyseTool",
     panel: "Extensions",
-    buttonText: "Sample Extension",
     tooltip: "Open the Sample Extension page",
   };
 }
@@ -117,30 +113,24 @@ function normalizeFolderName() {
   templateForm.value.folderName = normalized;
 }
 
-function syncFromDisplayName() {
-  const displayName = templateForm.value.displayName.trim();
-  if (!displayName) return;
+function syncFromName() {
+  const name = templateForm.value.name.trim();
+  if (!name) return;
 
   if (
     !templateForm.value.folderName.trim() ||
     templateForm.value.folderName === "sample-extension"
   ) {
-    templateForm.value.folderName = slugifySegment(displayName) || "sample-extension";
+    templateForm.value.folderName = slugifySegment(name) || "sample-extension";
   }
   if (!templateForm.value.id.trim() || templateForm.value.id === "company.sample.extension") {
-    templateForm.value.id = buildPluginId(displayName);
-  }
-  if (
-    !templateForm.value.buttonText.trim() ||
-    templateForm.value.buttonText === "Sample Extension"
-  ) {
-    templateForm.value.buttonText = displayName;
+    templateForm.value.id = buildPluginId(name);
   }
   if (
     !templateForm.value.tooltip.trim() ||
     templateForm.value.tooltip === "Open the Sample Extension page"
   ) {
-    templateForm.value.tooltip = `Open the ${displayName} page`;
+    templateForm.value.tooltip = `Open the ${name} page`;
   }
 }
 
@@ -150,10 +140,8 @@ const normalizedFolderName = computed(
 
 const manifestPreview = computed<ExtensionTemplateManifest>(() => ({
   id: templateForm.value.id.trim(),
-  displayName: templateForm.value.displayName.trim(),
   version: templateForm.value.version.trim(),
   targetRevit: templateForm.value.targetRevit.trim(),
-  sdkVersion: "",
   entryAssembly: "",
   ui: {
     entryHtml: `${normalizedFolderName.value}/index.html`,
@@ -161,7 +149,7 @@ const manifestPreview = computed<ExtensionTemplateManifest>(() => ({
     tab: templateForm.value.tab.trim(),
     panel: templateForm.value.panel.trim(),
     button: {
-      text: templateForm.value.buttonText.trim(),
+      name: templateForm.value.name.trim(),
       tooltip: templateForm.value.tooltip.trim(),
     },
   },
@@ -170,7 +158,7 @@ const manifestPreview = computed<ExtensionTemplateManifest>(() => ({
 const manifestPreviewText = computed(() => JSON.stringify(manifestPreview.value, null, 2));
 
 const indexHtmlPreview = computed(() => {
-  const title = templateForm.value.displayName.trim() || "Sample Extension";
+  const title = templateForm.value.name.trim() || "Sample Extension";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -281,12 +269,11 @@ loadButton.addEventListener("click", async () => {
 const templateValidationError = computed(() => {
   if (!normalizedFolderName.value) return "Folder name is required.";
   if (!templateForm.value.id.trim()) return "Plugin id is required.";
-  if (!templateForm.value.displayName.trim()) return "Display name is required.";
+  if (!templateForm.value.name.trim()) return "Name is required.";
   if (!templateForm.value.version.trim()) return "Version is required.";
   if (!templateForm.value.targetRevit.trim()) return "Target Revit is required.";
   if (!templateForm.value.tab.trim()) return "Tab is required.";
   if (!templateForm.value.panel.trim()) return "Panel is required.";
-  if (!templateForm.value.buttonText.trim()) return "Button text is required.";
   if (!templateForm.value.tooltip.trim()) return "Tooltip is required.";
   return "";
 });
@@ -350,12 +337,13 @@ watch(
             <small class="text-surface-500">Creates the folder inside extensions root.</small>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Display name</label>
+            <label class="text-sm font-medium">Name</label>
             <InputText
-              v-model="templateForm.displayName"
+              v-model="templateForm.name"
               placeholder="Sample Extension"
-              @blur="syncFromDisplayName"
+              @blur="syncFromName"
             />
+            <small class="text-surface-500">Ribbon button label and window title.</small>
           </div>
           <div class="flex flex-col gap-1 md:col-span-2">
             <label class="text-sm font-medium">Plugin id</label>
@@ -384,10 +372,6 @@ watch(
           <div class="flex flex-col gap-1">
             <label class="text-sm font-medium">Panel</label>
             <InputText v-model="templateForm.panel" placeholder="Extensions" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Button text</label>
-            <InputText v-model="templateForm.buttonText" placeholder="Sample Extension" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-sm font-medium">Tooltip</label>

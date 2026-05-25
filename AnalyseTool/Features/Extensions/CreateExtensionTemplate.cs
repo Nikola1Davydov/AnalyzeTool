@@ -109,10 +109,8 @@ namespace AnalyseTool.Features.Extensions
     internal sealed class ExtensionTemplateManifest
     {
         public string Id { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
         public string TargetRevit { get; set; } = string.Empty;
-        public string SdkVersion { get; set; } = string.Empty;
         public string EntryAssembly { get; set; } = string.Empty;
         public ExtensionTemplateUi Ui { get; set; } = new();
     }
@@ -128,7 +126,7 @@ namespace AnalyseTool.Features.Extensions
 
     internal sealed class ExtensionTemplateButton
     {
-        public string Text { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
         public string Tooltip { get; set; } = string.Empty;
     }
 }

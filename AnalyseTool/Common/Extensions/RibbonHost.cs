@@ -112,7 +112,7 @@ namespace AnalyseTool.Common.Extensions
                         _extButtons[descriptor.Manifest.Id] = (entry.Button, panelKey);
                     }
 
-                    entry.Button.Text = info.Text;
+                    entry.Button.Text = info.Name;
                     entry.Button.ToolTip = info.Tooltip;
                     if (icon != null) { entry.Button.Image = icon; entry.Button.LargeImage = icon; }
                     continue;
@@ -122,7 +122,7 @@ namespace AnalyseTool.Common.Extensions
                 AdWin.RibbonButton button = new()
                 {
                     Id = $"AnalyseTool.Ext.{id}",
-                    Text = info.Text,
+                    Text = info.Name,
                     ShowText = true,
                     ShowImage = true,
                     Size = AdWin.RibbonItemSize.Large,
@@ -289,9 +289,9 @@ namespace AnalyseTool.Common.Extensions
                 catch { /* fall through to the default */ }
             }
 
-            string label = string.IsNullOrWhiteSpace(descriptor.Manifest.DisplayName)
+            string label = string.IsNullOrWhiteSpace(descriptor.Manifest.Ui?.Button?.Name)
                 ? descriptor.Manifest.Id
-                : descriptor.Manifest.DisplayName;
+                : descriptor.Manifest.Ui!.Button!.Name;
             return BuildDefaultIcon(label);
         }
 

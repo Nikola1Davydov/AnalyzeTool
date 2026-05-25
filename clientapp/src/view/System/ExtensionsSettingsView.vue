@@ -4,10 +4,9 @@ import { invoke } from "@/RevitBridge";
 
 interface ExtensionRow {
   id: string;
-  displayName: string;
+  name: string;
   version: string;
   targetRevit: string;
-  sdkVersion: string;
   hasCommands: boolean;
   hasUi: boolean;
   compatible: boolean;
@@ -16,6 +15,8 @@ interface ExtensionRow {
 
 interface ExtensionsData {
   hostRevit: string;
+  hostSdkVersion: string;
+  pluginVersion: string;
   extensionsRoot: string;
   extensions: ExtensionRow[];
 }
@@ -132,9 +133,6 @@ onMounted(() => {
     <div class="flex items-start justify-between mb-4 gap-4">
       <div>
         <h1 class="text-xl font-bold">Extensions</h1>
-        <p class="text-sm text-surface-500 break-all">
-          {{ data?.extensionsRoot }} · Revit {{ data?.hostRevit }}
-        </p>
       </div>
       <div class="flex gap-2 shrink-0">
         <Button
@@ -153,10 +151,33 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Environment / About: what the host currently provides, so authors know what to build against. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">Environment</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div>
+          <div class="text-surface-500 text-xs">Revit</div>
+          <div>{{ data?.hostRevit ?? "—" }}</div>
+        </div>
+        <div>
+          <div class="text-surface-500 text-xs">SDK version</div>
+          <div>{{ data?.hostSdkVersion ?? "—" }}</div>
+        </div>
+        <div>
+          <div class="text-surface-500 text-xs">Plugin version</div>
+          <div>{{ data?.pluginVersion ?? "—" }}</div>
+        </div>
+        <div class="col-span-2 md:col-span-1">
+          <div class="text-surface-500 text-xs">Extensions folder</div>
+          <div class="break-all">{{ data?.extensionsRoot ?? "—" }}</div>
+        </div>
+      </div>
+    </section>
+
     <DataTable :value="data?.extensions ?? []" :loading="loading" dataKey="id" class="text-sm">
       <Column header="Extension">
         <template #body="{ data: row }">
-          <div class="font-semibold">{{ row.displayName || row.id }}</div>
+          <div class="font-semibold">{{ row.name || row.id }}</div>
           <div class="text-surface-500 text-xs">{{ row.id }}</div>
         </template>
       </Column>

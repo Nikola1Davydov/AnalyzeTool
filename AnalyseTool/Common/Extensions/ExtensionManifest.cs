@@ -13,9 +13,6 @@ namespace AnalyseTool.Common.Extensions
         [JsonProperty("id")]
         public string Id { get; init; } = string.Empty;
 
-        [JsonProperty("displayName")]
-        public string DisplayName { get; init; } = string.Empty;
-
         [JsonProperty("version")]
         public string Version { get; init; } = string.Empty;
 
@@ -23,11 +20,8 @@ namespace AnalyseTool.Common.Extensions
         [JsonProperty("targetRevit")]
         public string TargetRevit { get; init; } = string.Empty;
 
-        /// <summary>AnalyseTool.Sdk version the extension was built against (major must match host).</summary>
-        [JsonProperty("sdkVersion")]
-        public string SdkVersion { get; init; } = string.Empty;
-
-        /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder).</summary>
+        /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder).
+        /// SDK compatibility is derived automatically from the DLL's AnalyseTool.Sdk reference.</summary>
         [JsonProperty("entryAssembly")]
         public string? EntryAssembly { get; init; }
 
@@ -61,11 +55,12 @@ namespace AnalyseTool.Common.Extensions
         public ExtensionButton? Button { get; init; }
     }
 
-    /// <summary>Ribbon button metadata for a JS extension.</summary>
+    /// <summary>Ribbon button metadata for a JS extension. <see cref="Name"/> also serves as the
+    /// extension's display label (ribbon button + window title).</summary>
     internal sealed record ExtensionButton
     {
-        [JsonProperty("text")]
-        public string Text { get; init; } = string.Empty;
+        [JsonProperty("name")]
+        public string Name { get; init; } = string.Empty;
 
         [JsonProperty("tooltip")]
         public string? Tooltip { get; init; }

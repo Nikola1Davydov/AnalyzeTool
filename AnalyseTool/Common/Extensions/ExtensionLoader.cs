@@ -58,29 +58,28 @@ namespace AnalyseTool.Common.Extensions
         {
             ExtensionManifest manifest = descriptor.Manifest;
 
-            if (!IsSdkCompatible(manifest.SdkVersion))
-            {
-                UserDialogUtils.Error($"Extension '{manifest.Id}' was built against SDK '{manifest.SdkVersion}', incompatible with host SDK {_hostSdkMajor}.x. Skipped.");
-                return;
-            }
-
             string entryPath = Path.Combine(descriptor.Directory, manifest.EntryAssembly!);
             if (!File.Exists(entryPath))
                 throw new FileNotFoundException($"Entry assembly '{manifest.EntryAssembly}' not found.", entryPath);
 
             ExtensionLoadContext alc = new ExtensionLoadContext(entryPath, manifest.Id);
-            _contexts.Add(alc);
             Assembly assembly = alc.LoadEntry(entryPath); // byte-load: does not lock the DLL on disk
+
+            // Compatibility is derived from the SDK the DLL was actually built against (its
+            // AnalyseTool.Sdk reference) — no hand-written manifest field to keep in sync.
+            Version? referencedSdk = assembly.GetReferencedAssemblies()
+                .FirstOrDefault(a => string.Equals(a.Name, "AnalyseTool.Sdk", StringComparison.OrdinalIgnoreCase))?.Version;
+
+            if (referencedSdk == null || referencedSdk.Major != _hostSdkMajor)
+            {
+                UserDialogUtils.Error($"Extension '{manifest.Id}' was built against AnalyseTool.Sdk " +
+                    $"{(referencedSdk?.ToString() ?? "<none>")}, incompatible with host SDK {_hostSdkMajor}.x. Skipped.");
+                alc.Unload(); // collectible context — drop the rejected assembly
+                return;
+            }
+
+            _contexts.Add(alc);
             _dispatcher.RegisterExtension(assembly, manifest.Id);
-        }
-
-        private bool IsSdkCompatible(string manifestSdkVersion)
-        {
-            if (string.IsNullOrWhiteSpace(manifestSdkVersion)) return false;
-
-            // Major-version compatibility: "1.0", "1.2.3" and "1" all map to major 1.
-            string majorPart = manifestSdkVersion.Split('.')[0];
-            return int.TryParse(majorPart, out int major) && major == _hostSdkMajor;
         }
     }
 }

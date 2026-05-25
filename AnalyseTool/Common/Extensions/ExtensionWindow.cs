@@ -23,9 +23,7 @@ namespace AnalyseTool.Common.Extensions
         public ExtensionWindow(ExtensionDescriptor extension)
         {
             _extension = extension;
-            Title = string.IsNullOrWhiteSpace(extension.Manifest.DisplayName)
-                ? extension.Manifest.Id
-                : extension.Manifest.DisplayName;
+            Title = BuildTitle(extension.Manifest);
             Width = 1100;
             Height = 750;
             Content = _webView;
@@ -65,6 +63,16 @@ namespace AnalyseTool.Common.Extensions
                 .Replace('\\', '/')
                 .TrimStart('/');
             _webView.CoreWebView2.Navigate($"https://{host}/{entryHtml}");
+        }
+
+        /// <summary>Window title is the button name (falling back to the id), with the version appended
+        /// after a dash when present — e.g. "Sample Extension - 1.0.0".</summary>
+        private static string BuildTitle(ExtensionManifest manifest)
+        {
+            string name = string.IsNullOrWhiteSpace(manifest.Ui?.Button?.Name)
+                ? manifest.Id
+                : manifest.Ui!.Button!.Name;
+            return string.IsNullOrWhiteSpace(manifest.Version) ? name : $"{name} - {manifest.Version}";
         }
 
         private static string BuildHostName(string id)

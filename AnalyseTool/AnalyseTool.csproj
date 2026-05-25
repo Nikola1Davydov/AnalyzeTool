@@ -11,6 +11,7 @@
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 		<PluginSubDir>AnalyseTool</PluginSubDir>
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
         <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
