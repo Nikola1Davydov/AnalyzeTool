@@ -2,6 +2,7 @@ using AnalyseTool.Common;
 using AnalyseTool.Common.Dispatch;
 using AnalyseTool.Common.Extensions;
 using AnalyseTool.Common.Transport;
+using AnalyseTool.Common.Utils;
 using Autodesk.Revit.UI;
 using System.Reflection;
 
@@ -29,7 +30,7 @@ namespace AnalyseTool.Common.Bootstrap
             Dispatcher.RegisterBuiltIns(Assembly.GetExecutingAssembly());
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\
-            _loader = new ExtensionLoader(Dispatcher, HostRevitTag(uiApp));
+            _loader = new ExtensionLoader(Dispatcher, CommonUtils.HostRevitTag(uiApp.Application.VersionNumber));
             _loader.LoadAll(PathProvider.ExtensionsDirectory);
 
             // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
@@ -48,11 +49,6 @@ namespace AnalyseTool.Common.Bootstrap
             _loader.LoadAll(PathProvider.ExtensionsDirectory);
         }
 
-        /// <summary>Maps the running Revit version to the manifest's targetRevit tag, e.g. "2025" -&gt; "R25".</summary>
-        private static string HostRevitTag(UIApplication uiApp)
-        {
-            string version = uiApp.Application.VersionNumber;   // e.g. "2025"
-            return version.Length >= 4 ? $"R{version.Substring(2)}" : version;
-        }
+
     }
 }

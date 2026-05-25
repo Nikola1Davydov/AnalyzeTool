@@ -1,4 +1,5 @@
 using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.Common.Utils;
 using Autodesk.Revit.UI;
 using System.Diagnostics;
 using System.Globalization;
@@ -42,7 +43,7 @@ namespace AnalyseTool.Common.Extensions
         {
             RibbonEventHub.Initialize();
 
-            string hostRevit = HostRevitTag(app.ControlledApplication.VersionNumber);
+            string hostRevit = CommonUtils.HostRevitTag(app.ControlledApplication.VersionNumber);
 
             // Static buttons via the official API.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
@@ -179,7 +180,7 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             AnalyseToolBootstrap.ReloadExtensions();                                  // C# command DLLs
-            RefreshExtensionButtons(HostRevitTag(uiApp.Application.VersionNumber));   // ribbon buttons
+            RefreshExtensionButtons(CommonUtils.HostRevitTag(uiApp.Application.VersionNumber));   // ribbon buttons
 
             TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
         }
@@ -317,8 +318,5 @@ namespace AnalyseTool.Common.Extensions
             bitmap.Freeze();
             return bitmap;
         }
-
-        private static string HostRevitTag(string versionNumber) =>
-            versionNumber.Length >= 4 ? $"R{versionNumber.Substring(2)}" : versionNumber;
     }
 }

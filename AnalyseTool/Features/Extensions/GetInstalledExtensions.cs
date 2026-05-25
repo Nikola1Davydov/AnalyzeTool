@@ -1,5 +1,6 @@
 using AnalyseTool.Common;
 using AnalyseTool.Common.Extensions;
+using AnalyseTool.Common.Utils;
 using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Extensions
@@ -12,7 +13,7 @@ namespace AnalyseTool.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            string hostRevit = HostTag();
+            string hostRevit = CommonUtils.HostRevitTag(Context.UiApplication.Application.VersionNumber);
             string root = PathProvider.ExtensionsDirectory;
 
             var extensions = ExtensionCatalog.EnumerateAll(root)
@@ -37,12 +38,6 @@ namespace AnalyseTool.Features.Extensions
                 extensionsRoot = root,
                 extensions,
             });
-        }
-
-        internal static string HostTag()
-        {
-            string version = AnalyseTool.Context.UiApplication.Application.VersionNumber;
-            return version.Length >= 4 ? $"R{version.Substring(2)}" : version;
         }
     }
 }

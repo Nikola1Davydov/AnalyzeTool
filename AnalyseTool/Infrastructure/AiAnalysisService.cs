@@ -44,22 +44,9 @@ namespace AnalyseTool.Infrastructure
                     """)
             };
 
-            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
-            StringBuilder stringBuilder = new StringBuilder();
-            try
-            {
-                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, cancellationToken: cts.Token))
-                {
-                    if (!string.IsNullOrEmpty(item.Text))
-                        stringBuilder.Append(item.Text);
-                }
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                throw new UnauthorizedAccessException("Cloud model requires Ollama login. Run 'ollama login' in terminal.");
-            }
+            string raw = await BuildAnswer(chatHistory);
 
-            return stringBuilder.ToString();
+            return raw;
         }
         public async Task<AiResponce> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
         {
@@ -97,18 +84,11 @@ namespace AnalyseTool.Infrastructure
 
             ChatOptions jsonOptions = new ChatOptions
             {
-                ResponseFormat = ChatResponseFormat.Json, 
+                ResponseFormat = ChatResponseFormat.Json,
                 Instructions = "Include every input element in the output (same count)."
             };
+            string raw = await BuildAnswer(chatHistory, jsonOptions);
 
-            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
-            StringBuilder stringBuilder = new StringBuilder();
-            await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, jsonOptions, cts.Token))
-            {
-                if (!string.IsNullOrEmpty(item.Text))
-                    stringBuilder.Append(item.Text);
-            }
-            string raw = stringBuilder.ToString();
             return new AiResponce(raw, ParseEdits(raw));
         }
 
@@ -117,6 +97,24 @@ namespace AnalyseTool.Infrastructure
             PropertyNameCaseInsensitive = true,
             NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
         };
+        private async Task<string> BuildAnswer(List<ChatMessage> chatHistory, ChatOptions chatOptions = default)
+        {
+            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
+            StringBuilder stringBuilder = new StringBuilder();
+            try
+            {
+                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, cancellationToken: cts.Token))
+                {
+                    if (!string.IsNullOrEmpty(item.Text))
+                        stringBuilder.Append(item.Text);
+                }
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                throw new UnauthorizedAccessException("Cloud model requires Ollama login. Run 'ollama login' in terminal.");
+            }
+            return stringBuilder.ToString();
+        }
 
         /// <summary>
         /// Tries full-array parse first; on failure falls back to object-by-object extraction
