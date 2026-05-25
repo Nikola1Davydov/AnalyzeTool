@@ -43,7 +43,7 @@ namespace AnalyseTool.Common.Extensions
         {
             RibbonEventHub.Initialize();
 
-            string hostRevit = CommonUtils.HostRevitTag(app.ControlledApplication.VersionNumber);
+            string revitVersion = app.ControlledApplication.VersionNumber; // year, e.g. "2025"
 
             // Static buttons via the official API.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
@@ -57,18 +57,18 @@ namespace AnalyseTool.Common.Extensions
                 ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit", appIcon: null);
 
             // Dynamic extension buttons via AdWindows.
-            RefreshExtensionButtons(hostRevit);
+            RefreshExtensionButtons(revitVersion);
         }
 
         /// <summary>Re-scans manifests and brings the AdWindows extension buttons in sync: adds new,
         /// removes gone, updates changed (text/icon/tooltip) and moves buttons whose ui.tab/ui.panel
         /// changed — all live. Safe to call repeatedly (Build + Reload).</summary>
-        public static void RefreshExtensionButtons(string hostRevit)
+        public static void RefreshExtensionButtons(string revitVersion)
         {
             if (AdWin.ComponentManager.Ribbon is null) return; // ribbon not ready yet
 
             List<ExtensionDescriptor> found = ExtensionCatalog
-                .Scan(PathProvider.ExtensionsDirectory, hostRevit)
+                .Scan(ExtensionSources.ScanDirs(revitVersion))
                 .Where(d => d.HasUi)
                 .ToList();
 
@@ -180,7 +180,7 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             AnalyseToolBootstrap.ReloadExtensions();                                  // C# command DLLs
-            RefreshExtensionButtons(CommonUtils.HostRevitTag(uiApp.Application.VersionNumber));   // ribbon buttons
+            RefreshExtensionButtons(uiApp.Application.VersionNumber);                 // ribbon buttons
 
             TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
         }

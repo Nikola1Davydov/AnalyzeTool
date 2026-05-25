@@ -14,7 +14,6 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 interface ExtensionTemplateManifest {
   id: string;
   version: string;
-  targetRevit: string;
   entryAssembly: string;
   ui: {
     entryHtml: string;
@@ -40,7 +39,6 @@ interface TemplateFormState {
   id: string;
   name: string;
   version: string;
-  targetRevit: string;
   devUrl: string;
   tab: string;
   panel: string;
@@ -49,7 +47,6 @@ interface TemplateFormState {
 
 const props = defineProps<{
   visible: boolean;
-  hostRevit?: string | null;
   extensionsRoot?: string | null;
 }>();
 
@@ -59,16 +56,11 @@ const emit = defineEmits<{
 }>();
 
 const notificationStore = useNotificationStore();
-const revitTargetOptions = ["R25", "R26", "R27"];
 const templateBusy = ref(false);
-const templateForm = ref<TemplateFormState>(createDefaultTemplateForm(props.hostRevit));
+const templateForm = ref<TemplateFormState>(createDefaultTemplateForm());
 
 function closeDrawer() {
   emit("update:visible", false);
-}
-
-function resolveTargetRevit(hostRevit?: string | null) {
-  return revitTargetOptions.includes(hostRevit || "") ? hostRevit || "R25" : "R25";
 }
 
 function slugifySegment(value: string) {
@@ -90,13 +82,12 @@ function buildPluginId(value: string) {
   return ["company", ...segments].join(".");
 }
 
-function createDefaultTemplateForm(hostRevit?: string | null): TemplateFormState {
+function createDefaultTemplateForm(): TemplateFormState {
   return {
     folderName: "sample-extension",
     id: "company.sample.extension",
     name: "Sample Extension",
     version: "1.0.0",
-    targetRevit: resolveTargetRevit(hostRevit),
     devUrl: "",
     tab: "AnalyseTool",
     panel: "Extensions",
@@ -105,7 +96,7 @@ function createDefaultTemplateForm(hostRevit?: string | null): TemplateFormState
 }
 
 function resetForm() {
-  templateForm.value = createDefaultTemplateForm(props.hostRevit);
+  templateForm.value = createDefaultTemplateForm();
 }
 
 function normalizeFolderName() {
@@ -141,7 +132,6 @@ const normalizedFolderName = computed(
 const manifestPreview = computed<ExtensionTemplateManifest>(() => ({
   id: templateForm.value.id.trim(),
   version: templateForm.value.version.trim(),
-  targetRevit: templateForm.value.targetRevit.trim(),
   entryAssembly: "",
   ui: {
     entryHtml: `${normalizedFolderName.value}/index.html`,
@@ -271,7 +261,6 @@ const templateValidationError = computed(() => {
   if (!templateForm.value.id.trim()) return "Plugin id is required.";
   if (!templateForm.value.name.trim()) return "Name is required.";
   if (!templateForm.value.version.trim()) return "Version is required.";
-  if (!templateForm.value.targetRevit.trim()) return "Target Revit is required.";
   if (!templateForm.value.tab.trim()) return "Tab is required.";
   if (!templateForm.value.panel.trim()) return "Panel is required.";
   if (!templateForm.value.tooltip.trim()) return "Tooltip is required.";
@@ -353,14 +342,6 @@ watch(
             <label class="text-sm font-medium">Version</label>
             <InputText v-model="templateForm.version" placeholder="1.0.0" />
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Target Revit</label>
-            <Select
-              v-model="templateForm.targetRevit"
-              :options="revitTargetOptions"
-              placeholder="Select Revit version"
-            />
-          </div>
           <div class="flex flex-col gap-1 md:col-span-2">
             <label class="text-sm font-medium">Dev URL</label>
             <InputText v-model="templateForm.devUrl" placeholder="optional" />
@@ -412,7 +393,6 @@ watch(
       <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
         <div class="flex items-center justify-between mb-2">
           <h3 class="font-semibold">plugin.json preview</h3>
-          <Tag :value="manifestPreview.targetRevit" severity="info" />
         </div>
         <pre
           class="bg-surface-100 text-surface-700 text-xs rounded p-3 overflow-auto whitespace-pre-wrap break-all"

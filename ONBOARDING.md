@@ -43,8 +43,13 @@ serializable result; the transport delivers it.
 
 ## 2. Where extensions live
 
+Extensions are organised **per Revit version** — the folder right under `extensions\` is the Revit
+version year (`2025`, `2026`, …). The plugin only loads the folder matching the running Revit, so the
+same machine can host builds for several versions side by side. The version folder replaces the old
+`targetRevit` manifest field.
+
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions\<your-id>\
+%LOCALAPPDATA%\AnalyseTool\extensions\2025\<your-id>\
     plugin.json        (required)
     <YourExt>.dll      (optional — C# commands)
     index.html         (optional — UI page)
@@ -66,7 +71,6 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
 {
   "id": "acme.sample",
   "version": "1.0.0",
-  "targetRevit": "R25",
   "entryAssembly": "Acme.Sample.dll",
   "ui": {
     "entryHtml": "index.html",
@@ -86,8 +90,7 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted (`acme.sample`). Becomes the command prefix and the folder name. |
 | `version` | ✔ | SemVer string. Shown in Settings and appended to the window title (`Name - 1.0.0`). |
-| `targetRevit` | ✔ | `"R25"` or `"R26"`. Used for a compatibility check against the running Revit. |
-| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field needed. The current host SDK version is shown in Settings → Environment. |
+| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field needed. The current host SDK version is shown in Settings → Environment. The target Revit version is the `extensions\<year>\` folder the extension sits in — no `targetRevit` field needed. |
 | `ui` | — | **Omit for a command-only extension.** |
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
 | `ui.devUrl` | — | Dev server URL (Vite/HMR). When set, the window loads this instead of the built files. **Remove for release.** |
@@ -385,7 +388,7 @@ release.**
    ```
 2. **Copy** the output into your extensions folder:
    ```
-   %LOCALAPPDATA%\AnalyseTool\extensions\acme.sample\
+   %LOCALAPPDATA%\AnalyseTool\extensions\2025\acme.sample\
        Acme.Sample.dll
        plugin.json
        index.html
@@ -429,7 +432,7 @@ and **Reload** buttons.
 | Symptom | Likely cause |
 | --- | --- |
 | Command not found / `is IRevitTask` fails | Output carries its own SDK/Revit/Newtonsoft DLL copy — set those refs to `Private=false` / compile-only. |
-| Button doesn't appear | New button needs a **Revit restart** (not just Reload) the first time. Check `targetRevit` matches the running Revit. |
+| Button doesn't appear | New button needs a **Revit restart** (not just Reload) the first time. Check the extension sits in the `extensions\<year>\` folder matching the running Revit. |
 | Page is blank / assets 404 | Built SPA without `base: "./"` — assets resolve to absolute paths the virtual host can't serve. |
 | Sub-path `entryHtml` won't load | The subfolder wasn't deployed to the extension folder, or (again) absolute asset base. |
 | `chrome-error://chromewebdata` with `devUrl` | Dev server unreachable — pin to `127.0.0.1` + `strictPort`. |

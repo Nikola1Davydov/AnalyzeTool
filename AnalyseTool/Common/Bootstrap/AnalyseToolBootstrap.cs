@@ -29,9 +29,9 @@ namespace AnalyseTool.Common.Bootstrap
             Dispatcher = new CommandDispatcher(RevitTaskHub);
             Dispatcher.RegisterBuiltIns(Assembly.GetExecutingAssembly());
 
-            // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\
-            _loader = new ExtensionLoader(Dispatcher, CommonUtils.HostRevitTag(uiApp.Application.VersionNumber));
-            _loader.LoadAll(PathProvider.ExtensionsDirectory);
+            // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
+            _loader = new ExtensionLoader(Dispatcher, uiApp.Application.VersionNumber);
+            _loader.LoadAll();
 
             // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
             // auto-starts it if the user enabled it previously (persisted in mcp.json).
@@ -46,7 +46,7 @@ namespace AnalyseTool.Common.Bootstrap
         {
             if (!_initialized) return;
             _loader.UnloadAll();
-            _loader.LoadAll(PathProvider.ExtensionsDirectory);
+            _loader.LoadAll();
         }
 
 

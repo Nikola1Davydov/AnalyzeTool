@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.Common;
+using AnalyseTool.Common.Extensions;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -30,7 +31,9 @@ namespace AnalyseTool.Features.Extensions
                 throw new InvalidOperationException("ui.entryHtml is required.");
 
             string safeFolderName = SanitizeFolderName(payload.FolderName);
-            string extensionRoot = Path.Combine(PathProvider.ExtensionsDirectory, safeFolderName);
+            // New templates are created under the current Revit version's folder of the default root.
+            string versionDir = ExtensionSources.DefaultVersionDir(Context.UiApplication.Application.VersionNumber);
+            string extensionRoot = Path.Combine(versionDir, safeFolderName);
 
             if (Directory.Exists(extensionRoot))
                 throw new InvalidOperationException($"Extension folder already exists: {safeFolderName}");
@@ -110,7 +113,6 @@ namespace AnalyseTool.Features.Extensions
     {
         public string Id { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
-        public string TargetRevit { get; set; } = string.Empty;
         public string EntryAssembly { get; set; } = string.Empty;
         public ExtensionTemplateUi Ui { get; set; } = new();
     }

@@ -1,7 +1,6 @@
 {
   "id": "acme.sample",
   "version": "1.0.0",
-  "targetRevit": "R25",
   "entryAssembly": "Acme.Sample.dll",
   "ui": {
     "entryHtml": "index.html",

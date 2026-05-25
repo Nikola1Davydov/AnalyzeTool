@@ -13,14 +13,14 @@ namespace AnalyseTool.Common.Extensions
     internal sealed class ExtensionLoader
     {
         private readonly CommandDispatcher _dispatcher;
-        private readonly string _hostRevit;   // "R25" / "R26"
+        private readonly string _revitVersion;   // Revit version year, e.g. "2025"
         private readonly int _hostSdkMajor;
         private readonly List<ExtensionLoadContext> _contexts = new();
 
-        public ExtensionLoader(CommandDispatcher dispatcher, string hostRevit)
+        public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion)
         {
             _dispatcher = dispatcher;
-            _hostRevit = hostRevit;
+            _revitVersion = revitVersion;
             _hostSdkMajor = typeof(IRevitTask).Assembly.GetName().Version?.Major ?? 1;
         }
 
@@ -37,9 +37,9 @@ namespace AnalyseTool.Common.Extensions
             _contexts.Clear();
         }
 
-        public void LoadAll(string extensionsRoot)
+        public void LoadAll()
         {
-            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(extensionsRoot, _hostRevit))
+            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(ExtensionSources.ScanDirs(_revitVersion)))
             {
                 if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
 

@@ -11,18 +11,20 @@ namespace AnalyseTool.Common.Extensions
     }
 
     /// <summary>
-    /// Scans the extensions folder and returns the manifests compatible with the running Revit.
-    /// Shared by the C# command loader (Bootstrap) and the ribbon builder (Launcher/OnStartup) so
-    /// discovery logic lives in exactly one place.
+    /// Scans version-scoped extension directories (<c>&lt;root&gt;\&lt;revitVersion&gt;</c>) and returns the
+    /// discovered manifests. The Revit version is implied by the folder, so there is no per-manifest
+    /// version check. Shared by the C# command loader (Bootstrap) and the ribbon builder so discovery
+    /// logic lives in exactly one place.
     /// </summary>
     internal static class ExtensionCatalog
     {
-        public static IReadOnlyList<ExtensionDescriptor> Scan(string extensionsRoot, string hostRevit)
+        /// <summary>Scans one version directory, surfacing a dialog for malformed manifests.</summary>
+        public static IReadOnlyList<ExtensionDescriptor> Scan(string versionDir)
         {
             List<ExtensionDescriptor> result = new();
-            if (!Directory.Exists(extensionsRoot)) return result;
+            if (!Directory.Exists(versionDir)) return result;
 
-            foreach (string dir in Directory.GetDirectories(extensionsRoot))
+            foreach (string dir in Directory.GetDirectories(versionDir))
             {
                 try
                 {
@@ -32,12 +34,6 @@ namespace AnalyseTool.Common.Extensions
                     ExtensionManifest? manifest = JsonConvert.DeserializeObject<ExtensionManifest>(File.ReadAllText(manifestPath));
                     if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id))
                         throw new InvalidOperationException("plugin.json is missing the required 'id' field.");
-
-                    if (!string.Equals(manifest.TargetRevit, hostRevit, StringComparison.OrdinalIgnoreCase))
-                    {
-                        UserDialogUtils.Error($"Extension '{manifest.Id}' targets {manifest.TargetRevit} but host is {hostRevit}. Skipped.");
-                        continue;
-                    }
 
                     result.Add(new ExtensionDescriptor(manifest, dir));
                 }
@@ -50,14 +46,18 @@ namespace AnalyseTool.Common.Extensions
             return result;
         }
 
-        /// <summary>Enumerates every extension in the folder regardless of Revit compatibility and
-        /// without surfacing dialogs — for the Settings page listing. Unreadable folders are skipped.</summary>
-        public static IReadOnlyList<ExtensionDescriptor> EnumerateAll(string extensionsRoot)
+        /// <summary>Scans several version directories (one per source root) and aggregates the result.</summary>
+        public static IReadOnlyList<ExtensionDescriptor> Scan(IEnumerable<string> versionDirs) =>
+            versionDirs.SelectMany(Scan).ToList();
+
+        /// <summary>Enumerates every extension in a version directory without surfacing dialogs — for the
+        /// Settings page listing. Unreadable folders are skipped.</summary>
+        public static IReadOnlyList<ExtensionDescriptor> EnumerateAll(string versionDir)
         {
             List<ExtensionDescriptor> result = new();
-            if (!Directory.Exists(extensionsRoot)) return result;
+            if (!Directory.Exists(versionDir)) return result;
 
-            foreach (string dir in Directory.GetDirectories(extensionsRoot))
+            foreach (string dir in Directory.GetDirectories(versionDir))
             {
                 try
                 {
@@ -74,5 +74,9 @@ namespace AnalyseTool.Common.Extensions
 
             return result;
         }
+
+        /// <summary>Enumerates extensions across several version directories.</summary>
+        public static IReadOnlyList<ExtensionDescriptor> EnumerateAll(IEnumerable<string> versionDirs) =>
+            versionDirs.SelectMany(EnumerateAll).ToList();
     }
 }

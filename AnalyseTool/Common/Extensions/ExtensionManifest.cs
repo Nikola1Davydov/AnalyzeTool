@@ -16,10 +16,6 @@ namespace AnalyseTool.Common.Extensions
         [JsonProperty("version")]
         public string Version { get; init; } = string.Empty;
 
-        /// <summary>Target Revit major, "R25" or "R26". Must match the running host.</summary>
-        [JsonProperty("targetRevit")]
-        public string TargetRevit { get; init; } = string.Empty;
-
         /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder).
         /// SDK compatibility is derived automatically from the DLL's AnalyseTool.Sdk reference.</summary>
         [JsonProperty("entryAssembly")]

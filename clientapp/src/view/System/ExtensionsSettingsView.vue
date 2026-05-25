@@ -6,10 +6,8 @@ interface ExtensionRow {
   id: string;
   name: string;
   version: string;
-  targetRevit: string;
   hasCommands: boolean;
   hasUi: boolean;
-  compatible: boolean;
   directory: string;
 }
 
@@ -19,6 +17,14 @@ interface ExtensionsData {
   pluginVersion: string;
   extensionsRoot: string;
   extensions: ExtensionRow[];
+}
+
+interface PathRow {
+  path: string;
+  isDefault: boolean;
+  valid: boolean;
+  reason: string;
+  extensionCount: number;
 }
 
 interface McpStatus {
@@ -34,6 +40,9 @@ interface McpStatus {
 
 const data = ref<ExtensionsData | null>(null);
 const loading = ref(true);
+
+const paths = ref<PathRow[]>([]);
+const pathsBusy = ref(false);
 
 const mcp = ref<McpStatus | null>(null);
 const mcpBusy = ref(false);
@@ -67,6 +76,73 @@ async function reload() {
 
 function openFolder() {
   invoke("OpenExtensionsFolder").catch((e) => console.error(e));
+}
+
+// --- Extension source paths ---------------------------------------------------------------
+async function loadPaths() {
+  try {
+    const res = await invoke<{ paths: PathRow[] }>("GetExtensionPaths");
+    paths.value = res?.paths ?? [];
+  } catch (e) {
+    console.error("Failed to load extension paths", e);
+  }
+}
+
+async function browseFolder(): Promise<string | null> {
+  try {
+    const res = await invoke<{ path: string | null }>("BrowseForFolder");
+    return res?.path ?? null;
+  } catch (e) {
+    console.error("Folder picker failed", e);
+    return null;
+  }
+}
+
+// Adding/removing/creating a root changes what gets scanned, so re-list paths and Reload
+// (re-scans every root + refreshes the ribbon buttons) to apply it live.
+async function afterPathsChanged() {
+  await loadPaths();
+  await reload();
+}
+
+async function addPath() {
+  const folder = await browseFolder();
+  if (!folder) return;
+  pathsBusy.value = true;
+  try {
+    await invoke("AddExtensionPath", { path: folder });
+    await afterPathsChanged();
+  } catch (e) {
+    console.error("Failed to add path", e);
+  } finally {
+    pathsBusy.value = false;
+  }
+}
+
+async function createStructure() {
+  const base = await browseFolder();
+  if (!base) return;
+  pathsBusy.value = true;
+  try {
+    await invoke("CreateExtensionRoot", { basePath: base });
+    await afterPathsChanged();
+  } catch (e) {
+    console.error("Failed to create structure", e);
+  } finally {
+    pathsBusy.value = false;
+  }
+}
+
+async function removePath(path: string) {
+  pathsBusy.value = true;
+  try {
+    await invoke("RemoveExtensionPath", { path });
+    await afterPathsChanged();
+  } catch (e) {
+    console.error("Failed to remove path", e);
+  } finally {
+    pathsBusy.value = false;
+  }
 }
 
 async function loadMcp() {
@@ -124,6 +200,7 @@ async function copyConfig() {
 
 onMounted(() => {
   load();
+  loadPaths();
   loadMcp();
 });
 </script>
@@ -174,6 +251,64 @@ onMounted(() => {
       </div>
     </section>
 
+    <!-- Extension paths: the source roots scanned for the running Revit version (default + user-added). -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <div class="flex items-center justify-between mb-3 gap-3">
+        <h2 class="text-sm font-bold">Extension paths</h2>
+        <div class="flex gap-2 shrink-0">
+          <Button
+            label="Add path"
+            icon="pi pi-folder"
+            size="small"
+            severity="secondary"
+            :loading="pathsBusy"
+            @click="addPath"
+          />
+          <Button
+            label="Create structure"
+            icon="pi pi-plus"
+            size="small"
+            severity="secondary"
+            :loading="pathsBusy"
+            @click="createStructure"
+          />
+        </div>
+      </div>
+      <DataTable :value="paths" dataKey="path" class="text-sm">
+        <Column header="Path">
+          <template #body="{ data: row }">
+            <div class="break-all">{{ row.path }}</div>
+            <div v-if="!row.valid" class="text-xs text-amber-600">{{ row.reason }}</div>
+          </template>
+        </Column>
+        <Column header="Status">
+          <template #body="{ data: row }">
+            <Tag
+              :value="row.valid ? `${row.extensionCount} ext` : 'invalid'"
+              :severity="row.valid ? 'success' : 'warn'"
+            />
+            <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
+          </template>
+        </Column>
+        <Column header="" class="w-12">
+          <template #body="{ data: row }">
+            <Button
+              v-if="!row.isDefault"
+              icon="pi pi-trash"
+              size="small"
+              text
+              severity="danger"
+              :disabled="pathsBusy"
+              @click="removePath(row.path)"
+            />
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-3">No source paths.</div>
+        </template>
+      </DataTable>
+    </section>
+
     <DataTable :value="data?.extensions ?? []" :loading="loading" dataKey="id" class="text-sm">
       <Column header="Extension">
         <template #body="{ data: row }">
@@ -182,15 +317,6 @@ onMounted(() => {
         </template>
       </Column>
       <Column field="version" header="Version" />
-      <Column header="Target">
-        <template #body="{ data: row }">
-          <span class="mr-2">{{ row.targetRevit }}</span>
-          <Tag
-            :value="row.compatible ? 'ok' : 'mismatch'"
-            :severity="row.compatible ? 'success' : 'danger'"
-          />
-        </template>
-      </Column>
       <Column header="Type">
         <template #body="{ data: row }">
           <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
@@ -204,7 +330,6 @@ onMounted(() => {
 
     <CreateExtensionTemplateDrawer
       v-model:visible="templateDrawerVisible"
-      :hostRevit="data?.hostRevit"
       :extensionsRoot="data?.extensionsRoot"
       @created="load"
     />
