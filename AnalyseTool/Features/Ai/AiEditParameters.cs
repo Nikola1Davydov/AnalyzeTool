@@ -8,7 +8,8 @@ namespace AnalyseTool.Features.Ai
         Description = "Asks the AI to propose parameter edits for the given items and returns the edits " +
                       "(apply them via SetDataToParameters). Payload: { model, prompt, items }.",
         Destructive = true,
-        InputType = typeof(AnalyzeParameterWithAiRequest))]
+        InputType = typeof(AnalyzeParameterWithAiRequest),
+        HiddenFromMcp = true)] // expects UI-collected items; a raw AI call can't build them
     internal sealed class AiEditParameters : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

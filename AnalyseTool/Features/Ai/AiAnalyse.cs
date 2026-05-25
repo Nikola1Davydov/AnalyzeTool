@@ -7,7 +7,8 @@ namespace AnalyseTool.Features.Ai
     [RevitCommand(
         Description = "Runs an AI analysis over the given parameter items using the named model and prompt; " +
                       "returns the model's analysis. Does not modify the model. Payload: { model, prompt, items }.",
-        InputType = typeof(AnalyzeParameterWithAiRequest))]
+        InputType = typeof(AnalyzeParameterWithAiRequest),
+        HiddenFromMcp = true)] // expects UI-collected items; a raw AI call can't build them
     internal sealed class AiAnalyse : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

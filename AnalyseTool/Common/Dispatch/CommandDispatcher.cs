@@ -83,7 +83,8 @@ namespace AnalyseTool.Common.Dispatch
                 attr?.Description,
                 attr?.ReadOnly ?? false,
                 attr?.Destructive ?? false,
-                BuildInputSchema(attr?.InputType));
+                BuildInputSchema(attr?.InputType),
+                ExposeToMcp: !(attr?.HiddenFromMcp ?? false));
         }
 
         /// <summary>Generates a JSON Schema for the declared input type (via Microsoft.Extensions.AI, already
@@ -115,5 +116,6 @@ namespace AnalyseTool.Common.Dispatch
         string? Description = null,
         bool ReadOnly = false,
         bool Destructive = false,
-        string InputSchemaJson = "{\"type\":\"object\",\"properties\":{}}");
+        string InputSchemaJson = "{\"type\":\"object\",\"properties\":{}}",
+        bool ExposeToMcp = true);
 }

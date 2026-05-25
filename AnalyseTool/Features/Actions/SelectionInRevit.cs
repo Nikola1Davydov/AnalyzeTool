@@ -1,5 +1,6 @@
 using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
+using System.ComponentModel;
 
 namespace AnalyseTool.Features.Actions
 {
@@ -25,7 +26,7 @@ namespace AnalyseTool.Features.Actions
 
         internal sealed record SelectionPayload
         {
-            /// <summary>Element ids (Revit ElementId values) to select.</summary>
+            [Description("Element ids (Revit ElementId values) to select in the active document.")]
             public List<long> ElementIds { get; set; }
         }
     }

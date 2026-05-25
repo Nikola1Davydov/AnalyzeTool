@@ -274,6 +274,8 @@ the payload yourself with `ctx.Payload.As<T>()`; you just *declare the input typ
 publish a JSON schema for it.
 
 ```csharp
+using System.ComponentModel; // for [Description]
+
 [RevitCommand("SetWallComment",
     Description = "Sets the Comments parameter on the given walls. Modifies the model.",
     Destructive = true,                          // -> MCP destructiveHint
@@ -288,7 +290,10 @@ public sealed class SetWallComment : IRevitTask
 
     internal sealed record Args                  // must be at least `internal` (see note)
     {
+        [Description("Element ids of the walls to update.")]   // -> per-field schema description
         public List<long> ElementIds { get; set; } = new();
+
+        [Description("Text to write into the Comments parameter.")]
         public string Comment { get; set; } = "";
     }
 }
@@ -300,10 +305,17 @@ public sealed class SetWallComment : IRevitTask
 | `ReadOnly = true` | Marks the tool `readOnlyHint` — clients treat it as safe. Use for `Get*`/query commands. |
 | `Destructive = true` | Marks the tool `destructiveHint` — clients may warn/confirm. Use for writes/deletes. |
 | `InputType = typeof(T)` | The host generates the tool's JSON **input schema** from `T`, so an AI knows which arguments to send. Omit for no-argument commands. |
+| `HiddenFromMcp = true` | Keeps the command callable from JS but **hides it from the AI's tool list**. Use for plugin-management or UI-only commands. Default: exposed. |
 
-Note: the type passed to `InputType` must be at least `internal` (so `typeof(...)` in the attribute
-can reference it) — a `private` nested type won't compile there. Commands with **no** arguments just
-omit `InputType`.
+Notes:
+- The type passed to `InputType` must be at least `internal` (so `typeof(...)` in the attribute can
+  reference it) — a `private` nested type won't compile there. No-argument commands omit `InputType`.
+- **Use a LEAN input type** — only the fields the caller actually sends. Don't reuse rich
+  domain/output models (ones with Revit-type properties or deep nesting): the generated schema
+  balloons (and gets truncated by a size cap). Define a small purpose-built record per command.
+- Put a `[System.ComponentModel.Description("…")]` on each input field — it flows into the JSON
+  schema as the field's description, so the AI gets per-argument guidance (curated quality, still
+  auto-generated).
 
 ## 5. Writing a JS / UI extension
 

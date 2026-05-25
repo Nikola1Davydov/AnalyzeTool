@@ -28,7 +28,11 @@ namespace AnalyseTool.Infrastructure
         public IEnumerable<DataElement> GetAllElementsByCategory(Document doc, string category)
         {
             List<Category> categories = GetModelCategories(doc);
-            BuiltInCategory builtInCategory = categories.FirstOrDefault(x => x.Name.Equals(category)).BuiltInCategory;
+
+            Category? match = categories.FirstOrDefault(x => x.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
+            if (match == null) return new List<DataElement>();
+
+            BuiltInCategory builtInCategory = match.BuiltInCategory;
 
             FilteredElementCollector collectorInstances = new FilteredElementCollector(doc).OfCategory(builtInCategory).WhereElementIsNotElementType();
             FilteredElementCollector collectorTypes = new FilteredElementCollector(doc).OfCategory(builtInCategory).WhereElementIsElementType();

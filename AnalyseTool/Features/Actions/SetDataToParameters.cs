@@ -4,6 +4,7 @@ using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System.ComponentModel;
 using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Features.Actions
@@ -27,7 +28,7 @@ namespace AnalyseTool.Features.Actions
                 using Transaction transaction = new Transaction(doc, "Set data to parameters");
                 transaction.Start();
 
-                foreach (ParameterData parameterData in list.Items)
+                foreach (SetParamItem parameterData in list.Items)
                 {
                     if (parameterData == null) continue;
                     SetData(doc, parameterData, list.Mode);
@@ -38,7 +39,7 @@ namespace AnalyseTool.Features.Actions
             });
         }
 
-        private void SetData(Document doc, ParameterData parameterData, SetDataMode mode)
+        private void SetData(Document doc, SetParamItem parameterData, SetDataMode mode)
         {
             Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
             if (revitElement == null) return;
@@ -95,11 +96,30 @@ namespace AnalyseTool.Features.Actions
         internal sealed record SetDataToParametersDto()
         {
             [JsonProperty("items")]
-            public List<ParameterData> Items { get; set; } = new();
+            [Description("Parameter writes to apply.")]
+            public List<SetParamItem> Items { get; set; } = new();
 
             [JsonProperty("mode")]
             [JsonConverter(typeof(StringEnumConverter))]
+            [Description("How to apply: Overwrite (always), OnlyIfEmpty (skip if the parameter has a value), or SkipIfEqual.")]
             public SetDataMode Mode { get; set; }
+        }
+
+        /// <summary>Lean input for one parameter write (kept small on purpose so the MCP schema stays tight —
+        /// not the rich ParameterData model, which would drag a Revit Parameter type into the schema).</summary>
+        internal sealed record SetParamItem
+        {
+            [JsonProperty("elementId")]
+            [Description("Revit ElementId of the element to modify.")]
+            public long ElementId { get; set; }
+
+            [JsonProperty("id")]
+            [Description("Parameter id: a BuiltInParameter integer value, or a ParameterElement ElementId for shared/project params.")]
+            public long Id { get; set; }
+
+            [JsonProperty("value")]
+            [Description("New value as a string (parsed according to the parameter's storage type).")]
+            public string Value { get; set; } = string.Empty;
         }
 
         internal enum SetDataMode

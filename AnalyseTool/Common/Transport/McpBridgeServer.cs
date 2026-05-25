@@ -114,6 +114,7 @@ namespace AnalyseTool.Common.Transport
                 if (string.Equals(type, "list", StringComparison.OrdinalIgnoreCase))
                 {
                     JArray commands = new(_dispatcher.RegisteredCommands
+                        .Where(c => c.ExposeToMcp)
                         .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                         .Select(c => new JObject
                         {

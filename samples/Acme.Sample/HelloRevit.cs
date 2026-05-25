@@ -37,7 +37,7 @@ namespace Acme.Sample
 
         public sealed record Input
         {
-            /// <summary>Optional name to greet.</summary>
+            [System.ComponentModel.Description("Optional name to greet; defaults to \"world\".")]
             public string? Name { get; set; }
         }
     }

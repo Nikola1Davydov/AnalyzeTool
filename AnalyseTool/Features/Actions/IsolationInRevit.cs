@@ -1,5 +1,6 @@
 using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
+using System.ComponentModel;
 
 namespace AnalyseTool.Features.Actions
 {
@@ -37,7 +38,7 @@ namespace AnalyseTool.Features.Actions
 
         internal sealed record Request
         {
-            /// <summary>Element ids (Revit ElementId values) to isolate in the active view.</summary>
+            [Description("Element ids (Revit ElementId values) to isolate in the active view.")]
             public List<long> ElementIds { get; set; } = new();
         }
     }

@@ -43,8 +43,16 @@ namespace AnalyseTool.Sdk
         /// from this type and publishes it as the MCP tool's input schema, so an AI knows which
         /// arguments to send. You still read the payload yourself via <c>ctx.Payload.As&lt;T&gt;()</c>.
         /// Must be at least <c>internal</c> (so <c>typeof(...)</c> can reference it). Leave null for
-        /// commands that take no arguments.
+        /// commands that take no arguments. Use a LEAN input type (only the fields the caller sends) —
+        /// do NOT reuse rich domain/output models, or the generated schema balloons.
         /// </summary>
         public Type? InputType { get; set; }
+
+        /// <summary>
+        /// When true, the command is NOT advertised as an MCP tool (it stays callable from JS and the
+        /// dispatcher). Use for plugin-management or UI-only commands an AI shouldn't see/use.
+        /// Default: the command IS exposed to MCP.
+        /// </summary>
+        public bool HiddenFromMcp { get; set; }
     }
 }

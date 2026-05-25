@@ -1,6 +1,7 @@
 using AnalyseTool.Infrastructure;
 using AnalyseTool.Infrastructure.Model;
 using AnalyseTool.Sdk;
+using System.ComponentModel;
 
 namespace AnalyseTool.Features.Get
 {
@@ -27,7 +28,7 @@ namespace AnalyseTool.Features.Get
 
         internal sealed record Request
         {
-            /// <summary>Revit category name, e.g. "Walls", "Doors" (as returned by GetCategoriesInRevit).</summary>
+            [Description("Revit category name as returned by GetCategoriesInRevit. Language-specific: e.g. \"Wände\", not \"Walls\".")]
             public string CategoryName { get; set; } = string.Empty;
         }
     }

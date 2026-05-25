@@ -8,7 +8,8 @@ namespace AnalyseTool.Features.Extensions
     /// all without restarting Revit.</summary>
     [RevitCommand("ReloadExtensions",
         Description = "Reloads extension command DLLs (collectible ALC) and refreshes ribbon buttons, " +
-                      "without restarting Revit.")]
+                      "without restarting Revit.",
+        HiddenFromMcp = true)] // local plugin management, not for the AI
     internal sealed class ReloadExtensionsCommand : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
