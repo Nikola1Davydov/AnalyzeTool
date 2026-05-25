@@ -11,7 +11,6 @@ export const Commands = {
   IsolationInRevit: "IsolationInRevit",
   GetCategoriesInRevit: "GetCategoriesInRevit",
   GetDataByCategoryName: "GetDataByCategoryName",
-  GetDocumentHealthStatus: "GetDocumentHealthStatus",
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",

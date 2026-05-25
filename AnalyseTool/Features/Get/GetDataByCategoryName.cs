@@ -9,7 +9,8 @@ namespace AnalyseTool.Features.Get
         Description = "Returns all elements of the given Revit category in the active document, " +
                       $"each with its parameters. Call {nameof(GetCategoriesInRevit)} first to get valid category names.",
         ReadOnly = true,
-        InputType = typeof(GetDataByCategoryName.Request))]
+        InputType = typeof(GetDataByCategoryName.Request),
+        HiddenFromMcp = true)] // heavy UI-shaped payload (every parameter); AI uses GetElements/GetCategoryParameters instead
     internal sealed class GetDataByCategoryName : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -50,6 +50,107 @@ namespace AnalyseTool.Infrastructure
 
             return result;
         }
+        /// <summary>Lean, filterable element listing for AI/MCP callers. Returns element identity and only
+        /// the requested parameters (token-friendly), with optional name filter and count cap.</summary>
+        public IEnumerable<ElementSummary> GetElementSummaries(
+            Document doc, string category,
+            string? nameContains = null,
+            IReadOnlyCollection<string>? parameterNames = null,
+            int? limit = null)
+        {
+            Category? match = ResolveCategory(doc, category);
+            if (match == null) return new List<ElementSummary>();
+
+            BuiltInCategory bic = match.BuiltInCategory;
+            FilteredElementCollector instances = new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType();
+            FilteredElementCollector types = new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsElementType();
+            IEnumerable<Element> elements = instances.UnionWith(types).ToElements();
+
+            if (!string.IsNullOrWhiteSpace(nameContains))
+                elements = elements.Where(e => (e.Name ?? string.Empty)
+                    .IndexOf(nameContains, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (limit.HasValue && limit.Value > 0)
+                elements = elements.Take(limit.Value);
+
+            HashSet<string>? wanted = (parameterNames != null && parameterNames.Count > 0)
+                ? new HashSet<string>(parameterNames, StringComparer.OrdinalIgnoreCase)
+                : null;
+
+            List<ElementSummary> result = new List<ElementSummary>();
+            foreach (Element el in elements)
+            {
+                result.Add(new ElementSummary
+                {
+                    Id = el.Id.Value,
+                    Name = el.Name,
+                    Category = el.Category?.Name ?? string.Empty,
+                    Level = doc.GetElement(el.LevelId)?.Name ?? string.Empty,
+                    IsType = el.GetTypeId() == ElementId.InvalidElementId,
+                    Parameters = wanted == null ? null : ExtractParameters(el, wanted)
+                });
+            }
+            return result;
+        }
+
+        /// <summary>Discovery: parameter names available on a category, sampled from a representative
+        /// element (instance + its type). Lets AI callers learn which parameterNames to request.</summary>
+        public IEnumerable<CategoryParameterInfo> GetCategoryParameterInfos(Document doc, string category)
+        {
+            Category? match = ResolveCategory(doc, category);
+            if (match == null) return new List<CategoryParameterInfo>();
+
+            BuiltInCategory bic = match.BuiltInCategory;
+            Element? sample = new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType().FirstElement()
+                           ?? new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsElementType().FirstElement();
+            if (sample == null) return new List<CategoryParameterInfo>();
+
+            Dictionary<string, CategoryParameterInfo> map = new(StringComparer.OrdinalIgnoreCase);
+            bool sampleIsType = sample.GetTypeId() == ElementId.InvalidElementId;
+            AddParameterInfos(sample.Parameters, sampleIsType, map);
+
+            // When the sample is an instance, also surface its type's parameters.
+            if (!sampleIsType)
+            {
+                Element? type = doc.GetElement(sample.GetTypeId());
+                if (type != null) AddParameterInfos(type.Parameters, isType: true, map);
+            }
+
+            return map.Values.OrderBy(p => p.Name).ToList();
+        }
+
+        private Category? ResolveCategory(Document doc, string category) =>
+            GetModelCategories(doc).FirstOrDefault(x => x.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
+
+        private static Dictionary<string, string> ExtractParameters(Element el, HashSet<string> wanted)
+        {
+            Dictionary<string, string> pars = new();
+            foreach (Parameter p in el.Parameters)
+            {
+                string name = p.Definition?.Name ?? string.Empty;
+                if (name.Length == 0 || pars.ContainsKey(name) || !wanted.Contains(name)) continue;
+                try { pars[name] = p.GetParameterValue() ?? string.Empty; }
+                catch { pars[name] = string.Empty; }
+            }
+            return pars;
+        }
+
+        private static void AddParameterInfos(ParameterSet set, bool isType, Dictionary<string, CategoryParameterInfo> map)
+        {
+            foreach (Parameter p in set)
+            {
+                string name = p.Definition?.Name ?? string.Empty;
+                if (name.Length == 0 || map.ContainsKey(name)) continue;
+                map[name] = new CategoryParameterInfo
+                {
+                    Name = name,
+                    StorageType = p.StorageType.ToString(),
+                    IsReadOnly = p.IsReadOnly,
+                    IsType = isType
+                };
+            }
+        }
+
         private ElementFilter GetElementFilter(Document doc)
         {
             List<ElementFilter> filters = new List<ElementFilter>();
