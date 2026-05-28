@@ -41,7 +41,8 @@ namespace AnalyseTool.Features.Extensions
 
             return new
             {
-                path = root,
+                path = root,            // root — used by remove
+                scanDir = versionDir,   // what is actually scanned (root + version) — used for display
                 isDefault,
                 valid = count > 0,
                 reason,

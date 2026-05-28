@@ -20,7 +20,8 @@ interface ExtensionsData {
 }
 
 interface PathRow {
-  path: string;
+  path: string; // root — used for remove
+  scanDir: string; // root + version — what's actually scanned (shown to the user)
   isDefault: boolean;
   valid: boolean;
   reason: string;
@@ -71,7 +72,9 @@ async function reload() {
   } catch (e) {
     console.error("Reload failed", e);
   }
-  await load();
+  // Refresh both tables — after a reload a path can flip valid/invalid (e.g. a new extension was
+  // dropped into it) and the extension count changes.
+  await Promise.all([load(), loadPaths()]);
 }
 
 function openFolder() {
@@ -277,7 +280,7 @@ onMounted(() => {
       <DataTable :value="paths" dataKey="path" class="text-sm">
         <Column header="Path">
           <template #body="{ data: row }">
-            <div class="break-all">{{ row.path }}</div>
+            <div class="break-all">{{ row.scanDir }}</div>
             <div v-if="!row.valid" class="text-xs text-amber-600">{{ row.reason }}</div>
           </template>
         </Column>
@@ -331,7 +334,7 @@ onMounted(() => {
     <CreateExtensionTemplateDrawer
       v-model:visible="templateDrawerVisible"
       :extensionsRoot="data?.extensionsRoot"
-      @created="load"
+      @created="reload"
     />
 
     <!-- MCP server: exposes every command (built-in + extensions) to AI clients over MCP. -->
