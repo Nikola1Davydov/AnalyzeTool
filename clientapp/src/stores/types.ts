@@ -8,7 +8,7 @@ export interface ElementItem {
   parameters: ParameterData[];
 }
 
-export const ParameterOrgin = {
+export const ParameterOrigin = {
   Shared: "Shared",
   Project: "Project",
   BuiltIn: "BuiltIn",
@@ -21,7 +21,7 @@ export interface ParameterData {
   level: string; // level name
   elementId: number; // Revit element id
   isTypeParameter: boolean;
-  orgin: (typeof ParameterOrgin)[keyof typeof ParameterOrgin];
+  origin: (typeof ParameterOrigin)[keyof typeof ParameterOrigin];
   storageType: string;
   isReadOnly: boolean;
 }

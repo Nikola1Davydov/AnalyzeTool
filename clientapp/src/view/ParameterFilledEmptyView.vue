@@ -4,7 +4,7 @@ import { storeToRefs } from "pinia";
 import TopFiltersBar from "@/components/TopFiltersBar.vue";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
-import { ParameterOrgin } from "@/stores/types";
+import { ParameterOrigin } from "@/stores/types";
 
 const Cart = defineAsyncComponent(() => import("@/components/Cart.vue") as any);
 const Chart = defineAsyncComponent(
@@ -83,9 +83,9 @@ const filteredItems = computed(() => {
     return filters.every((filter) => {
       if (filter === "Instance") return p.isTypeParameter === false;
       if (filter === "Type") return p.isTypeParameter === true;
-      if (filter === "Schared") return p.orgin === ParameterOrgin.Shared;
-      if (filter === "Project") return p.orgin === ParameterOrgin.Project;
-      if (filter === "BuildIn") return p.orgin === ParameterOrgin.BuiltIn;
+      if (filter === "Schared") return p.origin === ParameterOrigin.Shared;
+      if (filter === "Project") return p.origin === ParameterOrigin.Project;
+      if (filter === "BuildIn") return p.origin === ParameterOrigin.BuiltIn;
       return false;
     });
   }

@@ -170,7 +170,7 @@ function cloneElements(source: ElementItem[]): ElementItem[] {
         level: toStr(p?.level ?? p?.Level),
         elementId: toNum(p?.elementId ?? p?.ElementId),
         isTypeParameter: Boolean(p?.isTypeParameter ?? p?.IsTypeParameter),
-        orgin: toStr(p?.orgin ?? p?.Orgin),
+        origin: toStr(p?.origin ?? p?.Origin),
         storageType: toStr(p?.storageType ?? p?.StorageType),
         isReadOnly: Boolean(p?.isReadOnly ?? p?.IsReadOnly),
       }),

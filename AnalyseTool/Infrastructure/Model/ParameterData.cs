@@ -19,9 +19,9 @@ namespace AnalyseTool.Infrastructure.Model
         public long ElementId { get; init; }
         [JsonProperty("isTypeParameter")]
         public bool IsTypeParameter { get; init; }
-        [JsonProperty("orgin")]
+        [JsonProperty("origin")]
         [JsonConverter(typeof(StringEnumConverter))]
-        public ParameterOrgin Orgin { get; init; }
+        public ParameterOrigin Origin { get; init; }
         [JsonProperty("value")]
         public string Value { get; init; }
         [JsonProperty("storageType")]
@@ -35,7 +35,7 @@ namespace AnalyseTool.Infrastructure.Model
             Parameter = parameter;
             Name = parameter.Definition.Name;
             Id = parameter.Id.Value;
-            Orgin = parameter.GetParameterOrgin();
+            Origin = parameter.GetParameterOrigin();
             Value = parameter.GetParameterValue();
             Level = level;
             StorageType = parameter.StorageType.ToString();

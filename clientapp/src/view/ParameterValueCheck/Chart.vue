@@ -2,7 +2,7 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import Chart from "primevue/chart";
 import { Commands, invoke } from "@/RevitBridge";
-import { ParameterOrgin } from "@/stores/types";
+import { ParameterOrigin } from "@/stores/types";
 import type { ElementItem, ParameterData } from "@/stores/types";
 import { resolveInstanceActionElementIds, type RevitActionMatch } from "@/utils/revitActionTargets";
 
@@ -57,9 +57,9 @@ function matchesFilters(param: ParameterData, filters: string[]): boolean {
   return filters.every((filter) => {
     if (filter === "Instance") return param.isTypeParameter === false;
     if (filter === "Type") return param.isTypeParameter === true;
-    if (filter === "Schared") return param.orgin === ParameterOrgin.Shared;
-    if (filter === "Project") return param.orgin === ParameterOrgin.Project;
-    if (filter === "BuildIn") return param.orgin === ParameterOrgin.BuiltIn;
+    if (filter === "Schared") return param.origin === ParameterOrigin.Shared;
+    if (filter === "Project") return param.origin === ParameterOrigin.Project;
+    if (filter === "BuildIn") return param.origin === ParameterOrigin.BuiltIn;
     return false;
   });
 }

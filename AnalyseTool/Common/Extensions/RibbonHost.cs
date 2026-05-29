@@ -76,70 +76,90 @@ namespace AnalyseTool.Common.Extensions
 
             HashSet<string> foundIds = new(found.Select(d => d.Manifest.Id), StringComparer.OrdinalIgnoreCase);
 
-            // Remove buttons whose extension is gone.
+            RemoveStaleButtons(foundIds);
+            foreach (ExtensionDescriptor descriptor in found)
+                SyncButton(descriptor);
+
+            RemoveEmptyPanelsAndTabs();
+        }
+
+        /// <summary>Removes the AdWindows buttons (and cached descriptors) of extensions that are no
+        /// longer present in the latest scan.</summary>
+        private static void RemoveStaleButtons(HashSet<string> foundIds)
+        {
             foreach (string id in _extButtons.Keys.ToList())
             {
                 if (foundIds.Contains(id)) continue;
+
                 (AdWin.RibbonButton button, string panelKey) = _extButtons[id];
                 if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? oldPanel))
                     oldPanel.Items.Remove(button);
                 _extButtons.Remove(id);
                 _descriptors.Remove(id);
             }
+        }
 
-            // Add new / update / move existing.
-            foreach (ExtensionDescriptor descriptor in found)
+        /// <summary>Brings a single extension's button in sync: creates it if new, otherwise updates its
+        /// text/tooltip/icon and moves it when the manifest's tab/panel changed.</summary>
+        private static void SyncButton(ExtensionDescriptor descriptor)
+        {
+            string id = descriptor.Manifest.Id;
+            _descriptors[id] = descriptor; // refresh for click-time lookup
+
+            ExtensionUi ui = descriptor.Manifest.Ui!;
+            ExtensionButton info = ui.Button!;
+            string tab = string.IsNullOrWhiteSpace(ui.Tab) ? DefaultTab : ui.Tab!;
+            string panelName = string.IsNullOrWhiteSpace(ui.Panel) ? ExtensionsPanelTitle : ui.Panel!;
+            string panelKey = tab + "\n" + panelName;
+
+            AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
+            if (source is null) return;
+
+            ImageSource? icon = LoadIcon(descriptor, info.Icon);
+
+            if (_extButtons.TryGetValue(id, out (AdWin.RibbonButton Button, string PanelKey) entry))
+                UpdateButton(id, entry, info, icon, source, panelKey);
+            else
+                _extButtons[id] = (CreateButton(id, info, icon, source), panelKey);
+        }
+
+        /// <summary>Updates an existing button in place, relocating it to a new panel if its key changed.</summary>
+        private static void UpdateButton(string id, (AdWin.RibbonButton Button, string PanelKey) entry,
+            ExtensionButton info, ImageSource? icon, AdWin.RibbonPanelSource target, string panelKey)
+        {
+            if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
             {
-                _descriptors[descriptor.Manifest.Id] = descriptor; // refresh for click-time lookup
-
-                ExtensionUi ui = descriptor.Manifest.Ui!;
-                ExtensionButton info = ui.Button!;
-                string tab = string.IsNullOrWhiteSpace(ui.Tab) ? DefaultTab : ui.Tab!;
-                string panelName = string.IsNullOrWhiteSpace(ui.Panel) ? ExtensionsPanelTitle : ui.Panel!;
-                string panelKey = tab + "\n" + panelName;
-
-                AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
-                if (source is null) continue;
-
-                ImageSource? icon = LoadIcon(descriptor, info.Icon);
-
-                if (_extButtons.TryGetValue(descriptor.Manifest.Id, out (AdWin.RibbonButton Button, string PanelKey) entry))
-                {
-                    // Move to a different panel/tab if it changed.
-                    if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
-                    {
-                        if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
-                            from.Items.Remove(entry.Button);
-                        source.Items.Add(entry.Button);
-                        _extButtons[descriptor.Manifest.Id] = (entry.Button, panelKey);
-                    }
-
-                    entry.Button.Text = info.Name;
-                    entry.Button.ToolTip = info.Tooltip;
-                    if (icon != null) { entry.Button.Image = icon; entry.Button.LargeImage = icon; }
-                    continue;
-                }
-
-                string id = descriptor.Manifest.Id;
-                AdWin.RibbonButton button = new()
-                {
-                    Id = $"AnalyseTool.Ext.{id}",
-                    Text = info.Name,
-                    ShowText = true,
-                    ShowImage = true,
-                    Size = AdWin.RibbonItemSize.Large,
-                    Orientation = System.Windows.Controls.Orientation.Vertical,
-                    ToolTip = info.Tooltip,
-                    CommandHandler = new RelayCommand(() =>
-                        RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp))),
-                };
-                if (icon != null) { button.Image = icon; button.LargeImage = icon; }
-
-                source.Items.Add(button);
-                _extButtons[descriptor.Manifest.Id] = (button, panelKey);
+                if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
+                    from.Items.Remove(entry.Button);
+                target.Items.Add(entry.Button);
+                _extButtons[id] = (entry.Button, panelKey);
             }
 
-            RemoveEmptyPanelsAndTabs();
+            entry.Button.Text = info.Name;
+            entry.Button.ToolTip = info.Tooltip;
+            if (icon != null) { entry.Button.Image = icon; entry.Button.LargeImage = icon; }
+        }
+
+        /// <summary>Creates a new AdWindows button for an extension and adds it to the given panel.</summary>
+        private static AdWin.RibbonButton CreateButton(string id, ExtensionButton info,
+            ImageSource? icon, AdWin.RibbonPanelSource target)
+        {
+            AdWin.RibbonButton button = new()
+            {
+                Id = $"AnalyseTool.Ext.{id}",
+                Text = info.Name,
+                ShowText = true,
+                ShowImage = true,
+                Size = AdWin.RibbonItemSize.Large,
+                Orientation = System.Windows.Controls.Orientation.Vertical,
+                ToolTip = info.Tooltip,
+                CommandHandler = new RelayCommand(() =>
+                    RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp))),
+            };
+            if (icon != null) { button.Image = icon; button.LargeImage = icon; }
+
+            target.Items.Add(button);
+            return button;
         }
 
         /// <summary>Tears down AdWindows panels we created that are now empty, and any custom tab we

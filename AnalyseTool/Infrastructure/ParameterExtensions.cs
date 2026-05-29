@@ -6,16 +6,16 @@ namespace AnalyseTool.Infrastructure
 {
     internal static class ParameterExtensions
     {
-        public static ParameterOrgin GetParameterOrgin(this Parameter parameter)
+        public static ParameterOrigin GetParameterOrigin(this Parameter parameter)
         {
-            ParameterOrgin result = ParameterOrgin.BuiltIn;
+            ParameterOrigin result = ParameterOrigin.BuiltIn;
             if (parameter.Id.Value > -1)
             {
-                result = ParameterOrgin.Project;
+                result = ParameterOrigin.Project;
             }
             if (parameter.IsShared)
             {
-                result = ParameterOrgin.Shared;
+                result = ParameterOrigin.Shared;
             }
             return result;
         }
@@ -28,7 +28,7 @@ namespace AnalyseTool.Infrastructure
                 case StorageType.Integer:
                     return parameter.AsInteger().ToString();
                 case StorageType.String:
-                    return parameter.AsString();
+                    return parameter.AsString() ?? string.Empty;
                 case StorageType.ElementId:
                     return parameter.AsElementId().Value.ToString();
                 default:

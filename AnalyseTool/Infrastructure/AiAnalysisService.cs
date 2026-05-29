@@ -31,7 +31,7 @@ namespace AnalyseTool.Infrastructure
                     - storageType: data type (String, Integer, Double, ElementId)
                     - isTypeParameter: true if it's a type parameter, false if instance
                     - isReadOnly: true if the parameter cannot be edited
-                    - orgin: parameter origin (BuiltIn, Shared, Family)
+                    - origin: parameter origin (BuiltIn, Shared, Family)
 
                     Analyze the data based on the user's request.
                     Be concise and specific. Focus on actionable insights.
@@ -48,7 +48,7 @@ namespace AnalyseTool.Infrastructure
 
             return raw;
         }
-        public async Task<AiResponce> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
+        public async Task<AiResponse> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
         {
             var simplified = elements.Select(e => new
             {
@@ -89,7 +89,7 @@ namespace AnalyseTool.Infrastructure
             };
             string raw = await BuildAnswer(chatHistory, jsonOptions);
 
-            return new AiResponce(raw, ParseEdits(raw));
+            return new AiResponse(raw, ParseEdits(raw));
         }
 
         private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -103,7 +103,7 @@ namespace AnalyseTool.Infrastructure
             StringBuilder stringBuilder = new StringBuilder();
             try
             {
-                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, cancellationToken: cts.Token))
+                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, cts.Token))
                 {
                     if (!string.IsNullOrEmpty(item.Text))
                         stringBuilder.Append(item.Text);
@@ -191,7 +191,7 @@ namespace AnalyseTool.Infrastructure
             return results;
         }
 
-        public record AiResponce(string Raw, List<ParameterAiEdit> Edits);
+        public record AiResponse(string Raw, List<ParameterAiEdit> Edits);
         public record ParameterAiEdit(long ElementId, string Parameter, string OldValue, string NewValue, string Reason);
     }
 }

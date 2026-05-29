@@ -20,7 +20,7 @@ namespace AnalyseTool.Features.Ai
             try
             {
                 AiAnalysisService ai = new AiAnalysisService(request.Model);
-                AiAnalysisService.AiResponce result = await ai.AnalyzeAndEditAsync(request.Items, request.Prompt);
+                AiAnalysisService.AiResponse result = await ai.AnalyzeAndEditAsync(request.Items, request.Prompt);
 
                 return new
                 {

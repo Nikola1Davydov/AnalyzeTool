@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Commands, invoke } from "@/RevitBridge";
-import { ParameterOrgin, SetDataToParametersModes } from "@/stores/types";
+import { ParameterOrigin, SetDataToParametersModes } from "@/stores/types";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useElementsStore } from "@/stores/useElementsStore";
@@ -131,9 +131,9 @@ const filteredElements = computed(() => {
 
   function matchOrigin(param: ParameterData): boolean {
     if (originFilters.length === 0) return true;
-    if (param.orgin === ParameterOrgin.Shared) return originFilters.includes("Schared");
-    if (param.orgin === ParameterOrgin.Project) return originFilters.includes("Project");
-    if (param.orgin === ParameterOrgin.BuiltIn) return originFilters.includes("BuildIn");
+    if (param.origin === ParameterOrigin.Shared) return originFilters.includes("Schared");
+    if (param.origin === ParameterOrigin.Project) return originFilters.includes("Project");
+    if (param.origin === ParameterOrigin.BuiltIn) return originFilters.includes("BuildIn");
     return false;
   }
 
@@ -160,11 +160,11 @@ const parameterOptions = computed(() => {
     for (const param of element.parameters || []) {
       const scopeLabel: ParameterOption["scopeLabel"] = param.isTypeParameter ? "Type" : "Instance";
       const originLabel: ParameterOption["originLabel"] =
-        param.orgin === ParameterOrgin.Shared
+        param.origin === ParameterOrigin.Shared
           ? "Shared"
-          : param.orgin === ParameterOrgin.Project
+          : param.origin === ParameterOrigin.Project
             ? "Project"
-            : param.orgin === ParameterOrgin.BuiltIn
+            : param.origin === ParameterOrigin.BuiltIn
               ? "BuildIn"
               : "Unknown";
 
