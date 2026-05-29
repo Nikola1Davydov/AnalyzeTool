@@ -28,6 +28,9 @@ namespace AnalyseTool.Features.Extensions
                     version = d.Manifest.Version,
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
+                    // "dll" = prebuilt assembly, "script" = Roslyn-compiled .cs, "js" = UI-only.
+                    kind = d.HasDll ? "dll" : d.HasScript ? "script" : "js",
+                    compileError = ExtensionDiagnostics.GetError(d.Manifest.Id),
                     directory = d.Directory,
                 })
                 .OrderBy(e => e.name)

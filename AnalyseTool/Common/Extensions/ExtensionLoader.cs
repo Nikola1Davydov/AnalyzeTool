@@ -1,7 +1,10 @@
 using AnalyseTool.Common.Dispatch;
+using AnalyseTool.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace AnalyseTool.Common.Extensions
 {
@@ -29,6 +32,7 @@ namespace AnalyseTool.Common.Extensions
         public void UnloadAll()
         {
             _dispatcher.ClearExtensions();
+            ExtensionDiagnostics.ClearAll();
             foreach (ExtensionLoadContext context in _contexts)
             {
                 try { context.Unload(); }
@@ -43,18 +47,72 @@ namespace AnalyseTool.Common.Extensions
             {
                 if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
 
+                ExtensionDiagnostics.Clear(descriptor.Manifest.Id);
                 try
                 {
-                    LoadCommands(descriptor);
+                    if (descriptor.HasDll)
+                        LoadDllCommands(descriptor);
+                    else
+                        LoadScriptCommands(descriptor);
                 }
                 catch (Exception ex)
                 {
+                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, ex.Message);
                     UserDialogUtils.Error($"Failed to load extension '{descriptor.Manifest.Id}': {ex.Message}");
                 }
             }
         }
 
-        private void LoadCommands(ExtensionDescriptor descriptor)
+        /// <summary>Compiles a script extension's C# source with Roslyn (cached by source hash) and
+        /// registers the resulting commands — same downstream as a prebuilt DLL.</summary>
+        private void LoadScriptCommands(ExtensionDescriptor descriptor)
+        {
+            string id = descriptor.Manifest.Id;
+            string[] files = descriptor.ScriptFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray();
+
+            string cacheDir = PathProvider.ScriptCacheDir(id);
+            Directory.CreateDirectory(cacheDir);
+            string cachedDll = Path.Combine(cacheDir, ScriptCacheKey(files) + ".dll");
+
+            if (!File.Exists(cachedDll))
+            {
+                ScriptCompileResult result = RoslynScriptCompiler.CompileFiles(files, id);
+                if (!result.Success)
+                {
+                    string error = string.Join(Environment.NewLine, result.Errors);
+                    ExtensionDiagnostics.SetError(id, error);
+                    UserDialogUtils.Error($"Extension '{id}' failed to compile:{Environment.NewLine}{error}");
+                    return;
+                }
+
+                File.WriteAllBytes(cachedDll, result.Assembly!);
+                if (result.Pdb is not null)
+                    File.WriteAllBytes(Path.ChangeExtension(cachedDll, ".pdb"), result.Pdb);
+            }
+
+            ExtensionLoadContext alc = new ExtensionLoadContext(cachedDll, id);
+            Assembly assembly = alc.LoadEntry(cachedDll); // byte-load: cache file stays unlocked
+            _contexts.Add(alc);
+            _dispatcher.RegisterExtension(assembly, id);
+        }
+
+        /// <summary>Cache key = SHA-256 over the script sources (+ a plugin-version salt so a host upgrade
+        /// invalidates stale compiled bytes). Changed source ⇒ new key ⇒ recompile.</summary>
+        private static string ScriptCacheKey(IEnumerable<string> files)
+        {
+            StringBuilder sb = new();
+            sb.Append(SharedData.ToolData.PLUGIN_VERSION).Append('\n');
+            foreach (string file in files)
+            {
+                sb.Append(Path.GetFileName(file)).Append('\n');
+                sb.Append(File.ReadAllText(file)).Append('\n');
+            }
+
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
+            return Convert.ToHexString(hash, 0, 8); // 16 hex chars is plenty for a per-id cache
+        }
+
+        private void LoadDllCommands(ExtensionDescriptor descriptor)
         {
             ExtensionManifest manifest = descriptor.Manifest;
 

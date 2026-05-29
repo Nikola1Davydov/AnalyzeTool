@@ -13,6 +13,11 @@ namespace AnalyseTool.Common
         /// machine can host builds for several Revit versions side by side.</summary>
         public static string ExtensionsRoot => Path.Combine(ProfilePath, "extensions");
 
+        /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\cache\scripts\&lt;id&gt; — compiled bytes of a script extension,
+        /// keyed by a source hash so unchanged scripts skip recompilation across Revit sessions.</summary>
+        public static string ScriptCacheDir(string extensionId) =>
+            Path.Combine(ProfilePath, "cache", "scripts", extensionId);
+
         public static string DebugServerUrl => "http://localhost:22524";
     }
 }

@@ -6,8 +6,23 @@ namespace AnalyseTool.Common.Extensions
     /// <summary>One discovered extension: its parsed manifest plus the folder it lives in.</summary>
     internal sealed record ExtensionDescriptor(ExtensionManifest Manifest, string Directory)
     {
-        public bool HasCommands => !string.IsNullOrWhiteSpace(Manifest.EntryAssembly);
+        /// <summary>Prebuilt-DLL extension: the manifest names an <c>entryAssembly</c>.</summary>
+        public bool HasDll => !string.IsNullOrWhiteSpace(Manifest.EntryAssembly);
+
+        /// <summary>Script extension: no entryAssembly, but the folder ships C# source compiled by Roslyn.
+        /// (When entryAssembly IS set, any <c>.cs</c> are treated as build sources and ignored here.)</summary>
+        public bool HasScript => !HasDll && ScriptFiles.Count > 0;
+
+        /// <summary>True if the extension contributes commands (either prebuilt or compiled from source).</summary>
+        public bool HasCommands => HasDll || HasScript;
+
         public bool HasUi => Manifest.Ui?.Button is not null;
+
+        /// <summary>Top-level <c>.cs</c> files in the extension folder (the Roslyn script sources).</summary>
+        public IReadOnlyList<string> ScriptFiles =>
+            System.IO.Directory.Exists(Directory)
+                ? System.IO.Directory.GetFiles(Directory, "*.cs")
+                : Array.Empty<string>();
     }
 
     /// <summary>
