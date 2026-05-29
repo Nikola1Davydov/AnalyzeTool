@@ -52,9 +52,11 @@ namespace AnalyseTool.Common.Extensions
 
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
             AddStaticButton(managePanel, "AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "Show where extensions live and how to add them", appIcon: null);
+                SettingsCommandClass, "Show where extensions live and how to add them",
+                image: BuildGlyphIcon("")); // Segoe MDL2 Assets gear (Setting, U+E713)
             AddStaticButton(managePanel, "AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit", appIcon: null);
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit",
+                image: BuildGlyphIcon("")); // Segoe MDL2 Assets refresh (U+E72C)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -256,7 +258,7 @@ namespace AnalyseTool.Common.Extensions
         }
 
         private static void AddStaticButton(RibbonPanel panel, string name, string text, string assemblyPath,
-            string className, string? tooltip, string? appIcon)
+            string className, string? tooltip, string? appIcon = null, ImageSource? image = null)
         {
             PushButtonData data = new(name, text, assemblyPath, className);
             if (!string.IsNullOrWhiteSpace(tooltip)) data.ToolTip = tooltip;
@@ -265,11 +267,15 @@ namespace AnalyseTool.Common.Extensions
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(appIcon))
+                // Prefer a pre-rendered ImageSource (e.g. a glyph icon); otherwise load the packaged PNG.
+                ImageSource? resolved = image;
+                if (resolved is null && !string.IsNullOrWhiteSpace(appIcon))
+                    resolved = new BitmapImage(new Uri($"pack://application:,,,/AnalyseTool;component/Resources/Icons/{appIcon}"));
+
+                if (resolved is not null)
                 {
-                    BitmapImage image = new(new Uri($"pack://application:,,,/AnalyseTool;component/Resources/Icons/{appIcon}"));
-                    pushButton.Image = image;
-                    pushButton.LargeImage = image;
+                    pushButton.Image = resolved;
+                    pushButton.LargeImage = resolved;
                 }
             }
             catch { /* icon is best-effort */ }
@@ -293,6 +299,26 @@ namespace AnalyseTool.Common.Extensions
                 ? descriptor.Manifest.Id
                 : descriptor.Manifest.Ui!.Button!.Name;
             return BuildDefaultIcon(label);
+        }
+
+        /// <summary>Renders a Segoe MDL2 Assets glyph (a Windows system icon font) onto a transparent
+        /// 32×32 bitmap, so the static ribbon buttons get crisp vector-style icons with no asset files.</summary>
+        private static ImageSource BuildGlyphIcon(string glyph)
+        {
+            const int size = 32;
+
+            DrawingVisual visual = new();
+            using (DrawingContext dc = visual.RenderOpen())
+            {
+                FormattedText text = new(glyph, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe MDL2 Assets"), 22, new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)), 1.0);
+                dc.DrawText(text, new Point((size - text.Width) / 2, (size - text.Height) / 2));
+            }
+
+            RenderTargetBitmap bitmap = new(size, size, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            bitmap.Freeze();
+            return bitmap;
         }
 
         /// <summary>Draws a default icon (colored rounded square + the extension's initial) so a button

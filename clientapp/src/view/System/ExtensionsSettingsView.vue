@@ -77,8 +77,9 @@ async function reload() {
   await Promise.all([load(), loadPaths()]);
 }
 
-function openFolder() {
-  invoke("OpenExtensionsFolder").catch((e) => console.error(e));
+function openFolder(path: string | undefined) {
+  if (!path) return;
+  invoke("OpenFolder", { path }).catch((e) => console.error(e));
 }
 
 // --- Extension source paths ---------------------------------------------------------------
@@ -222,12 +223,6 @@ onMounted(() => {
           @click="openTemplateDrawer"
         />
         <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
-        <Button
-          label="Open folder"
-          icon="pi pi-folder-open"
-          severity="secondary"
-          @click="openFolder"
-        />
       </div>
     </div>
 
@@ -293,17 +288,27 @@ onMounted(() => {
             <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
           </template>
         </Column>
-        <Column header="" class="w-12">
+        <Column header="" class="w-24">
           <template #body="{ data: row }">
-            <Button
-              v-if="!row.isDefault"
-              icon="pi pi-trash"
-              size="small"
-              text
-              severity="danger"
-              :disabled="pathsBusy"
-              @click="removePath(row.path)"
-            />
+            <div class="flex justify-end gap-1">
+              <Button
+                icon="pi pi-folder-open"
+                size="small"
+                text
+                severity="secondary"
+                v-tooltip.left="'Open in Explorer'"
+                @click="openFolder(row.scanDir)"
+              />
+              <Button
+                v-if="!row.isDefault"
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                :disabled="pathsBusy"
+                @click="removePath(row.path)"
+              />
+            </div>
           </template>
         </Column>
         <template #empty>
@@ -324,6 +329,18 @@ onMounted(() => {
         <template #body="{ data: row }">
           <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
           <Tag v-if="row.hasUi" value="UI" severity="warn" />
+        </template>
+      </Column>
+      <Column header="" class="w-12">
+        <template #body="{ data: row }">
+          <Button
+            icon="pi pi-folder-open"
+            size="small"
+            text
+            severity="secondary"
+            v-tooltip.left="'Open in Explorer'"
+            @click="openFolder(row.directory)"
+          />
         </template>
       </Column>
       <template #empty>
