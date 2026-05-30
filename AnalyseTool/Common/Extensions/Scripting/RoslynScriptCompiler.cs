@@ -101,6 +101,10 @@ namespace AnalyseTool.Common.Extensions.Scripting
         }
 
         // Encoding is required: emitting a PDB for a source whose tree has no encoding fails (CS8055).
+        /// <summary>True when the source already declares an IRevitTask class (so it should be saved/compiled
+        /// as-is); false for a bare body that needs wrapping. Public for SaveAsCommand.</summary>
+        public static bool LooksLikeFullCommand(string source) => IsFullCommand(source);
+
         private static SyntaxTree Parse(string text, string path) =>
             CSharpSyntaxTree.ParseText(text, ParseOptions, path, Encoding.UTF8);
 

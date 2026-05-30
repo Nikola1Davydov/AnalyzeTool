@@ -64,5 +64,11 @@ namespace AnalyseTool.Common.Extensions
         /// <summary>Icon file relative to the extension folder (PNG).</summary>
         [JsonProperty("icon")]
         public string? Icon { get; init; }
+
+        /// <summary>When set, clicking the ribbon button INVOKES this command (e.g. "&lt;id&gt;.Foo")
+        /// directly instead of opening a WebView window. Used by command-only script extensions
+        /// (SaveAsCommand). When null, the button opens the extension's UI page.</summary>
+        [JsonProperty("command")]
+        public string? Command { get; init; }
     }
 }

@@ -1,4 +1,6 @@
 using AnalyseTool.Common.Dispatch;
+using AnalyseTool.Common.Extensions.Scripting;
+using AnalyseTool.Features.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.IO;
@@ -113,8 +115,13 @@ namespace AnalyseTool.Common.Transport
 
                 if (string.Equals(type, "list", StringComparison.OrdinalIgnoreCase))
                 {
+                    // The code-execution tools (run + save) are only offered to the AI while C# execution
+                    // is enabled in Settings (they still hard-refuse when off; hiding avoids tempting use).
+                    bool codeExecEnabled = CodeExecutionSettings.Enabled;
+
                     JArray commands = new(_dispatcher.RegisteredCommands
                         .Where(c => c.ExposeToMcp)
+                        .Where(c => codeExecEnabled || !IsCodeExecTool(c.Name))
                         .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                         .Select(c => new JObject
                         {
@@ -139,6 +146,11 @@ namespace AnalyseTool.Common.Transport
                 return Err(id, ex.Message);
             }
         }
+
+        /// <summary>The C#-execution tools gated behind the Settings toggle.</summary>
+        private static bool IsCodeExecTool(string name) =>
+            string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
 
         private static string Ok(string? id, JToken result) =>
             new JObject { ["id"] = id, ["result"] = result }.ToString(Formatting.None);

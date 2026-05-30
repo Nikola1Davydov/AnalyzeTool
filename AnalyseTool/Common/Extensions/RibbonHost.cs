@@ -1,6 +1,8 @@
 using AnalyseTool.Common.Bootstrap;
 using AnalyseTool.Common.Utils;
 using Autodesk.Revit.UI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -144,6 +146,17 @@ namespace AnalyseTool.Common.Extensions
         private static AdWin.RibbonButton CreateButton(string id, ExtensionButton info,
             ImageSource? icon, AdWin.RibbonPanelSource target)
         {
+            // A button either INVOKES a command directly (command-only script extensions, where
+            // ui.button.command is set) or OPENS the extension's WebView window (UI extensions).
+            string? command = info.Command;
+            RelayCommand handler = string.IsNullOrWhiteSpace(command)
+                ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp)))
+                : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
+                    {
+                        AnalyseToolBootstrap.Initialize(uiApp); // ensure the dispatcher is ready
+                        InvokeSavedCommand(command!);           // fire-and-forget (no deadlock on the hub)
+                    }));
+
             AdWin.RibbonButton button = new()
             {
                 Id = $"AnalyseTool.Ext.{id}",
@@ -153,8 +166,7 @@ namespace AnalyseTool.Common.Extensions
                 Size = AdWin.RibbonItemSize.Large,
                 Orientation = System.Windows.Controls.Orientation.Vertical,
                 ToolTip = info.Tooltip,
-                CommandHandler = new RelayCommand(() =>
-                    RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp))),
+                CommandHandler = handler,
             };
             if (icon != null) { button.Image = icon; button.LargeImage = icon; }
 
@@ -214,6 +226,38 @@ namespace AnalyseTool.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             new ExtensionWindow(descriptor).Show();
         }
+
+        /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a
+        /// dialog. Fire-and-forget on purpose: it must NOT be awaited inside the RibbonEventHub handler,
+        /// or the command's own RunInRevitAsync (queued on the RevitTaskHub external event) would
+        /// deadlock waiting for the event we're currently inside.</summary>
+        private static void InvokeSavedCommand(string commandName)
+        {
+            _ = ReportAsync();
+
+            async Task ReportAsync()
+            {
+                try
+                {
+                    object? result = await AnalyseToolBootstrap.Dispatcher
+                        .DispatchAsync(commandName, JValue.CreateNull(), CancellationToken.None);
+                    string text = result is null
+                        ? "(no result)"
+                        : JToken.FromObject(result).ToString(Formatting.Indented);
+                    ShowResult(commandName, Truncate(text, 4000));
+                }
+                catch (Exception ex)
+                {
+                    ShowResult(commandName, "Error: " + ex.Message);
+                }
+            }
+        }
+
+        private static void ShowResult(string title, string content) =>
+            RibbonEventHub.Run(_ => TaskDialog.Show(title, content));
+
+        private static string Truncate(string value, int max) =>
+            value.Length <= max ? value : value.Substring(0, max) + "\n…(truncated)";
 
         /// <summary>Finds or creates the AdWindows panel for (tab, panel), creating a custom tab too
         /// if the manifest asks for one that doesn't exist yet (the official API can't do this at

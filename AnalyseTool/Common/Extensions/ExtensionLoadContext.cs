@@ -25,7 +25,7 @@ namespace AnalyseTool.Common.Extensions
             "Newtonsoft.Json",   // payload JToken crosses the boundary
         };
 
-        private readonly AssemblyDependencyResolver _resolver;
+        private readonly AssemblyDependencyResolver? _resolver;
 
         public ExtensionLoadContext(string entryAssemblyPath, string name)
             : base(name, isCollectible: true) // collectible so Reload can unload + replace the DLL
@@ -33,8 +33,29 @@ namespace AnalyseTool.Common.Extensions
             _resolver = new AssemblyDependencyResolver(entryAssemblyPath);
         }
 
+        /// <summary>For in-memory assemblies (e.g. a Roslyn-compiled ad-hoc snippet) that have no file on
+        /// disk and no private dependencies — everything they reference is shared with the host.</summary>
+        public ExtensionLoadContext(string name)
+            : base(name, isCollectible: true)
+        {
+            _resolver = null;
+        }
+
         /// <summary>Loads the extension's entry assembly without locking the file on disk.</summary>
         public Assembly LoadEntry(string path) => LoadFromBytes(path);
+
+        /// <summary>Loads an assembly straight from its compiled bytes (+ optional PDB), no file involved.</summary>
+        public Assembly LoadImage(byte[] assembly, byte[]? pdb)
+        {
+            using MemoryStream assemblyStream = new(assembly);
+            if (pdb is not null)
+            {
+                using MemoryStream pdbStream = new(pdb);
+                return LoadFromStream(assemblyStream, pdbStream);
+            }
+
+            return LoadFromStream(assemblyStream);
+        }
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
@@ -42,7 +63,7 @@ namespace AnalyseTool.Common.Extensions
             if (assemblyName.Name is not null && SharedWithHost.Contains(assemblyName.Name))
                 return null;
 
-            string? path = _resolver.ResolveAssemblyToPath(assemblyName);
+            string? path = _resolver?.ResolveAssemblyToPath(assemblyName);
             return path is not null ? LoadFromBytes(path) : null;
         }
 

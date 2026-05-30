@@ -50,6 +50,9 @@ const mcpBusy = ref(false);
 const port = ref("17890");
 const templateDrawerVisible = ref(false);
 
+const codeExec = ref(false);
+const codeExecBusy = ref(false);
+
 function openTemplateDrawer() {
   templateDrawerVisible.value = true;
 }
@@ -149,6 +152,28 @@ async function removePath(path: string) {
   }
 }
 
+async function loadCodeExec() {
+  try {
+    const res = await invoke<{ enabled: boolean }>("GetCodeExecutionStatus");
+    codeExec.value = !!res?.enabled;
+  } catch (e) {
+    console.error("Failed to load code-execution status", e);
+  }
+}
+
+async function setCodeExec(enabled: boolean) {
+  codeExecBusy.value = true;
+  try {
+    const res = await invoke<{ enabled: boolean }>("SetCodeExecution", { enabled });
+    codeExec.value = !!res?.enabled;
+  } catch (e) {
+    console.error("Failed to update code-execution setting", e);
+    await loadCodeExec(); // revert the checkbox to the real state
+  } finally {
+    codeExecBusy.value = false;
+  }
+}
+
 async function loadMcp() {
   try {
     const status = await invoke<McpStatus>("GetMcpStatus");
@@ -206,6 +231,7 @@ onMounted(() => {
   load();
   loadPaths();
   loadMcp();
+  loadCodeExec();
 });
 </script>
 
@@ -353,6 +379,34 @@ onMounted(() => {
       :extensionsRoot="data?.extensionsRoot"
       @created="reload"
     />
+
+    <!-- C# code execution: gates the ad-hoc ExecuteRevitCode command (AI scratchpad). -->
+    <section class="mt-8 border-t border-surface-200 pt-6">
+      <div class="flex items-center gap-3 mb-1">
+        <h2 class="text-lg font-bold">C# code execution</h2>
+        <Tag
+          :value="codeExec ? 'enabled' : 'disabled'"
+          :severity="codeExec ? 'success' : 'secondary'"
+        />
+      </div>
+      <p class="text-sm text-surface-500 mb-3">
+        Lets the AI compile and run arbitrary C# inside Revit (the
+        <code>ExecuteRevitCode</code> tool). The code runs in-process with full Revit API access — only
+        enable this if you trust the AI client. Off by default; hidden from the MCP tool list while off.
+      </p>
+      <div class="flex items-center gap-2">
+        <Checkbox
+          :modelValue="codeExec"
+          :binary="true"
+          :disabled="codeExecBusy"
+          inputId="codeExecToggle"
+          @update:modelValue="setCodeExec($event)"
+        />
+        <label for="codeExecToggle" class="text-sm select-none cursor-pointer">
+          Allow the AI to run C# code
+        </label>
+      </div>
+    </section>
 
     <!-- MCP server: exposes every command (built-in + extensions) to AI clients over MCP. -->
     <section class="mt-8 border-t border-surface-200 pt-6">
