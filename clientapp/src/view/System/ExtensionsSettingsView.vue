@@ -28,6 +28,16 @@ interface PathRow {
   extensionCount: number;
 }
 
+interface CommandRow {
+  name: string;
+  source: string; // "core" for built-ins, else the extension id
+  description: string | null;
+  readOnly: boolean;
+  destructive: boolean;
+  exposedToMcp: boolean;
+  inputSchema: any;
+}
+
 interface McpStatus {
   running: boolean;
   enabled: boolean;
@@ -44,6 +54,33 @@ const loading = ref(true);
 
 const paths = ref<PathRow[]>([]);
 const pathsBusy = ref(false);
+
+const commands = ref<CommandRow[]>([]);
+const commandSearch = ref("");
+
+const filteredCommands = computed(() => {
+  const q = commandSearch.value.trim().toLowerCase();
+  if (!q) return commands.value;
+  return commands.value.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      (c.source ?? "").toLowerCase().includes(q) ||
+      (c.description ?? "").toLowerCase().includes(q),
+  );
+});
+
+// Summarize a command's JSON-schema payload as "field: type, …" for the table.
+function payloadSummary(schema: any): string {
+  if (!schema || typeof schema !== "object") return "—";
+  const props = schema.properties;
+  if (props && typeof props === "object") {
+    const keys = Object.keys(props);
+    if (keys.length)
+      return keys.map((k) => (props[k]?.type ? `${k}: ${props[k].type}` : k)).join(", ");
+  }
+  if (schema.additionalProperties) return "(free-form object)";
+  return "—";
+}
 
 const mcp = ref<McpStatus | null>(null);
 const mcpBusy = ref(false);
@@ -75,9 +112,9 @@ async function reload() {
   } catch (e) {
     console.error("Reload failed", e);
   }
-  // Refresh both tables — after a reload a path can flip valid/invalid (e.g. a new extension was
-  // dropped into it) and the extension count changes.
-  await Promise.all([load(), loadPaths()]);
+  // Refresh tables — after a reload a path can flip valid/invalid (e.g. a new extension was dropped
+  // into it), the extension count changes, and extension commands appear/disappear.
+  await Promise.all([load(), loadPaths(), loadCommands()]);
 }
 
 function openFolder(path: string | undefined) {
@@ -149,6 +186,15 @@ async function removePath(path: string) {
     console.error("Failed to remove path", e);
   } finally {
     pathsBusy.value = false;
+  }
+}
+
+async function loadCommands() {
+  try {
+    const res = await invoke<{ commands: CommandRow[] }>("GetCommands");
+    commands.value = res?.commands ?? [];
+  } catch (e) {
+    console.error("Failed to load commands", e);
   }
 }
 
@@ -232,6 +278,7 @@ onMounted(() => {
   loadPaths();
   loadMcp();
   loadCodeExec();
+  loadCommands();
 });
 </script>
 
@@ -373,6 +420,55 @@ onMounted(() => {
         <div class="text-surface-500 p-4">No extensions installed.</div>
       </template>
     </DataTable>
+
+    <!-- Commands: everything callable from a web extension via AT.invoke(name, payload). -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-6">
+      <div class="flex items-start justify-between mb-3 gap-3">
+        <div>
+          <h2 class="text-sm font-bold">Commands</h2>
+          <p class="text-xs text-surface-500">
+            Callable from a web extension via <code>AT.invoke(name, payload)</code>.
+          </p>
+        </div>
+        <InputText v-model="commandSearch" placeholder="Search…" class="w-56 shrink-0" />
+      </div>
+      <DataTable
+        :value="filteredCommands"
+        dataKey="name"
+        scrollable
+        scrollHeight="22rem"
+        class="text-sm"
+      >
+        <Column header="Command">
+          <template #body="{ data: row }">
+            <div class="font-mono">{{ row.name }}</div>
+            <div class="text-xs text-surface-500">
+              {{ row.source === "core" ? "built-in" : row.source }}
+            </div>
+          </template>
+        </Column>
+        <Column header="Description">
+          <template #body="{ data: row }">
+            <div>{{ row.description || "—" }}</div>
+          </template>
+        </Column>
+        <Column header="Payload">
+          <template #body="{ data: row }">
+            <span class="font-mono text-xs break-all">{{ payloadSummary(row.inputSchema) }}</span>
+          </template>
+        </Column>
+        <Column header="" class="whitespace-nowrap">
+          <template #body="{ data: row }">
+            <Tag v-if="row.readOnly" value="read-only" severity="info" class="mr-1" />
+            <Tag v-if="row.destructive" value="destructive" severity="danger" class="mr-1" />
+            <Tag v-if="row.exposedToMcp" value="MCP" severity="success" />
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-3">No commands match.</div>
+        </template>
+      </DataTable>
+    </section>
 
     <CreateExtensionTemplateDrawer
       v-model:visible="templateDrawerVisible"
