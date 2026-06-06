@@ -2,8 +2,15 @@ using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Sdk
 {
+    /// <summary>
+    /// What a command receives: the request <see cref="Payload"/> and the only sanctioned way to touch
+    /// the Revit model (<see cref="RunInRevitAsync{T}"/>). Intentionally minimal — no direct
+    /// Document/UIApplication accessors, so model access can't happen off the Revit thread.
+    /// </summary>
     public interface IRevitContext
     {
+        /// <summary>The JSON payload the caller passed to <c>AT.invoke(command, payload)</c> (or the MCP
+        /// tool arguments). Deserialize it with <c>Payload.As&lt;T&gt;()</c>.</summary>
         RevitPayload Payload { get; }
 
         /// <summary>

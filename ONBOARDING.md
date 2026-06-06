@@ -110,8 +110,36 @@ touched).
 
 ### 4.1 Project setup
 
-Reference the SDK and import the shared build props. The simplest path is to copy
-`samples/Acme.Sample/Acme.Sample.csproj`:
+**The easy way — NuGet.** Install the SDK package; it brings the contract, the `Debug/Release R25`
+and `R26` build configurations, the right `net8.0-windows` TFM, and the Revit API (compile-only,
+per your chosen config) automatically:
+
+```
+dotnet add package AnalyseTool.Sdk
+```
+
+A minimal extension `.csproj` is then just:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acme.Sample</RootNamespace>
+    <AssemblyName>Acme.Sample</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.4.*-*" />
+  </ItemGroup>
+</Project>
+```
+
+Build with a year config (`dotnet build -c "Release R25"` or `"Release R26"`), then deploy your
+DLL + `plugin.json`. (Don't worry about copying the SDK/Revit/Newtonsoft DLLs — the host owns them
+and the extension's load context shares the host's copies, so type identity stays intact even if a
+copy ends up beside your DLL.)
+
+**The in-repo way (alternative).** If you build inside this repository, copy
+`samples/Acme.Sample/Acme.Sample.csproj`, which references the SDK by project and imports the shared
+build props directly:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -347,7 +375,29 @@ page:
 </script>
 ```
 
-### 5.2 Building a framework app (Vite)
+### 5.2 Discovering what you can call
+
+You don't have to guess command names or payloads. The host exposes a catalog command:
+
+```js
+const { commands } = await window.AT.invoke("GetCommands");
+// each: { name, source, description, readOnly, destructive, exposedToMcp, inputSchema }
+console.table(commands.map((c) => ({ name: c.name, source: c.source })));
+```
+
+- `name` — what you pass to `AT.invoke(name, payload)`.
+- `source` — `"core"` for built-ins, otherwise the extension `id` that added the command.
+- `inputSchema` — the JSON schema of the payload, so you know which arguments to send.
+
+Every **registered** command is callable from JS — `HiddenFromMcp` only hides a command from the
+AI's tool list, not from `AT.invoke`. So `GetCommands` lists everything you can call, including
+other extensions' commands.
+
+For a readable, searchable view, open **AnalyseTool tab → Settings → Commands**: a live table of
+every command with its source, description, payload shape and flags (read-only / destructive /
+MCP). That's the quickest way to browse what's available while you build.
+
+### 5.3 Building a framework app (Vite)
 
 Ship the built `dist` contents next to `plugin.json`. The one gotcha: the page loads from a
 virtual host (`https://<host>/index.html`), so **assets must be relative**. In `vite.config`:
@@ -361,7 +411,7 @@ export default {
 
 Then set `ui.entryHtml` to your built `index.html` (or a sub-path if you nest the dist).
 
-### 5.3 Live dev with HMR
+### 5.4 Live dev with HMR
 
 Set `ui.devUrl` in the manifest to your dev server and the window loads it instead of the built
 files — full hot reload, `window.AT` injected the same way:
@@ -405,8 +455,9 @@ so the file on disk is never locked — you can overwrite the DLL while Revit is
 Reload.
 
 The **Settings** page (AnalyseTool tab → Settings) lists every installed extension with its
-version, target Revit, compatibility, and whether it has C# commands / UI — plus **Open folder**
-and **Reload** buttons.
+version and whether it has C# commands / UI, plus a per-row **Open folder** button and a global
+**Reload**. It also shows the host **Environment** (Revit / SDK / plugin version), the
+**Extension paths** it scans, the **Commands** catalog (§5.2), and the **MCP server** controls.
 
 ---
 

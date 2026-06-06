@@ -8,29 +8,45 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- ABI contract: keep AssemblyVersion's MAJOR stable. The host accepts an extension only when
+         the AnalyseTool.Sdk it was built against has the same major version. Package/File versions
+         track releases; the assembly version is the compatibility key. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.4.0.0</FileVersion>
+
+    <!-- NuGet package metadata -->
+    <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <Description>SDK для написания C# расширений AnalyseTool</Description>
+    <Version>1.4.0</Version>
+    <Authors>Nikolai Davydov</Authors>
+    <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025 and 2026.</Description>
+    <PackageTags>revit;bim;analysetool;extension;addin;sdk</PackageTags>
+    <PackageProjectUrl>https://github.com/Nikola1Davydov/AnalyzeTool</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Nikola1Davydov/AnalyzeTool</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>ONBOARDING.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
-    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
-        <Version>1.0.0</Version>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="$(Configuration.Contains('R26'))">
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
-        <Version>1.0.0</Version>
-    </PropertyGroup>
-
-    
-    <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  <ItemGroup>
+    <!-- PrivateAssets=all: the SDK uses Newtonsoft internally, but consumers don't need it (the host
+         provides it at runtime and the SDK's public surface doesn't expose it). So it is NOT a
+         package dependency. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="AnalyseTool" />
+  </ItemGroup>
+
+  <!-- Ship the authoring props (auto-imported by consumers) and the author guide as the package README. -->
+  <ItemGroup>
+    <None Include="build\AnalyseTool.Sdk.props" Pack="true" PackagePath="build\" />
+    <None Include="build\AnalyseTool.Extension.props" Pack="true" PackagePath="build\" />
+    <None Include="..\ONBOARDING.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

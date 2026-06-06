@@ -42,3 +42,4 @@ jobs:
         run: ./build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NuGetApiKey: ${{ secrets.NUGET_API_KEY }}

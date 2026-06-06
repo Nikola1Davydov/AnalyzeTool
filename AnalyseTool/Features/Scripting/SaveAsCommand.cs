@@ -49,7 +49,14 @@ namespace AnalyseTool.Features.Scripting
 
             string version = Context.UiApplication.Application.VersionNumber; // year, e.g. "2025"
             string root = ResolveTargetRoot(req.TargetRoot);
-            string directory = Path.Combine(root, version, id);
+            string versionDir = Path.Combine(root, version);
+            string directory = Path.Combine(versionDir, id);
+
+            // Defense-in-depth: the resolved folder must stay inside the version dir.
+            string fullVersionDir = Path.GetFullPath(versionDir);
+            if (!Path.GetFullPath(directory).StartsWith(fullVersionDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Invalid extension id (path escapes the extensions folder).");
+
             if (Directory.Exists(directory))
                 throw new InvalidOperationException($"An extension folder already exists: {id}");
 
@@ -204,8 +211,13 @@ namespace AnalyseTool.Features.Scripting
         private static string Capitalize(string s) =>
             s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
-        private static bool IsValidId(string id) =>
-            id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
+        private static bool IsValidId(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            if (id.Contains("..", StringComparison.Ordinal)) return false; // no path traversal
+            if (!char.IsLetterOrDigit(id[0])) return false;                // no leading '.' '-' '_'
+            return id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
+        }
 
         /// <summary>Returns a registered extension source root (default when unspecified); rejects
         /// anything not registered so we never scaffold where the host wouldn't scan.</summary>
