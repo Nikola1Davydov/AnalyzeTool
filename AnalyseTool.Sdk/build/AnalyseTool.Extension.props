@@ -16,8 +16,10 @@
         <Configurations>
             Debug R25;
             Debug R26;
+            Debug R27;
             Release R25;
-            Release R26
+            Release R26;
+            Release R27;
         </Configurations>
     </PropertyGroup>
     
@@ -34,6 +36,11 @@
     <RevitVersion>2026</RevitVersion>
     <TargetFramework>net8.0-windows</TargetFramework>
   </PropertyGroup>
+
+    <PropertyGroup Condition="$(Configuration.Contains('R27'))">
+        <RevitVersion>2027</RevitVersion>
+        <TargetFramework>net10.0-windows</TargetFramework>
+    </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">

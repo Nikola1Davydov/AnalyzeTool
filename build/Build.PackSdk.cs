@@ -13,19 +13,18 @@ sealed partial class Build
     [Parameter] [Secret] readonly string NuGetApiKey;
 
     /// <summary>
-    ///     Packs the AnalyseTool.Sdk NuGet into the artifacts directory. Uses the FULL release version
-    ///     (e.g. <c>1.4.0-beta.1</c>) so a beta tag yields a NuGet prerelease, unlike the installer which
-    ///     uses the numeric-only version.
+    ///     Packs the AnalyseTool.Sdk NuGet into the artifacts directory. The SDK is a public contract
+    ///     versioned independently of the plugin release — the version comes from the .csproj
+    ///     (&lt;Version&gt;), NOT from the release tag. Bump the csproj version only when the contract changes.
     /// </summary>
     Target PackSdk => _ => _
         .Executes(() =>
         {
-            Log.Information("Packing {Name} {Version}", Solution.AnalyseTool_Sdk.Name, ReleaseVersion);
+            Log.Information("Packing {Name}", Solution.AnalyseTool_Sdk.Name);
 
             DotNetPack(settings => settings
                 .SetProject(Solution.AnalyseTool_Sdk)
                 .SetConfiguration("Release R25")
-                .SetVersion(ReleaseVersion)
                 .SetOutputDirectory(ArtifactsDirectory)
                 .SetVerbosity(DotNetVerbosity.minimal));
         });

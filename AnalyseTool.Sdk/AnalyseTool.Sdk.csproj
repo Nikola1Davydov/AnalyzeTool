@@ -9,16 +9,19 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <!-- ABI contract: keep AssemblyVersion's MAJOR stable. The host accepts an extension only when
-         the AnalyseTool.Sdk it was built against has the same major version. Package/File versions
-         track releases; the assembly version is the compatibility key. -->
+    <!-- The SDK is a public CONTRACT, versioned independently of the plugin release. Bump these only
+         when the contract (IRevitTask / IRevitContext / RevitPayload / RevitCommandAttribute) actually
+         changes — SemVer of the package, not of the host:
+           • AssemblyVersion MAJOR is the hard compatibility key — the host loads an extension only when
+             the AnalyseTool.Sdk it was built against has the SAME major. Bump major = breaking change.
+           • Version (NuGet) / FileVersion follow the contract's SemVer (minor = additive, patch = fix). -->
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.4.0.0</FileVersion>
+    <FileVersion>1.0.0.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <Version>1.4.0</Version>
+    <Version>1.0.0</Version>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025 and 2026.</Description>
     <PackageTags>revit;bim;analysetool;extension;addin;sdk</PackageTags>
