@@ -15,7 +15,7 @@ sealed partial class Build
     ///     Publish a new GitHub release.
     /// </summary>
     Target PublishGitHub => _ => _
-        .DependsOn(CreateInstaller, CreateBundle, PackSdk, PushNuGet)
+        .DependsOn(CreateInstaller, CreateBundle)
         .Requires(() => ReleaseVersion)
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>
