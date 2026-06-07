@@ -1,8 +1,6 @@
 using JetBrains.Annotations;
 using Nuke.Common;
-using Nuke.Common.ProjectModel;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO.Enumeration;
 using System.Linq;
 
@@ -19,7 +17,7 @@ sealed partial class Build : NukeBuild
     /// </summary>
     List<string> GlobBuildConfigurations()
     {
-        var configurations = Solution.Configurations
+        List<string> configurations = Solution.Configurations
             .Select(pair => pair.Key)
             .Select(config => config.Remove(config.LastIndexOf('|')))
             .Where(config => Configurations.Any(wildcard => FileSystemName.MatchesSimpleExpression(wildcard, config)))

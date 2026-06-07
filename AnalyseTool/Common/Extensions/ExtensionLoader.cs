@@ -1,6 +1,7 @@
 using AnalyseTool.Common.Dispatch;
 using AnalyseTool.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
+using Serilog;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -58,6 +59,7 @@ namespace AnalyseTool.Common.Extensions
                 catch (Exception ex)
                 {
                     ExtensionDiagnostics.SetError(descriptor.Manifest.Id, ex.Message);
+                    Log.Error(ex, "Failed to load extension {Id}", descriptor.Manifest.Id);
                     UserDialogUtils.Error($"Failed to load extension '{descriptor.Manifest.Id}': {ex.Message}");
                 }
             }
@@ -81,6 +83,7 @@ namespace AnalyseTool.Common.Extensions
                 {
                     string error = string.Join(Environment.NewLine, result.Errors);
                     ExtensionDiagnostics.SetError(id, error);
+                    Log.Warning("Script extension {Id} failed to compile: {Errors}", id, error);
                     UserDialogUtils.Error($"Extension '{id}' failed to compile:{Environment.NewLine}{error}");
                     return;
                 }
@@ -94,6 +97,7 @@ namespace AnalyseTool.Common.Extensions
             Assembly assembly = alc.LoadEntry(cachedDll); // byte-load: cache file stays unlocked
             _contexts.Add(alc);
             _dispatcher.RegisterExtension(assembly, id);
+            Log.Information("Loaded script extension {Id}", id);
         }
 
         /// <summary>Cache key = SHA-256 over the script sources (+ a plugin-version salt so a host upgrade
@@ -138,6 +142,7 @@ namespace AnalyseTool.Common.Extensions
 
             _contexts.Add(alc);
             _dispatcher.RegisterExtension(assembly, manifest.Id);
+            Log.Information("Loaded DLL extension {Id} (SDK {Sdk})", manifest.Id, referencedSdk);
         }
     }
 }

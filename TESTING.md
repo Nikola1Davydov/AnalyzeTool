@@ -7,16 +7,28 @@ try, the optional/experimental features, known rough edges, and how to report pr
 ## Requirements
 
 - **Windows** + **Autodesk Revit 2025 or 2026**.
+- **Microsoft Edge WebView2 Runtime** — the UI runs on it. Revit 2025/2026 normally ships it; if the
+  AnalyseTool window opens blank, install the Evergreen runtime from
+  https://developer.microsoft.com/microsoft-edge/webview2/ and restart Revit.
 - (Optional) An AI client for MCP, e.g. **Claude Desktop**.
 - (Optional) **Ollama** for local AI parameter analysis.
 
 ## Install
 
+There are **two** MSI variants on the release — pick one:
+
+- `AnalyseTool-…-SingleUser` — installs for **the current user** (no admin needed). Recommended.
+- `AnalyseTool-…-MultiUser` — installs for **all users** (needs admin).
+
 1. Download the latest **prerelease** MSI from the
    [Releases page](https://github.com/Nikola1Davydov/AnalyzeTool/releases) (look for `1.4.0-beta.1`).
-2. **Close Revit**, then run the MSI. If you have an older AnalyseTool installed, uninstall it first
-   (Windows → Apps) or let the installer replace it.
-3. Start Revit → open a project → you'll see the **AnalyseTool** ribbon tab.
+2. **Uninstall any previous AnalyseTool first** (Windows → Apps). ⚠️ The auto-upgrade only replaces an
+   install of the **same type** — if your old version was MultiUser and you install SingleUser (or vice
+   versa) you'll end up with **two copies** (duplicate ribbon, conflicts). When in doubt, uninstall the
+   old one.
+3. **Close Revit**, then run the MSI. Windows SmartScreen may warn "unknown publisher" (the build isn't
+   code-signed yet) — choose **More info → Run anyway**.
+4. Start Revit → open a project → you'll see the **AnalyseTool** ribbon tab.
 
 > The plugin installs per Revit version. If you run both 2025 and 2026, the installer covers both.
 
@@ -59,6 +71,18 @@ try, the optional/experimental features, known rough edges, and how to report pr
   AI client** to refresh.
 - C# code execution / Save-as-command are **new and lightly tested** — expect rough edges; report them.
 - The loopback MCP bridge is **unauthenticated** — only meaningful on a trusted local machine.
+- The MCP server binds a local port — running **two Revit instances** at once means the second can't
+  start the server on the same port (shown as a "last error" in Settings).
+- **Uninstalling leaves your settings and script cache** in `%LOCALAPPDATA%\AnalyseTool` (extensions,
+  `*.json` settings, compiled-script cache). Delete that folder for a fully clean removal.
+
+## Writing your own extensions (for developers)
+
+Anyone can add commands/UI — see `ONBOARDING.md`. The SDK is on NuGet (prerelease during the beta):
+
+```
+dotnet add package AnalyseTool.Sdk --prerelease
+```
 
 ## Reporting issues
 
@@ -69,5 +93,7 @@ Open an issue at **https://github.com/Nikola1Davydov/AnalyzeTool/issues** with:
 - Steps to reproduce (and a sample model if relevant).
 - For extension/MCP problems: the extension's `plugin.json`, and any compile error shown in Settings.
 - Screenshots of any error dialog.
+- **The log file** — attach the latest `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`. It
+  records startup, extension loading, errors and MCP activity, and is the fastest way for us to diagnose.
 
 Thank you! 🙏

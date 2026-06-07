@@ -5,6 +5,7 @@ using AnalyseTool.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using Serilog;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -79,6 +80,8 @@ namespace AnalyseTool.Features.Scripting
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "Command.cs"), source);
             File.WriteAllText(Path.Combine(directory, "plugin.json"), BuildManifest(id, req, commandName));
+
+            Log.Information("SaveAsCommand: created command {Command} at {Directory}", commandName, directory);
 
             // Reload picks up the new script (compiles it) and the ribbon refresh adds its button.
             AnalyseToolBootstrap.ReloadExtensions();

@@ -20,6 +20,9 @@ namespace AnalyseTool
             {
                 AnalyseToolBootstrap.Initialize(commandData.Application);
 
+                if (!WebView2Runtime.EnsureOrWarn())
+                    return Result.Succeeded;
+
                 MainWindow window = new MainWindow();
                 window.Closed += WindowClosed;
 

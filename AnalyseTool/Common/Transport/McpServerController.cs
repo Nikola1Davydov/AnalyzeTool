@@ -1,5 +1,6 @@
 using AnalyseTool.Common.Dispatch;
 using Newtonsoft.Json;
+using Serilog;
 using System.IO;
 
 namespace AnalyseTool.Common.Transport
@@ -69,10 +70,12 @@ namespace AnalyseTool.Common.Transport
             {
                 _lastError = null;
                 _bridge!.Start(_settings.Port);
+                Log.Information("MCP bridge started on port {Port}", _bridge!.Port);
             }
             catch (Exception ex)
             {
                 _lastError = ex.Message; // e.g. port already in use
+                Log.Error(ex, "MCP bridge failed to start on port {Port}", _settings.Port);
             }
         }
 

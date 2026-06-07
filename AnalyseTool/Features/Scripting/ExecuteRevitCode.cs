@@ -2,6 +2,7 @@ using AnalyseTool.Common.Extensions;
 using AnalyseTool.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using System.Reflection;
 
 namespace AnalyseTool.Features.Scripting
@@ -37,9 +38,14 @@ namespace AnalyseTool.Features.Scripting
                 throw new InvalidOperationException("No code provided.");
 
             string assemblyName = "adhoc_" + Guid.NewGuid().ToString("N");
+            Log.Information("ExecuteRevitCode: compiling ad-hoc snippet ({Length} chars)", request.Code.Length);
+
             ScriptCompileResult compiled = RoslynScriptCompiler.CompileSnippet(request.Code, assemblyName, request.Description);
             if (!compiled.Success)
+            {
+                Log.Warning("ExecuteRevitCode: compilation failed: {Errors}", string.Join("; ", compiled.Errors));
                 return new { error = "Compilation failed.", diagnostics = compiled.Errors };
+            }
 
             ExtensionLoadContext alc = new(assemblyName); // collectible, in-memory, no private deps
             try

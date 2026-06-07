@@ -15,6 +15,8 @@ namespace AnalyseTool.Common
         }
         public static void Error(string message)
         {
+            // Every user-facing error is also logged, so beta issues leave a trace in the log file.
+            try { Serilog.Log.Error("UserDialog: {Message}", message); } catch { /* logging is best-effort */ }
             MessageBox.Show(message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

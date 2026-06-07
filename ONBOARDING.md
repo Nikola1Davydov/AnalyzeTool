@@ -115,10 +115,11 @@ and `R26` build configurations, the right `net8.0-windows` TFM, and the Revit AP
 per your chosen config) automatically:
 
 ```
-dotnet add package AnalyseTool.Sdk
+dotnet add package AnalyseTool.Sdk --prerelease
 ```
 
-A minimal extension `.csproj` is then just:
+(The SDK is published as a prerelease during the beta — hence `--prerelease`.) A minimal extension
+`.csproj` is then just:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -127,7 +128,7 @@ A minimal extension `.csproj` is then just:
     <AssemblyName>Acme.Sample</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.4.*-*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*-*" />
   </ItemGroup>
 </Project>
 ```

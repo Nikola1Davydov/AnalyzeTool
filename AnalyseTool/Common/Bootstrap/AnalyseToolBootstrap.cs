@@ -2,6 +2,7 @@ using AnalyseTool.Common.Dispatch;
 using AnalyseTool.Common.Extensions;
 using AnalyseTool.Common.Transport;
 using Autodesk.Revit.UI;
+using Serilog;
 using System.Reflection;
 
 namespace AnalyseTool.Common.Bootstrap
@@ -16,6 +17,9 @@ namespace AnalyseTool.Common.Bootstrap
         public static void Initialize(UIApplication uiApp)
         {
             if (_initialized) return;
+
+            AppLog.Initialize();
+            Log.Information("Initializing AnalyseTool host (Revit {RevitVersion})", uiApp.Application.VersionNumber);
 
             Context.Init(uiApp);
 
@@ -36,6 +40,7 @@ namespace AnalyseTool.Common.Bootstrap
             McpServerController.Initialize(Dispatcher);
 
             _initialized = true;
+            Log.Information("AnalyseTool host ready — {CommandCount} commands registered", Dispatcher.RegisteredCommands.Count);
         }
 
         /// <summary>Reloads extension command DLLs (collectible contexts) so changed code takes effect
@@ -43,8 +48,10 @@ namespace AnalyseTool.Common.Bootstrap
         public static void ReloadExtensions()
         {
             if (!_initialized) return;
+            Log.Information("Reloading extensions");
             _loader.UnloadAll();
             _loader.LoadAll();
+            Log.Information("Reload done — {CommandCount} commands registered", Dispatcher.RegisteredCommands.Count);
         }
 
 

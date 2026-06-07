@@ -3,6 +3,7 @@ using AnalyseTool.Common.Utils;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -43,9 +44,11 @@ namespace AnalyseTool.Common.Extensions
 
         public static void Build(UIControlledApplication app, string launcherPath)
         {
+            AppLog.Initialize();
             RibbonEventHub.Initialize();
 
             string revitVersion = app.ControlledApplication.VersionNumber; // year, e.g. "2025"
+            Log.Information("Building ribbon for Revit {RevitVersion}", revitVersion);
 
             // Static buttons via the official API.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
@@ -207,6 +210,7 @@ namespace AnalyseTool.Common.Extensions
         public static void OpenSettings(UIApplication uiApp)
         {
             AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
             new SettingsWindow().Show();
         }
 
@@ -224,6 +228,7 @@ namespace AnalyseTool.Common.Extensions
             if (!_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor)) return;
 
             AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
             new ExtensionWindow(descriptor).Show();
         }
 

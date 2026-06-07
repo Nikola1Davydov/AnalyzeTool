@@ -36,6 +36,9 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="OllamaSharp" Version="5.4.25" />
+        <!-- File logging for beta triage (%LOCALAPPDATA%\AnalyseTool\logs). -->
+        <PackageReference Include="Serilog" Version="4.2.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
         <!-- Unofficial dynamic-ribbon API (Autodesk.Windows); provided by Revit at runtime. -->
         <PackageReference Include="Nice3point.Revit.Api.AdWindows" Version="$(RevitVersion).*">
             <PrivateAssets>all</PrivateAssets>

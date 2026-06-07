@@ -21,7 +21,9 @@
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <Version>1.0.0</Version>
+    <!-- Prerelease while the platform is in beta; promote to a stable 1.0.0 at GA. -->
+    <Version>1.0.0-beta.1</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025 and 2026.</Description>
     <PackageTags>revit;bim;analysetool;extension;addin;sdk</PackageTags>
