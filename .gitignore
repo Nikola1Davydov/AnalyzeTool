@@ -11,6 +11,7 @@
 *.sln.docstates
 /img/lindkin
 /src/AnalyseTool/archiv
+/src/Installer/output
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -424,7 +425,6 @@ coverage
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 *.user
 .vs
