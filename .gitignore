@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 /img/lindkin
+/src/AnalyseTool/archiv
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -445,3 +446,4 @@ __screenshots__/
 
 /.github/copilot-instructions.md
 /.claude/settings.local.json
+/src/.github/copilot-instructions.md
