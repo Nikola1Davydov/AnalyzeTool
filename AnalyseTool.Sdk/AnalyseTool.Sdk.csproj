@@ -32,6 +32,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>ONBOARDING.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
