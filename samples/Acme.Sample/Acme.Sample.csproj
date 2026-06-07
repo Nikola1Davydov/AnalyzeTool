@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
   <PropertyGroup>
       <LangVersion>latest</LangVersion>
@@ -14,7 +14,7 @@
   <ItemGroup>
     <!-- Private=false: compile against the SDK, but do NOT copy it to output.
          The host owns AnalyseTool.Sdk.dll; the extension's ALC shares it (type identity). -->
-    <ProjectReference Include="..\..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
+    <ProjectReference Include="..\..\src\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
