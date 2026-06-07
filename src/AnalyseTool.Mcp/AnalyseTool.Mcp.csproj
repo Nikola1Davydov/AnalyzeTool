@@ -18,7 +18,6 @@
     <AssemblyName>AnalyseTool.Mcp</AssemblyName>
     <RootNamespace>AnalyseTool.Mcp</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Configurations>Debug R25;Debug R26;Release R25;Release R26</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('Release'))">
