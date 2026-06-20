@@ -13,7 +13,8 @@ The project focuses on free AI usage through local Ollama models, so you can run
 
 ## Compatibility
 
-- Revit 2025-2026
+- Revit 2025-2026 on Windows.
+- Microsoft Edge **WebView2 Runtime** (ships with Revit 2025/2026; if the AnalyseTool window opens blank, install it from https://developer.microsoft.com/microsoft-edge/webview2/ and restart Revit).
 
 ## Key Features
 
@@ -35,10 +36,10 @@ The project focuses on free AI usage through local Ollama models, so you can run
 
 ## Installation
 
-1. Download the latest package from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest).
-2. Close Revit.
-3. Install the plugin package.
-4. Start Revit and open `Add-Ins -> AnalyseTool`.
+1. Download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) — pick **SingleUser** (current user, no admin) or **MultiUser** (all users, needs admin).
+2. If you switch between SingleUser and MultiUser, **uninstall the previous AnalyseTool first** (otherwise you may end up with two copies / duplicate ribbon).
+3. Close Revit, then run the installer. Windows SmartScreen may warn "unknown publisher" (the build isn't code-signed yet) — choose **More info → Run anyway**.
+4. Start Revit and open the **AnalyseTool** ribbon tab.
 
 ## AI Requirement
 
@@ -84,6 +85,14 @@ The SDK is published on NuGet:
 dotnet add package AnalyseTool.Sdk --version 1.0.0
 ```
 
+## Troubleshooting
+
+- **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it (see Compatibility) and restart Revit.
+- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (AnalyseTool → Settings → Reload).
+- **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
+- **AI tools don't update after toggling MCP / code execution** → the AI client caches the tool list; restart the client.
+- **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
+
 ## Feedback
 
-Issues and PRs are welcome — please use the [issue tracker](https://github.com/Nikola1Davydov/AnalyzeTool/issues).
+Found a bug or have an idea? Use the [issue tracker](https://github.com/Nikola1Davydov/AnalyzeTool/issues) (or the **Report a bug** ribbon button) and attach the latest log from `%LOCALAPPDATA%\AnalyseTool\logs`. PRs welcome.
