@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Sample</title>
+    <style>
+      body { font-family: Segoe UI, sans-serif; margin: 24px; color: #222; }
+      button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
+      pre { background: #f4f4f5; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+      .err { color: #b91c1c; }
+    </style>
+  </head>
+  <body>
+    <h1>Acme Sample extension</h1>
+    <p>This standalone page is hosted by AnalyseTool and talks to Revit via <code>window.AT.invoke</code>.</p>
+
+    <button id="run">Call acme.sample.Hello</button>
+    <pre id="out">Press the button…</pre>
+
+    <script>
+      const out = document.getElementById("out");
+      document.getElementById("run").addEventListener("click", async () => {
+        out.classList.remove("err");
+        out.textContent = "Calling…";
+        try {
+          const result = await window.AT.invoke("acme.sample.Hello");
+          out.textContent = JSON.stringify(result, null, 2);
+        } catch (e) {
+          out.classList.add("err");
+          out.textContent = "Error: " + (e && e.message ? e.message : String(e));
+        }
+      });
+    </script>
+  </body>
+</html>

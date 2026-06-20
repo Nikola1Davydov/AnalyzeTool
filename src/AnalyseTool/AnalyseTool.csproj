@@ -1,0 +1,109 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+    
+    <PropertyGroup>
+        <UseWPF>true</UseWPF>
+        <LangVersion>latest</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <ImplicitUsings>true</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<PluginSubDir>AnalyseTool</PluginSubDir>
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
+        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
+        
+    </PropertyGroup>
+	
+    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
+        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
+    </PropertyGroup>
+	
+	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
+        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
+	</PropertyGroup>
+		
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
+        <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (no prebuilt DLL). -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+        <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
+        <!-- The host uses Newtonsoft directly (dispatcher, manifests, transport). Declared explicitly
+             because the SDK no longer exposes it transitively (its ref is PrivateAssets=all). -->
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+        <PackageReference Include="OllamaSharp" Version="5.4.25" />
+        <!-- File logging for beta triage (%LOCALAPPDATA%\AnalyseTool\logs). -->
+        <PackageReference Include="Serilog" Version="4.2.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <!-- Unofficial dynamic-ribbon API (Autodesk.Windows); provided by Revit at runtime. -->
+        <PackageReference Include="Nice3point.Revit.Api.AdWindows" Version="$(RevitVersion).*">
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    </ItemGroup>
+
+    <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+	<ItemGroup>
+		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
+		<Compile Remove="AboutMe\**" />
+		<Compile Remove="archiv\**" />
+		<Compile Remove="Config\**" />
+		<Compile Remove="Resources\**" />
+		<Compile Remove="Web\**" />
+		<EmbeddedResource Remove="AboutMe\**" />
+		<EmbeddedResource Remove="archiv\**" />
+		<EmbeddedResource Remove="Config\**" />
+		<EmbeddedResource Remove="Resources\**" />
+		<EmbeddedResource Remove="Web\**" />
+		<None Remove="AboutMe\**" />
+		<None Remove="archiv\**" />
+		<None Remove="Config\**" />
+		<None Remove="Resources\**" />
+		<None Remove="Web\**" />
+		<Page Remove="AboutMe\**" />
+		<Page Remove="archiv\**" />
+		<Page Remove="Config\**" />
+		<Page Remove="Resources\**" />
+		<Page Remove="Web\**" />
+
+		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
+	</ItemGroup>
+    
+	<!-- Build the out-of-process MCP stdio server and ship it next to the plugin (in a "mcp"
+	     subfolder). The Settings page points the AI client's config at <plugin>\mcp\AnalyseTool.Mcp.exe. -->
+	<Target Name="BuildAndCopyMcpServer" AfterTargets="Build">
+		<Message Text="Building + copying AnalyseTool.Mcp server..." Importance="high" />
+
+		<MSBuild Projects="..\AnalyseTool.Mcp\AnalyseTool.Mcp.csproj" Properties="Configuration=$(Configuration)" Targets="Build" />
+
+		<ItemGroup>
+			<McpFiles Include="..\AnalyseTool.Mcp\bin\$(Configuration)\net8.0\**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(McpFiles)" DestinationFolder="$(OutputPath)\mcp\%(RecursiveDir)" SkipUnchangedFiles="true" />
+	</Target>
+
+	<Target Name="CopyDistToRevitPlugin" AfterTargets="Build">
+		<Message Text="Copying clientapp/dist to Revit plugin..." Importance="high" />
+
+		<PropertyGroup>
+			<DistSource>$(SolutionDir)clientapp\dist</DistSource>
+			<DistTarget>$(OutputPath)</DistTarget>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<DistFiles Include="$(DistSource)\**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(DistFiles)" DestinationFolder="$(DistTarget)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+	</Target>	
+</Project>

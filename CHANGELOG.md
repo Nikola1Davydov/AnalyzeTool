@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0-beta.1] / 2026-06-06
+
+- ⚠️ Beta release — please report issues on GitHub; see `TESTING.md` for what to try and how to report.
+- 🧩 Extension system — add your own commands and UI without rebuilding the plugin: C# command DLLs, JS/HTML UI pages and ribbon buttons, dropped into `extensions\<RevitYear>\` and loaded live via Reload.
+- 📝 Script extensions — drop a plain `.cs` file (no project, no build) and it's compiled on the fly into a working command + ribbon button ("pyRevit-for-C#").
+- 🤖 MCP server — expose every command (built-in and from your extensions) to AI clients such as Claude Desktop over the Model Context Protocol; enable it in Settings.
+- 🧪 (Experimental) AI C# execution + Save-as-command — let the AI run C# in Revit and promote a working snippet into a permanent command. Off by default; enable in Settings → C# code execution.
+- ⚙️ New Settings page — host Environment (Revit / SDK / plugin versions), Extension paths (multiple source roots), a searchable Commands catalog, and MCP controls.
+- 🧰 "New template" — scaffold an extension (UI-only / C# / Combo) right from Settings.
+- 📚 Author guide (`ONBOARDING.md`) plus command discovery so web-extension authors can see what they can call.
+- 🔧 Robustness & fixes — MCP stability, parameter null-guards, typo cleanups.
+- 🗑️ Removed the Document Health page.
+
 ## [1.3.0] / 2026-05-10
 
 - 🆕 Added a new "Home" page. Infinite Kanban, where you can view diagrams and tables in one place.

@@ -1,0 +1,14 @@
+{
+  "id": "acme.sample",
+  "version": "1.0.0",
+  "entryAssembly": "Acme.Sample.dll",
+  "ui": {
+    "entryHtml": "index.html",
+    "tab": "AnalyseTool",
+    "panel": "Samples",
+    "button": {
+      "name": "Acme Sample",
+      "tooltip": "Open the Acme Sample extension page"
+    }
+  }
+}

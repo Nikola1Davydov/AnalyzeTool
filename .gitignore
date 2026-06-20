@@ -10,6 +10,8 @@
 *.userosscache
 *.sln.docstates
 /img/lindkin
+/src/AnalyseTool/archiv
+/src/Installer/output
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -423,7 +425,6 @@ coverage
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 *.user
 .vs
@@ -443,3 +444,6 @@ obj/
 # Vitest
 __screenshots__/
 
+/.github/copilot-instructions.md
+/.claude/settings.local.json
+/src/.github/copilot-instructions.md
