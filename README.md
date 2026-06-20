@@ -56,40 +56,34 @@ In Canvas AI settings:
 
 ## Project Structure
 
-- `AnalyseTool/`: C# Revit plugin logic.
-- `clientapp/`: Vue 3 + Vite + PrimeVue frontend.
-- `Installer/`: packaging and installation assets.
+- `src/AnalyseTool/`: C# Revit plugin (host).
+- `src/AnalyseTool.Sdk/`: public SDK that extension authors compile against.
+- `src/AnalyseTool.Launcher/`: thin Revit add-in shim that loads the host in isolation.
+- `src/AnalyseTool.Mcp/`: out-of-process MCP server (AI integration).
+- `src/clientapp/`: Vue 3 + Vite + PrimeVue frontend.
+- `src/Installer/`: packaging and installation assets.
+- `samples/`: example extensions.
 
-## Frontend Development
+## Extend AnalyseTool (for developers)
 
-## Revit Bridge API (Frontend)
+AnalyseTool is extensible — you can add your own **commands** (C#) and **UI pages** (any web
+framework) **without rebuilding the plugin**. They drop into your extensions folder, load live on
+**Reload**, and are automatically reachable from JavaScript (`AT.invoke`) and from AI clients over
+MCP.
 
-Bridge file: `clientapp/src/RevitBridge.ts`
+📖 **The full extension-authoring guide lives on the [Wiki](https://github.com/Nikola1Davydov/AnalyzeTool/wiki):**
 
-Current command names:
+- The extension model — C# command DLLs, JS/UI pages, and no-build script extensions (`.cs` compiled by Roslyn).
+- The SDK contract — `IRevitTask`, `IRevitContext`, the `[RevitCommand]` attribute.
+- The `plugin.json` manifest, deploy & live reload, and discovering commands from the frontend.
+- AI / MCP integration.
 
-- `SelectionInRevit`
-- `IsolationInRevit`
-- `GetCategoriesInRevit`
-- `GetDataByCategoryName`
-- `GetDocumentHealthStatus`
-- `CheckUpdate`
-- `GetDocumentData`
-- `SetDataToParameters`
-- `AiAnalyse`
-- `AiEditParameters`
-- `GetOllamaModels`
+The SDK is published on NuGet:
 
-Basic usage:
-
-```ts
-import { Commands, sendRequest } from "@/RevitBridge";
-
-await sendRequest(Commands.GetCategoriesInRevit, null);
-await sendRequest(Commands.GetDataByCategoryName, { categoryName: "Walls" });
-await sendRequest(Commands.SelectionInRevit, { elementIds: [123, 456] });
+```
+dotnet add package AnalyseTool.Sdk --version 1.0.0
 ```
 
 ## Feedback
 
-Issues and PRs are welcome.
+Issues and PRs are welcome — please use the [issue tracker](https://github.com/Nikola1Davydov/AnalyzeTool/issues).
