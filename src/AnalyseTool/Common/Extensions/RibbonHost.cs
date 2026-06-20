@@ -25,6 +25,7 @@ namespace AnalyseTool.Common.Extensions
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
+        private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
 
@@ -55,13 +56,20 @@ namespace AnalyseTool.Common.Extensions
             AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                 MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
 
+            // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
-            AddStaticButton(managePanel, "AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "Show where extensions live and how to add them",
-                image: BuildGlyphIcon("")); // Segoe MDL2 Assets gear (Setting, U+E713)
-            AddStaticButton(managePanel, "AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit",
-                image: BuildGlyphIcon("")); // Segoe MDL2 Assets refresh (U+E72C)
+
+            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
+                SettingsCommandClass, "Show where extensions live and how to add them");
+            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
+                BugsCommandClass, "Report a bug or request a feature on GitHub");
+
+            IList<RibbonItem> stacked = managePanel.AddStackedItems(settingsData, reloadData, bugsData);
+            SetStackedImage(stacked, 0, BuildGlyphIcon("", 16)); // Settings (U+E713)
+            SetStackedImage(stacked, 1, BuildGlyphIcon("", 16)); // Reload (U+E72C)
+            SetStackedImage(stacked, 2, BuildGlyphIcon("", 16)); // Report a bug (U+EBE8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -326,6 +334,26 @@ namespace AnalyseTool.Common.Extensions
             catch { /* tab already exists */ }
         }
 
+        /// <summary>Builds a PushButtonData (name/text/tooltip) without adding it to a panel — so several
+        /// can be combined into a stacked column via <c>RibbonPanel.AddStackedItems</c>.</summary>
+        private static PushButtonData MakeButtonData(string name, string text, string assemblyPath,
+            string className, string? tooltip)
+        {
+            PushButtonData data = new(name, text, assemblyPath, className);
+            if (!string.IsNullOrWhiteSpace(tooltip)) data.ToolTip = tooltip;
+            return data;
+        }
+
+        /// <summary>Sets the (small) image on one item returned by <c>AddStackedItems</c>.</summary>
+        private static void SetStackedImage(IList<RibbonItem> items, int index, ImageSource image)
+        {
+            if (index >= 0 && index < items.Count && items[index] is PushButton button)
+            {
+                try { button.Image = image; }
+                catch { /* icon is best-effort */ }
+            }
+        }
+
         private static void AddStaticButton(RibbonPanel panel, string name, string text, string assemblyPath,
             string className, string? tooltip, string? appIcon = null, ImageSource? image = null)
         {
@@ -372,15 +400,17 @@ namespace AnalyseTool.Common.Extensions
 
         /// <summary>Renders a Segoe MDL2 Assets glyph (a Windows system icon font) onto a transparent
         /// 32×32 bitmap, so the static ribbon buttons get crisp vector-style icons with no asset files.</summary>
-        private static ImageSource BuildGlyphIcon(string glyph)
+        /// <summary>Renders a Segoe MDL2 glyph at the given pixel size. Use 32 for large ribbon buttons,
+        /// 16 for the small images of stacked buttons (otherwise a 32px image overflows the stacked row).</summary>
+        private static ImageSource BuildGlyphIcon(string glyph, int size = 32)
         {
-            const int size = 32;
+            double fontSize = size * 0.6875; // 22 at 32px, ~11 at 16px
 
             DrawingVisual visual = new();
             using (DrawingContext dc = visual.RenderOpen())
             {
                 FormattedText text = new(glyph, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                    new Typeface("Segoe MDL2 Assets"), 22, new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)), 1.0);
+                    new Typeface("Segoe MDL2 Assets"), fontSize, new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)), 1.0);
                 dc.DrawText(text, new Point((size - text.Width) / 2, (size - text.Height) / 2));
             }
 
