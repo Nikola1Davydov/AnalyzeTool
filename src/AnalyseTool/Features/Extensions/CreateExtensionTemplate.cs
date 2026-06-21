@@ -131,6 +131,7 @@ namespace AnalyseTool.Features.Extensions
                 <AssemblyName>{{assemblyName}}</AssemblyName>
                 <RootNamespace>{{assemblyName}}</RootNamespace>
                 <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+                <OutDir>$(SolutionDir)</OutDir>
               </PropertyGroup>
               <ItemGroup>
                 <!-- AnalyseTool SDK — loaded from the installed plugin. Don't ship a copy. -->
