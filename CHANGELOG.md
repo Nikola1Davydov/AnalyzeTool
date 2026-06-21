@@ -8,7 +8,8 @@
 - 🤖 MCP server — expose every command (built-in and from your extensions) to AI clients such as Claude Desktop over the Model Context Protocol; enable it in Settings.
 - 🧪 (Experimental) AI C# execution + Save-as-command — let the AI run C# in Revit and promote a working snippet into a permanent command. Off by default; enable in Settings → C# code execution.
 - ⚙️ New Settings page — host Environment (Revit / SDK / plugin versions), Extension paths (multiple source roots), a searchable Commands catalog, and MCP controls.
-- 🧰 "New template" — scaffold an extension (UI-only / C# / Combo) right from Settings.
+- 🧰 "New template" — scaffold an extension (UI-only / C# / Combo) right from Settings; each template ships a ready-to-build project, `plugin.json`, and an `LLM.md`.
+- 🤝 AI-assisted authoring — paste the `LLM.md` instructions into Claude/ChatGPT and it writes AnalyseTool extensions for you (the SDK and the Wiki include the same guide).
 - 🪛 Reworked ribbon — stacked Settings / Reload / Report-a-bug buttons (Report-a-bug opens the GitHub issues page).
 - 🩺 Added a diagnostics log file (`%LOCALAPPDATA%\AnalyseTool\logs`) and a clear prompt if the WebView2 Runtime is missing.
 - 🔧 Robustness & fixes — MCP stability, parameter null-guards, typo cleanups.
