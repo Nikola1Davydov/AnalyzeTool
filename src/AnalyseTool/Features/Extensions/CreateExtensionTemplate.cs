@@ -165,11 +165,15 @@ namespace AnalyseTool.Features.Extensions
                 ReadOnly = true)]
             internal sealed class Hello : IRevitTask
             {
-                public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-                    ctx.RunInRevitAsync<object?>(app => new
+                public async Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
+                {
+                    var documentName = await revitContext.RunInRevitAsync<string?>(app =>
                     {
-                        documentName = app.ActiveUIDocument?.Document.Title ?? "(no active document)"
+                        var name = app.ActiveUIDocument?.Document.Title ?? "(no active document)";
+                        return name;
                     });
+                    return documentName;
+                }
             }
             """;
 
