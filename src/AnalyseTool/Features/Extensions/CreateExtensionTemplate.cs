@@ -99,9 +99,9 @@ namespace AnalyseTool.Features.Extensions
                 File.WriteAllText(helloCsPath, BuildHelloCs(assemblyName));
                 filesCreated.Add(helloCsPath);
 
-                string readmePath = Path.Combine(extensionRoot, "README.md");
-                File.WriteAllText(readmePath, BuildReadme(displayTitle, assemblyName));
-                filesCreated.Add(readmePath);
+                string llmInstructionsPath = Path.Combine(extensionRoot, "LLM.md");
+                File.WriteAllText(llmInstructionsPath, BuildLLMInstructions(displayTitle, assemblyName));
+                filesCreated.Add(llmInstructionsPath);
             }
 
             return Task.FromResult<object?>(new
@@ -178,7 +178,7 @@ namespace AnalyseTool.Features.Extensions
             }
             """;
 
-        private static string BuildReadme(string title, string assemblyName) => $$"""
+        private static string BuildLLMInstructions(string title, string assemblyName) => $$"""
             # AnalyseTool — AI instructions for writing extensions
 
             > **How to use this file:** paste it into Claude / ChatGPT as context, then ask it to build an
