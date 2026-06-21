@@ -115,11 +115,10 @@ and `R26` build configurations, the right `net8.0-windows` TFM, and the Revit AP
 per your chosen config) automatically:
 
 ```
-dotnet add package AnalyseTool.Sdk --prerelease
+dotnet add package AnalyseTool.Sdk
 ```
 
-(The SDK is published as a prerelease during the beta — hence `--prerelease`.) A minimal extension
-`.csproj` is then just:
+A minimal extension `.csproj` is then just:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -128,10 +127,14 @@ dotnet add package AnalyseTool.Sdk --prerelease
     <AssemblyName>Acme.Sample</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*-*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*" />
   </ItemGroup>
 </Project>
 ```
+
+> **Tip:** you don't have to write this by hand — **AnalyseTool tab → Settings → New template → C#**
+> scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
+> write commands for you).
 
 Build with a year config (`dotnet build -c "Release R25"` or `"Release R26"`), then deploy your
 DLL + `plugin.json`. (Don't worry about copying the SDK/Revit/Newtonsoft DLLs — the host owns them
@@ -145,7 +148,7 @@ build props directly:
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
@@ -158,7 +161,7 @@ build props directly:
   <ItemGroup>
     <!-- Private=false: compile against the SDK, but DON'T copy it to output.
          The host owns AnalyseTool.Sdk.dll; your ALC shares it (type identity). -->
-    <ProjectReference Include="..\..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
+    <ProjectReference Include="..\..\src\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
@@ -171,7 +174,7 @@ build props directly:
 </Project>
 ```
 
-The shared props (`AnalyseTool.Sdk/build/AnalyseTool.Extension.props`) give you:
+The shared props (`src/AnalyseTool.Sdk/build/AnalyseTool.Extension.props`) give you:
 
 - The four configurations: **Debug R25 / Debug R26 / Release R25 / Release R26**.
 - `TargetFramework = net8.0-windows`, `PlatformTarget = x64`.
