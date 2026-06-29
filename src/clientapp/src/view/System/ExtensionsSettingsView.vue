@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import { invoke } from "@/RevitBridge";
+import { useUpdateStore } from "@/stores/useUpdateStore";
 
 interface ExtensionRow {
   id: string;
@@ -51,6 +53,9 @@ interface McpStatus {
 
 const data = ref<ExtensionsData | null>(null);
 const loading = ref(true);
+
+// Same update-check the main AnalyseTool window uses (CheckUpdate command), surfaced next to the version.
+const { updateInfo } = storeToRefs(useUpdateStore());
 
 const paths = ref<PathRow[]>([]);
 const pathsBusy = ref(false);
@@ -279,6 +284,7 @@ onMounted(() => {
   loadMcp();
   loadCodeExec();
   loadCommands();
+  useUpdateStore().loadUpdateData();
 });
 </script>
 
@@ -313,7 +319,27 @@ onMounted(() => {
         </div>
         <div>
           <div class="text-surface-500 text-xs">Plugin version</div>
-          <div>{{ data?.pluginVersion ?? "—" }}</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span>{{ data?.pluginVersion ?? "—" }}</span>
+            <template v-if="updateInfo?.isUpdateAvailable">
+              <span
+                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
+                :style="{ background: 'var(--p-primary-color)' }"
+              >
+                <i class="pi pi-arrow-up text-[10px]" />
+                v{{ updateInfo.latestVersion }}
+              </span>
+              <a
+                v-if="updateInfo.releaseUrl"
+                :href="updateInfo.releaseUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-primary-600 underline font-semibold text-xs"
+              >
+                Download
+              </a>
+            </template>
+          </div>
         </div>
         <div class="col-span-2 md:col-span-1">
           <div class="text-surface-500 text-xs">Extensions folder</div>
