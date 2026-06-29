@@ -69,6 +69,7 @@ async function init() {
   geometry.setIndex(mesh.indices);
   geometry.computeVertexNormals();
   geometry.center(); // recentre on the bounding-box centre (controls.target stays at origin)
+  geometry.rotateX(-Math.PI / 2); // rotate to match Revit's Z-up orientation
 
   const material = new THREE.MeshStandardMaterial({
     color: 0x9aa6b2,
@@ -77,7 +78,6 @@ async function init() {
     side: THREE.DoubleSide,
   });
   scene.add(new THREE.Mesh(geometry, material));
-
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.1));
   const dir = new THREE.DirectionalLight(0xffffff, 1.3);
   dir.position.set(1, 1.5, 1);
