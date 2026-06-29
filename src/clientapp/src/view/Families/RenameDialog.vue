@@ -90,6 +90,12 @@ function submit() {
     <div class="flex flex-col gap-3">
       <p v-if="note" class="text-xs text-amber-600">{{ note }}</p>
 
+      <!-- Current name (read-only reference, stays visible after editing / AI suggestion) -->
+      <div class="flex flex-col gap-1">
+        <span class="text-xs text-surface-500">Current name</span>
+        <span class="text-sm font-medium break-all">{{ currentName || "—" }}</span>
+      </div>
+
       <div class="flex flex-col gap-1">
         <label class="text-xs text-surface-500">{{ label }}</label>
         <InputText v-model="value" class="w-full" @keyup.enter="submit" />
