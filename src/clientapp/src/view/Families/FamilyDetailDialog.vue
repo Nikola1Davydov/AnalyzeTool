@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import FamilyViewer3D from "@/view/Families/FamilyViewer3D.vue";
 import FamilyTypePanel from "@/view/Families/FamilyTypePanel.vue";
-
-interface FamilyRow {
-  id: number;
-  uniqueId: string;
-  versionGuid: string;
-  name: string;
-  category: string;
-  typeCount: number;
-  instanceCount: number;
-  isInPlace: boolean;
-}
+import type { FamilyRow } from "./types";
 
 const visible = defineModel<boolean>("visible", { required: true });
 defineProps<{ family: FamilyRow | null }>();
