@@ -14,7 +14,7 @@ const routes = [
   { path: "/about", component: AboutView },
   { path: "/parameterFilledEmptyPage", component: ParameterFilledEmptyPage },
   { path: "/parametervaluecheck", component: ParameterValueCheckView },
-  { path: "/families", component: FamiliesView },
+  { path: "/families", component: FamiliesView, meta: { layout: "bare" } },
   { path: "/connectParameters", component: ConnectParameters },
   { path: "/parameterCanvasView", component: ParameterCanvasView },
   { path: "/system/settings", component: ExtensionsSettingsView, meta: { layout: "bare" } },

@@ -4,6 +4,14 @@ using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Launcher.RevitCommands
 {
+    /// <summary>Ribbon "Family Control" button — opens the family browser/QC window.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class FamilyControlCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenFamilyControl", commandData.Application);
+    }
+
     /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand

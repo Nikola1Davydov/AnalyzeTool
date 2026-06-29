@@ -23,6 +23,7 @@ namespace AnalyseTool.Common.Extensions
     internal static class RibbonHost
     {
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
+        private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -55,6 +56,11 @@ namespace AnalyseTool.Common.Extensions
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
             AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                 MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
+
+            // Second top-level button, sitting next to the main one: the Family Control window.
+            AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Control", launcherPath,
+                FamilyControlCommandClass, "Browse, audit and manage the families in this project",
+                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (grid)
 
             // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
@@ -220,6 +226,14 @@ namespace AnalyseTool.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
             new SettingsWindow().Show();
+        }
+
+        /// <summary>Ribbon "Family Control" button — opens the family browser/QC window (#/families).</summary>
+        public static void OpenFamilyControl(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            new Features.Families.FamilyControlWindow().Show();
         }
 
         public static void Reload(UIApplication uiApp)

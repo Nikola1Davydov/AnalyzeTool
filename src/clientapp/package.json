@@ -21,11 +21,13 @@
     "primevue": "^4.4.1",
     "tailwindcss": "^4.1.17",
     "tailwindcss-primeui": "^0.6.1",
+    "three": "^0.169.0",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@types/three": "^0.169.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "eslint": "^9.37.0",
     "eslint-plugin-vue": "~10.5.0",
