@@ -1,6 +1,15 @@
 # Changelog
 
-## [1.4.1] / 2026-06-21
+## [1.4.2]
+
+- 🧱 **Family Control** — a new second ribbon button opening a dedicated window to browse, audit and manage the project's families.
+  - 🖼️ Gallery & Table views of every family with category, type and instance counts, in-place / unused flags, lazy-loaded thumbnails and a category filter.
+  - 🧊 3D preview — click a family to open an interactive Three.js viewer (approximate material colours and transparency, correct placement of nested families) alongside a panel of its types and parameters.
+  - 🧩 Family Types view — families' types grouped by name, with Select / Isolate / Rename / Delete and a "move all instances to another workset" action for workshared projects.
+  - 🧹 Actions — Select, Isolate, Rename, Delete and Purge-unused, straight from the table, gallery or detail view.
+  - 🔖 Saved filter rules — build reusable field/condition rules, pin them as one-click quick filters across the views.
+  - ⚡ Client-side caching — previews and meshes are cached in the WebView and invalidated automatically when a family changes.
+- 🔗 Settings — the plugin version now shows an "update available" badge and download link when a newer release exists (same check as the main window).
 
 - 🛠️ Fixed the "New template → C#" scaffold — it generated code that didn't compile (an invalid lambda in `Hello.cs`); the template now produces a correct, ready-to-build command. (#38)
 - 🤝 AI-assisted authoring — each generated template now ships an `LLM.md`, and the README and SDK include the same guide: paste it into Claude/ChatGPT and it writes AnalyseTool extensions for you.

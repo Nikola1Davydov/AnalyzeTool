@@ -9,7 +9,7 @@ namespace AnalyseTool.Features.Ai
                       "Does not touch the Revit model.",
         ReadOnly = true,
         HiddenFromMcp =true )]
-    internal sealed class GetOllamaModels : IRevitTask
+    internal sealed class OllamaGetModels : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {

@@ -5,6 +5,7 @@ import FamilyCard from "@/view/Families/FamilyCard.vue";
 import FamilyThumb from "@/view/Families/FamilyThumb.vue";
 import FamilyDetailDialog from "@/view/Families/FamilyDetailDialog.vue";
 import FamilyTypesView from "@/view/Families/FamilyTypesView.vue";
+import RenameDialog from "@/view/Families/RenameDialog.vue";
 import RulesBar from "@/view/Families/RulesBar.vue";
 import { useFamilyActions } from "@/view/Families/familyActions";
 import { useFamilyRules } from "@/view/Families/familyRules";
@@ -91,18 +92,16 @@ function onAction(name: string, family: FamilyRow) {
   else if (name === "delete") openDelete(family);
 }
 
-// Rename dialog
+// Rename dialog (shared component, with optional AI mode)
 const renameVisible = ref(false);
 const renameTarget = ref<FamilyRow | null>(null);
-const renameValue = ref("");
 function openRename(family: FamilyRow) {
   renameTarget.value = family;
-  renameValue.value = family.name;
   renameVisible.value = true;
 }
-async function confirmRename() {
+async function onRenameSubmit(newName: string) {
   if (!renameTarget.value) return;
-  const done = await actions.renameFamily(renameTarget.value.id, renameValue.value);
+  const done = await actions.renameFamily(renameTarget.value.id, newName);
   if (done) {
     renameVisible.value = false;
     await load();
@@ -354,28 +353,14 @@ onMounted(load);
 
     <FamilyDetailDialog v-model:visible="detailVisible" :family="selectedFamily" />
 
-    <!-- Rename dialog -->
-    <Dialog
+    <!-- Rename dialog (shared, with AI mode) -->
+    <RenameDialog
       v-model:visible="renameVisible"
-      modal
-      dismissableMask
-      header="Rename family"
-      :style="{ width: '28rem' }"
-    >
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-surface-500">New name</label>
-        <InputText v-model="renameValue" class="w-full" @keyup.enter="confirmRename" />
-      </div>
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="renameVisible = false" />
-        <Button
-          label="Rename"
-          icon="pi pi-check"
-          :disabled="!renameValue.trim() || renameValue === renameTarget?.name"
-          @click="confirmRename"
-        />
-      </template>
-    </Dialog>
+      title="Rename family"
+      :currentName="renameTarget?.name ?? ''"
+      :context="renameTarget?.category ?? ''"
+      @submit="onRenameSubmit"
+    />
 
     <!-- Delete confirm -->
     <Dialog

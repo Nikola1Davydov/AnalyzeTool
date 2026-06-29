@@ -10,7 +10,7 @@ namespace AnalyseTool.Features.Ai
         Destructive = true,
         InputType = typeof(AnalyzeParameterWithAiRequest),
         HiddenFromMcp = true)] // expects UI-collected items; a raw AI call can't build them
-    internal sealed class AiEditParameters : IRevitTask
+    internal sealed class OllamaEditParameters : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {

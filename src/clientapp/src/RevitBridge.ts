@@ -14,9 +14,10 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
-  AiAnalyse: "AiAnalyse",
-  AiEditParameters: "AiEditParameters",
-  GetOllamaModels: "GetOllamaModels",
+  OllamaAnalyse: "OllamaAnalyse",
+  OllamaEditParameters: "OllamaEditParameters",
+  OllamaSuggestName: "OllamaSuggestName",
+  OllamaGetModels: "OllamaGetModels",
 } as const;
 
 export const enum MessageType {

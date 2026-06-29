@@ -4,6 +4,7 @@ import { invoke } from "@/RevitBridge";
 import { useFamilyActions } from "./familyActions";
 import { useFamilyRules } from "./familyRules";
 import RulesBar from "./RulesBar.vue";
+import RenameDialog from "./RenameDialog.vue";
 import type { FamilyRow, TypeGroup, TypeRow, TypeRowsResult, WorksetInfo, WorksetsResult } from "./types";
 
 // Family Types tab: family types (FamilySymbols) of the filtered families, grouped by type name.
@@ -135,15 +136,13 @@ function isolateGroup(g: TypeGroup) {
 
 const renameVisible = ref(false);
 const renameTarget = ref<TypeGroup | null>(null);
-const renameValue = ref("");
 function openRename(g: TypeGroup) {
   renameTarget.value = g;
-  renameValue.value = g.typeName;
   renameVisible.value = true;
 }
-async function confirmRename() {
+async function onRenameSubmit(newName: string) {
   if (!renameTarget.value) return;
-  const done = await actions.renameTypes(renameTarget.value.typeIds, renameValue.value);
+  const done = await actions.renameTypes(renameTarget.value.typeIds, newName);
   if (done) {
     renameVisible.value = false;
     await load();
@@ -316,31 +315,20 @@ async function moveSelectedToWorkset() {
       </template>
     </DataTable>
 
-    <!-- Rename dialog -->
-    <Dialog
+    <!-- Rename dialog (shared, with AI mode) -->
+    <RenameDialog
       v-model:visible="renameVisible"
-      modal
-      dismissableMask
-      header="Rename type"
-      :style="{ width: '28rem' }"
-    >
-      <div class="flex flex-col gap-2">
-        <p v-if="(renameTarget?.typeIds.length ?? 0) > 1" class="text-xs text-amber-600">
-          This renames all {{ renameTarget?.typeIds.length }} merged types.
-        </p>
-        <label class="text-xs text-surface-500">New type name</label>
-        <InputText v-model="renameValue" class="w-full" @keyup.enter="confirmRename" />
-      </div>
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="renameVisible = false" />
-        <Button
-          label="Rename"
-          icon="pi pi-check"
-          :disabled="!renameValue.trim() || renameValue === renameTarget?.typeName"
-          @click="confirmRename"
-        />
-      </template>
-    </Dialog>
+      title="Rename type"
+      label="New type name"
+      :currentName="renameTarget?.typeName ?? ''"
+      :context="renameTarget?.category ?? ''"
+      :note="
+        (renameTarget?.typeIds.length ?? 0) > 1
+          ? `This renames all ${renameTarget?.typeIds.length} merged types.`
+          : null
+      "
+      @submit="onRenameSubmit"
+    />
 
     <!-- Delete confirm -->
     <Dialog

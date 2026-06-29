@@ -62,7 +62,7 @@ export const useAiSettingsStore = defineStore("ai-settings", () => {
   async function loadModels(): Promise<void> {
     startLoadingModels();
     try {
-      const models = await invoke<unknown>(Commands.GetOllamaModels, null);
+      const models = await invoke<unknown>(Commands.OllamaGetModels, null);
       setAvailableModels(Array.isArray(models) ? models.map((m) => String(m)) : []);
     } catch (err) {
       console.error("Failed to load Ollama models", err);

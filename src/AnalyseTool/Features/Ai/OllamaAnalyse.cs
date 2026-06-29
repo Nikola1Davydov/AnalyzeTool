@@ -9,7 +9,7 @@ namespace AnalyseTool.Features.Ai
                       "returns the model's analysis. Does not modify the model. Payload: { model, prompt, items }.",
         InputType = typeof(AnalyzeParameterWithAiRequest),
         HiddenFromMcp = true)] // expects UI-collected items; a raw AI call can't build them
-    internal sealed class AiAnalyse : IRevitTask
+    internal sealed class OllamaAnalyse : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {

@@ -182,7 +182,7 @@ async function runAI() {
       edits: ParameterEdit[] | null;
       raw: string | null;
       error: string | null;
-    }>(Commands.AiEditParameters, {
+    }>(Commands.OllamaEditParameters, {
       items: paramItems,
       prompt: aiPrompt.value,
       model: aiSettingsStore.selectedModel!,
@@ -233,7 +233,7 @@ async function runAIRaw() {
     .filter((p): p is ParameterData => p != null);
 
   try {
-    const detail = await invoke<unknown>(Commands.AiAnalyse, {
+    const detail = await invoke<unknown>(Commands.OllamaAnalyse, {
       items: paramItems,
       prompt: aiPrompt.value,
       model: aiSettingsStore.selectedModel!,

@@ -48,6 +48,44 @@ namespace AnalyseTool.Infrastructure
 
             return raw;
         }
+        /// <summary>
+        /// Suggests a single new name for a Revit family or family type from its current name plus a
+        /// free-text instruction. Returns just the cleaned name (one line, no quotes/markdown). Used by
+        /// Family Control's Rename dialog AI mode.
+        /// </summary>
+        public async Task<string> SuggestNameAsync(string currentName, string context, string userPrompt)
+        {
+            List<ChatMessage> chatHistory = new List<ChatMessage>
+            {
+                new(ChatRole.System, """
+                    You rename Revit families and family types.
+                    Given the current name and an instruction, return ONLY the new name.
+                    - Output a single line containing just the name — no quotes, no markdown, no
+                      explanation, no trailing punctuation.
+                    - Keep it a valid Revit name: avoid the characters \ : { } [ ] | ; < > ? ` ~
+                    - If the instruction does not clearly change the name, return the current name unchanged.
+                    """),
+                new(ChatRole.User, $"""
+                    Current name: {currentName}
+                    Context: {context}
+                    Instruction: {userPrompt}
+                    """)
+            };
+
+            string raw = await BuildAnswer(chatHistory);
+            return CleanName(raw);
+        }
+
+        /// <summary>Takes the model's first non-empty line and strips wrapping quotes/backticks/asterisks.</summary>
+        private static string CleanName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            string line = raw
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault(l => l.Length > 0) ?? string.Empty;
+            return line.Trim().Trim('"', '\'', '`', '*').Trim();
+        }
+
         public async Task<AiResponse> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
         {
             var simplified = elements.Select(e => new
