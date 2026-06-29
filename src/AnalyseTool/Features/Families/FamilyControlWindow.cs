@@ -24,6 +24,8 @@ namespace AnalyseTool.Features.Families
         {
             Title = "AnalyseTool — Family Control";
             Width = 1100;
+            MinHeight = 300;
+            MinWidth = 300;
             Height = 720;
             Content = _webView;
 
@@ -36,6 +38,9 @@ namespace AnalyseTool.Features.Families
         {
             CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
             await _webView.EnsureCoreWebView2Async(env);
+
+            _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+            _webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
             _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
             _transport.Attach();
