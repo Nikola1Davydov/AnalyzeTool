@@ -15,6 +15,7 @@ let renderer: any = null;
 let scene: any = null;
 let camera: any = null;
 let controls: any = null;
+let modelGroup: any = null;
 let frame = 0;
 let resizeObserver: ResizeObserver | null = null;
 let disposed = false;
@@ -41,7 +42,7 @@ async function init() {
   }
   if (disposed) return;
 
-  if (!mesh?.available || !mesh.positions?.length || !mesh.indices?.length) {
+  if (!mesh?.available || !mesh.parts?.length) {
     state.value = "empty";
     message.value = mesh?.reason ?? "No 3D geometry available.";
     return;
@@ -64,28 +65,45 @@ async function init() {
   renderer.setSize(width, height);
   el.appendChild(renderer.domElement);
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(mesh.positions, 3));
-  geometry.setIndex(mesh.indices);
-  geometry.computeVertexNormals();
-  geometry.center(); // recentre on the bounding-box centre (controls.target stays at origin)
-  geometry.rotateX(-Math.PI / 2); // rotate to match Revit's Z-up orientation
+  // One mesh per material part, each with its approximate colour + opacity from Revit.
+  const group = new THREE.Group();
+  const geometries: any[] = [];
+  for (const part of mesh.parts) {
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.Float32BufferAttribute(part.positions, 3));
+    geom.setIndex(part.indices);
+    geom.computeVertexNormals();
+    const [r, g, b] = part.color ?? [154, 166, 178];
+    const transparent = part.opacity < 1;
+    const material = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(r / 255, g / 255, b / 255),
+      metalness: 0.1,
+      roughness: 0.75,
+      side: THREE.DoubleSide,
+      transparent,
+      opacity: part.opacity,
+      depthWrite: !transparent, // let translucent parts show what's behind them
+    });
+    group.add(new THREE.Mesh(geom, material));
+    geometries.push(geom);
+  }
 
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x9aa6b2,
-    metalness: 0.1,
-    roughness: 0.75,
-    side: THREE.DoubleSide,
-  });
-  scene.add(new THREE.Mesh(geometry, material));
+  // Recentre the whole model on its combined bounding box (so all parts move together, not each to its
+  // own centre), then rotate to match Revit's Z-up orientation.
+  const box = new THREE.Box3().setFromObject(group);
+  const center = box.getCenter(new THREE.Vector3());
+  geometries.forEach((g) => g.translate(-center.x, -center.y, -center.z));
+  group.rotateX(-Math.PI / 2);
+  scene.add(group);
+  modelGroup = group;
+
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.1));
   const dir = new THREE.DirectionalLight(0xffffff, 1.3);
   dir.position.set(1, 1.5, 1);
   scene.add(dir);
 
   // Frame the model: place the camera on the bounding sphere at a comfortable distance.
-  geometry.computeBoundingSphere();
-  const radius = geometry.boundingSphere?.radius || 1;
+  const radius = box.getBoundingSphere(new THREE.Sphere()).radius || 1;
   const dist = radius / Math.sin((camera.fov * Math.PI) / 360);
   camera.position.set(dist, dist * 0.85, dist);
   camera.near = Math.max(radius / 1000, 0.001);
@@ -127,6 +145,11 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(frame);
   resizeObserver?.disconnect();
   controls?.dispose?.();
+  modelGroup?.traverse?.((o: any) => {
+    o.geometry?.dispose?.();
+    o.material?.dispose?.();
+  });
+  modelGroup = null;
   renderer?.dispose?.();
   if (renderer?.domElement && container.value?.contains(renderer.domElement))
     container.value.removeChild(renderer.domElement);

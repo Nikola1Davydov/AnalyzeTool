@@ -4,7 +4,7 @@
 // never touches the (single-threaded, possibly busy) Revit thread.
 
 const DB_NAME = "analysetool";
-const VERSION = 2;
+const VERSION = 3;
 const PREVIEW_STORE = "family-previews";
 const MESH_STORE = "family-meshes";
 
@@ -17,7 +17,9 @@ function openDb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(PREVIEW_STORE)) db.createObjectStore(PREVIEW_STORE);
-      if (!db.objectStoreNames.contains(MESH_STORE)) db.createObjectStore(MESH_STORE);
+      // v3 changed the mesh shape (per-material parts with colour/opacity) — drop any old-shape meshes.
+      if (db.objectStoreNames.contains(MESH_STORE)) db.deleteObjectStore(MESH_STORE);
+      db.createObjectStore(MESH_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -63,11 +65,18 @@ function put<T>(store: string, key: string, version: string, data: T): Promise<v
     .catch(() => {});
 }
 
+/** One renderable part of a family mesh: all triangles sharing a material (approx colour + opacity). */
+export interface FamilyMeshPart {
+  color: number[]; // [r, g, b] 0-255
+  opacity: number; // 0..1
+  positions: number[];
+  indices: number[];
+}
+
 export interface FamilyMeshData {
   available: boolean;
   reason?: string | null;
-  positions?: number[];
-  indices?: number[];
+  parts?: FamilyMeshPart[];
 }
 
 export const getCachedPreview = (key: string, version: string) =>
