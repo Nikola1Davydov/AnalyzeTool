@@ -50,7 +50,7 @@ provide("sidebarActions", {
 </script>
 
 <template>
-  <Toast position="bottom-right" />
+  <Toast position="top-right" />
 
   <!-- Bare layout for system pages -->
   <router-view v-if="isBare" />

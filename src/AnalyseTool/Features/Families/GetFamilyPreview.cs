@@ -12,8 +12,9 @@ namespace AnalyseTool.Features.Families
     /// IndexedDB, so a cache hit never reaches this command (no Revit-thread round-trip).
     /// </summary>
     [RevitCommand(
-        Description = "Renders a small PNG thumbnail (base64 data URI) for a family, from the Revit " +
-                      "preview image of its first type. Read-only. Pass the family id from GetFamilies.",
+        Description = "Renders a small PNG thumbnail (base64 data URI) from the Revit preview image of a " +
+                      "family (its first type) OR a specific type/system type. Read-only. Pass a family id " +
+                      "or a type (ElementType) id.",
         ReadOnly = true,
         InputType = typeof(GetFamilyPreview.Request))]
     internal sealed class GetFamilyPreview : IRevitTask
@@ -35,20 +36,22 @@ namespace AnalyseTool.Features.Families
             });
         }
 
-        private static string? Render(Document doc, long familyId, int size)
+        private static string? Render(Document doc, long id, int size)
         {
-            if (doc.GetElement(new ElementId(familyId)) is not Family family)
-                return null;
-
-            // GetPreviewImage lives on ElementType; the first type's preview represents the family on
-            // the gallery card. In-place families with no loadable types have no preview → placeholder.
-            ElementId symbolId = family.GetFamilySymbolIds().FirstOrDefault() ?? ElementId.InvalidElementId;
-            if (symbolId == ElementId.InvalidElementId || doc.GetElement(symbolId) is not ElementType symbol)
-                return null;
+            // GetPreviewImage lives on ElementType. The id may be a TYPE directly (FamilySymbol or a system
+            // type like WallType) — use it as-is — or a FAMILY, in which case its first type represents it.
+            Element? element = doc.GetElement(new ElementId(id));
+            ElementType? type = element as ElementType;
+            if (type is null && element is Family family)
+            {
+                ElementId symbolId = family.GetFamilySymbolIds().FirstOrDefault() ?? ElementId.InvalidElementId;
+                type = doc.GetElement(symbolId) as ElementType;
+            }
+            if (type is null) return null;
 
             try
             {
-                using System.Drawing.Bitmap? bitmap = symbol.GetPreviewImage(new System.Drawing.Size(size, size));
+                using System.Drawing.Bitmap? bitmap = type.GetPreviewImage(new System.Drawing.Size(size, size));
                 if (bitmap is null) return null;
 
                 using MemoryStream ms = new();

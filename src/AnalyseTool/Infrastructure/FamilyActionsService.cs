@@ -28,7 +28,7 @@ namespace AnalyseTool.Infrastructure
 
             try
             {
-                using Transaction t = new(doc, "Family Control: delete");
+                using Transaction t = new(doc, "Family Manager: delete");
                 t.Start();
                 SwallowWarningsPreprocessor.Apply(t);
                 ICollection<ElementId> deleted = doc.Delete(ids);
@@ -61,7 +61,7 @@ namespace AnalyseTool.Infrastructure
 
             try
             {
-                using Transaction t = new(doc, "Family Control: rename");
+                using Transaction t = new(doc, "Family Manager: rename");
                 t.Start();
                 SwallowWarningsPreprocessor.Apply(t);
                 element.Name = newName.Trim();
@@ -103,7 +103,7 @@ namespace AnalyseTool.Infrastructure
             try
             {
                 int updated = 0;
-                using Transaction t = new(doc, "Family Control: set workset");
+                using Transaction t = new(doc, "Family Manager: set workset");
                 t.Start();
                 SwallowWarningsPreprocessor.Apply(t);
                 foreach (ElementId id in ids)

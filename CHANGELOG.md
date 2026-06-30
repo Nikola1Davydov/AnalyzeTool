@@ -2,7 +2,7 @@
 
 ## [1.4.2]
 
-- 🧱 **Family Control** — a new second ribbon button opening a dedicated window to browse, audit and manage the project's families.
+- 🧱 **Family Manager** — a new second ribbon button opening a dedicated window to browse, audit and manage the project's families.
   - 🖼️ Gallery & Table views of every family with category, type and instance counts, in-place / unused flags, lazy-loaded thumbnails and a category filter.
   - 🧊 3D preview — click a family to open an interactive Three.js viewer (approximate material colours and transparency, correct placement of nested families) alongside a panel of its types and parameters.
   - 🧩 Family Types view — families' types grouped by name, with Select / Isolate / Rename / Delete and a "move all instances to another workset" action for workshared projects.

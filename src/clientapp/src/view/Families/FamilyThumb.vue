@@ -2,12 +2,21 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { invoke } from "@/RevitBridge";
 import { getCachedPreview, setCachedPreview } from "@/utils/familyCache";
-import type { FamilyRow } from "./types";
 
-// Reusable lazy preview tile: renders the family's PNG thumbnail (GetFamilyPreview), IndexedDB-first and
-// keyed by uniqueId + VersionGuid, with a coloured placeholder while loading / when no preview exists.
-// Used both by the gallery card (large) and by the table (small) — sizing comes from the parent.
-const props = defineProps<{ family: FamilyRow }>();
+// Anything previewable by GetFamilyPreview: a family OR a type (both resolve to an ElementType on the
+// host). Keyed by uniqueId + versionGuid in the cache.
+interface ThumbTarget {
+  id: number;
+  uniqueId: string;
+  versionGuid: string;
+  name: string;
+  category: string;
+}
+
+// Reusable lazy preview tile: renders the PNG thumbnail (GetFamilyPreview), IndexedDB-first and keyed by
+// uniqueId + VersionGuid, with a coloured placeholder while loading / when no preview exists. Used by the
+// gallery card (large), the families table and the Family Types table (small) — sizing from the parent.
+const props = defineProps<{ family: ThumbTarget }>();
 
 const root = ref<HTMLElement | null>(null);
 const previewUri = ref<string | null>(null);

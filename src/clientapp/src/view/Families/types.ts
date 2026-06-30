@@ -44,6 +44,8 @@ export interface TypeRow {
   familyName: string;
   typeId: number;
   typeName: string;
+  uniqueId: string;
+  versionGuid: string;
   category: string;
   instanceCount: number;
   worksets: string[];
@@ -71,6 +73,10 @@ export interface TypeGroup {
   typeIds: number[];
   familyIds: number[];
   isSystem: boolean;
+  // Representative type used for the preview thumbnail (cache key = uniqueId + versionGuid).
+  previewTypeId: number;
+  uniqueId: string;
+  versionGuid: string;
 }
 
 /** One user workset (GetWorksets). */

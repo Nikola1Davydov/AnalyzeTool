@@ -57,8 +57,8 @@ namespace AnalyseTool.Common.Extensions
             AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                 MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
 
-            // Second top-level button, sitting next to the main one: the Family Control window.
-            AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Control", launcherPath,
+            // Second top-level button, sitting next to the main one: the Family Manager window.
+            AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
                 FamilyControlCommandClass, "Browse, audit and manage the families in this project",
                 image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (grid)
 

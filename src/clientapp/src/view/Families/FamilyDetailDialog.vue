@@ -14,12 +14,12 @@ defineProps<{ family: FamilyRow | null }>();
     maximizable
     dismissableMask
     :header="family?.name ?? 'Family'"
-    :style="{ width: '80vw', maxWidth: '1200px', height: '80vh' }"
+    :style="{ width: '95vw', maxWidth: '1200px', height: '80vh' }"
     :contentStyle="{ height: '100%', padding: '0' }"
   >
     <!-- :key forces a fresh viewer/panel per family so 3D + type state never leak between cards. -->
     <div v-if="family" class="grid grid-cols-1 md:grid-cols-5 gap-4 h-full p-4">
-      <div class="md:col-span-3 h-full min-h-[300px]">
+      <div class="md:col-span-2 h-full min-h-[300px]">
         <FamilyViewer3D
           :key="family.id"
           :familyId="family.id"
@@ -27,7 +27,7 @@ defineProps<{ family: FamilyRow | null }>();
           :versionGuid="family.versionGuid"
         />
       </div>
-      <div class="md:col-span-2 h-full min-h-0 md:border-l border-surface-200 md:pl-4">
+      <div class="md:col-span-3 h-full min-h-0 md:border-l border-surface-200 md:pl-4">
         <FamilyTypePanel :key="family.id" :familyId="family.id" />
       </div>
     </div>

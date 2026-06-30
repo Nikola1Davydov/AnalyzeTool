@@ -258,7 +258,8 @@ namespace AnalyseTool.Infrastructure
                 {
                     if (doc.GetElement(symbolId) is not FamilySymbol symbol) continue;
                     long sid = symbol.Id.Value;
-                    rows.Add(new TypeRow(familyId, family.Name, sid, symbol.Name, category,
+                    rows.Add(new TypeRow(familyId, family.Name, sid, symbol.Name,
+                        symbol.UniqueId, symbol.VersionGuid.ToString(), category,
                         counts.TryGetValue(sid, out int n) ? n : 0, WorksetsOf(sid), false));
                 }
             }
@@ -275,7 +276,8 @@ namespace AnalyseTool.Infrastructure
                     if (string.IsNullOrWhiteSpace(et.FamilyName)) continue;
 
                     long tid = et.Id.Value;
-                    rows.Add(new TypeRow(0, et.FamilyName, tid, et.Name, cat.Name,
+                    rows.Add(new TypeRow(0, et.FamilyName, tid, et.Name,
+                        et.UniqueId, et.VersionGuid.ToString(), cat.Name,
                         counts.TryGetValue(tid, out int n) ? n : 0, WorksetsOf(tid), true));
                 }
             }
@@ -349,6 +351,8 @@ namespace AnalyseTool.Infrastructure
         [property: JsonProperty("familyName")] string FamilyName,
         [property: JsonProperty("typeId")] long TypeId,
         [property: JsonProperty("typeName")] string TypeName,
+        [property: JsonProperty("uniqueId")] string UniqueId,
+        [property: JsonProperty("versionGuid")] string VersionGuid,
         [property: JsonProperty("category")] string Category,
         [property: JsonProperty("instanceCount")] int InstanceCount,
         [property: JsonProperty("worksets")] IReadOnlyList<string> Worksets,

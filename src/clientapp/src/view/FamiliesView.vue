@@ -138,12 +138,10 @@ onMounted(load);
 
 <template>
   <div class="p-6">
-    <Toast />
-
     <!-- Header -->
     <div class="flex items-start justify-between mb-4 gap-4">
       <div>
-        <h1 class="text-xl font-bold">Family Control</h1>
+        <h1 class="text-xl font-bold">Family Manager</h1>
         <p class="text-xs text-surface-500">Browse, audit and manage the families in this project.</p>
       </div>
       <div class="flex gap-2 shrink-0">

@@ -22,7 +22,7 @@ namespace AnalyseTool.Features.Families
 
         public FamilyControlWindow()
         {
-            Title = "AnalyseTool — Family Control";
+            Title = "AnalyseTool — Family Manager";
             Width = 1100;
             MinHeight = 300;
             MinWidth = 300;

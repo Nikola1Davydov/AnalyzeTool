@@ -5,6 +5,7 @@ import { useFamilyActions } from "./familyActions";
 import { useFamilyRules } from "./familyRules";
 import RulesBar from "./RulesBar.vue";
 import RenameDialog from "./RenameDialog.vue";
+import FamilyThumb from "./FamilyThumb.vue";
 import type { FamilyRow, TypeGroup, TypeRow, TypeRowsResult, WorksetInfo, WorksetsResult } from "./types";
 
 // Family Types tab: family types (FamilySymbols) of the filtered families, grouped by type name.
@@ -98,6 +99,9 @@ const groups = computed<TypeGroup[]>(() => {
         typeIds: [],
         familyIds: [],
         isSystem: r.isSystem,
+        previewTypeId: r.typeId,
+        uniqueId: r.uniqueId,
+        versionGuid: r.versionGuid,
       };
       map.set(r.typeName, g);
       (g as any)._families = new Set<string>();
@@ -237,6 +241,23 @@ async function moveSelectedToWorkset() {
     >
       <Column v-if="isWorkshared" selectionMode="multiple" class="w-12" />
 
+      <!-- Preview thumbnail (type's Revit preview image) -->
+      <Column header="" class="w-16">
+        <template #body="{ data: g }">
+          <div class="w-10 h-10 rounded overflow-hidden border border-surface-200">
+            <FamilyThumb
+              :family="{
+                id: g.previewTypeId,
+                uniqueId: g.uniqueId,
+                versionGuid: g.versionGuid,
+                name: g.typeName,
+                category: g.category,
+              }"
+            />
+          </div>
+        </template>
+      </Column>
+
       <!-- Family -->
       <Column field="familyName" header="Family" sortable>
         <template #body="{ data: g }">
@@ -257,8 +278,8 @@ async function moveSelectedToWorkset() {
         </template>
       </Column>
 
-      <!-- Workset -->
-      <Column field="workset" header="Workset" sortable class="w-44">
+      <!-- Workset (only on workshared projects) -->
+      <Column v-if="isWorkshared" field="workset" header="Workset" sortable class="w-44">
         <template #body="{ data: g }">
           <Tag :value="g.workset || '—'" severity="secondary" />
         </template>
