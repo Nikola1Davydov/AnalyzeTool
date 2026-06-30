@@ -47,6 +47,7 @@ export interface TypeRow {
   category: string;
   instanceCount: number;
   worksets: string[];
+  isSystem: boolean;
 }
 
 export interface TypeRowsResult {
@@ -69,6 +70,7 @@ export interface TypeGroup {
   instanceCount: number;
   typeIds: number[];
   familyIds: number[];
+  isSystem: boolean;
 }
 
 /** One user workset (GetWorksets). */

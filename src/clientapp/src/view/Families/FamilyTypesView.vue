@@ -97,6 +97,7 @@ const groups = computed<TypeGroup[]>(() => {
         instanceCount: 0,
         typeIds: [],
         familyIds: [],
+        isSystem: r.isSystem,
       };
       map.set(r.typeName, g);
       (g as any)._families = new Set<string>();
@@ -104,6 +105,7 @@ const groups = computed<TypeGroup[]>(() => {
       (g as any)._worksets = new Set<string>();
     }
     g.instanceCount += r.instanceCount;
+    g.isSystem = g.isSystem || r.isSystem;
     g.typeIds.push(r.typeId);
     if (!g.familyIds.includes(r.familyId)) g.familyIds.push(r.familyId);
     (g as any)._families.add(r.familyName);
@@ -236,7 +238,14 @@ async function moveSelectedToWorkset() {
       <Column v-if="isWorkshared" selectionMode="multiple" class="w-12" />
 
       <!-- Family -->
-      <Column field="familyName" header="Family" sortable />
+      <Column field="familyName" header="Family" sortable>
+        <template #body="{ data: g }">
+          <div class="flex items-center gap-2">
+            <span>{{ g.familyName }}</span>
+            <Tag v-if="g.isSystem" value="system" severity="info" />
+          </div>
+        </template>
+      </Column>
 
       <!-- Type -->
       <Column field="typeName" header="Type" sortable>

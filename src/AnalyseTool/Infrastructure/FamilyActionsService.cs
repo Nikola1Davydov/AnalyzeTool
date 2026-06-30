@@ -22,7 +22,7 @@ namespace AnalyseTool.Infrastructure
             foreach (long id in familyIds ?? new List<long>())
                 if (doc.GetElement(new ElementId(id)) is Family) ids.Add(new ElementId(id));
             foreach (long id in typeIds ?? new List<long>())
-                if (doc.GetElement(new ElementId(id)) is FamilySymbol) ids.Add(new ElementId(id));
+                if (doc.GetElement(new ElementId(id)) is ElementType) ids.Add(new ElementId(id));
 
             if (ids.Count == 0) return new DeleteResult(true, 0, 0, null);
 
@@ -45,9 +45,10 @@ namespace AnalyseTool.Infrastructure
         public RenameResult RenameFamily(Document doc, long familyId, string newName) =>
             Rename(doc, new ElementId(familyId), newName, e => e is Family);
 
-        /// <summary>Renames a family type (FamilySymbol). Fails on a duplicate or invalid name.</summary>
+        /// <summary>Renames a family type — a loadable FamilySymbol or a system ElementType (wall, floor,
+        /// pipe…). Fails on a duplicate or invalid name.</summary>
         public RenameResult RenameFamilyType(Document doc, long typeId, string newName) =>
-            Rename(doc, new ElementId(typeId), newName, e => e is FamilySymbol);
+            Rename(doc, new ElementId(typeId), newName, e => e is ElementType);
 
         private static RenameResult Rename(Document doc, ElementId id, string newName, Func<Element, bool> isExpected)
         {
@@ -90,11 +91,12 @@ namespace AnalyseTool.Infrastructure
 
             HashSet<long> tids = new(typeIds ?? new List<long>());
             if (tids.Count > 0)
-                foreach (FamilyInstance fi in new FilteredElementCollector(doc)
-                             .OfClass(typeof(FamilyInstance))
-                             .Cast<FamilyInstance>())
-                    if (fi.Symbol is { } sym && tids.Contains(sym.Id.Value))
-                        ids.Add(fi.Id);
+                foreach (Element e in new FilteredElementCollector(doc).WhereElementIsNotElementType())
+                {
+                    ElementId tid = e.GetTypeId();
+                    if (tid is not null && tid != ElementId.InvalidElementId && tids.Contains(tid.Value))
+                        ids.Add(e.Id);
+                }
 
             if (ids.Count == 0) return new WorksetAssignResult(true, 0, null);
 

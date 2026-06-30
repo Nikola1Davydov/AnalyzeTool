@@ -136,9 +136,10 @@ namespace AnalyseTool.Infrastructure
         }
 
         /// <summary>
-        /// Placed instances filtered by owning family ids and/or type (FamilySymbol) ids, each with its
-        /// type name, category, level and workset. Backs Select/Isolate wiring and workset reassignment.
-        /// Returns nothing when both id sets are empty. <paramref name="limit"/> caps the rows.
+        /// Placed instances filtered by owning family ids and/or type ids, each with its type name,
+        /// category, level and workset. When only type ids are given it collects ALL elements of those
+        /// types (so it works for system families — walls/floors/… — not just FamilyInstances). Backs
+        /// Select/Isolate wiring and workset reassignment. Empty when both id sets are empty.
         /// </summary>
         public FamilyInstancesResult GetFamilyInstances(
             Document doc, IEnumerable<long> familyIds, IEnumerable<long> typeIds, int? limit)
@@ -151,26 +152,52 @@ namespace AnalyseTool.Infrastructure
             if (fids.Count == 0 && tids.Count == 0)
                 return new FamilyInstancesResult(0, workshared, 0, 0, new List<FamilyInstanceDetail>());
 
-            IEnumerable<FamilyInstance> query = new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>()
-                .Where(fi => fi.Symbol?.Family is { } fam
-                             && (fids.Count == 0 || fids.Contains(fam.Id.Value))
-                             && (tids.Count == 0 || tids.Contains(fi.Symbol.Id.Value)));
+            string WorksetName(WorksetId id) =>
+                workshared && worksetTable is not null
+                    ? worksetTable.GetWorkset(id)?.Name ?? string.Empty
+                    : string.Empty;
 
-            List<FamilyInstanceDetail> all = query
-                .Select(fi => new FamilyInstanceDetail(
-                    fi.Id.Value,
-                    fi.Symbol?.Name ?? string.Empty,
-                    fi.Symbol?.Id.Value ?? 0,
-                    fi.Category?.Name ?? string.Empty,
-                    (doc.GetElement(fi.LevelId) as Level)?.Name ?? string.Empty,
-                    workshared ? fi.WorksetId.IntegerValue : 0,
-                    workshared && worksetTable is not null
-                        ? worksetTable.GetWorkset(fi.WorksetId)?.Name ?? string.Empty
-                        : string.Empty))
-                .OrderBy(i => i.TypeName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            List<FamilyInstanceDetail> all;
+            if (fids.Count == 0)
+            {
+                // Type-ids only → any element of those types (covers loadable AND system families).
+                all = new FilteredElementCollector(doc)
+                    .WhereElementIsNotElementType()
+                    .Where(e =>
+                    {
+                        ElementId tid = e.GetTypeId();
+                        return tid is not null && tid != ElementId.InvalidElementId && tids.Contains(tid.Value);
+                    })
+                    .Select(e => new FamilyInstanceDetail(
+                        e.Id.Value,
+                        (doc.GetElement(e.GetTypeId()) as ElementType)?.Name ?? string.Empty,
+                        e.GetTypeId().Value,
+                        e.Category?.Name ?? string.Empty,
+                        (doc.GetElement(e.LevelId) as Level)?.Name ?? string.Empty,
+                        workshared ? e.WorksetId.IntegerValue : 0,
+                        WorksetName(e.WorksetId)))
+                    .OrderBy(i => i.TypeName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            else
+            {
+                all = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .Cast<FamilyInstance>()
+                    .Where(fi => fi.Symbol?.Family is { } fam
+                                 && fids.Contains(fam.Id.Value)
+                                 && (tids.Count == 0 || tids.Contains(fi.Symbol.Id.Value)))
+                    .Select(fi => new FamilyInstanceDetail(
+                        fi.Id.Value,
+                        fi.Symbol?.Name ?? string.Empty,
+                        fi.Symbol?.Id.Value ?? 0,
+                        fi.Category?.Name ?? string.Empty,
+                        (doc.GetElement(fi.LevelId) as Level)?.Name ?? string.Empty,
+                        workshared ? fi.WorksetId.IntegerValue : 0,
+                        WorksetName(fi.WorksetId)))
+                    .OrderBy(i => i.TypeName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
 
             int total = all.Count;
             List<FamilyInstanceDetail> rows =
@@ -180,39 +207,48 @@ namespace AnalyseTool.Infrastructure
         }
 
         /// <summary>
-        /// One row per family TYPE (FamilySymbol) across the given families: family/type/category, placed
-        /// instance count and the distinct worksets its instances sit on. Backs the Family Types tab (the
-        /// UI groups these rows by type name). Deliberately lightweight — type parameters are NOT included
-        /// (there can be hundreds and they bloat/slow the payload).
+        /// One row per family TYPE across the given loadable/in-place families PLUS every system family
+        /// type (walls, floors, pipes… — these are <see cref="ElementType"/>s with no <c>Family</c>
+        /// element, grouped by <c>FamilyName</c>) when <paramref name="includeSystem"/> is set. Each row
+        /// carries family/type/category, placed-instance count and the distinct worksets the instances
+        /// sit on. Backs the Family Types tab. Deliberately lightweight — type parameters are NOT included.
         /// </summary>
-        public TypeRowsResult GetFamilyTypeRows(Document doc, IEnumerable<long> familyIds)
+        public TypeRowsResult GetFamilyTypeRows(Document doc, IEnumerable<long> familyIds, bool includeSystem = true)
         {
             HashSet<long> ids = new(familyIds);
             bool workshared = doc.IsWorkshared;
             WorksetTable? worksetTable = workshared ? doc.GetWorksetTable() : null;
 
-            // One pass over instances → per-symbol instance count and the distinct workset names.
+            // One pass over placed elements → per-TYPE-id instance count and distinct workset names. Keyed
+            // by GetTypeId() so it covers both loadable instances (type = FamilySymbol) and system
+            // elements (type = WallType/FloorType/…).
             Dictionary<long, int> counts = new();
-            Dictionary<long, HashSet<string>> worksetsBySymbol = new();
-            foreach (FamilyInstance fi in new FilteredElementCollector(doc)
-                         .OfClass(typeof(FamilyInstance))
-                         .Cast<FamilyInstance>())
+            Dictionary<long, HashSet<string>> worksetsByType = new();
+            foreach (Element e in new FilteredElementCollector(doc).WhereElementIsNotElementType())
             {
-                if (fi.Symbol?.Family is not { } fam || !ids.Contains(fam.Id.Value)) continue;
-                long sid = fi.Symbol.Id.Value;
-                counts.TryGetValue(sid, out int c);
-                counts[sid] = c + 1;
+                ElementId typeId = e.GetTypeId();
+                if (typeId is null || typeId == ElementId.InvalidElementId) continue;
+                long t = typeId.Value;
+                counts.TryGetValue(t, out int c);
+                counts[t] = c + 1;
                 if (workshared && worksetTable is not null)
                 {
-                    string ws = worksetTable.GetWorkset(fi.WorksetId)?.Name ?? string.Empty;
+                    string ws = worksetTable.GetWorkset(e.WorksetId)?.Name ?? string.Empty;
                     if (!string.IsNullOrEmpty(ws))
-                        (worksetsBySymbol.TryGetValue(sid, out HashSet<string>? set)
+                        (worksetsByType.TryGetValue(t, out HashSet<string>? set)
                             ? set
-                            : worksetsBySymbol[sid] = new HashSet<string>()).Add(ws);
+                            : worksetsByType[t] = new HashSet<string>()).Add(ws);
                 }
             }
 
+            List<string> WorksetsOf(long t) =>
+                worksetsByType.TryGetValue(t, out HashSet<string>? ws)
+                    ? ws.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList()
+                    : new List<string>();
+
             List<TypeRow> rows = new();
+
+            // Loadable / in-place families.
             foreach (long familyId in ids)
             {
                 if (doc.GetElement(new ElementId(familyId)) is not Family family) continue;
@@ -222,16 +258,25 @@ namespace AnalyseTool.Infrastructure
                 {
                     if (doc.GetElement(symbolId) is not FamilySymbol symbol) continue;
                     long sid = symbol.Id.Value;
-                    rows.Add(new TypeRow(
-                        familyId,
-                        family.Name,
-                        sid,
-                        symbol.Name,
-                        category,
-                        counts.TryGetValue(sid, out int n) ? n : 0,
-                        worksetsBySymbol.TryGetValue(sid, out HashSet<string>? ws)
-                            ? ws.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList()
-                            : new List<string>()));
+                    rows.Add(new TypeRow(familyId, family.Name, sid, symbol.Name, category,
+                        counts.TryGetValue(sid, out int n) ? n : 0, WorksetsOf(sid), false));
+                }
+            }
+
+            // System family types: ElementTypes that are not FamilySymbols, grouped by FamilyName, on a
+            // real model category. These have no Family element (familyId = 0).
+            if (includeSystem)
+            {
+                foreach (Element el in new FilteredElementCollector(doc).WhereElementIsElementType())
+                {
+                    if (el is not ElementType et || et is FamilySymbol) continue;
+                    Category? cat = et.Category;
+                    if (cat is null || cat.CategoryType != CategoryType.Model) continue;
+                    if (string.IsNullOrWhiteSpace(et.FamilyName)) continue;
+
+                    long tid = et.Id.Value;
+                    rows.Add(new TypeRow(0, et.FamilyName, tid, et.Name, cat.Name,
+                        counts.TryGetValue(tid, out int n) ? n : 0, WorksetsOf(tid), true));
                 }
             }
 
@@ -306,7 +351,8 @@ namespace AnalyseTool.Infrastructure
         [property: JsonProperty("typeName")] string TypeName,
         [property: JsonProperty("category")] string Category,
         [property: JsonProperty("instanceCount")] int InstanceCount,
-        [property: JsonProperty("worksets")] IReadOnlyList<string> Worksets);
+        [property: JsonProperty("worksets")] IReadOnlyList<string> Worksets,
+        [property: JsonProperty("isSystem")] bool IsSystem);
 
     public sealed record TypeRowsResult(
         [property: JsonProperty("isWorkshared")] bool IsWorkshared,
