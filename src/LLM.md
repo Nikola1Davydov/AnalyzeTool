@@ -271,7 +271,29 @@ const { commands } = await window.AT.invoke("GetCommands");
 
 ---
 
-## 9. Checklist for a generated extension
+## 9. AI features — reuse the ONE shared model (do not build your own picker)
+
+AnalyseTool has a **single, global AI (Ollama) model** shared by every window. It is **not** stored in a
+C# backend — it lives in the WebView's `localStorage`, which is shared across all plugin windows (same
+WebView2 profile + origin). So an AI-powered UI extension must **read** the active model, never re-prompt
+the user to pick one.
+
+- **Model selection lives ONLY in the Settings window.** Every other window shows a read-only indicator
+  (active model + Ollama on/off). Do not add a model dropdown to your extension UI.
+- **localStorage keys** (read these to know the active model): `ollama-model` (model name),
+  `ai-model-source` (`"local"` | `"cloud"`), `ai-cloud-models` (JSON array of saved cloud model names).
+  A `storage` event fires when another window changes them.
+- **Ollama status / local models:** `AT.invoke("OllamaGetModels")` → `{ running: bool, models: string[]|null }`
+  (`running:false` = Ollama unreachable; distinct from "running with 0 models").
+- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host): `OllamaAnalyse`,
+  `OllamaEditParameters` (returns suggested parameter edits), `OllamaSuggestName` (one new name from a
+  current name + instruction). Pass `{ model, prompt, … }` where `model` is the shared model name.
+- In your **own** C# AI command: take the model name in the payload, and run the AI/HTTP call **outside**
+  `RunInRevitAsync` (see §2 — slow I/O must not block the Revit thread); marshal only the model touch.
+
+---
+
+## 10. Checklist for a generated extension
 
 - [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for script/UI).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.

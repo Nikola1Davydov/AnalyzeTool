@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useToast } from "primevue/usetoast";
 import { Commands, invoke } from "@/RevitBridge";
 import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
+import AiModelIndicator from "@/components/AiModelIndicator.vue";
 
 // Shared Rename dialog for families and family types. Plain mode = type a name. AI mode reuses the same
 // Ollama settings as the rest of the app (useAiSettingsStore) and the OllamaSuggestName command: write an
@@ -24,8 +25,7 @@ const emit = defineEmits<{ submit: [name: string] }>();
 
 const toast = useToast();
 const aiStore = useAiSettingsStore();
-const { selectedModel, modelSource, availableModels, modelsLoading, aiEnabled } =
-  storeToRefs(aiStore);
+const { selectedModel, aiEnabled } = storeToRefs(aiStore);
 
 const value = ref(props.currentName);
 const aiMode = ref(false);
@@ -33,18 +33,8 @@ const prompt = ref("");
 const suggesting = ref(false);
 
 watch(visible, (open) => {
-  if (!open) return;
-  value.value = props.currentName;
-  if (modelSource.value === "local" && !availableModels.value.length) void aiStore.loadModels();
+  if (open) value.value = props.currentName;
 });
-onMounted(() => {
-  if (modelSource.value === "local" && !availableModels.value.length) void aiStore.loadModels();
-});
-
-const sourceOptions = [
-  { label: "Local", value: "local" },
-  { label: "Cloud", value: "cloud" },
-];
 
 async function suggest() {
   if (!selectedModel.value) {
@@ -110,43 +100,7 @@ function submit() {
 
       <!-- AI section -->
       <div v-if="aiMode" class="rounded-lg border border-surface-200 bg-surface-50 p-3 flex flex-col gap-2">
-        <div class="flex items-center gap-2 flex-wrap">
-          <SelectButton
-            :modelValue="modelSource"
-            :options="sourceOptions"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-            @update:modelValue="aiStore.setModelSource($event)"
-          />
-          <Select
-            v-if="modelSource === 'local'"
-            :modelValue="selectedModel"
-            :options="availableModels"
-            :loading="modelsLoading"
-            placeholder="Select model"
-            class="grow min-w-40"
-            @update:modelValue="aiStore.setModel($event)"
-          />
-          <InputText
-            v-else
-            :modelValue="selectedModel ?? ''"
-            placeholder="Cloud model name"
-            class="grow min-w-40"
-            @update:modelValue="aiStore.setModel($event)"
-          />
-          <Button
-            v-if="modelSource === 'local'"
-            icon="pi pi-refresh"
-            text
-            rounded
-            size="small"
-            severity="secondary"
-            :loading="modelsLoading"
-            v-tooltip.top="'Reload models'"
-            @click="aiStore.loadModels()"
-          />
-        </div>
+        <AiModelIndicator />
 
         <textarea
           v-model="prompt"
@@ -164,7 +118,7 @@ function submit() {
           @click="suggest"
         />
         <p v-if="!aiEnabled" class="text-xs text-surface-400">
-          Select an available model to enable AI (configure Ollama in the AI settings).
+          No usable AI model — choose one in the Settings window.
         </p>
       </div>
     </div>

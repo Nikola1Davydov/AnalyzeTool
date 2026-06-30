@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
+import AiModelPicker from "@/components/AiModelPicker.vue";
 
 interface ExtensionRow {
   id: string;
@@ -346,6 +347,15 @@ onMounted(() => {
           <div class="break-all">{{ data?.extensionsRoot ?? "—" }}</div>
         </div>
       </div>
+    </section>
+
+    <!-- AI model: the global model every window uses, saved cloud models, and Ollama status. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">AI model</h2>
+      <p class="text-xs text-surface-500 mb-3">
+        Shared across all AnalyseTool windows. Changing it here applies everywhere.
+      </p>
+      <AiModelPicker manage />
     </section>
 
     <!-- Extension paths: the source roots scanned for the running Revit version (default + user-added). -->
