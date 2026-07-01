@@ -65,8 +65,8 @@ namespace AnalyseTool.Common.Extensions
 
             // Third button next to the others: the dockable placement palette (types grouped by family,
             // click a type to place it). Uses the same launcher slot pattern as the other static buttons.
-            AddStaticButton(mainPanel, "AnalyseToolPalette", "Palette", launcherPath,
-                FamilyPaletteCommandClass, "Dockable family placement palette",
+            AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
+                FamilyPaletteCommandClass, "Place a component — dockable family palette",
                 image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (list)
 
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,

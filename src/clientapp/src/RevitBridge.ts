@@ -21,6 +21,10 @@ export const Commands = {
   PlaceFamilyInstance: "PlaceFamilyInstance",
   PurgeFamilyTypes: "PurgeFamilyTypes",
   PurgeFamilies: "PurgeFamilies",
+  GetLibraryFamilies: "GetLibraryFamilies",
+  GetLibraryPreview: "GetLibraryPreview",
+  LoadLibraryFamilies: "LoadLibraryFamilies",
+  PickFolder: "PickFolder",
 } as const;
 
 export const enum MessageType {

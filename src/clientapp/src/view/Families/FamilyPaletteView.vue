@@ -6,6 +6,7 @@ import { useFamilyRules } from "./familyRules";
 import { usePaletteSettings } from "./paletteSettings";
 import RulesBar from "./RulesBar.vue";
 import FamilyThumb from "./FamilyThumb.vue";
+import FamilyLibraryView from "./FamilyLibraryView.vue";
 import type { FamilyInventory, FamilyRow, TypeRow, TypeRowsResult } from "./types";
 
 // Dockable placement palette. Two views:
@@ -166,6 +167,10 @@ function toggle(id: number) {
 }
 
 // Toolbar option lists (kept tiny for the narrow dock).
+const sourceOptions = [
+  { value: "document", label: "In document", icon: "pi pi-box" },
+  { value: "library", label: "Library", icon: "pi pi-folder" },
+];
 const viewOptions = [
   { value: "gallery", icon: "pi pi-images", label: "Gallery" },
   { value: "table", icon: "pi pi-list", label: "Table" },
@@ -188,6 +193,38 @@ onMounted(load);
 
 <template>
   <div class="flex flex-col h-screen text-sm">
+    <!-- Source: families in the document vs on-disk library folders (collapsible to save space) -->
+    <div class="border-b border-surface-200 shrink-0">
+      <button
+        type="button"
+        class="w-full flex items-center gap-2 px-2 py-1 text-xs text-surface-500 hover:bg-surface-100"
+        @click="settings.sourceBarOpen = !settings.sourceBarOpen"
+      >
+        <i :class="settings.sourceBarOpen ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-[10px]" />
+        <i :class="settings.source === 'library' ? 'pi pi-folder' : 'pi pi-box'" />
+        <span class="font-medium">{{ settings.source === "library" ? "Library" : "In document" }}</span>
+      </button>
+      <div v-show="settings.sourceBarOpen" class="px-2 pb-2">
+        <SelectButton
+          :modelValue="settings.source"
+          @update:modelValue="settings.source = $event"
+          :options="sourceOptions"
+          optionValue="value"
+          :allowEmpty="false"
+          dataKey="value"
+        >
+          <template #option="{ option }">
+            <span class="flex items-center gap-1 text-xs"><i :class="option.icon" />{{ option.label }}</span>
+          </template>
+        </SelectButton>
+      </div>
+    </div>
+
+    <!-- LIBRARY mode -->
+    <FamilyLibraryView v-if="settings.source === 'library'" class="grow min-h-0" />
+
+    <!-- DOCUMENT mode -->
+    <template v-else>
     <!-- Toolbar: search, view, settings (group/sort), refresh -->
     <div class="border-b border-surface-200 shrink-0 p-2 flex items-center gap-2">
       <IconField class="grow">
@@ -402,5 +439,6 @@ onMounted(load);
         </div>
       </template>
     </div>
+    </template>
   </div>
 </template>

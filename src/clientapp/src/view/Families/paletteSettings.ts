@@ -4,12 +4,15 @@
 
 import { reactive, watch } from "vue";
 
+export type PaletteSource = "document" | "library";
 export type PaletteView = "gallery" | "table";
 export type PaletteGroupBy = "category" | "none";
 export type PaletteSortBy = "name" | "typeCount" | "instanceCount";
 export type SortDir = "asc" | "desc";
 
 export interface PaletteSettings {
+  source: PaletteSource; // families in the document vs on-disk library folders
+  sourceBarOpen: boolean; // whether the source selector row is expanded (collapsible to save space)
   view: PaletteView;
   groupBy: PaletteGroupBy;
   sortBy: PaletteSortBy;
@@ -18,8 +21,10 @@ export interface PaletteSettings {
 
 const STORAGE_KEY = "analysetool.palette.v1";
 
-// Defaults per the intended UX: gallery first, grouped by category, sorted by name ascending.
+// Defaults per the intended UX: document families, gallery first, grouped by category, sorted by name asc.
 const defaults: PaletteSettings = {
+  source: "document",
+  sourceBarOpen: true,
   view: "gallery",
   groupBy: "category",
   sortBy: "name",
