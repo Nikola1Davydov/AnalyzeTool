@@ -23,7 +23,7 @@ const matchOptions = [
 ];
 const scopeOptions = [
   { label: "Families", value: "families" },
-  { label: "Instances", value: "instances" },
+  { label: "Family Types", value: "types" },
 ];
 
 function fieldsFor(scope: RuleScope) {
