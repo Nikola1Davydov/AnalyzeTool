@@ -24,6 +24,7 @@ namespace AnalyseTool.Common.Extensions
     {
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
+        private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -61,6 +62,17 @@ namespace AnalyseTool.Common.Extensions
             AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
                 FamilyControlCommandClass, "Browse, audit and manage the families in this project",
                 image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (grid)
+
+            // Third button next to the others: the dockable placement palette (types grouped by family,
+            // click a type to place it). Uses the same launcher slot pattern as the other static buttons.
+            AddStaticButton(mainPanel, "AnalyseToolPalette", "Palette", launcherPath,
+                FamilyPaletteCommandClass, "Dockable family placement palette",
+                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (list)
+
+            // Register the single dockable pane. Revit only permits pane registration during OnStartup,
+            // which is why one always-present host pane is registered here and its content is swapped by
+            // route — features and extensions appear in the dock without a Revit restart.
+            Docking.DockPaneHost.Register(app);
 
             // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
@@ -234,6 +246,15 @@ namespace AnalyseTool.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
             new Features.Families.FamilyControlWindow().Show();
+        }
+
+        /// <summary>Ribbon "Palette" button — shows the dockable family placement palette (#/families-dock).
+        /// Initializes the host first (so the pane's transport has a dispatcher) then shows/routes the pane.</summary>
+        public static void ShowFamilyPalette(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            Docking.DockPaneHost.Show("#/families-dock");
         }
 
         public static void Reload(UIApplication uiApp)

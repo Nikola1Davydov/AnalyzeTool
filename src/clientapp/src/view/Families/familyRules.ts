@@ -6,7 +6,9 @@
 import { reactive, watch } from "vue";
 import type { FilterRule, RuleCondition, RuleOperator, RuleScope } from "./types";
 
-const STORAGE_KEY = "analysetool.familyRules.v1";
+// Default store key (the Family Manager's rules). Other surfaces (e.g. the placement palette) pass their
+// own key to useFamilyRules so their saved rules are kept separately.
+export const DEFAULT_RULES_KEY = "analysetool.familyRules.v1";
 
 // Fields a rule can test, per scope. `type` drives which operators the builder offers and how values
 // are compared. `value` reads the field off a record (FamilyRow for families, FamilyInstanceDetail for
@@ -117,34 +119,45 @@ export function matchesRule(rule: FilterRule, item: any): boolean {
   return rule.match === "all" ? results.every(Boolean) : results.some(Boolean);
 }
 
-function load(): FilterRule[] {
+function load(key: string): FilterRule[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as FilterRule[]) : [];
   } catch {
     return [];
   }
 }
 
-// Single reactive list shared across all views; persisted on every change.
-const rules = reactive<FilterRule[]>(load());
-watch(
-  rules,
-  () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-    } catch {
-      /* best-effort */
-    }
-  },
-  { deep: true },
-);
+// One reactive list per storage key, created lazily and cached, so distinct surfaces (Family Manager vs
+// the placement palette) keep separate, independently persisted rule sets while sharing the same engine.
+const stores = new Map<string, FilterRule[]>();
+function getRules(key: string): FilterRule[] {
+  let rules = stores.get(key);
+  if (!rules) {
+    rules = reactive<FilterRule[]>(load(key));
+    watch(
+      rules,
+      () => {
+        try {
+          localStorage.setItem(key, JSON.stringify(rules));
+        } catch {
+          /* best-effort */
+        }
+      },
+      { deep: true },
+    );
+    stores.set(key, rules);
+  }
+  return rules;
+}
 
 function newId(): string {
   return `rule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function useFamilyRules() {
+export function useFamilyRules(storageKey: string = DEFAULT_RULES_KEY) {
+  const rules = getRules(storageKey);
+
   function emptyRule(scope: RuleScope): FilterRule {
     return {
       id: newId(),

@@ -1,4 +1,5 @@
 using AnalyseTool.Common.Dispatch;
+using AnalyseTool.Sdk;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
@@ -38,7 +39,10 @@ namespace AnalyseTool.Common.Transport
             string? id = request.Id;
             try
             {
-                object? result = await _dispatcher.DispatchAsync(command, request.Payload, CancellationToken.None);
+                // Progress sink bound to THIS window + request id, so a progress-aware command's updates
+                // are pushed back only to the caller that started it.
+                IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info => SendProgress(command, id, info));
+                object? result = await _dispatcher.DispatchAsync(command, request.Payload, CancellationToken.None, progress);
                 // Always reply (null -> JSON null) so a caller awaiting this command's response resolves.
                 SendResponse(command, id, result);
             }
@@ -56,6 +60,20 @@ namespace AnalyseTool.Common.Transport
                 Command = command,
                 Id = id,
                 Payload = payload is null ? JValue.CreateNull() : JToken.FromObject(payload)
+            });
+            _webView.CoreWebView2.PostWebMessageAsJson(json);
+        }
+
+        /// <summary>Pushes an intermediate progress update for an in-flight request (same Id), before the
+        /// final Response. The frontend routes it to the call's onProgress by Id.</summary>
+        private void SendProgress(string command, string? id, ProgressInfo info)
+        {
+            string json = JsonConvert.SerializeObject(new WebViewMessage
+            {
+                Type = "Progress",
+                Command = command,
+                Id = id,
+                Payload = JObject.FromObject(new { fraction = info.Fraction, message = info.Message })
             });
             _webView.CoreWebView2.PostWebMessageAsJson(json);
         }

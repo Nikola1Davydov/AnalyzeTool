@@ -14,6 +14,10 @@ namespace AnalyseTool.Common.Bootstrap
         public static CommandDispatcher Dispatcher { get; private set; } = null!;
         public static RevitTaskHub RevitTaskHub { get; private set; } = null!;
 
+        /// <summary>True once <see cref="Initialize"/> has run — lets callers that may fire before any
+        /// ribbon click (e.g. an auto-restored dockable pane) decide whether they must defer.</summary>
+        public static bool IsInitialized => _initialized;
+
         public static void Initialize(UIApplication uiApp)
         {
             if (_initialized) return;

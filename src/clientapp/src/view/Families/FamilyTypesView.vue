@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import { useToast } from "primevue/usetoast";
 import { invoke } from "@/RevitBridge";
 import { useFamilyActions } from "./familyActions";
 import { useFamilyRules } from "./familyRules";
@@ -13,8 +14,12 @@ import type { FamilyRow, TypeGroup, TypeRow, TypeRowsResult, WorksetInfo, Workse
 // (rename / delete / select / isolate), plus moving all the group's instances to another workset.
 // Intentionally has no per-parameter column picker — type parameters can be huge and slow the table.
 const props = defineProps<{ families: FamilyRow[] }>();
+const emit = defineEmits<{
+  stats: [{ groups: number; types: number; instances: number; unused: number }];
+}>();
 
 const actions = useFamilyActions();
+const toast = useToast();
 const { rules, matchesRule } = useFamilyRules();
 
 const loading = ref(false);
@@ -130,7 +135,50 @@ const totals = computed(() => ({
   types: groups.value.reduce((s, g) => s + g.typeIds.length, 0),
   groups: groups.value.length,
   instances: groups.value.reduce((s, g) => s + g.instanceCount, 0),
+  // "Unused" here is type-level: grouped type rows with no placed instances.
+  unused: groups.value.filter((g) => g.instanceCount === 0).length,
 }));
+
+// Surface the type-level stats to the parent so its header can show type totals (incl. Unused) instead
+// of the family inventory numbers while the Family Types view is active.
+watch(totals, (t) => emit("stats", t), { immediate: true, deep: true });
+
+// ---- purge unused types -------------------------------------------------------------------------
+// All type ids across groups with no placed instances (a grouped row may hold several merged types).
+const unusedTypeIds = computed(() =>
+  groups.value.filter((g) => g.instanceCount === 0).flatMap((g) => g.typeIds),
+);
+const purgeVisible = ref(false);
+const purgeRunning = ref(false);
+const purgeProgress = ref(0); // 0..100
+
+async function confirmPurgeUnused() {
+  if (!unusedTypeIds.value.length) return;
+
+  purgeVisible.value = false;
+  purgeRunning.value = true;
+  purgeProgress.value = 0;
+
+  // One host call → one Undo entry; progress is pushed back live via the central progress channel.
+  const r = await actions.purgeTypesProgress(unusedTypeIds.value, (f) => {
+    purgeProgress.value = Math.round(f * 100);
+  });
+
+  purgeRunning.value = false;
+  if (!r.ok) {
+    toast.add({ severity: "error", summary: "Purge failed", detail: r.error ?? "Unknown error", life: 4000 });
+  } else if (r.failed > 0) {
+    toast.add({
+      severity: "warn",
+      summary: `Purged ${r.deleted} type(s)`,
+      detail: `${r.failed} could not be deleted (still in use).`,
+      life: 5000,
+    });
+  } else {
+    toast.add({ severity: "success", summary: "Purged", detail: `${r.deleted} unused type(s) removed.`, life: 2500 });
+  }
+  await load();
+}
 
 // ---- actions -----------------------------------------------------------------------------------
 function selectGroup(g: TypeGroup) {
@@ -199,6 +247,17 @@ async function moveSelectedToWorkset() {
         <span class="text-xs text-surface-500">
           {{ totals.groups }} groups · {{ totals.types }} types · {{ totals.instances }} inst
         </span>
+        <Button
+          icon="pi pi-trash"
+          label="Purge unused"
+          severity="secondary"
+          outlined
+          size="small"
+          :disabled="!unusedTypeIds.length"
+          :badge="unusedTypeIds.length ? String(unusedTypeIds.length) : undefined"
+          v-tooltip.bottom="'Delete all types with zero placed instances'"
+          @click="purgeVisible = true"
+        />
         <IconField class="w-64">
           <InputIcon class="pi pi-search" />
           <InputText v-model="search" placeholder="Search type / family…" class="w-full" />
@@ -286,11 +345,14 @@ async function moveSelectedToWorkset() {
       </Column>
 
       <!-- Instance count -->
-      <Column field="instanceCount" header="Instances" sortable class="w-28">
+      <Column field="instanceCount" header="Instances" sortable class="w-32">
         <template #body="{ data: g }">
-          <span :class="g.instanceCount === 0 ? 'text-amber-600 font-medium' : ''">
-            {{ g.instanceCount }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span :class="g.instanceCount === 0 ? 'text-amber-600 font-medium' : ''">
+              {{ g.instanceCount }}
+            </span>
+            <Tag v-if="g.instanceCount === 0" value="unused" severity="secondary" />
+          </div>
         </template>
       </Column>
 
@@ -382,6 +444,47 @@ async function moveSelectedToWorkset() {
         <Button label="Cancel" text severity="secondary" @click="deleteVisible = false" />
         <Button label="Delete" icon="pi pi-trash" severity="danger" @click="confirmDelete" />
       </template>
+    </Dialog>
+
+    <!-- Purge unused types confirm -->
+    <Dialog
+      v-model:visible="purgeVisible"
+      modal
+      dismissableMask
+      header="Purge unused types"
+      :style="{ width: '30rem' }"
+    >
+      <div class="flex gap-3 items-start">
+        <i class="pi pi-exclamation-triangle text-2xl text-amber-500 mt-1" />
+        <div class="text-sm">
+          Delete all <b>{{ unusedTypeIds.length }}</b> family type(s) with zero placed instances? This
+          cannot be undone from here.
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" @click="purgeVisible = false" />
+        <Button label="Purge" icon="pi pi-trash" severity="danger" @click="confirmPurgeUnused" />
+      </template>
+    </Dialog>
+
+    <!-- Purge progress -->
+    <Dialog
+      :visible="purgeRunning"
+      modal
+      :closable="false"
+      :closeOnEscape="false"
+      header="Purging unused types…"
+      :style="{ width: '24rem' }"
+    >
+      <div class="flex flex-col gap-2">
+        <div class="h-2 w-full rounded bg-surface-200 overflow-hidden">
+          <div
+            class="h-2 rounded bg-primary-500 transition-all"
+            :style="{ width: purgeProgress + '%' }"
+          />
+        </div>
+        <div class="text-xs text-surface-500 text-right">{{ purgeProgress }}%</div>
+      </div>
     </Dialog>
   </section>
 </template>

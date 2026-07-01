@@ -117,6 +117,26 @@ export function useFamilyActions() {
     return deleteElements(unused);
   }
 
+  /**
+   * Purges the given families in ONE host call, forwarding progress to `onProgress`. Raw (no toast) —
+   * the caller shows a summary. A family that can't be deleted is skipped and counted.
+   */
+  async function purgeFamiliesProgress(
+    familyIds: number[],
+    onProgress?: (fraction: number) => void,
+  ): Promise<{ ok: boolean; deleted: number; failed: number; error?: string }> {
+    try {
+      const res = await invoke<{ ok: boolean; deleted: number; failed: number; error?: string }>(
+        "PurgeFamilies",
+        { familyIds },
+        { onProgress: (p) => onProgress?.(p.fraction ?? 0) },
+      );
+      return { ok: !!res?.ok, deleted: res?.deleted ?? 0, failed: res?.failed ?? 0, error: res?.error };
+    } catch (e) {
+      return { ok: false, deleted: 0, failed: 0, error: String((e as Error)?.message ?? e) };
+    }
+  }
+
   /** Moves instances to a workset, targeted by explicit element ids and/or by type ids. */
   async function setWorkset(target: InstanceTarget, worksetId: number): Promise<boolean> {
     try {
@@ -135,6 +155,76 @@ export function useFamilyActions() {
     return false;
   }
 
+  /**
+   * Purges the given types, tolerating ones that can't be deleted (last type of a family, still
+   * referenced, …). Reports how many went and how many were skipped instead of failing outright.
+   */
+  async function purgeTypes(typeIds: number[]): Promise<boolean> {
+    if (!typeIds.length) {
+      ok("Nothing to purge", "No unused types found.");
+      return false;
+    }
+    try {
+      const res = await invoke<{ ok: boolean; deleted: number; failed: number; error?: string }>(
+        "PurgeFamilyTypes",
+        { typeIds },
+      );
+      if (res?.ok) {
+        if (res.failed > 0) {
+          toast.add({
+            severity: "warn",
+            summary: `Purged ${res.deleted} type(s)`,
+            detail: `${res.failed} could not be deleted (e.g. a family's last type or still in use).`,
+            life: 5000,
+          });
+        } else {
+          ok("Purged", `${res.deleted} unused type(s) removed.`);
+        }
+        return res.deleted > 0;
+      }
+      fail("Purge failed", res?.error ?? "Unknown error");
+    } catch (e) {
+      fail("Purge failed", String((e as Error)?.message ?? e));
+    }
+    return false;
+  }
+
+  /**
+   * Purges the given types in ONE host call (single Undo entry), forwarding the host's progress updates
+   * to `onProgress`. Raw (no toast) — the caller shows a summary. The host keeps at least one type per
+   * family and reports any that couldn't be deleted.
+   */
+  async function purgeTypesProgress(
+    typeIds: number[],
+    onProgress?: (fraction: number) => void,
+  ): Promise<{ ok: boolean; deleted: number; failed: number; error?: string }> {
+    try {
+      const res = await invoke<{ ok: boolean; deleted: number; failed: number; error?: string }>(
+        "PurgeFamilyTypes",
+        { typeIds },
+        { onProgress: (p) => onProgress?.(p.fraction ?? 0) },
+      );
+      return { ok: !!res?.ok, deleted: res?.deleted ?? 0, failed: res?.failed ?? 0, error: res?.error };
+    } catch (e) {
+      return { ok: false, deleted: 0, failed: 0, error: String((e as Error)?.message ?? e) };
+    }
+  }
+
+  /** Starts Revit's interactive placement for a loadable family type (backs the palette "Place"). */
+  async function place(typeId: number): Promise<boolean> {
+    try {
+      const res = await invoke<{ ok: boolean; error?: string }>("PlaceFamilyInstance", { typeId });
+      if (res?.ok) {
+        ok("Placement started", "Click in the model to place; press Esc to finish.");
+        return true;
+      }
+      fail("Can't place", res?.error ?? "Unknown error");
+    } catch (e) {
+      fail("Place failed", String((e as Error)?.message ?? e));
+    }
+    return false;
+  }
+
   return {
     select,
     isolate,
@@ -142,6 +232,10 @@ export function useFamilyActions() {
     renameTypes,
     deleteElements,
     purgeUnused,
+    purgeFamiliesProgress,
+    purgeTypes,
+    purgeTypesProgress,
     setWorkset,
+    place,
   };
 }

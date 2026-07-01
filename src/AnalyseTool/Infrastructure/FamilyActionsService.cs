@@ -1,3 +1,4 @@
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
@@ -39,6 +40,95 @@ namespace AnalyseTool.Infrastructure
             {
                 return new DeleteResult(false, 0, 0, ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Decides which of the requested type ids to actually attempt to delete for "purge unused". The
+        /// family itself is never deleted and at least one type is always kept: if EVERY type of a loadable
+        /// family is unused, all but one are planned (one is left in place). Partial sets and system types
+        /// are planned as-is. Returned to the caller so deletion can be chunked (for live progress) while
+        /// this whole-family reasoning stays a single, consistent decision.
+        /// </summary>
+        public List<long> PlanPurgeTypes(Document doc, IList<long>? typeIds)
+        {
+            List<ElementId> ids = (typeIds ?? new List<long>())
+                .Select(id => new ElementId(id))
+                .Where(eid => doc.GetElement(eid) is ElementType)
+                .ToList();
+
+            Dictionary<ElementId, List<ElementId>> perFamily = new();
+            List<ElementId> plan = new();
+            foreach (ElementId id in ids)
+            {
+                if (doc.GetElement(id) is FamilySymbol { Family: { } fam })
+                {
+                    if (!perFamily.TryGetValue(fam.Id, out List<ElementId>? list))
+                        perFamily[fam.Id] = list = new List<ElementId>();
+                    list.Add(id);
+                }
+                else
+                {
+                    plan.Add(id); // system ElementType (no owning Family)
+                }
+            }
+
+            foreach (KeyValuePair<ElementId, List<ElementId>> entry in perFamily)
+            {
+                int total = (doc.GetElement(entry.Key) as Family)?.GetFamilySymbolIds().Count ?? entry.Value.Count;
+                // All types unused → keep one (Skip 1); otherwise the used types remain, delete all requested.
+                plan.AddRange(entry.Value.Count >= total ? entry.Value.Skip(1) : entry.Value);
+            }
+
+            return plan.Select(eid => eid.Value).ToList();
+        }
+
+        /// <summary>Validates the given ids as families for "purge unused families" — families are deleted
+        /// whole (no keep-one), so the plan is simply the ids that really are <see cref="Family"/>. Deletion
+        /// then goes through <see cref="PurgeChunk"/>, chunked for live progress.</summary>
+        public List<long> PlanPurgeFamilies(Document doc, IList<long>? familyIds) =>
+            (familyIds ?? new List<long>())
+                .Where(id => doc.GetElement(new ElementId(id)) is Family)
+                .ToList();
+
+        /// <summary>
+        /// Deletes one chunk of planned ids. Each element is deleted in its OWN top-level transaction
+        /// inside a <see cref="TransactionGroup"/>: a failure rolls back only that transaction and the rest
+        /// still delete. (A single batch delete aborts everything on the first failure; catching a delete
+        /// exception inside a sub-transaction and continuing is unsafe and can crash Revit — hence isolated
+        /// transactions.) Chunking exists so the caller can yield the Revit/UI thread between chunks and
+        /// report live progress; the trade-off is one undo entry per chunk. Returns per-chunk counts.
+        /// </summary>
+        public ChunkResult PurgeChunk(Document doc, IList<long> chunkIds)
+        {
+            List<ElementId> ids = chunkIds.Select(id => new ElementId(id)).ToList();
+            int deleted = 0, failed = 0;
+
+            using TransactionGroup group = new(doc, "Family Manager: purge unused types");
+            group.Start();
+
+            foreach (ElementId id in ids)
+            {
+                if (doc.GetElement(id) is null) continue; // already removed by a previous cascade
+
+                using Transaction t = new(doc, "Purge type");
+                t.Start();
+                SwallowWarningsPreprocessor.Apply(t);
+                try
+                {
+                    doc.Delete(id);
+                    t.Commit();
+                }
+                catch
+                {
+                    if (t.GetStatus() == TransactionStatus.Started) t.RollBack();
+                }
+            }
+
+            group.Assimilate();
+
+            deleted = ids.Count(eid => doc.GetElement(eid) is null);
+            failed = ids.Count - deleted;
+            return new ChunkResult(deleted, failed);
         }
 
         /// <summary>Renames a family. Fails (ok=false) on a duplicate or invalid name rather than throwing.</summary>
@@ -126,6 +216,9 @@ namespace AnalyseTool.Infrastructure
         [property: JsonProperty("requested")] int Requested,
         [property: JsonProperty("deleted")] int Deleted,
         [property: JsonProperty("error")] string? Error);
+
+    /// <summary>Per-chunk purge counts (see <see cref="FamilyActionsService.PurgeChunk"/>).</summary>
+    public sealed record ChunkResult(int Deleted, int Failed);
 
     public sealed record RenameResult(
         [property: JsonProperty("ok")] bool Ok,

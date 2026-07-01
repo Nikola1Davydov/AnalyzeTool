@@ -75,7 +75,7 @@ function save() {
     modal
     dismissableMask
     header="Filter rule"
-    :style="{ width: '40rem', maxWidth: '95vw' }"
+    :style="{ width: 'min(40rem, 95vw)' }"
   >
     <div v-if="draft" class="flex flex-col gap-4">
       <!-- Name + scope + pin -->
@@ -96,17 +96,17 @@ function save() {
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 flex-wrap">
         <span class="text-sm text-surface-600">Match</span>
         <Select
           v-model="draft.match"
           :options="matchOptions"
           optionLabel="label"
           optionValue="value"
-          class="w-40"
+          class="w-32"
         />
         <span class="text-sm text-surface-600">of the conditions</span>
-        <label class="flex items-center gap-2 ml-auto text-sm cursor-pointer">
+        <label class="flex items-center gap-2 sm:ml-auto text-sm cursor-pointer">
           <Checkbox v-model="draft.pinned" binary />
           Pin as quick filter
         </label>
@@ -117,14 +117,14 @@ function save() {
         <div
           v-for="(cond, i) in draft.conditions"
           :key="i"
-          class="flex gap-2 items-center"
+          class="flex gap-2 items-center flex-wrap rounded-lg border border-surface-100 p-1.5 sm:border-0 sm:p-0"
         >
           <Select
             v-model="cond.field"
             :options="fieldsFor(draft.scope)"
             optionLabel="label"
             optionValue="key"
-            class="w-40"
+            class="grow basis-32 min-w-32"
             @change="onFieldChange(cond)"
           />
           <Select
@@ -132,14 +132,14 @@ function save() {
             :options="operatorsFor(draft.scope, cond.field)"
             optionLabel="label"
             optionValue="value"
-            class="w-40"
+            class="grow basis-28 min-w-28"
           />
           <InputText
             v-if="!valuelessOps.has(cond.op)"
             v-model="cond.value"
             :type="fieldType(draft.scope, cond.field) === 'number' ? 'number' : 'text'"
             placeholder="value"
-            class="grow"
+            class="grow basis-full sm:basis-32 min-w-32"
           />
           <span v-else class="grow" />
           <Button

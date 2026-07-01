@@ -23,6 +23,8 @@ namespace AnalyseTool.Common.Extensions
     if (!msg || !msg.Id) return;
     var p = pending.get(msg.Id);
     if (!p) return;
+    // Intermediate progress: notify (if a handler was given) but keep the call pending.
+    if (msg.Type === 'Progress') { if (p.onProgress) p.onProgress(msg.Payload); return; }
     pending.delete(msg.Id);
     if (msg.Error) p.reject(new Error(msg.Error));
     else p.resolve(msg.Payload);

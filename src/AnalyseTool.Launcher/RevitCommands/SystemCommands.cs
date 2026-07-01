@@ -12,6 +12,14 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("OpenFamilyControl", commandData.Application);
     }
 
+    /// <summary>Ribbon "Palette" button — shows the dockable family placement palette.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class FamilyPaletteCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
+    }
+
     /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand

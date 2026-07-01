@@ -1,3 +1,5 @@
+using AnalyseTool.Sdk;
+using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -6,9 +8,15 @@ namespace AnalyseTool.Common.Extensions
 {
     /// <summary>
     /// Isolated load context for one extension. Its private dependencies are loaded from the
-    /// extension folder, but the contract assemblies are deferred to the host's default context so
+    /// extension folder, but the contract assemblies resolve to the HOST's already-loaded copy so
     /// that types crossing the boundary (IRevitTask, Revit API types, JToken) share one identity —
     /// otherwise <c>is IRevitTask</c> would fail and Revit API types would not match.
+    ///
+    /// For OUR shared assemblies we return the host instance BY SIMPLE NAME (ignoring the version the
+    /// extension was compiled against). Returning null instead routes the request to the default
+    /// context, which binds by EXACT version — so bumping AnalyseTool.Sdk's AssemblyVersion (even a
+    /// backward-compatible minor) would make older extensions fail to bind. Handing back the host copy
+    /// makes sharing version-agnostic, so the SDK AssemblyVersion can move within a major freely.
     ///
     /// Assemblies are loaded from a byte copy (LoadFromStream), NOT LoadFromAssemblyPath, so the
     /// files on disk are never locked. That lets the author rebuild/overwrite an extension while
@@ -59,13 +67,25 @@ namespace AnalyseTool.Common.Extensions
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            // null => fall through to the default (host) context, preserving type identity.
             if (assemblyName.Name is not null && SharedWithHost.Contains(assemblyName.Name))
-                return null;
+                // Host copy by simple name (version-agnostic). For Revit API names this is null, which
+                // falls through to the default context — Revit provides those, so exact binding is fine.
+                return ResolveSharedFromHost(assemblyName.Name);
 
             string? path = _resolver?.ResolveAssemblyToPath(assemblyName);
             return path is not null ? LoadFromBytes(path) : null;
         }
+
+        /// <summary>Returns the host's already-loaded instance of a shared assembly by simple name, so a
+        /// crossing type keeps one identity regardless of the version the extension referenced. Revit API
+        /// assemblies return null (deferred to the default context, which Revit populates).</summary>
+        private static Assembly? ResolveSharedFromHost(string name) => name switch
+        {
+            "AnalyseTool.Sdk" => typeof(IRevitTask).Assembly,           // the public contract — host's copy
+            "AnalyseTool" => typeof(ExtensionLoadContext).Assembly,     // host assembly (this type lives in it)
+            "Newtonsoft.Json" => typeof(JToken).Assembly,               // payload JToken crosses the boundary
+            _ => null,                                                   // RevitAPI / RevitAPIUI → default context
+        };
 
         /// <summary>Reads the assembly (and its PDB, if present) into memory and loads from there, so
         /// the on-disk files stay unlocked.</summary>

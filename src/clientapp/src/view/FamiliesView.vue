@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useToast } from "primevue/usetoast";
 import { invoke } from "@/RevitBridge";
 import FamilyCard from "@/view/Families/FamilyCard.vue";
 import FamilyThumb from "@/view/Families/FamilyThumb.vue";
@@ -16,6 +17,7 @@ type ViewMode = "table" | "gallery";
 type QuickFilter = "All" | "Unused" | "In-place";
 
 const actions = useFamilyActions();
+const toast = useToast();
 const { rules, matchesRule } = useFamilyRules();
 
 // `section` is the top-level dataset (families vs their types); `view` is how the families list is shown
@@ -76,6 +78,10 @@ const stats = computed(() => {
   };
 });
 
+// Type-level stats reported by the Family Types view (so the header shows type totals, incl. Unused
+// types, while that section is active instead of the family inventory numbers).
+const typeStats = ref({ groups: 0, types: 0, instances: 0, unused: 0 });
+
 // Detail dialog
 const detailVisible = ref(false);
 const selectedFamily = ref<FamilyRow | null>(null);
@@ -126,11 +132,36 @@ async function confirmDelete() {
 
 // Purge confirm dialog
 const purgeVisible = ref(false);
+const purgeRunning = ref(false);
+const purgeProgress = ref(0); // 0..100
 const unusedCount = computed(() => families.value.filter((f) => f.instanceCount === 0).length);
 async function confirmPurge() {
-  const done = await actions.purgeUnused(families.value);
+  const unused = families.value.filter((f) => f.instanceCount === 0).map((f) => f.id);
+  if (!unused.length) return;
+
   purgeVisible.value = false;
-  if (done) await load();
+  purgeRunning.value = true;
+  purgeProgress.value = 0;
+
+  // One host call → progress pushed back live via the central progress channel.
+  const r = await actions.purgeFamiliesProgress(unused, (f) => {
+    purgeProgress.value = Math.round(f * 100);
+  });
+
+  purgeRunning.value = false;
+  if (!r.ok) {
+    toast.add({ severity: "error", summary: "Purge failed", detail: r.error ?? "Unknown error", life: 4000 });
+  } else if (r.failed > 0) {
+    toast.add({
+      severity: "warn",
+      summary: `Purged ${r.deleted} family(ies)`,
+      detail: `${r.failed} could not be deleted.`,
+      life: 5000,
+    });
+  } else {
+    toast.add({ severity: "success", summary: "Purged", detail: `${r.deleted} unused family(ies) removed.`, life: 2500 });
+  }
+  await load();
 }
 
 onMounted(load);
@@ -159,8 +190,8 @@ onMounted(load);
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+    <!-- Stats — family inventory in the Families section, type-level totals in the Family Types section -->
+    <div v-if="section === 'families'" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
       <div class="rounded-xl border border-surface-200 bg-surface-0 p-3">
         <div class="text-surface-500 text-xs">Families</div>
         <div class="text-lg font-bold">{{ stats.families }}</div>
@@ -182,11 +213,29 @@ onMounted(load);
         <div class="text-lg font-bold">{{ stats.inPlace }}</div>
       </div>
     </div>
+    <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div class="rounded-xl border border-surface-200 bg-surface-0 p-3">
+        <div class="text-surface-500 text-xs">Type groups</div>
+        <div class="text-lg font-bold">{{ typeStats.groups }}</div>
+      </div>
+      <div class="rounded-xl border border-surface-200 bg-surface-0 p-3">
+        <div class="text-surface-500 text-xs">Types</div>
+        <div class="text-lg font-bold">{{ typeStats.types }}</div>
+      </div>
+      <div class="rounded-xl border border-surface-200 bg-surface-0 p-3">
+        <div class="text-surface-500 text-xs">Instances</div>
+        <div class="text-lg font-bold">{{ typeStats.instances }}</div>
+      </div>
+      <div class="rounded-xl border border-surface-200 bg-surface-0 p-3">
+        <div class="text-surface-500 text-xs">Unused types</div>
+        <div class="text-lg font-bold text-amber-600">{{ typeStats.unused }}</div>
+      </div>
+    </div>
 
     <div v-if="error" class="text-sm text-red-600 mb-3">Failed to load families: {{ error }}</div>
 
     <!-- Family Types section manages its own toolbar; families table + gallery share the one below. -->
-    <FamilyTypesView v-if="section === 'types'" :families="families" />
+    <FamilyTypesView v-if="section === 'types'" :families="families" @stats="typeStats = $event" />
 
     <template v-else>
       <!-- Family-scope quick filters (saved rules) -->
@@ -403,6 +452,23 @@ onMounted(load);
         <Button label="Cancel" text severity="secondary" @click="purgeVisible = false" />
         <Button label="Purge" icon="pi pi-trash" severity="danger" @click="confirmPurge" />
       </template>
+    </Dialog>
+
+    <!-- Purge progress -->
+    <Dialog
+      :visible="purgeRunning"
+      modal
+      :closable="false"
+      :closeOnEscape="false"
+      header="Purging unused families…"
+      :style="{ width: '24rem' }"
+    >
+      <div class="flex flex-col gap-2">
+        <div class="h-2 w-full rounded bg-surface-200 overflow-hidden">
+          <div class="h-2 rounded bg-primary-500 transition-all" :style="{ width: purgeProgress + '%' }" />
+        </div>
+        <div class="text-xs text-surface-500 text-right">{{ purgeProgress }}%</div>
+      </div>
     </Dialog>
   </div>
 </template>
