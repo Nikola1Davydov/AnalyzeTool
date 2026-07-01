@@ -24,7 +24,7 @@ namespace AnalyseTool.Common.Docking
         private static AnalyseToolDockPane? _pane;
         private static UIControlledApplication? _app;
         private static TaskCompletionSource<bool>? _ready;
-        private static string? _currentRoute; // content the pane last navigated to (for toggle logic)
+        private static string? _currentContent; // content key the pane last navigated to (for toggle logic)
 
         private DockPaneHost() { }
 
@@ -56,30 +56,39 @@ namespace AnalyseTool.Common.Docking
             };
         }
 
+        /// <summary>Shows a built-in clientapp route (e.g. "#/families-dock") in the pane, with toggle.</summary>
+        public static void ShowRoute(string route) =>
+            Toggle("route:" + route, p => p.ShowRoute(route));
+
+        /// <summary>Shows an extension's page in the shared pane, with toggle. Keyed by extension id so a
+        /// second click on the same extension's button hides the pane.</summary>
+        public static void ShowExtension(string id, string directory, string? devUrl, string entryHtml) =>
+            Toggle("ext:" + id, p => p.ShowExtension(id, directory, devUrl, entryHtml));
+
         /// <summary>
-        /// Toggles the pane for a given content route (the button's own screen):
+        /// Toggles the pane for a piece of content (identified by <paramref name="contentKey"/>):
         /// <list type="bullet">
-        /// <item>closed → open and show <paramref name="route"/>;</item>
-        /// <item>open on the SAME route → close (toggle off);</item>
-        /// <item>open on a DIFFERENT route → switch content, stay open.</item>
+        /// <item>closed → open and show it;</item>
+        /// <item>open on the SAME content → close (toggle off);</item>
+        /// <item>open on DIFFERENT content → switch, stay open.</item>
         /// </list>
         /// The caller (a ribbon command) must have initialized the host first, so
         /// <see cref="Context.UiApplication"/> is valid here.
         /// </summary>
-        public static void Show(string route)
+        private static void Toggle(string contentKey, Action<AnalyseToolDockPane> apply)
         {
             _pane ??= new AnalyseToolDockPane();
             DockablePane pane = Context.UiApplication.GetDockablePane(PaneId);
 
             // Same content already visible → this click means "hide".
-            if (pane.IsShown() && string.Equals(_currentRoute, route, StringComparison.Ordinal))
+            if (pane.IsShown() && string.Equals(_currentContent, contentKey, StringComparison.Ordinal))
             {
                 pane.Hide();
                 return;
             }
 
-            _pane.ShowRoute(route);
-            _currentRoute = route;
+            apply(_pane);
+            _currentContent = contentKey;
             pane.Show();
         }
 

@@ -254,7 +254,7 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            Docking.DockPaneHost.Show("#/families-dock");
+            Docking.DockPaneHost.ShowRoute("#/families-dock");
         }
 
         public static void Reload(UIApplication uiApp)
@@ -272,7 +272,13 @@ namespace AnalyseTool.Common.Extensions
 
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            new ExtensionWindow(descriptor).Show();
+
+            // A dockable extension shows inside the shared pane (toggle); otherwise it opens its own window.
+            ExtensionUi? ui = descriptor.Manifest.Ui;
+            if (ui?.Dockable == true)
+                Docking.DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
+            else
+                new ExtensionWindow(descriptor).Show();
         }
 
         /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a
