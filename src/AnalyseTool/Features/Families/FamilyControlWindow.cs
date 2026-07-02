@@ -45,15 +45,7 @@ namespace AnalyseTool.Features.Families
             _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
             _transport.Attach();
 
-            string url;
-#if RELEASE_R25 || RELEASE_R26
-            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "app", PathProvider.RootDirectory, CoreWebView2HostResourceAccessKind.Allow);
-            url = "https://app/index.html" + Route;
-#else
-            url = PathProvider.DebugServerUrl.TrimEnd('/') + "/" + Route;
-#endif
-            _webView.CoreWebView2.Navigate(url);
+            _webView.CoreWebView2.Navigate(ClientAppHost.ResolveUrl(_webView.CoreWebView2, Route));
         }
     }
 }
