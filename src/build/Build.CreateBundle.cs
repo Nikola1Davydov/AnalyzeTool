@@ -20,7 +20,13 @@ sealed partial class Build
             Project project = Solution.AnalyseTool_Launcher;
             Log.Information("Project: {Name}", project.Name);
 
-            string[] targetDirectories = Directory.GetDirectories(project.Directory, "Release *", SearchOption.AllDirectories);
+            // Scans the disk for "Release *" output folders. Skip any whose Revit version we don't
+            // recognize (e.g. a stale "Release R27" bin left over from a dev build) — otherwise
+            // GetVersionYear("") would throw. Only shipped versions (see GetRevitVersion) are bundled.
+            string[] targetDirectories = Directory
+                .GetDirectories(project.Directory, "Release *", SearchOption.AllDirectories)
+                .Where(dir => GetRevitVersion(dir).Length > 0)
+                .ToArray();
             Assert.NotEmpty(targetDirectories, "No files were found to create a bundle");
 
             string bundleName = $"{project.Name}.bundle";

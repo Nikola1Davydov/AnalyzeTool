@@ -20,6 +20,7 @@ string[] versions =
 {
     pluginPath("25"),
     pluginPath("26"),
+    pluginPath("27"),
 };
 
 
