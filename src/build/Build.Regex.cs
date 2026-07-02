@@ -19,7 +19,7 @@ sealed partial class Build
 
     private static string GetRevitVersion(string text)
     {
-        Regex regex = new Regex(@"R(24|25|26)");
+        Regex regex = new Regex(@"R(24|25|26|27|28|29)");
         Match match = regex.Match(text);
 
         if (match.Success)
