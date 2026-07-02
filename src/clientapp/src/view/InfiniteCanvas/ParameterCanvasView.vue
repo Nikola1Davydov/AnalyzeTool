@@ -364,9 +364,8 @@ function checkAiAvailabilityOnCanvasEnter() {
       stop();
 
       if (aiSettingsStore.availableModels.length === 0) {
-        aiSettingsStore.setModel(null);
         notificationStore.warn(
-          "Ollama is unavailable or no models are installed. AI features were disabled.",
+          "Ollama is unavailable or no models are installed. AI features are disabled.",
         );
       }
     },

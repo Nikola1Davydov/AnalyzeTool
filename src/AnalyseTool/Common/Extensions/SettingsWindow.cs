@@ -24,6 +24,8 @@ namespace AnalyseTool.Common.Extensions
         {
             Title = "AnalyseTool — Extensions";
             Width = 1000;
+            MinHeight = 300;
+            MinWidth = 300;
             Height = 680;
             Content = _webView;
 
@@ -36,6 +38,9 @@ namespace AnalyseTool.Common.Extensions
         {
             CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
             await _webView.EnsureCoreWebView2Async(env);
+
+            _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+            _webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
             _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
             _transport.Attach();

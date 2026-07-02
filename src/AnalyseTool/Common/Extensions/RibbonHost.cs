@@ -23,6 +23,8 @@ namespace AnalyseTool.Common.Extensions
     internal static class RibbonHost
     {
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
+        private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
+        private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -42,6 +44,12 @@ namespace AnalyseTool.Common.Extensions
         // (devUrl, entryHtml, …) take effect after Reload without recreating the button.
         private static readonly Dictionary<string, ExtensionDescriptor> _descriptors =
             new(StringComparer.OrdinalIgnoreCase);
+        // Open windows, so a second click focuses the existing one instead of stacking duplicates:
+        // one Family Manager window, and one window per extension id.
+        private static Window? _familyWindow;
+        private static Window? _settingsWindow;
+        private static readonly Dictionary<string, Window> _extWindows =
+            new(StringComparer.OrdinalIgnoreCase);
 
         public static void Build(UIControlledApplication app, string launcherPath)
         {
@@ -55,6 +63,22 @@ namespace AnalyseTool.Common.Extensions
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
             AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                 MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
+
+            // Second top-level button, sitting next to the main one: the Family Manager window.
+            AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
+                FamilyControlCommandClass, "Browse, audit and manage the families in this project",
+                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (grid)
+
+            // Third button next to the others: the dockable placement palette (types grouped by family,
+            // click a type to place it). Uses the same launcher slot pattern as the other static buttons.
+            AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
+                FamilyPaletteCommandClass, "Place a component — dockable family palette",
+                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (list)
+
+            // Register the single dockable pane. Revit only permits pane registration during OnStartup,
+            // which is why one always-present host pane is registered here and its content is swapped by
+            // route — features and extensions appear in the dock without a Revit restart.
+            Docking.DockPaneHost.Register(app);
 
             // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
@@ -219,7 +243,52 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            new SettingsWindow().Show();
+
+            if (_settingsWindow is not null)
+            {
+                Restore(_settingsWindow);
+                return;
+            }
+
+            Window window = new SettingsWindow();
+            window.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow = window;
+            window.Show();
+        }
+
+        /// <summary>Ribbon "Family Control" button — opens the family browser/QC window (#/families).
+        /// Single instance: a second click focuses the existing window instead of opening another.</summary>
+        public static void OpenFamilyControl(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+
+            if (_familyWindow is not null)
+            {
+                Restore(_familyWindow);
+                return;
+            }
+
+            Window window = new Features.Families.FamilyControlWindow();
+            window.Closed += (_, _) => _familyWindow = null;
+            _familyWindow = window;
+            window.Show();
+        }
+
+        /// <summary>Brings an already-open window back to the foreground (restoring it if minimized).</summary>
+        private static void Restore(Window window)
+        {
+            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+            window.Activate();
+        }
+
+        /// <summary>Ribbon "Palette" button — shows the dockable family placement palette (#/families-dock).
+        /// Initializes the host first (so the pane's transport has a dispatcher) then shows/routes the pane.</summary>
+        public static void ShowFamilyPalette(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            Docking.DockPaneHost.ShowRoute("#/families-dock");
         }
 
         public static void Reload(UIApplication uiApp)
@@ -237,7 +306,26 @@ namespace AnalyseTool.Common.Extensions
 
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            new ExtensionWindow(descriptor).Show();
+
+            // A dockable extension shows inside the shared pane (toggle); otherwise it opens its own window.
+            ExtensionUi? ui = descriptor.Manifest.Ui;
+            if (ui?.Dockable == true)
+            {
+                Docking.DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
+                return;
+            }
+
+            // One window per extension id — a second click focuses the open one.
+            if (_extWindows.TryGetValue(id, out Window? existing))
+            {
+                Restore(existing);
+                return;
+            }
+
+            Window window = new ExtensionWindow(descriptor);
+            window.Closed += (_, _) => _extWindows.Remove(id);
+            _extWindows[id] = window;
+            window.Show();
         }
 
         /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a

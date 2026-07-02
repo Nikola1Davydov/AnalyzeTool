@@ -14,9 +14,17 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
-  AiAnalyse: "AiAnalyse",
-  AiEditParameters: "AiEditParameters",
-  GetOllamaModels: "GetOllamaModels",
+  OllamaAnalyse: "OllamaAnalyse",
+  OllamaEditParameters: "OllamaEditParameters",
+  OllamaSuggestName: "OllamaSuggestName",
+  OllamaGetModels: "OllamaGetModels",
+  PlaceFamilyInstance: "PlaceFamilyInstance",
+  PurgeFamilyTypes: "PurgeFamilyTypes",
+  PurgeFamilies: "PurgeFamilies",
+  GetLibraryFamilies: "GetLibraryFamilies",
+  GetLibraryPreview: "GetLibraryPreview",
+  LoadLibraryFamilies: "LoadLibraryFamilies",
+  PickFolder: "PickFolder",
 } as const;
 
 export const enum MessageType {
@@ -28,9 +36,17 @@ export const enum MessageType {
 // Each call gets a unique Id; the host echoes it back, and we resolve the matching promise.
 // This is the generic entry point any command (built-in or extension) can be called through.
 
+export type ProgressInfo = { fraction: number; message?: string | null };
+
 type PendingCall = {
   resolve: (value: any) => void;
   reject: (reason: any) => void;
+  onProgress?: (p: ProgressInfo) => void;
+};
+
+export type InvokeOptions = {
+  /** Called for each intermediate progress update pushed by a progress-aware host command. */
+  onProgress?: (p: ProgressInfo) => void;
 };
 
 const pendingCalls = new Map<string, PendingCall>();
@@ -48,6 +64,12 @@ function ensureInvokeListener(): void {
     const pending = pendingCalls.get(message.Id);
     if (!pending) return;
 
+    // Intermediate progress: notify but keep the call pending until the final response.
+    if (message.Type === "Progress") {
+      pending.onProgress?.(message.Payload as ProgressInfo);
+      return;
+    }
+
     pendingCalls.delete(message.Id);
     if (message.Error) pending.reject(new Error(message.Error));
     else pending.resolve(message.Payload);
@@ -59,7 +81,11 @@ function ensureInvokeListener(): void {
  * Works for built-in commands and for commands added by C# extensions, e.g.
  *   const res = await invoke("acme.sample.Hello");
  */
-export function invoke<T = any>(command: string, payload: any = null): Promise<T> {
+export function invoke<T = any>(
+  command: string,
+  payload: any = null,
+  options?: InvokeOptions,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const webview = (window as any).chrome?.webview;
     if (!webview) {
@@ -70,7 +96,7 @@ export function invoke<T = any>(command: string, payload: any = null): Promise<T
     ensureInvokeListener();
 
     const id = `at-${Date.now()}-${++invokeSeq}`;
-    pendingCalls.set(id, { resolve, reject });
+    pendingCalls.set(id, { resolve, reject, onProgress: options?.onProgress });
 
     const message: WebViewMessage = {
       Type: MessageType.Request,

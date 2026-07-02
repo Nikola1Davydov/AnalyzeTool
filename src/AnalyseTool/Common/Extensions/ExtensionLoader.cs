@@ -18,14 +18,14 @@ namespace AnalyseTool.Common.Extensions
     {
         private readonly CommandDispatcher _dispatcher;
         private readonly string _revitVersion;   // Revit version year, e.g. "2025"
-        private readonly int _hostSdkMajor;
+        private readonly Version _hostSdkVersion; // the AnalyseTool.Sdk AssemblyVersion this host provides
         private readonly List<ExtensionLoadContext> _contexts = new();
 
         public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion)
         {
             _dispatcher = dispatcher;
             _revitVersion = revitVersion;
-            _hostSdkMajor = typeof(IRevitTask).Assembly.GetName().Version?.Major ?? 1;
+            _hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
         }
 
         /// <summary>Drops loaded extension commands and unloads their (collectible) contexts so a
@@ -132,11 +132,24 @@ namespace AnalyseTool.Common.Extensions
             Version? referencedSdk = assembly.GetReferencedAssemblies()
                 .FirstOrDefault(a => string.Equals(a.Name, "AnalyseTool.Sdk", StringComparison.OrdinalIgnoreCase))?.Version;
 
-            if (referencedSdk == null || referencedSdk.Major != _hostSdkMajor)
+            // Different major = breaking contract change → reject cleanly.
+            if (referencedSdk == null || referencedSdk.Major != _hostSdkVersion.Major)
             {
                 UserDialogUtils.Error($"Extension '{manifest.Id}' was built against AnalyseTool.Sdk " +
-                    $"{(referencedSdk?.ToString() ?? "<none>")}, incompatible with host SDK {_hostSdkMajor}.x. Skipped.");
+                    $"{(referencedSdk?.ToString() ?? "<none>")}, incompatible with host SDK {_hostSdkVersion.Major}.x. Skipped.");
                 alc.Unload(); // collectible context — drop the rejected assembly
+                return;
+            }
+
+            // Same major but built against a NEWER minor than the host provides: the extension may call
+            // API added after this host's SDK (minors are additive), which would throw MissingMethod at
+            // runtime. Reject at load with a clear "update the plugin" message instead. (Older minors are
+            // fine — the shared host copy is version-agnostic, see ExtensionLoadContext.)
+            if (referencedSdk > _hostSdkVersion)
+            {
+                UserDialogUtils.Error($"Extension '{manifest.Id}' was built against AnalyseTool.Sdk " +
+                    $"{referencedSdk}, newer than this plugin's SDK {_hostSdkVersion}. Update the plugin to use it. Skipped.");
+                alc.Unload();
                 return;
             }
 

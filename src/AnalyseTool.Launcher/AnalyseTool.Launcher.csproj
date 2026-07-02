@@ -14,14 +14,14 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
       </PropertyGroup>
 
-    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
-        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
-        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
+    <!-- Output layout: bin\<Configuration>\AnalyseTool\ (the .addin sits one level up, next to it).
+         The property is named PluginBinDir on purpose — a property called "Path" collides with the PATH
+         environment variable, and when it isn't set for a configuration it silently falls back to the
+         full PATH (which contains ';'), breaking WriteAddIn / CopyToRevitFolder. Defined UNCONDITIONALLY
+         so every configuration (R25/R26/R27) resolves it correctly. -->
+    <PropertyGroup>
+        <PluginBinDir>$(MSBuildProjectDirectory)\bin\$(Configuration)</PluginBinDir>
+        <OutputPath>$(PluginBinDir)\$(PluginSubDir)</OutputPath>
 	</PropertyGroup>
 		
   <ItemGroup>
@@ -45,7 +45,7 @@
     <!--craete addin file-->
     <Target Name="WriteAddIn" AfterTargets="Build">
         <PropertyGroup>
-            <AddInFile>$(Path)\$(PluginSubDir).addin</AddInFile>
+            <AddInFile>$(PluginBinDir)\$(PluginSubDir).addin</AddInFile>
         </PropertyGroup>
         <PropertyGroup>
             <AddInContent>
@@ -93,7 +93,7 @@
 
     <Target Name="CopyToRevitFolder" AfterTargets="Publish;Build">
 		<ItemGroup>
-			<FilesToCopy Include="$(Path)\**\*.*" />
+			<FilesToCopy Include="$(PluginBinDir)\**\*.*" />
 		</ItemGroup>
 		<Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)\%(RecursiveDir)" SkipUnchangedFiles="true" />
 	</Target>

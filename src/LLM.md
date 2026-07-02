@@ -60,6 +60,17 @@ namespace AnalyseTool.Sdk
         public Type?   InputType  { get; set; }    // generates the JSON input schema
         public bool    HiddenFromMcp { get; set; } // callable from JS, hidden from the AI tool list
     }
+
+    // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
+    // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
+    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }.
+    // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
+    // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
+    public sealed record ProgressInfo(double Fraction, string? Message = null);
+    public interface IProgressAware
+    {
+        IProgress<ProgressInfo>? Progress { get; set; }
+    }
 }
 ```
 
@@ -171,13 +182,14 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |
 | `ui.button.name` | — | Button label (also the display name). |
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
+| `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
 
 ---
 
 ## 4. C# project setup (NuGet — the easy way)
 
 ```
-dotnet add package AnalyseTool.Sdk --prerelease
+dotnet add package AnalyseTool.Sdk
 ```
 
 Minimal `.csproj`:
@@ -188,7 +200,7 @@ Minimal `.csproj`:
     <AssemblyName>Acme.Doors</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*-*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*" />
   </ItemGroup>
 </Project>
 ```
@@ -271,7 +283,29 @@ const { commands } = await window.AT.invoke("GetCommands");
 
 ---
 
-## 9. Checklist for a generated extension
+## 9. AI features — reuse the ONE shared model (do not build your own picker)
+
+AnalyseTool has a **single, global AI (Ollama) model** shared by every window. It is **not** stored in a
+C# backend — it lives in the WebView's `localStorage`, which is shared across all plugin windows (same
+WebView2 profile + origin). So an AI-powered UI extension must **read** the active model, never re-prompt
+the user to pick one.
+
+- **Model selection lives ONLY in the Settings window.** Every other window shows a read-only indicator
+  (active model + Ollama on/off). Do not add a model dropdown to your extension UI.
+- **localStorage keys** (read these to know the active model): `ollama-model` (model name),
+  `ai-model-source` (`"local"` | `"cloud"`), `ai-cloud-models` (JSON array of saved cloud model names).
+  A `storage` event fires when another window changes them.
+- **Ollama status / local models:** `AT.invoke("OllamaGetModels")` → `{ running: bool, models: string[]|null }`
+  (`running:false` = Ollama unreachable; distinct from "running with 0 models").
+- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host): `OllamaAnalyse`,
+  `OllamaEditParameters` (returns suggested parameter edits), `OllamaSuggestName` (one new name from a
+  current name + instruction). Pass `{ model, prompt, … }` where `model` is the shared model name.
+- In your **own** C# AI command: take the model name in the payload, and run the AI/HTTP call **outside**
+  `RunInRevitAsync` (see §2 — slow I/O must not block the Revit thread); marshal only the model touch.
+
+---
+
+## 10. Checklist for a generated extension
 
 - [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for script/UI).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.

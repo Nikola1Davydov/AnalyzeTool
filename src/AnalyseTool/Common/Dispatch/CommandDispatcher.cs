@@ -48,12 +48,23 @@ namespace AnalyseTool.Common.Dispatch
             }
         }
 
-        public async Task<object?> DispatchAsync(string command, JToken payload, CancellationToken ct)
+        public Task<object?> DispatchAsync(string command, JToken payload, CancellationToken ct) =>
+            DispatchAsync(command, payload, ct, progress: null);
+
+        /// <summary>
+        /// Dispatches a command, optionally wiring a <paramref name="progress"/> sink. A fresh command
+        /// instance is created per call, so injecting the sink into an <see cref="IProgressAware"/> command
+        /// is race-free. The sink is bound by the caller (the transport) to the originating window.
+        /// </summary>
+        public async Task<object?> DispatchAsync(
+            string command, JToken payload, CancellationToken ct, IProgress<ProgressInfo>? progress)
         {
             if (!_commands.TryGetValue(command, out CommandRegistration? reg))
                 throw new InvalidOperationException($"The command '{command}' is not registered.");
 
             IRevitTask instance = (IRevitTask)Activator.CreateInstance(reg.CommandType)!;
+            if (progress is not null && instance is IProgressAware aware) aware.Progress = progress;
+
             RevitContext context = new RevitContext(_hub, payload);
             return await instance.ExecuteAsync(context, ct);
         }

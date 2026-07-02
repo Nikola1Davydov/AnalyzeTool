@@ -50,7 +50,7 @@ provide("sidebarActions", {
 </script>
 
 <template>
-  <Toast position="bottom-right" />
+  <Toast position="top-right" />
 
   <!-- Bare layout for system pages -->
   <router-view v-if="isBare" />
@@ -74,3 +74,19 @@ provide("sidebarActions", {
     </div>
   </div>
 </template>
+
+<!-- Global (unscoped): the Toast renders in a body-level portal, so scoped styles can't reach it.
+     Cap its width to the viewport so it fits the narrow dockable pane; wide windows keep 25rem. -->
+<style>
+.p-toast {
+  width: min(25rem, calc(100vw - 1.5rem));
+  max-width: calc(100vw - 1.5rem);
+  right: 0.75rem !important;
+}
+.p-toast .p-toast-message-text {
+  min-width: 0;
+}
+.p-toast .p-toast-detail {
+  word-break: break-word;
+}
+</style>

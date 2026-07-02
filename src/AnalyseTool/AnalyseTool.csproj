@@ -14,17 +14,14 @@
         <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
-        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
-        
+        <!-- NOT "Path": that name collides with the PATH environment variable (see the Launcher csproj). -->
+        <PluginBinDir>$(MSBuildProjectDirectory)\bin\$(Configuration)</PluginBinDir>
+
     </PropertyGroup>
-	
-    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
+
+    <PropertyGroup>
+        <OutputPath>$(PluginBinDir)\$(PluginSubDir)</OutputPath>
     </PropertyGroup>
-	
-	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
-	</PropertyGroup>
 		
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
@@ -34,6 +31,12 @@
         <!-- The host uses Newtonsoft directly (dispatcher, manifests, transport). Declared explicitly
              because the SDK no longer exposes it transitively (its ref is PrivateAssets=all). -->
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <!-- Element.GetPreviewImage returns a System.Drawing.Bitmap (Family Control gallery). Compile-only:
+             Revit provides the runtime copy, so we don't ship a duplicate and Bitmap keeps type identity
+             with the instance Revit hands us. -->
+        <PackageReference Include="System.Drawing.Common" Version="8.0.0">
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="OllamaSharp" Version="5.4.25" />
         <!-- File logging for beta triage (%LOCALAPPDATA%\AnalyseTool\logs). -->

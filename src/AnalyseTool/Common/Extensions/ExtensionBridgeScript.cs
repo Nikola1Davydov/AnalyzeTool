@@ -23,15 +23,19 @@ namespace AnalyseTool.Common.Extensions
     if (!msg || !msg.Id) return;
     var p = pending.get(msg.Id);
     if (!p) return;
+    // Intermediate progress: notify (if a handler was given) but keep the call pending.
+    if (msg.Type === 'Progress') { if (p.onProgress) p.onProgress(msg.Payload); return; }
     pending.delete(msg.Id);
     if (msg.Error) p.reject(new Error(msg.Error));
     else p.resolve(msg.Payload);
   });
   window.AT = {
-    invoke: function (command, payload) {
+    // options.onProgress (optional): called with { fraction, message } for each intermediate
+    // progress update a progress-aware command pushes before its final response.
+    invoke: function (command, payload, options) {
       return new Promise(function (resolve, reject) {
         var id = 'at-' + Date.now() + '-' + (++seq);
-        pending.set(id, { resolve: resolve, reject: reject });
+        pending.set(id, { resolve: resolve, reject: reject, onProgress: options && options.onProgress });
         wv.postMessage({ Type: 'Request', Command: command, Payload: (payload == null ? null : payload), Id: id });
       });
     }

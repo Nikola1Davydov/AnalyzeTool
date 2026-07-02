@@ -15,14 +15,18 @@
            • AssemblyVersion MAJOR is the hard compatibility key — the host loads an extension only when
              the AnalyseTool.Sdk it was built against has the SAME major. Bump major = breaking change.
            • Version (NuGet) / FileVersion follow the contract's SemVer (minor = additive, patch = fix). -->
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <!-- AssemblyVersion can move within a major: ExtensionLoadContext hands extensions the host's copy
+         of AnalyseTool.Sdk by simple name (version-agnostic), so an extension built against an older
+         minor still binds. MAJOR remains the hard compatibility key (checked at load).
+         1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting). -->
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <!-- Prerelease while the platform is in beta; promote to a stable 1.0.0 at GA. -->
-    <Version>1.0.0</Version>
+    <!-- Prerelease while the platform is in beta; promote to a stable release at GA. -->
+    <Version>1.1.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025 and 2026.</Description>

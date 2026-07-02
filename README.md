@@ -1,38 +1,59 @@
 # AnalyseTool for Revit
 
 [![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest)
-[![license](https://img.shields.io/github/license/nhn/tui.editor.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/Nikola1Davydov/AnalyzeTool.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE)
 ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue)
 [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
-AnalyseTool is a free Revit plugin for parameter analysis, filtering, bulk editing, and AI-assisted workflows.
+AnalyseTool is a free Revit plugin for family management, parameter analysis, filtering, bulk editing, and AI-assisted workflows.
 
-The project focuses on free AI usage through local Ollama models, so you can run AI workflows without paid subscriptions.
+The project focuses on free AI usage through local Ollama models, so you can run AI workflows without paid subscriptions — your model data stays on your machine.
 
 ![AnalyseTool Screenshot](img/Overview.png)
+
+## Quick start
+
+1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
+2. **Open** — start Revit → **AnalyseTool** ribbon tab → three buttons: **AnalyseTool** (analysis), **Family Manager** (families), **Component** (placement palette).
+3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**. It's free and stays on your machine.
 
 ## Compatibility
 
 - Revit 2025-2026 on Windows.
-- Microsoft Edge **WebView2 Runtime** (ships with Revit 2025/2026; if the AnalyseTool window opens blank, install it from https://developer.microsoft.com/microsoft-edge/webview2/ and restart Revit).
+
+## The ribbon
+
+Open the **AnalyseTool** tab — it has three main buttons:
+
+- **AnalyseTool** — the main window: parameters, analytics, bulk editing and AI workflows.
+- **Family Manager** — browse, audit and clean up the project's families.
+- **Component** — a dockable palette for placing families and loading them from your libraries.
 
 ## Key Features
 
-- Free plugin with built-in AI workflows.
-- Free local AI support with Ollama models.
+**🧱 Families**
+- **Family Manager** — gallery & table views with thumbnails, an interactive 3D preview, family types (including system families), rename (with AI suggestions), delete, purge-unused with a progress bar, and saved filter rules.
+- **Component palette** — a dockable pane (docks next to the Project Browser) for placing families: types grouped by family with previews, gallery/table views, search and quick-filter rules.
+- **Family library** — browse your `.rfa` folders, see each file's thumbnail and the Revit version it was saved in, and load families into the project in one click.
+
+**📊 Parameters**
 - Category-based parameter exploration with filters (Instance/Type, BuiltIn/Shared/Project).
 - Parameter Filled/Empty analytics with chart-driven selection.
 - Parameter Value Check workflow.
 - Infinite Canvas workflow with AI-assisted edits.
-- Select/Isolate actions directly in Revit.
+- Select / Isolate actions directly in Revit.
+
+**🤖 AI**
+- Free local AI via Ollama models — no paid subscription required.
+- One shared model across the whole plugin, optional cloud models.
+
+**🧩 Extensibility**
+- Add your own commands, pages and ribbon buttons without rebuilding the plugin (see below).
 - Update check against GitHub Releases.
 
-## Free Plugin + Free AI
+## Your data stays local
 
-- AnalyseTool is free to use.
-- Core AI scenarios are designed to work with free local models via Ollama.
-- No mandatory paid AI subscription is required for local AI workflows.
-- Cloud model mode is optional and depends on your provider setup.
+AI runs against models on **your** machine via Ollama — nothing about your model is sent to us or to any AnalyseTool service. Cloud models are opt-in and go directly to the provider you configure.
 
 ## Installation
 
@@ -50,10 +71,10 @@ To use AI features, you must install Ollama first:
 
 ## AI Model Settings
 
-In Canvas AI settings:
+Pick the AI model once in **Settings** — it's shared across every AnalyseTool window (with an Ollama status indicator):
 
 - `Local models` (recommended): load local Ollama models for free AI usage.
-- `Cloud models` (optional): input model name manually if you want to use an external provider.
+- `Cloud models` (optional): add a model name manually if you want to use an external provider; saved cloud models are remembered.
 
 ## Project Structure
 
@@ -82,7 +103,7 @@ MCP.
 The SDK is published on NuGet:
 
 ```
-dotnet add package AnalyseTool.Sdk --version 1.0.0
+dotnet add package AnalyseTool.Sdk
 ```
 
 ## Troubleshooting

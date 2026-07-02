@@ -38,6 +38,12 @@ namespace AnalyseTool.Common.Extensions
         [JsonProperty("devUrl")]
         public string? DevUrl { get; init; }
 
+        /// <summary>When true, the ribbon button shows this extension inside AnalyseTool's shared dockable
+        /// pane (swapping its content) instead of opening a separate window. Lets extensions live in the
+        /// dock with no per-extension pane registration (which Revit only allows at startup).</summary>
+        [JsonProperty("dockable")]
+        public bool Dockable { get; init; }
+
         /// <summary>Optional ribbon tab name. When omitted the host's default tab is used.</summary>
         [JsonProperty("tab")]
         public string? Tab { get; init; }
