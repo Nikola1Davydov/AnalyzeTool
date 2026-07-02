@@ -2,7 +2,7 @@
 
 [![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest)
 [![license](https://img.shields.io/github/license/Nikola1Davydov/AnalyzeTool.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE)
-![Static Badge](https://img.shields.io/badge/revitVersion-2025--2026-blue)
+![Static Badge](https://img.shields.io/badge/revitVersion-2025--2027-blue)
 [![LINKEDIN](https://img.shields.io/badge/LINKEDIN-_NikolaiDavydov-ff1414)](https://linkedin.com/in/nikolai-davydov-4359bba1)
 
 AnalyseTool is a free Revit plugin for family management, parameter analysis, filtering, bulk editing, and AI-assisted workflows.
@@ -19,7 +19,7 @@ The project focuses on free AI usage through local Ollama models, so you can run
 
 ## Compatibility
 
-- Revit 2025-2026 on Windows.
+- Revit 2025-2027 on Windows.
 
 ## The ribbon
 

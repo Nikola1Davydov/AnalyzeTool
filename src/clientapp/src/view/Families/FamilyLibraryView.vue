@@ -19,6 +19,9 @@ interface LibFamily {
   fileTime: number; // last-write ticks — preview-cache version (edited file ⇒ fresh thumbnail)
 }
 
+// Emitted after families were loaded into the document, so the parent can refresh the placeable list.
+const emit = defineEmits<{ loaded: [] }>();
+
 const { paths, add, remove } = useLibraryPaths();
 const toast = useToast();
 
@@ -95,12 +98,14 @@ async function loadPaths(paths: string[]) {
   if (!paths.length) return;
   loadRunning.value = true;
   loadProgress.value = 0;
+  let anyLoaded = false;
   try {
     const res = await invoke<{ ok: boolean; loaded: number; failed: number; error?: string }>(
       "LoadLibraryFamilies",
       { paths },
       { onProgress: (p) => (loadProgress.value = Math.round((p.fraction ?? 0) * 100)) },
     );
+    anyLoaded = (res?.loaded ?? 0) > 0;
     if (!res?.ok) {
       toast.add({ severity: "error", summary: "Load failed", detail: res?.error ?? "Unknown error", life: 4000 });
     } else if (res.failed > 0) {
@@ -118,6 +123,8 @@ async function loadPaths(paths: string[]) {
   } finally {
     loadRunning.value = false;
     await reload();
+    // Refresh the library's own loaded flags AND tell the parent to refresh the placeable (document) list.
+    if (anyLoaded) emit("loaded");
   }
 }
 const loadOne = (f: LibFamily) => loadPaths([f.path]);

@@ -2,12 +2,13 @@
 
   <!--
     NuGet auto-imports build/<PackageId>.props for consumers of the AnalyseTool.Sdk package.
-    It pulls in the shared authoring settings (R25/R26 configurations, net8.0-windows TFM, and the
-    Revit API referenced compile-only for the chosen RevitVersion). So an extension author just does:
+    It pulls in the shared authoring settings (R25/R26/R27 configurations, the matching TFM —
+    net8.0-windows for R25/R26, net10.0-windows for R27 — and the Revit API referenced compile-only for
+    the chosen RevitVersion). So an extension author just does:
 
         dotnet add package AnalyseTool.Sdk
 
-    and gets a turnkey setup — pick a "Release R25" / "Release R26" config and build.
+    and gets a turnkey setup — pick a "Release R25" / "Release R26" / "Release R27" config and build.
   -->
 
   <Import Project="$(MSBuildThisFileDirectory)AnalyseTool.Extension.props" />

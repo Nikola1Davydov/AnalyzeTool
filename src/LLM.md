@@ -204,8 +204,9 @@ Minimal `.csproj`:
   </ItemGroup>
 </Project>
 ```
-The package brings the `Debug/Release R25` + `R26` build configurations, the `net8.0-windows` target,
-and the Revit API (compile-only). Build with a year config: `dotnet build -c "Release R25"` (or `R26`).
+The package brings the `Debug/Release R25`, `R26` and `R27` build configurations, the matching target
+(`net8.0-windows` for R25/R26, `net10.0-windows` for R27) and the Revit API (compile-only). Build with a
+year config: `dotnet build -c "Release R25"` (or `R26` / `R27`).
 
 > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
 > extension's load context shares the host's copies (type identity), so **do not ship copies of those
