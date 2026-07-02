@@ -5,7 +5,7 @@
 
 import { invoke } from "@/RevitBridge";
 import { useToast } from "primevue/usetoast";
-import type { FamilyInstancesResult, FamilyRow } from "./types";
+import type { FamilyInstancesResult } from "./types";
 
 /** Which instances an action targets: by owning family and/or by specific types. */
 export interface InstanceTarget {
@@ -107,16 +107,6 @@ export function useFamilyActions() {
     return false;
   }
 
-  /** Purges families with zero instances (caller passes the inventory). */
-  async function purgeUnused(families: FamilyRow[]): Promise<boolean> {
-    const unused = families.filter((f) => f.instanceCount === 0).map((f) => f.id);
-    if (!unused.length) {
-      ok("Nothing to purge", "No unused families found.");
-      return false;
-    }
-    return deleteElements(unused);
-  }
-
   /**
    * Purges the given families in ONE host call, forwarding progress to `onProgress`. Raw (no toast) —
    * the caller shows a summary. A family that can't be deleted is skipped and counted.
@@ -151,40 +141,6 @@ export function useFamilyActions() {
       fail("Workset change failed", res?.error ?? "Unknown error");
     } catch (e) {
       fail("Workset change failed", String((e as Error)?.message ?? e));
-    }
-    return false;
-  }
-
-  /**
-   * Purges the given types, tolerating ones that can't be deleted (last type of a family, still
-   * referenced, …). Reports how many went and how many were skipped instead of failing outright.
-   */
-  async function purgeTypes(typeIds: number[]): Promise<boolean> {
-    if (!typeIds.length) {
-      ok("Nothing to purge", "No unused types found.");
-      return false;
-    }
-    try {
-      const res = await invoke<{ ok: boolean; deleted: number; failed: number; error?: string }>(
-        "PurgeFamilyTypes",
-        { typeIds },
-      );
-      if (res?.ok) {
-        if (res.failed > 0) {
-          toast.add({
-            severity: "warn",
-            summary: `Purged ${res.deleted} type(s)`,
-            detail: `${res.failed} could not be deleted (e.g. a family's last type or still in use).`,
-            life: 5000,
-          });
-        } else {
-          ok("Purged", `${res.deleted} unused type(s) removed.`);
-        }
-        return res.deleted > 0;
-      }
-      fail("Purge failed", res?.error ?? "Unknown error");
-    } catch (e) {
-      fail("Purge failed", String((e as Error)?.message ?? e));
     }
     return false;
   }
@@ -231,9 +187,7 @@ export function useFamilyActions() {
     renameFamily,
     renameTypes,
     deleteElements,
-    purgeUnused,
     purgeFamiliesProgress,
-    purgeTypes,
     purgeTypesProgress,
     setWorkset,
     place,

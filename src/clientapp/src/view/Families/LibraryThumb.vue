@@ -4,8 +4,8 @@ import { invoke } from "@/RevitBridge";
 import { getCachedPreview, setCachedPreview } from "@/utils/familyCache";
 
 // Lazy preview tile for an on-disk family file: renders the .rfa's embedded thumbnail (GetLibraryPreview),
-// IndexedDB-cached by file path, with a coloured placeholder while loading / when none exists.
-const props = defineProps<{ path: string; name: string }>();
+// IndexedDB-cached by file path with the file's mtime as version — an edited .rfa gets a fresh thumbnail.
+const props = defineProps<{ path: string; name: string; version: string }>();
 
 const root = ref<HTMLElement | null>(null);
 const previewUri = ref<string | null>(null);
@@ -16,7 +16,7 @@ async function loadPreview() {
   if (state.value !== "idle") return;
   state.value = "loading";
 
-  const cached = await getCachedPreview(props.path, "lib");
+  const cached = await getCachedPreview(props.path, props.version);
   if (cached) {
     previewUri.value = cached;
     state.value = "loaded";
@@ -30,7 +30,7 @@ async function loadPreview() {
     if (res?.dataUri) {
       previewUri.value = res.dataUri;
       state.value = "loaded";
-      void setCachedPreview(props.path, "lib", res.dataUri);
+      void setCachedPreview(props.path, props.version, res.dataUri);
     } else {
       state.value = "none";
     }

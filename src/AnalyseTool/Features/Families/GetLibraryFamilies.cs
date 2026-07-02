@@ -15,13 +15,18 @@ namespace AnalyseTool.Features.Families
         InputType = typeof(GetLibraryFamilies.Request))]
     internal sealed class GetLibraryFamilies : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
 
-            return ctx.RunInRevitAsync<object?>(app =>
+            // Phase 1 — pure file I/O off the Revit thread, so a large/network library never freezes Revit.
+            IReadOnlyList<LibraryService.ScannedFile> files = await Task.Run(
+                () => LibraryService.ScanFiles(req.Folders ?? new List<string>()), ct);
+
+            // Phase 2 — Revit-side decoration (loaded flags + saved-in version, cached by path+mtime).
+            return await ctx.RunInRevitAsync<object?>(app =>
             {
-                var families = new LibraryService().List(app.ActiveUIDocument.Document, req.Folders ?? new List<string>());
+                var families = new LibraryService().Decorate(app.ActiveUIDocument.Document, files);
                 return new { count = families.Count, families };
             });
         }

@@ -19,8 +19,14 @@ namespace AnalyseTool.Features.Families
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
-            string? dataUri = string.IsNullOrWhiteSpace(req.Path) ? null : ShellThumbnail.GetPngDataUri(req.Path!);
-            return Task.FromResult<object?>(new { path = req.Path, dataUri });
+
+            // Task.Run: the shell extraction blocks its calling thread (STA worker + Join), and this
+            // command is dispatched on the UI thread — extracting inline would freeze Revit per tile.
+            return Task.Run<object?>(() =>
+            {
+                string? dataUri = string.IsNullOrWhiteSpace(req.Path) ? null : ShellThumbnail.GetPngDataUri(req.Path!);
+                return new { path = req.Path, dataUri };
+            }, ct);
         }
 
         public sealed class Request

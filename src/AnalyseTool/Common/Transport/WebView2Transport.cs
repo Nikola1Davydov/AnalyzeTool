@@ -61,7 +61,20 @@ namespace AnalyseTool.Common.Transport
                 Id = id,
                 Payload = payload is null ? JValue.CreateNull() : JToken.FromObject(payload)
             });
-            _webView.CoreWebView2.PostWebMessageAsJson(json);
+            Post(json);
+        }
+
+        /// <summary>Posts to the WebView, tolerating a window/pane that was closed while a long command
+        /// was still running — CoreWebView2 may be null or already disposed by then, and throwing here
+        /// would surface inside an async-void handler (or a progress callback) and could crash Revit.</summary>
+        private void Post(string json)
+        {
+            try
+            {
+                _webView.CoreWebView2?.PostWebMessageAsJson(json);
+            }
+            catch (ObjectDisposedException) { /* window closed mid-command — nobody is listening */ }
+            catch (InvalidOperationException) { /* WebView torn down — same */ }
         }
 
         /// <summary>Pushes an intermediate progress update for an in-flight request (same Id), before the
@@ -75,7 +88,7 @@ namespace AnalyseTool.Common.Transport
                 Id = id,
                 Payload = JObject.FromObject(new { fraction = info.Fraction, message = info.Message })
             });
-            _webView.CoreWebView2.PostWebMessageAsJson(json);
+            Post(json);
         }
 
         private void SendError(string command, string? id, string message)
@@ -89,7 +102,7 @@ namespace AnalyseTool.Common.Transport
                 // Kept for back-compat with command-name routing (e.g. AI handlers read Payload.error).
                 Payload = JObject.FromObject(new { error = message })
             });
-            _webView.CoreWebView2.PostWebMessageAsJson(json);
+            Post(json);
         }
     }
 }

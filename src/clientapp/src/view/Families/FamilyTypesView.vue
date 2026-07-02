@@ -171,7 +171,7 @@ async function confirmPurgeUnused() {
     toast.add({
       severity: "warn",
       summary: `Purged ${r.deleted} type(s)`,
-      detail: `${r.failed} could not be deleted (still in use).`,
+      detail: `${r.failed} kept — still in use, or the last type of a (system) family, which Revit requires to remain.`,
       life: 5000,
     });
   } else {
@@ -457,8 +457,15 @@ async function moveSelectedToWorkset() {
       <div class="flex gap-3 items-start">
         <i class="pi pi-exclamation-triangle text-2xl text-amber-500 mt-1" />
         <div class="text-sm">
-          Delete all <b>{{ unusedTypeIds.length }}</b> family type(s) with zero placed instances? This
-          cannot be undone from here.
+          <p>
+            Delete all <b>{{ unusedTypeIds.length }}</b> family type(s) with zero placed instances? This
+            cannot be undone from here.
+          </p>
+          <p class="mt-2 text-surface-500">
+            Note: the last remaining type of a family is always kept — Revit does not allow a family
+            (including system families like walls, floors or pipes) to exist without any type. Such types
+            are skipped and reported, not treated as errors.
+          </p>
         </div>
       </div>
       <template #footer>

@@ -16,6 +16,7 @@ interface LibFamily {
   loaded: boolean;
   version: string | null; // Revit version the .rfa was saved in (e.g. "2024")
   compatible: boolean; // false = saved in a newer Revit → can't be loaded here
+  fileTime: number; // last-write ticks — preview-cache version (edited file ⇒ fresh thumbnail)
 }
 
 const { paths, add, remove } = useLibraryPaths();
@@ -196,7 +197,7 @@ const loadAllInView = () => loadPaths(notLoadedInView.value.map((f) => f.path));
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2">
         <div v-for="f in filtered" :key="f.path" class="flex flex-col">
           <div class="relative aspect-square rounded-lg overflow-hidden border border-surface-200">
-            <LibraryThumb :path="f.path" :name="f.name" />
+            <LibraryThumb :path="f.path" :name="f.name" :version="String(f.fileTime)" />
             <!-- version badge -->
             <Tag
               v-if="f.version"
