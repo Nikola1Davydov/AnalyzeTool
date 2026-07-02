@@ -36,17 +36,9 @@ namespace AnalyseTool
             webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
-            string fileUrl = string.Empty;
-#if RELEASE_R25 || RELEASE_R26
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("app", PathProvider.RootDirectory, CoreWebView2HostResourceAccessKind.Allow);
-            fileUrl = "https://app/index.html";
-            webView.CoreWebView2InitializationCompleted += (s, e) =>
-            {
-                webView.CoreWebView2.Navigate(fileUrl);
-            };
-#else
+            string fileUrl = ClientAppHost.ResolveUrl(webView.CoreWebView2);
+#if !ATRELEASE
             webView.CoreWebView2.OpenDevToolsWindow();
-            fileUrl = PathProvider.DebugServerUrl;
 #endif
             webView.Source = new Uri(fileUrl);
         }

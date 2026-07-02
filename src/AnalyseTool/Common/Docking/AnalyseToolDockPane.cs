@@ -43,17 +43,7 @@ namespace AnalyseTool.Common.Docking
         public void ShowRoute(string route)
         {
             string hash = route.StartsWith("#") ? route : "#" + route;
-            _navigate = () =>
-            {
-                string url;
-#if RELEASE_R25 || RELEASE_R26
-                EnsureHostMapping("app", PathProvider.RootDirectory);
-                url = "https://app/index.html" + hash;
-#else
-                url = PathProvider.DebugServerUrl.TrimEnd('/') + "/" + hash;
-#endif
-                _webView.CoreWebView2.Navigate(url);
-            };
+            _navigate = () => _webView.CoreWebView2.Navigate(ClientAppHost.ResolveUrl(_webView.CoreWebView2, hash));
             if (_webView.CoreWebView2 is not null) _navigate();
         }
 

@@ -22,6 +22,14 @@
     <PropertyGroup>
         <OutputPath>$(PluginBinDir)\$(PluginSubDir)</OutputPath>
     </PropertyGroup>
+
+    <!-- One version-agnostic symbol meaning "this is a release build". MSBuild auto-defines per-config
+         constants (Release R25 -> RELEASE_R25, Debug R25 -> DEBUG_R25), which forces window code to
+         enumerate every Revit version. ATRELEASE lets it switch purely on Debug vs Release (dev server
+         vs virtual host) and covers R27 and any future version automatically. See Common/ClientAppHost. -->
+    <PropertyGroup Condition="$(Configuration.Contains('Release'))">
+        <DefineConstants>$(DefineConstants);ATRELEASE</DefineConstants>
+    </PropertyGroup>
 		
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
