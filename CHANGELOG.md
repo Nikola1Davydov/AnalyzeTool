@@ -1,14 +1,20 @@
 # Changelog
 
-## [1.4.2]
+## [1.4.2] / 2026-07-02
 
 - 🧱 **Family Manager** — a new second ribbon button opening a dedicated window to browse, audit and manage the project's families.
   - 🖼️ Gallery & Table views of every family with category, type and instance counts, in-place / unused flags, lazy-loaded thumbnails and a category filter.
-  - 🧊 3D preview — click a family to open an interactive Three.js viewer (approximate material colours and transparency, correct placement of nested families) alongside a panel of its types and parameters.
-  - 🧩 Family Types view — families' types grouped by name, with Select / Isolate / Rename / Delete and a "move all instances to another workset" action for workshared projects.
-  - 🧹 Actions — Select, Isolate, Rename, Delete and Purge-unused, straight from the table, gallery or detail view.
+  - 🧊 3D preview — click a family to open an interactive Three.js viewer (approximate material colours and transparency, correct placement of nested families) alongside a panel of its types and parameters, with a refresh button that rebuilds the cached geometry.
+  - 🧩 Family Types view — families' types (including system families) grouped by name, with type thumbnails, Select / Isolate / Rename / Delete, a "move all instances to another workset" action and one-click "Purge unused types" (a family's last type is always kept, as Revit requires).
+  - 🧹 Actions — Select, Isolate, Rename, Delete and Purge-unused, straight from the table, gallery or detail view, with live progress bars on long deletes.
+  - 🤖 AI rename — the rename dialog can ask your Ollama / saved cloud model to suggest a better family or type name.
   - 🔖 Saved filter rules — build reusable field/condition rules, pin them as one-click quick filters across the views.
   - ⚡ Client-side caching — previews and meshes are cached in the WebView and invalidated automatically when a family changes.
+- 🧲 **Component palette (dockable)** — a new ribbon button opens a dockable pane (docks next to the Project Browser) for placing families: types grouped by family with previews, gallery/table views, search, its own saved quick-filter rules and persisted grouping/sorting; click a type to start Revit's placement.
+- 📚 **Family library** — the palette's Library mode browses your .rfa folders (add/remove folders, per-folder filter), shows each file's embedded thumbnail and the Revit version it was saved in, flags what's already in the document, and loads families into the project with a progress bar; files saved in a newer Revit are marked as not loadable.
+- 🧩 Extensions — a JS extension can declare `"dockable": true` to show its page inside the shared dockable pane (toggle open / switch / close) instead of a separate window; picked up live via Reload.
+- 🛠️ SDK 1.1 — new opt-in `IProgressAware` contract: long-running commands report progress and the UI shows a live progress bar; extensions built against SDK 1.0 keep working unchanged.
+- 🎛️ One shared AI model — pick the Ollama / cloud model once in Settings (with an Ollama status indicator and saved cloud models); every window shows and uses the same model.
 - 🔗 Settings — the plugin version now shows an "update available" badge and download link when a newer release exists (same check as the main window).
 
 - 🛠️ Fixed the "New template → C#" scaffold — it generated code that didn't compile (an invalid lambda in `Hello.cs`); the template now produces a correct, ready-to-build command. (#38)

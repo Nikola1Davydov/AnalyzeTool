@@ -60,6 +60,17 @@ namespace AnalyseTool.Sdk
         public Type?   InputType  { get; set; }    // generates the JSON input schema
         public bool    HiddenFromMcp { get; set; } // callable from JS, hidden from the AI tool list
     }
+
+    // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
+    // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
+    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }.
+    // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
+    // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
+    public sealed record ProgressInfo(double Fraction, string? Message = null);
+    public interface IProgressAware
+    {
+        IProgress<ProgressInfo>? Progress { get; set; }
+    }
 }
 ```
 
@@ -171,13 +182,14 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |
 | `ui.button.name` | — | Button label (also the display name). |
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
+| `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
 
 ---
 
 ## 4. C# project setup (NuGet — the easy way)
 
 ```
-dotnet add package AnalyseTool.Sdk --prerelease
+dotnet add package AnalyseTool.Sdk
 ```
 
 Minimal `.csproj`:
@@ -188,7 +200,7 @@ Minimal `.csproj`:
     <AssemblyName>Acme.Doors</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*-*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*" />
   </ItemGroup>
 </Project>
 ```

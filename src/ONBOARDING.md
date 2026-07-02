@@ -94,6 +94,7 @@ into its own collectible `AssemblyLoadContext`, so two extensions can't collide 
 | `ui` | — | **Omit for a command-only extension.** |
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
 | `ui.devUrl` | — | Dev server URL (Vite/HMR). When set, the window loads this instead of the built files. **Remove for release.** |
+| `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser) instead of a separate window. Click again to hide; another dockable button switches the pane's content. Picked up live via Reload. |
 | `ui.tab` | — | Ribbon tab to place the button on. Default `"AnalyseTool"`. |
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
 | `ui.button.name` | — | Button label — also used as the extension's display name (Settings list, window title). |
@@ -127,7 +128,7 @@ A minimal extension `.csproj` is then just:
     <AssemblyName>Acme.Sample</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*" />
   </ItemGroup>
 </Project>
 ```
@@ -347,6 +348,34 @@ Notes:
 - Put a `[System.ComponentModel.Description("…")]` on each input field — it flows into the JSON
   schema as the field's description, so the AI gets per-argument guidance (curated quality, still
   auto-generated).
+
+### 4.6 Progress reporting (SDK 1.1, optional)
+
+A long-running command can report live progress by additionally implementing `IProgressAware`. The
+host injects a `Progress` sink bound to the calling window before `ExecuteAsync` runs; from JS,
+`AT.invoke(command, payload, { onProgress })` receives the updates while the promise stays pending.
+
+```csharp
+public sealed class BulkUpdate : IRevitTask, IProgressAware
+{
+    public IProgress<ProgressInfo>? Progress { get; set; }   // set by the host; null if nobody listens
+
+    public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+    {
+        for (int i = 0; i < chunks.Count; i++)
+        {
+            await ctx.RunInRevitAsync(app => ProcessChunk(app, chunks[i]));
+            Progress?.Report(new ProgressInfo((i + 1) / (double)chunks.Count, "Updating…"));
+        }
+        return new { ok = true };
+    }
+}
+```
+
+Tip: for the progress bar to actually animate, do the work in **chunks** with one `RunInRevitAsync`
+per chunk — a single long call blocks Revit's UI thread, and the updates only render at the end.
+Commands that don't implement `IProgressAware` are completely unaffected; SDK 1.0 extensions keep
+working unchanged.
 
 ## 5. Writing a JS / UI extension
 

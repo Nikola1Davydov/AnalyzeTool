@@ -44,6 +44,12 @@ namespace AnalyseTool.Common.Extensions
         // (devUrl, entryHtml, …) take effect after Reload without recreating the button.
         private static readonly Dictionary<string, ExtensionDescriptor> _descriptors =
             new(StringComparer.OrdinalIgnoreCase);
+        // Open windows, so a second click focuses the existing one instead of stacking duplicates:
+        // one Family Manager window, and one window per extension id.
+        private static Window? _familyWindow;
+        private static Window? _settingsWindow;
+        private static readonly Dictionary<string, Window> _extWindows =
+            new(StringComparer.OrdinalIgnoreCase);
 
         public static void Build(UIControlledApplication app, string launcherPath)
         {
@@ -237,15 +243,43 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            new SettingsWindow().Show();
+
+            if (_settingsWindow is not null)
+            {
+                Restore(_settingsWindow);
+                return;
+            }
+
+            Window window = new SettingsWindow();
+            window.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow = window;
+            window.Show();
         }
 
-        /// <summary>Ribbon "Family Control" button — opens the family browser/QC window (#/families).</summary>
+        /// <summary>Ribbon "Family Control" button — opens the family browser/QC window (#/families).
+        /// Single instance: a second click focuses the existing window instead of opening another.</summary>
         public static void OpenFamilyControl(UIApplication uiApp)
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            new Features.Families.FamilyControlWindow().Show();
+
+            if (_familyWindow is not null)
+            {
+                Restore(_familyWindow);
+                return;
+            }
+
+            Window window = new Features.Families.FamilyControlWindow();
+            window.Closed += (_, _) => _familyWindow = null;
+            _familyWindow = window;
+            window.Show();
+        }
+
+        /// <summary>Brings an already-open window back to the foreground (restoring it if minimized).</summary>
+        private static void Restore(Window window)
+        {
+            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+            window.Activate();
         }
 
         /// <summary>Ribbon "Palette" button — shows the dockable family placement palette (#/families-dock).
@@ -276,9 +310,22 @@ namespace AnalyseTool.Common.Extensions
             // A dockable extension shows inside the shared pane (toggle); otherwise it opens its own window.
             ExtensionUi? ui = descriptor.Manifest.Ui;
             if (ui?.Dockable == true)
+            {
                 Docking.DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
-            else
-                new ExtensionWindow(descriptor).Show();
+                return;
+            }
+
+            // One window per extension id — a second click focuses the open one.
+            if (_extWindows.TryGetValue(id, out Window? existing))
+            {
+                Restore(existing);
+                return;
+            }
+
+            Window window = new ExtensionWindow(descriptor);
+            window.Closed += (_, _) => _extWindows.Remove(id);
+            _extWindows[id] = window;
+            window.Show();
         }
 
         /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a
