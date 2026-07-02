@@ -14,17 +14,14 @@
         <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<RevitAddinsRoot>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsRoot>
-        <Path>$(MSBuildProjectDirectory)\bin\$(Configuration)</Path>
-        
+        <!-- NOT "Path": that name collides with the PATH environment variable (see the Launcher csproj). -->
+        <PluginBinDir>$(MSBuildProjectDirectory)\bin\$(Configuration)</PluginBinDir>
+
     </PropertyGroup>
-	
-    <PropertyGroup Condition="$(Configuration.Contains('R25'))">
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
+
+    <PropertyGroup>
+        <OutputPath>$(PluginBinDir)\$(PluginSubDir)</OutputPath>
     </PropertyGroup>
-	
-	<PropertyGroup Condition="$(Configuration.Contains('R26'))">
-        <OutputPath>$(Path)\$(PluginSubDir)</OutputPath>
-	</PropertyGroup>
 		
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
