@@ -19,7 +19,7 @@ The project focuses on free AI usage through local Ollama models, so you can run
 
 ## Compatibility
 
-- Revit 2025-2026 on Windows.
+- Revit 2025-2027 on Windows.
 
 ## The ribbon
 
