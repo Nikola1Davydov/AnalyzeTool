@@ -108,7 +108,7 @@ dotnet add package AnalyseTool.Sdk
 
 ## Troubleshooting
 
-- **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it ([see Compatibility](https://developer.microsoft.com/de-de/microsoft-edge/webview2?form=MA13LH)) and restart Revit.
+- **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it (https://developer.microsoft.com/de-de/microsoft-edge/webview2?form=MA13LH) and restart Revit.
 - **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (AnalyseTool → Settings → Reload).
 - **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
 - **AI tools don't update after toggling MCP / code execution** → the AI client caches the tool list; restart the client.
