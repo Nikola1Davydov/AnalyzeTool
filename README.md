@@ -16,6 +16,7 @@ The project focuses on free AI usage through local Ollama models, so you can run
 1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
 2. **Open** — start Revit → **AnalyseTool** ribbon tab → three buttons: **AnalyseTool** (analysis), **Family Manager** (families), **Component** (placement palette).
 3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**. It's free and stays on your machine.
+4. YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
 ## Compatibility
 
