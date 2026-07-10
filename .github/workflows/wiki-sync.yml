@@ -1,0 +1,47 @@
+name: Sync docs to Wiki
+
+# One-way mirror: the repo is the single source of truth (ONBOARDING.md is also the NuGet package
+# README). This copies the authoring docs into the GitHub Wiki so they get the wiki's browsing UI,
+# without hand-maintaining a second copy. Runs when the docs change on main (or manually).
+#
+# Prerequisite: the wiki repo must exist. Initialize it once — GitHub → the repo's "Wiki" tab →
+# "Create the first page" → Save. After that this workflow keeps it in sync.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/ONBOARDING.md"
+      - "src/LLM.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mirror docs into the wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+
+          # Map source files to wiki pages. ONBOARDING becomes Home so /wiki lands on the guide.
+          cp src/ONBOARDING.md wiki/Home.md
+          cp src/LLM.md        "wiki/Writing-extensions-with-AI.md"
+
+          cd wiki
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date."
+          else
+            git commit -m "Sync docs from ${GITHUB_SHA}"
+            git push
+          fi
