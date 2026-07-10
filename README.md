@@ -1,6 +1,7 @@
 # AnalyseTool for Revit
 
 [![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest)
+
 [![license](https://img.shields.io/github/license/Nikola1Davydov/AnalyzeTool.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/master/LICENSE)
 ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2027-blue)
 [![NuGet](https://img.shields.io/nuget/v/AnalyseTool.Sdk.svg?label=SDK)](https://www.nuget.org/packages/AnalyseTool.Sdk)
@@ -22,9 +23,12 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
+- YouTube: https://www.youtube.com/@AnalyseTool-Revit
 ---
 
+
 # 🧰 Use it — Features
+
 
 ## The ribbon
 
@@ -180,6 +184,7 @@ public sealed class CountWalls : IRevitTask
 }
 ```
 
+
 Add a `plugin.json`, build with a year config (`Release R25` / `R26` / `R27`), drop the output into
 `%LOCALAPPDATA%\AnalyseTool\extensions\<RevitYear>\`, and hit **Reload**. Your command is now callable
 from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP — no host rebuild.
@@ -199,7 +204,6 @@ src/
 samples/                example extensions
 ```
 
----
 
 ## Feedback
 
