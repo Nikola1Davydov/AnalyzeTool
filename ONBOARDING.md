@@ -137,7 +137,7 @@ A minimal extension `.csproj` is then just:
 > scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
 > write commands for you).
 
-Build with a year config (`dotnet build -c "Release R25"` or `"Release R26"`), then deploy your
+Build with a year config (`dotnet build -c "Release R25"`, `"Release R26"` or `"Release R27"`), then deploy your
 DLL + `plugin.json`. (Don't worry about copying the SDK/Revit/Newtonsoft DLLs — the host owns them
 and the extension's load context shares the host's copies, so type identity stays intact even if a
 copy ends up beside your DLL.)
@@ -177,8 +177,8 @@ build props directly:
 
 The shared props (`src/AnalyseTool.Sdk/build/AnalyseTool.Extension.props`) give you:
 
-- The four configurations: **Debug R25 / Debug R26 / Release R25 / Release R26**.
-- `TargetFramework = net8.0-windows`, `PlatformTarget = x64`.
+- The configurations: **Debug/Release R25, R26 and R27**.
+- `TargetFramework` per version — `net8.0-windows` for R25/R26, `net10.0-windows` for R27; `PlatformTarget = x64`.
 - The Revit API packages referenced **compile-only** (`PrivateAssets=all` + `ExcludeAssets=runtime`).
 
 > **Why "compile-only" / `Private=false` everywhere matters:** the host already loads the SDK,

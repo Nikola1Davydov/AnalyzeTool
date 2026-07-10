@@ -29,7 +29,7 @@
     <Version>1.1.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
-    <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025 and 2026.</Description>
+    <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>
     <PackageTags>revit;bim;analysetool;extension;addin;sdk</PackageTags>
     <PackageProjectUrl>https://github.com/Nikola1Davydov/AnalyzeTool</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Nikola1Davydov/AnalyzeTool</RepositoryUrl>

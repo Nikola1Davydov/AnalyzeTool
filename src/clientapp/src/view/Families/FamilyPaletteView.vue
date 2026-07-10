@@ -220,8 +220,8 @@ onMounted(load);
       </div>
     </div>
 
-    <!-- LIBRARY mode -->
-    <FamilyLibraryView v-if="settings.source === 'library'" class="grow min-h-0" />
+    <!-- LIBRARY mode. Reload the document (placeable) list whenever families are loaded from disk. -->
+    <FamilyLibraryView v-if="settings.source === 'library'" class="grow min-h-0" @loaded="load" />
 
     <!-- DOCUMENT mode -->
     <template v-else>
