@@ -11,7 +11,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/ONBOARDING.md"
+      - "ONBOARDING.md"
       - "src/LLM.md"
   workflow_dispatch:
 
@@ -32,8 +32,8 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
 
           # Map source files to wiki pages. ONBOARDING becomes Home so /wiki lands on the guide.
-          cp src/ONBOARDING.md wiki/Home.md
-          cp src/LLM.md        "wiki/Writing-extensions-with-AI.md"
+          cp ONBOARDING.md wiki/Home.md
+          cp src/LLM.md    "wiki/Writing-extensions-with-AI.md"
 
           cd wiki
           git config user.name  "github-actions[bot]"

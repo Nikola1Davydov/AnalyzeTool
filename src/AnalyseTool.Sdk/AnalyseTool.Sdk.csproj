@@ -56,7 +56,7 @@
   <ItemGroup>
     <None Include="build\AnalyseTool.Sdk.props" Pack="true" PackagePath="build\" />
     <None Include="build\AnalyseTool.Extension.props" Pack="true" PackagePath="build\" />
-    <None Include="..\ONBOARDING.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\ONBOARDING.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
