@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useToast } from "primevue/usetoast";
 import { invoke } from "@/RevitBridge";
 import FamilyCard from "@/view/Families/FamilyCard.vue";
@@ -8,10 +8,13 @@ import FamilyDetailDialog from "@/view/Families/FamilyDetailDialog.vue";
 import FamilyTypesView from "@/view/Families/FamilyTypesView.vue";
 import RenameDialog from "@/view/Families/RenameDialog.vue";
 import BulkRenameDialog from "@/view/Families/BulkRenameDialog.vue";
+import NamingRuleDialog from "@/view/Families/NamingRuleDialog.vue";
+import { applyTemplate, type NamingContext } from "@/view/Families/namingEngine";
+import { useNamingRules } from "@/view/Families/namingRules";
 import RulesBar from "@/view/Families/RulesBar.vue";
 import { useFamilyActions } from "@/view/Families/familyActions";
 import { useFamilyRules } from "@/view/Families/familyRules";
-import type { FamilyInventory, FamilyRow } from "@/view/Families/types";
+import type { FamilyInventory, FamilyRow, TypeRowsResult } from "@/view/Families/types";
 
 type Section = "families" | "types";
 type ViewMode = "table" | "gallery";
@@ -94,7 +97,7 @@ const bulkDeleteVisible = ref(false);
 const bulkRenameItems = computed(() =>
   selected.value.map((f) => ({ id: f.id, name: f.name, context: f.category })),
 );
-const allFamilyNames = computed(() => families.value.map((f) => f.name));
+const allFamilyNames = computed(() => families.value.map((f) => ({ name: f.name })));
 
 // Quiet single rename for the bulk dialog (it reports one summary instead of a toast per row).
 async function renameOneQuiet(id: number, newName: string): Promise<{ ok: boolean; error?: string }> {
@@ -108,6 +111,95 @@ async function renameOneQuiet(id: number, newName: string): Promise<{ ok: boolea
 
 async function onBulkRenamed() {
   await load();
+}
+
+// ---- naming rule (family scope) ------------------------------------------------------------------
+// A family's naming context carries only the parameters whose value is IDENTICAL across all its types
+// ("common" values, e.g. one shared Material) — per-type values like dimensions belong in type names.
+// Data comes from two batch calls on dialog open: the families' type ids, then those types' parameters.
+const naming = useNamingRules();
+// Two entry points: "ai" opens a pure-AI dialog instantly (no rule block, no parameter fetch);
+// "rule" opens the full dialog and loads the families' common type parameters for the engine.
+const bulkMode = ref<"ai" | "rule">("ai");
+function openBulkRename(mode: "ai" | "rule") {
+  bulkMode.value = mode;
+  bulkRenameVisible.value = true;
+}
+const ruleDialogVisible = ref(false);
+const selectedRuleId = ref<string | null>(null);
+const familyRules = computed(() => naming.rulesFor("family"));
+
+const familyContexts = ref<Map<number, NamingContext>>(new Map());
+const paramsLoading = ref(false);
+
+watch(bulkRenameVisible, async (open) => {
+  if (!open || bulkMode.value !== "rule") return; // pure-AI mode needs no parameter contexts
+  paramsLoading.value = true;
+  try {
+    const familyIds = selected.value.map((f) => f.id);
+    const typeRes = await invoke<TypeRowsResult>("GetFamilyTypeRows", { familyIds });
+    const typeRows = typeRes?.rows ?? [];
+    const paramRes = await invoke<{ types: { typeId: number; parameters: { name: string; value: string }[] }[] }>(
+      "GetTypeParameters",
+      { typeIds: typeRows.map((r) => r.typeId) },
+    );
+    const byType = new Map(
+      (paramRes?.types ?? []).map((t) => [t.typeId, new Map(t.parameters.map((p) => [p.name, p.value]))]),
+    );
+
+    const contexts = new Map<number, NamingContext>();
+    for (const f of selected.value) {
+      const maps = typeRows.filter((r) => r.familyId === f.id).map((r) => byType.get(r.typeId) ?? new Map());
+      const common: Record<string, string> = {};
+      if (maps.length) {
+        for (const [name, value] of maps[0]) {
+          const v = (value ?? "").trim();
+          if (!v) continue;
+          if (maps.every((m) => (m.get(name) ?? "").trim() === v)) common[name] = v;
+        }
+      }
+      contexts.set(f.id, { name: f.name, family: f.name, category: f.category, params: common });
+    }
+    familyContexts.value = contexts;
+  } catch (e) {
+    console.error("Family naming contexts failed", e);
+    familyContexts.value = new Map();
+  } finally {
+    paramsLoading.value = false;
+  }
+});
+
+const sampleContexts = computed(() =>
+  selected.value.slice(0, 5).map(
+    (f) => familyContexts.value.get(f.id) ?? { name: f.name, family: f.name, category: f.category, params: {} },
+  ),
+);
+// Union of common params across the selected families; common=true only when EVERY family has it.
+const availableParams = computed(() => {
+  const total = selected.value.length;
+  const counts = new Map<string, number>();
+  for (const f of selected.value) {
+    const ctx = familyContexts.value.get(f.id);
+    if (!ctx) continue;
+    for (const n of Object.keys(ctx.params)) counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, common: count === total }))
+    .sort((a, b) => Number(b.common) - Number(a.common) || a.name.localeCompare(b.name));
+});
+
+const ruleNames = ref<Record<number, string> | null>(null);
+function applyRule() {
+  const rule = familyRules.value.find((r) => r.id === selectedRuleId.value);
+  if (!rule) return;
+  const out: Record<number, string> = {};
+  for (const f of selected.value) {
+    const ctx = familyContexts.value.get(f.id);
+    if (!ctx) continue;
+    const name = applyTemplate(rule.template, ctx, naming.store.abbreviations);
+    if (name) out[f.id] = name;
+  }
+  ruleNames.value = { ...out };
 }
 
 async function confirmBulkDelete() {
@@ -339,7 +431,17 @@ onMounted(load);
           icon="pi pi-sparkles"
           label="Rename with AI"
           size="small"
-          @click="bulkRenameVisible = true"
+          v-tooltip.bottom="'Free-text instruction — the AI names the whole selection'"
+          @click="openBulkRename('ai')"
+        />
+        <Button
+          icon="pi pi-book"
+          label="Rename by rule"
+          size="small"
+          severity="secondary"
+          outlined
+          v-tooltip.bottom="'Deterministic naming rule (templates + abbreviations)'"
+          @click="openBulkRename('rule')"
         />
         <Button
           icon="pi pi-trash"
@@ -479,13 +581,66 @@ onMounted(load);
       @submit="onRenameSubmit"
     />
 
-    <!-- Bulk rename (AI batch + review) -->
+    <!-- Bulk rename: naming rule (deterministic) and/or AI batch fill the review rows -->
     <BulkRenameDialog
       v-model:visible="bulkRenameVisible"
+      :title="bulkMode === 'ai' ? 'Rename families with AI' : 'Rename families by rule'"
+      :showAi="bulkMode === 'ai'"
       :items="bulkRenameItems"
-      :takenNames="allFamilyNames"
+      :taken="allFamilyNames"
       :applyOne="renameOneQuiet"
+      :names="ruleNames"
       @applied="onBulkRenamed"
+    >
+      <template #generator>
+        <div v-if="bulkMode === 'rule'" class="rounded-lg border border-surface-200 bg-surface-50 p-3 flex flex-col gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <i class="pi pi-book text-primary-500" />
+            <span class="text-sm font-medium">Naming rule</span>
+            <span v-if="paramsLoading" class="text-xs text-surface-400">
+              <i class="pi pi-spin pi-spinner mr-1" />loading common type parameters…
+            </span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <Select
+              v-model="selectedRuleId"
+              :options="familyRules"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Pick a rule…"
+              size="small"
+              class="w-56"
+            />
+            <Button
+              icon="pi pi-play"
+              label="Apply rule"
+              size="small"
+              :disabled="!selectedRuleId || paramsLoading"
+              @click="applyRule"
+            />
+            <Button
+              icon="pi pi-cog"
+              text
+              size="small"
+              severity="secondary"
+              v-tooltip.bottom="'Manage rules & abbreviations'"
+              @click="ruleDialogVisible = true"
+            />
+          </div>
+          <p class="text-xs text-surface-400">
+            Family rules see only parameters whose value is identical across ALL the family's types
+            (e.g. one shared Material) — per-type values belong in type names.
+          </p>
+        </div>
+      </template>
+    </BulkRenameDialog>
+
+    <!-- Rule builder (family scope) -->
+    <NamingRuleDialog
+      v-model:visible="ruleDialogVisible"
+      scope="family"
+      :availableParams="availableParams"
+      :sampleContexts="sampleContexts"
     />
 
     <!-- Bulk delete confirm -->

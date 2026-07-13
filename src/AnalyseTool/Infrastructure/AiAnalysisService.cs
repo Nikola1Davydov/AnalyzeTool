@@ -122,6 +122,84 @@ namespace AnalyseTool.Infrastructure
         public record NameItem(long Id, string CurrentName, string Context);
         public record NameSuggestion(long Id, string Name);
 
+        /// <summary>
+        /// Reverse-engineers a naming TEMPLATE from one example name plus a sample element's real data.
+        /// The AI authors the rule (an editable artifact previewed live in the builder); applying it
+        /// stays deterministic. Returns the template plus any abbreviation-dictionary entries the
+        /// example implies (e.g. "Alu" for parameter value "Aluminium").
+        /// </summary>
+        public async Task<TemplateSuggestion?> SuggestTemplateAsync(
+            string example, string name, string family, string category, Dictionary<string, string> parameters)
+        {
+            List<ChatMessage> chatHistory = new List<ChatMessage>
+            {
+                new(ChatRole.System, """
+                    You reverse-engineer naming templates for Revit families and family types.
+                    Template syntax — literal text plus tokens in braces:
+                      {name} current name · {family} family name · {category} category ·
+                      {param:<Parameter Name>} a parameter's value.
+                    Modifiers appended with |: abbr (looks the value up in an abbreviation dictionary),
+                    upper, lower, clean, nospace. Example: {category|abbr}_{param:Material|abbr}_{param:Width}x{param:Height}
+
+                    Given ONE example of the DESIRED name plus the element's actual data, infer the
+                    template that produces the example from the data:
+                    - Match example fragments to parameter VALUES. Numbers usually come from dimension
+                      parameters; pick the parameter whose value equals the fragment.
+                    - Short codes (Möb, Alu, FEN…) are usually abbreviations of the category or a text
+                      parameter value: use |abbr in the template and list the mapping in "abbreviations".
+                    - Prefer {param:X} tokens over hardcoded literals whenever a fragment matches data.
+                    - Keep the example's literal separators (_ x - .) in the template.
+                    - Use parameter names EXACTLY as given in the data.
+
+                    OUTPUT: ONLY a raw JSON object, no markdown:
+                    { "template": "...", "abbreviations": [ { "full": "<full value>", "abbr": "<short>" } ] }
+                    """),
+                new(ChatRole.User, $"""
+                    Desired example name: {example}
+                    Element data: {JsonSerializer.Serialize(new { name, family, category, parameters })}
+                    """)
+            };
+
+            ChatOptions jsonOptions = new ChatOptions { ResponseFormat = ChatResponseFormat.Json };
+            string raw = await BuildAnswer(chatHistory, jsonOptions);
+            return ParseObject<TemplateSuggestion>(raw);
+        }
+
+        /// <summary>Direct object parse, falling back to the first balanced {...} block (models wrap
+        /// answers in markdown fences or prose despite instructions).</summary>
+        private static T? ParseObject<T>(string json) where T : class
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, _jsonOptions);
+            }
+            catch { }
+
+            int objStart = json.IndexOf('{');
+            while (objStart >= 0)
+            {
+                int depth = 0;
+                int objEnd = -1;
+                for (int j = objStart; j < json.Length; j++)
+                {
+                    if (json[j] == '{') depth++;
+                    else if (json[j] == '}') { depth--; if (depth == 0) { objEnd = j; break; } }
+                }
+                if (objEnd < 0) return null;
+                try
+                {
+                    T? item = JsonSerializer.Deserialize<T>(json[objStart..(objEnd + 1)], _jsonOptions);
+                    if (item is not null) return item;
+                }
+                catch { }
+                objStart = json.IndexOf('{', objStart + 1);
+            }
+            return null;
+        }
+
+        public record AbbreviationEntry(string Full, string Abbr);
+        public record TemplateSuggestion(string Template, List<AbbreviationEntry>? Abbreviations);
+
         /// <summary>Takes the model's first non-empty line and strips wrapping quotes/backticks/asterisks.</summary>
         private static string CleanName(string raw)
         {

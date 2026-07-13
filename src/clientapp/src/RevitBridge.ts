@@ -18,6 +18,7 @@ export const Commands = {
   OllamaEditParameters: "OllamaEditParameters",
   OllamaSuggestName: "OllamaSuggestName",
   OllamaSuggestNames: "OllamaSuggestNames",
+  OllamaSuggestTemplate: "OllamaSuggestTemplate",
   OllamaGetModels: "OllamaGetModels",
   PlaceFamilyInstance: "PlaceFamilyInstance",
   PurgeFamilyTypes: "PurgeFamilyTypes",
