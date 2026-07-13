@@ -23,7 +23,7 @@ namespace AnalyseTool.Common.Docking
     /// </summary>
     internal sealed class AnalyseToolDockPane : UserControl
     {
-        private readonly WebView2 _webView = new();
+        private WebView2 _webView = new(); // replaced wholesale on recovery (see RebuildWebView)
         private readonly HashSet<string> _mappedHosts = new(StringComparer.OrdinalIgnoreCase);
         private WebView2Transport? _transport;
         private bool _initStarted;
@@ -82,8 +82,23 @@ namespace AnalyseTool.Common.Docking
                 CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
                 await _webView.EnsureCoreWebView2Async(env);
 
+
+                _webView.CoreWebView2.ContextMenuRequested += (s, args) =>
+                {
+                    args.Handled = true;
+                };
+
                 _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
                 _webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
+
+                // A crashed renderer is the classic "pane suddenly turns black" — recover in place.
+                // A dead browser process can't Reload; tear down so the retry path rebuilds everything.
+                _webView.CoreWebView2.ProcessFailed += OnWebViewProcessFailed;
+                _webView.CoreWebView2.NavigationCompleted += (_, e) =>
+                {
+                    if (!e.IsSuccess)
+                        Log.Warning("Dock pane navigation failed: {Status}", e.WebErrorStatus);
+                };
 
                 // window.AT for extension pages (the clientapp overrides with its own equivalent).
                 await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ExtensionBridgeScript.Js);
@@ -107,7 +122,77 @@ namespace AnalyseTool.Common.Docking
             {
                 Log.Error(ex, "Failed to initialize the AnalyseTool dockable pane");
                 _initStarted = false; // allow a later ShowRoute/ShowExtension/Loaded to retry
+                ShowInitError(ex.Message);
             }
+        }
+
+        private void OnWebViewProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+        {
+            Log.Warning("Dock pane WebView2 process failed: {Kind}", e.ProcessFailedKind);
+            try
+            {
+                if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+                    ShowInitError("The embedded browser process exited.");
+                else
+                    _webView.Reload(); // renderer/GPU process crash — the browser itself is still alive
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Dock pane WebView2 recovery failed");
+                ShowInitError(ex.Message);
+            }
+        }
+
+        /// <summary>Replaces the (possibly dead) WebView with a fresh control and reruns the full init.
+        /// A wholesale rebuild is the one path that is safe for EVERY failure mode: after a browser
+        /// process exit the old control is unusable, and rerunning init on a live control would attach a
+        /// second transport and inject the bridge script twice.</summary>
+        private void RebuildWebView()
+        {
+            try { _transport?.Detach(); } catch { /* dead WebView — nothing to detach from */ }
+            _transport = null;
+            _mappedHosts.Clear();
+            try { _webView.Dispose(); } catch { /* already torn down */ }
+
+            _webView = new WebView2();
+            _initStarted = false;
+            Content = _webView;
+            _ = InitializeAsync();
+        }
+
+        /// <summary>A visible failure state instead of a silently black pane, with a Retry button.</summary>
+        private void ShowInitError(string message)
+        {
+            var retry = new System.Windows.Controls.Button
+            {
+                Content = "Retry",
+                Padding = new System.Windows.Thickness(16, 4, 16, 4),
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            };
+            retry.Click += (_, _) => RebuildWebView();
+            Content = new StackPanel
+            {
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new System.Windows.Thickness(16),
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "AnalyseTool panel failed to load.",
+                        FontWeight = System.Windows.FontWeights.SemiBold,
+                        TextWrapping = System.Windows.TextWrapping.Wrap,
+                        Margin = new System.Windows.Thickness(0, 0, 0, 4),
+                    },
+                    new TextBlock
+                    {
+                        Text = message,
+                        TextWrapping = System.Windows.TextWrapping.Wrap,
+                        Opacity = 0.7,
+                        Margin = new System.Windows.Thickness(0, 0, 0, 12),
+                    },
+                    retry,
+                },
+            };
         }
 
         /// <summary>Maps a virtual host to a folder once — remapping the same host would throw.</summary>

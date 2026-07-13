@@ -7,6 +7,7 @@ import { usePaletteSettings } from "./paletteSettings";
 import RulesBar from "./RulesBar.vue";
 import FamilyThumb from "./FamilyThumb.vue";
 import FamilyLibraryView from "./FamilyLibraryView.vue";
+import FamilyViewer3D from "./FamilyViewer3D.vue";
 import type { FamilyInventory, FamilyRow, TypeRow, TypeRowsResult } from "./types";
 
 // Dockable placement palette. Two views:
@@ -157,6 +158,19 @@ const totalFamilies = computed(() => groups.value.reduce((s, g) => s + g.familie
 function placeType(t: PalType) {
   void actions.place(t.typeId);
 }
+
+// Right-click on a family → context menu → interactive 3D preview (reuses the manager's viewer;
+// the native WebView2 menu is suppressed host-side, so the right button is ours).
+const ctxMenu = ref();
+const ctxFamily = ref<PalFamily | null>(null);
+const viewer3dOpen = ref(false);
+const ctxItems = [
+  { label: "View in 3D", icon: "pi pi-box", command: () => (viewer3dOpen.value = true) },
+];
+function openContextMenu(event: MouseEvent, f: PalFamily) {
+  ctxFamily.value = f;
+  ctxMenu.value?.show(event);
+}
 function isOpen(id: number) {
   return expanded.value.has(id);
 }
@@ -219,7 +233,7 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
         <i :class="settings.source === 'library' ? 'pi pi-folder' : 'pi pi-box'" />
         <span class="font-medium">{{ settings.source === "library" ? "Library" : "In document" }}</span>
       </button>
-      <div v-show="settings.sourceBarOpen" class="px-2 pb-2">
+      <div v-show="settings.sourceBarOpen" class="px-2 pb-2 flex items-center gap-2 flex-wrap">
         <SelectButton
           :modelValue="settings.source"
           @update:modelValue="settings.source = $event"
@@ -232,6 +246,31 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
             <span class="flex items-center gap-1 text-xs"><i :class="option.icon" />{{ option.label }}</span>
           </template>
         </SelectButton>
+
+        <!-- Document-mode display controls live here (not in the always-visible toolbar) to keep the
+             narrow dock's permanent row down to search + refresh. -->
+        <template v-if="settings.source !== 'library'">
+          <span class="grow" />
+          <SelectButton
+            :modelValue="settings.view"
+            @update:modelValue="settings.view = $event"
+            :options="viewOptions"
+            optionValue="value"
+            :allowEmpty="false"
+            dataKey="value"
+          >
+            <template #option="{ option }">
+              <i :class="option.icon" v-tooltip.bottom="option.label" />
+            </template>
+          </SelectButton>
+          <Button
+            icon="pi pi-cog"
+            text
+            severity="secondary"
+            v-tooltip.bottom="'Grouping & sorting'"
+            @click="settingsOpen = true"
+          />
+        </template>
       </div>
     </div>
 
@@ -240,31 +279,12 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
 
     <!-- DOCUMENT mode -->
     <template v-else>
-    <!-- Toolbar: search, view, settings (group/sort), refresh -->
+    <!-- Toolbar: search + refresh only — view/settings moved to the collapsible source bar above. -->
     <div class="border-b border-surface-200 shrink-0 p-2 flex items-center gap-2">
       <IconField class="grow">
         <InputIcon class="pi pi-search" />
         <InputText v-model="search" placeholder="Search family / type…" class="w-full" />
       </IconField>
-      <SelectButton
-        :modelValue="settings.view"
-        @update:modelValue="settings.view = $event"
-        :options="viewOptions"
-        optionValue="value"
-        :allowEmpty="false"
-        dataKey="value"
-      >
-        <template #option="{ option }">
-          <i :class="option.icon" v-tooltip.bottom="option.label" />
-        </template>
-      </SelectButton>
-      <Button
-        icon="pi pi-cog"
-        text
-        severity="secondary"
-        v-tooltip.bottom="'Grouping & sorting'"
-        @click="settingsOpen = true"
-      />
       <Button icon="pi pi-refresh" text :loading="loading" v-tooltip.bottom="'Refresh'" @click="load" />
     </div>
 
@@ -277,6 +297,34 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
         v-model:activeRuleId="activeRuleId"
       />
     </div>
+
+    <!-- Right-click menu on a family (gallery card or table row) -->
+    <ContextMenu ref="ctxMenu" :model="ctxItems" />
+
+    <!-- Interactive 3D preview (same viewer as the Family Manager detail; mesh cache is shared) -->
+    <Dialog
+      v-model:visible="viewer3dOpen"
+      modal
+      dismissableMask
+      :style="{ width: 'min(34rem, 95vw)' }"
+      :pt="{ header: { class: 'items-start' } }"
+    >
+      <!-- Custom header: a long family name WRAPS instead of pushing the close button out of the
+           dialog — the title yields (grow + min-w-0) while the close icon keeps its fixed corner. -->
+      <template #header>
+        <span class="p-dialog-title grow min-w-0 break-words pr-2">
+          {{ ctxFamily?.name ?? "3D preview" }}
+        </span>
+      </template>
+      <div class="h-96 max-h-[70vh]">
+        <FamilyViewer3D
+          v-if="viewer3dOpen && ctxFamily"
+          :familyId="ctxFamily.id"
+          :uniqueId="ctxFamily.uniqueId"
+          :versionGuid="ctxFamily.versionGuid"
+        />
+      </div>
+    </Dialog>
 
     <!-- Grouping & sorting settings -->
     <Dialog
@@ -353,7 +401,12 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
 
           <!-- Gallery view -->
           <div v-if="settings.view === 'gallery'" class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2">
-            <div v-for="f in g.families" :key="f.id" class="flex flex-col">
+            <div
+              v-for="f in g.families"
+              :key="f.id"
+              class="flex flex-col"
+              @contextmenu.prevent="openContextMenu($event, f)"
+            >
               <div class="group relative aspect-square">
                 <!-- Preview; a single-type family places directly on click -->
                 <div
@@ -400,7 +453,12 @@ onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentCha
 
           <!-- Table view -->
           <div v-else>
-            <div v-for="f in g.families" :key="f.id" class="border-b border-surface-100">
+            <div
+              v-for="f in g.families"
+              :key="f.id"
+              class="border-b border-surface-100"
+              @contextmenu.prevent="openContextMenu($event, f)"
+            >
               <div
                 class="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-100 cursor-pointer"
                 @click="f.types.length === 1 ? placeType(f.types[0]) : toggle(f.id)"
