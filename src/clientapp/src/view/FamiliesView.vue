@@ -7,6 +7,7 @@ import FamilyThumb from "@/view/Families/FamilyThumb.vue";
 import FamilyDetailDialog from "@/view/Families/FamilyDetailDialog.vue";
 import FamilyTypesView from "@/view/Families/FamilyTypesView.vue";
 import RenameDialog from "@/view/Families/RenameDialog.vue";
+import BulkRenameDialog from "@/view/Families/BulkRenameDialog.vue";
 import RulesBar from "@/view/Families/RulesBar.vue";
 import { useFamilyActions } from "@/view/Families/familyActions";
 import { useFamilyRules } from "@/view/Families/familyRules";
@@ -40,6 +41,7 @@ async function load() {
   try {
     const res = await invoke<FamilyInventory>("GetFamilies");
     families.value = res?.families ?? [];
+    selected.value = []; // stale row objects — a reload invalidates the selection
   } catch (e) {
     console.error("Failed to load families", e);
     error.value = String((e as Error)?.message ?? e);
@@ -81,6 +83,40 @@ const stats = computed(() => {
 // Type-level stats reported by the Family Types view (so the header shows type totals, incl. Unused
 // types, while that section is active instead of the family inventory numbers).
 const typeStats = ref({ groups: 0, types: 0, instances: 0, unused: 0 });
+
+// ---- multi-select + bulk actions ---------------------------------------------------------------
+// Selection lives on the table (checkbox column); the contextual bar appears only while non-empty,
+// so bulk actions don't clutter the toolbar when they can't apply.
+const selected = ref<FamilyRow[]>([]);
+const bulkRenameVisible = ref(false);
+const bulkDeleteVisible = ref(false);
+
+const bulkRenameItems = computed(() =>
+  selected.value.map((f) => ({ id: f.id, name: f.name, context: f.category })),
+);
+const allFamilyNames = computed(() => families.value.map((f) => f.name));
+
+// Quiet single rename for the bulk dialog (it reports one summary instead of a toast per row).
+async function renameOneQuiet(id: number, newName: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await invoke<{ ok: boolean; error?: string }>("RenameFamily", { id, newName });
+    return { ok: !!res?.ok, error: res?.error };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
+
+async function onBulkRenamed() {
+  await load();
+}
+
+async function confirmBulkDelete() {
+  const ids = selected.value.map((f) => f.id);
+  if (!ids.length) return;
+  bulkDeleteVisible.value = false;
+  const done = await actions.deleteElements(ids);
+  if (done) await load();
+}
 
 // Detail dialog
 const detailVisible = ref(false);
@@ -283,9 +319,42 @@ onMounted(load);
         </div>
       </div>
 
+      <!-- Contextual bulk-action bar — visible only while something is selected -->
+      <div
+        v-if="selected.length"
+        class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-primary-200 bg-primary-50"
+      >
+        <Button
+          icon="pi pi-times"
+          text
+          rounded
+          size="small"
+          severity="secondary"
+          v-tooltip.bottom="'Clear selection'"
+          @click="selected = []"
+        />
+        <span class="text-sm font-medium">{{ selected.length }} selected</span>
+        <span class="grow" />
+        <Button
+          icon="pi pi-sparkles"
+          label="Rename with AI"
+          size="small"
+          @click="bulkRenameVisible = true"
+        />
+        <Button
+          icon="pi pi-trash"
+          label="Delete"
+          size="small"
+          severity="danger"
+          outlined
+          @click="bulkDeleteVisible = true"
+        />
+      </div>
+
       <!-- Table view -->
       <section v-show="view === 'table'">
         <DataTable
+          v-model:selection="selected"
           :value="filteredFamilies"
           :loading="loading"
           dataKey="id"
@@ -299,6 +368,7 @@ onMounted(load);
           rowHover
           class="text-sm"
         >
+          <Column selectionMode="multiple" headerStyle="width: 2.5rem" />
           <Column header="" class="w-16">
             <template #body="{ data: row }">
               <div
@@ -408,6 +478,36 @@ onMounted(load);
       :context="renameTarget?.category ?? ''"
       @submit="onRenameSubmit"
     />
+
+    <!-- Bulk rename (AI batch + review) -->
+    <BulkRenameDialog
+      v-model:visible="bulkRenameVisible"
+      :items="bulkRenameItems"
+      :takenNames="allFamilyNames"
+      :applyOne="renameOneQuiet"
+      @applied="onBulkRenamed"
+    />
+
+    <!-- Bulk delete confirm -->
+    <Dialog
+      v-model:visible="bulkDeleteVisible"
+      modal
+      dismissableMask
+      header="Delete selected families"
+      :style="{ width: '30rem' }"
+    >
+      <div class="flex gap-3 items-start">
+        <i class="pi pi-exclamation-triangle text-2xl text-amber-500 mt-1" />
+        <div class="text-sm">
+          Delete <b>{{ selected.length }}</b> selected families? This removes each family, all its
+          types and all placed instances. This cannot be undone from here.
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" @click="bulkDeleteVisible = false" />
+        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="confirmBulkDelete" />
+      </template>
+    </Dialog>
 
     <!-- Delete confirm -->
     <Dialog

@@ -76,6 +76,52 @@ namespace AnalyseTool.Infrastructure
             return CleanName(raw);
         }
 
+        /// <summary>
+        /// Suggests new names for a WHOLE batch of families/types in one model round-trip. One call (not
+        /// N) matters twice: local models are slow per request, and the model can only apply a CONSISTENT
+        /// naming scheme when it sees the full list at once. Returns (id, name) pairs; ids not present in
+        /// the answer simply keep their current name (the caller treats missing as unchanged).
+        /// </summary>
+        public async Task<List<NameSuggestion>> SuggestNamesAsync(List<NameItem> items, string userPrompt)
+        {
+            List<ChatMessage> chatHistory = new List<ChatMessage>
+            {
+                new(ChatRole.System, """
+                    You rename Revit families and family types in bulk.
+                    INPUT: a JSON array where each item has { "Id", "CurrentName", "Context" } and an instruction.
+                    OUTPUT: respond with ONLY a raw JSON array (no wrapper object, no markdown).
+                    Each element of the array must have exactly these fields:
+                      "Id"    — integer, copy from input unchanged
+                      "Name"  — string, the new name
+                    RULES:
+                    - Every input element must appear exactly once, in the same order.
+                    - Apply ONE consistent naming scheme across the whole list.
+                    - Keep names valid for Revit: avoid the characters \ : { } [ ] | ; < > ? ` ~
+                    - Names must be unique within the output.
+                    - If the instruction does not clearly change an element's name, return its current name.
+                    """),
+                new(ChatRole.User, $"""
+                    Instruction: {userPrompt}
+                    Elements: {JsonSerializer.Serialize(items)}
+                    """)
+            };
+
+            ChatOptions jsonOptions = new ChatOptions
+            {
+                ResponseFormat = ChatResponseFormat.Json,
+                Instructions = "Include every input element in the output (same count)."
+            };
+            string raw = await BuildAnswer(chatHistory, jsonOptions);
+
+            return ParseArray<NameSuggestion>(raw, s => s is { Id: > 0, Name: not null })
+                .Select(s => s with { Name = CleanName(s.Name) })
+                .Where(s => s.Name.Length > 0)
+                .ToList();
+        }
+
+        public record NameItem(long Id, string CurrentName, string Context);
+        public record NameSuggestion(long Id, string Name);
+
         /// <summary>Takes the model's first non-empty line and strips wrapping quotes/backticks/asterisks.</summary>
         private static string CleanName(string raw)
         {
@@ -158,12 +204,20 @@ namespace AnalyseTool.Infrastructure
         /// Tries full-array parse first; on failure falls back to object-by-object extraction
         /// so partial valid data is never lost.
         /// </summary>
-        private static List<ParameterAiEdit> ParseEdits(string json)
+        private static List<ParameterAiEdit> ParseEdits(string json) =>
+            ParseArray<ParameterAiEdit>(json, e => e is { ElementId: > 0, NewValue: not null, Reason: not null });
+
+        /// <summary>
+        /// Robustly extracts a JSON array of <typeparamref name="T"/> from a model answer: direct array
+        /// parse → unwrap {"output":[...]}-style wrappers → per-object scan (keeping items that pass
+        /// <paramref name="keep"/>), so partial valid data is never lost.
+        /// </summary>
+        private static List<T> ParseArray<T>(string json, Func<T, bool> keep)
         {
             // Try direct array parse
             try
             {
-                return JsonSerializer.Deserialize<List<ParameterAiEdit>>(json, _jsonOptions) ?? [];
+                return JsonSerializer.Deserialize<List<T>>(json, _jsonOptions) ?? [];
             }
             catch { }
 
@@ -184,14 +238,14 @@ namespace AnalyseTool.Infrastructure
                     if (arrayEnd > arrayStart)
                     {
                         string extracted = json[arrayStart..(arrayEnd + 1)];
-                        return JsonSerializer.Deserialize<List<ParameterAiEdit>>(extracted, _jsonOptions) ?? [];
+                        return JsonSerializer.Deserialize<List<T>>(extracted, _jsonOptions) ?? [];
                     }
                 }
             }
             catch { }
 
             // Fallback: scan for individual {...} objects and parse each independently
-            List<ParameterAiEdit> results = new List<ParameterAiEdit>();
+            List<T> results = new List<T>();
             int i = 0;
             while (i < json.Length)
             {
@@ -215,12 +269,9 @@ namespace AnalyseTool.Infrastructure
 
                 try
                 {
-                    ParameterAiEdit? edit = JsonSerializer.Deserialize<ParameterAiEdit>(
-                        json[objStart..(objEnd + 1)], _jsonOptions);
-
-                    // Only keep objects that look like real edits
-                    if (edit is { ElementId: > 0, NewValue: not null, Reason: not null })
-                        results.Add(edit);
+                    T? item = JsonSerializer.Deserialize<T>(json[objStart..(objEnd + 1)], _jsonOptions);
+                    if (item is not null && keep(item))
+                        results.Add(item);
                 }
                 catch { }
 
