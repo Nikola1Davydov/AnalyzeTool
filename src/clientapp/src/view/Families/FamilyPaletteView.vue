@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { invoke } from "@/RevitBridge";
 import { useFamilyActions } from "./familyActions";
 import { useFamilyRules } from "./familyRules";
@@ -188,7 +188,22 @@ function toggleSortDir() {
   settings.sortDir = settings.sortDir === "asc" ? "desc" : "asc";
 }
 
-onMounted(load);
+// The dockable pane outlives documents: the host pushes "DocumentChanged" when the active document
+// switches (title === null → all documents closed, so querying Revit would only error).
+const noDocument = ref(false);
+function onDocumentChanged(e: Event) {
+  const title = (e as CustomEvent).detail?.title ?? null;
+  noDocument.value = title === null;
+  expanded.value = new Set();
+  if (title === null) families.value = [];
+  else void load();
+}
+
+onMounted(() => {
+  void load();
+  window.addEventListener("at:DocumentChanged", onDocumentChanged);
+});
+onUnmounted(() => window.removeEventListener("at:DocumentChanged", onDocumentChanged));
 </script>
 
 <template>
@@ -322,7 +337,7 @@ onMounted(load);
         <i class="pi pi-spin pi-spinner mr-2" />Loading…
       </div>
       <div v-else-if="!totalFamilies" class="p-6 text-center text-surface-500">
-        No placeable families.
+        {{ noDocument ? "No open document." : "No placeable families." }}
       </div>
 
       <template v-else>

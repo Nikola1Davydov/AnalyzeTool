@@ -27,6 +27,7 @@ namespace AnalyseTool.Common.Docking
         private readonly HashSet<string> _mappedHosts = new(StringComparer.OrdinalIgnoreCase);
         private WebView2Transport? _transport;
         private bool _initStarted;
+        private bool _docEventsWired;
 
         // Deferred navigation: set by ShowRoute/ShowExtension, applied once the WebView is ready (or
         // immediately if it already is). Defaults to the family placement palette.
@@ -89,6 +90,16 @@ namespace AnalyseTool.Common.Docking
 
                 _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
                 _transport.Attach();
+
+                // The pane outlives any document, so push document switches to the page — it re-queries
+                // its data (the document itself is never cached host-side). Wire once: the pane is a
+                // session-long singleton, and the tracker raises on the same UI thread the WebView lives on.
+                if (!_docEventsWired)
+                {
+                    _docEventsWired = true;
+                    DocumentTracker.DocumentChanged += title =>
+                        _transport?.SendEvent("DocumentChanged", new { title });
+                }
 
                 _navigate?.Invoke();
             }

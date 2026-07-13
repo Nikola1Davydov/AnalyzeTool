@@ -59,7 +59,16 @@ function ensureInvokeListener(): void {
 
   webview.addEventListener("message", (event: any) => {
     const message = event.data as WebViewMessage;
-    if (!message || !message.Id) return; // only correlated responses are ours
+    if (!message) return;
+
+    // Host-initiated broadcasts (no request Id) — e.g. "DocumentChanged". Re-dispatched as DOM events
+    // so any view can listen without importing a bus: window.addEventListener("at:DocumentChanged", …).
+    if (message.Type === "Event") {
+      window.dispatchEvent(new CustomEvent(`at:${message.Command}`, { detail: message.Payload }));
+      return;
+    }
+
+    if (!message.Id) return; // only correlated responses are ours
 
     const pending = pendingCalls.get(message.Id);
     if (!pending) return;
