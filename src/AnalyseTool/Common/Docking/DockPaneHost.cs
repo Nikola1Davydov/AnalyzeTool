@@ -36,6 +36,15 @@ namespace AnalyseTool.Common.Docking
             try
             {
                 app.RegisterDockablePane(PaneId, PaneTitle, _provider);
+
+                // Hook Idling HERE: OnStartup is a valid API context, while the pane's WPF Loaded (the
+                // caller of EnsureReadyAsync) is NOT — even subscribing to Idling there throws
+                // "Revit is currently not within an API context", leaving a restored pane black.
+                // The handler no-ops until someone actually awaits EnsureReadyAsync, and unhooks itself
+                // once the host is initialized (by us or by any ribbon click).
+                app.Idling += OnIdling;
+                _idlingHooked = true;
+
                 Log.Information("Registered AnalyseTool dockable pane");
             }
             catch (Exception ex)
@@ -92,42 +101,60 @@ namespace AnalyseTool.Common.Docking
             pane.Show();
         }
 
+        private static bool _idlingHooked;
+
         /// <summary>
         /// Completes once the host dispatcher exists. Fast path when a ribbon click already initialized it.
-        /// Otherwise (pane auto-restored at startup) we subscribe a one-shot <see cref="UIControlledApplication.Idling"/>:
-        /// its handler receives a live <see cref="UIApplication"/> in a valid API context, which is exactly
-        /// what <see cref="AnalyseToolBootstrap.Initialize"/> needs — then we unsubscribe immediately so the
-        /// idle event isn't fired on repeatedly.
+        /// Otherwise (pane auto-restored at startup) this only ARMS the pre-hooked Idling handler (see
+        /// <see cref="Register"/>) — no Revit API is touched here, because the caller (WPF Loaded) is not
+        /// an API context. The actual initialization happens inside <see cref="OnIdling"/>, which Revit
+        /// invokes with a live <see cref="UIApplication"/> in a valid API context.
         /// </summary>
         public static Task EnsureReadyAsync()
         {
             if (AnalyseToolBootstrap.IsInitialized) return Task.CompletedTask;
             if (_ready is not null) return _ready.Task;
+            if (!_idlingHooked)
+                return Task.FromException(new InvalidOperationException("Dockable pane host was not registered."));
 
             _ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            if (_app is null)
-            {
-                _ready.TrySetException(new InvalidOperationException("Dockable pane host was not registered."));
-                return _ready.Task;
-            }
-
-            void OnIdling(object? sender, IdlingEventArgs e)
-            {
-                _app!.Idling -= OnIdling; // strictly once — Idling fires continuously while Revit is idle
-                try
-                {
-                    AnalyseToolBootstrap.Initialize((UIApplication)sender!);
-                    _ready!.TrySetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Deferred host initialization (from dockable pane) failed");
-                    _ready!.TrySetException(ex);
-                }
-            }
-
-            _app.Idling += OnIdling;
             return _ready.Task;
+        }
+
+        private static void OnIdling(object? sender, IdlingEventArgs e)
+        {
+            // Someone else (a ribbon click) already initialized the host — our work here is done.
+            if (AnalyseToolBootstrap.IsInitialized)
+            {
+                Unhook();
+                _ready?.TrySetResult(true);
+                return;
+            }
+
+            if (_ready is null) return; // nobody is waiting yet — stay dormant
+
+            try
+            {
+                AnalyseToolBootstrap.Initialize((UIApplication)sender!);
+                Unhook();
+                _ready.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Deferred host initialization (from dockable pane) failed");
+                // Fault THIS waiter but clear the field, so a retry (pane hide/show) can arm a fresh
+                // attempt instead of being handed the same dead task forever.
+                TaskCompletionSource<bool> failed = _ready;
+                _ready = null;
+                failed.TrySetException(ex);
+            }
+        }
+
+        private static void Unhook()
+        {
+            if (!_idlingHooked) return;
+            _idlingHooked = false;
+            _app!.Idling -= OnIdling;
         }
     }
 }

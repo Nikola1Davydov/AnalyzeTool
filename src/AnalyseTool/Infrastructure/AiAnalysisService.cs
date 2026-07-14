@@ -10,11 +10,22 @@ namespace AnalyseTool.Infrastructure
     internal class AiAnalysisService
     {
         private readonly IChatClient _chat;
-        public AiAnalysisService(string model)
+        private readonly string _providerName;
+        private readonly string _model;
+        private readonly int _timeoutSeconds;
+
+        /// <summary>Back-compat: bare model name = the built-in local Ollama.</summary>
+        public AiAnalysisService(string model) : this(null, model) { }
+
+        /// <summary>Provider-aware: null/empty providerId falls back to local Ollama, anything else is
+        /// resolved through <see cref="AiProviderRegistry"/> (OpenAI-compatible endpoints included).</summary>
+        public AiAnalysisService(string? providerId, string model)
         {
-            _chat = new OllamaApiClient(new Uri("http://localhost:11434"), model);
+            (_chat, AiProvider provider) = AiClientFactory.Create(providerId, model);
+            _providerName = provider.DisplayName;
+            _model = model;
+            _timeoutSeconds = provider.TimeoutSeconds;
         }
-        private const int AiTimeoutSeconds = 120;
 
         public async Task<string> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
         {
@@ -75,6 +86,130 @@ namespace AnalyseTool.Infrastructure
             string raw = await BuildAnswer(chatHistory);
             return CleanName(raw);
         }
+
+        /// <summary>
+        /// Suggests new names for a WHOLE batch of families/types in one model round-trip. One call (not
+        /// N) matters twice: local models are slow per request, and the model can only apply a CONSISTENT
+        /// naming scheme when it sees the full list at once. Returns (id, name) pairs; ids not present in
+        /// the answer simply keep their current name (the caller treats missing as unchanged).
+        /// </summary>
+        public async Task<List<NameSuggestion>> SuggestNamesAsync(List<NameItem> items, string userPrompt)
+        {
+            List<ChatMessage> chatHistory = new List<ChatMessage>
+            {
+                new(ChatRole.System, """
+                    You rename Revit families and family types in bulk.
+                    INPUT: a JSON array where each item has { "Id", "CurrentName", "Context" } and an instruction.
+                    OUTPUT: respond with ONLY a raw JSON array (no wrapper object, no markdown).
+                    Each element of the array must have exactly these fields:
+                      "Id"    — integer, copy from input unchanged
+                      "Name"  — string, the new name
+                    RULES:
+                    - Every input element must appear exactly once, in the same order.
+                    - Apply ONE consistent naming scheme across the whole list.
+                    - Keep names valid for Revit: avoid the characters \ : { } [ ] | ; < > ? ` ~
+                    - Names must be unique within the output.
+                    - If the instruction does not clearly change an element's name, return its current name.
+                    """),
+                new(ChatRole.User, $"""
+                    Instruction: {userPrompt}
+                    Elements: {JsonSerializer.Serialize(items)}
+                    """)
+            };
+
+            ChatOptions jsonOptions = new ChatOptions
+            {
+                ResponseFormat = ChatResponseFormat.Json,
+                Instructions = "Include every input element in the output (same count)."
+            };
+            string raw = await BuildAnswer(chatHistory, jsonOptions);
+
+            return ParseArray<NameSuggestion>(raw, s => s is { Id: > 0, Name: not null })
+                .Select(s => s with { Name = CleanName(s.Name) })
+                .Where(s => s.Name.Length > 0)
+                .ToList();
+        }
+
+        public record NameItem(long Id, string CurrentName, string Context);
+        public record NameSuggestion(long Id, string Name);
+
+        /// <summary>
+        /// Reverse-engineers a naming TEMPLATE from one example name plus a sample element's real data.
+        /// The AI authors the rule (an editable artifact previewed live in the builder); applying it
+        /// stays deterministic. Returns the template plus any abbreviation-dictionary entries the
+        /// example implies (e.g. "Alu" for parameter value "Aluminium").
+        /// </summary>
+        public async Task<TemplateSuggestion?> SuggestTemplateAsync(
+            string example, string name, string family, string category, Dictionary<string, string> parameters)
+        {
+            List<ChatMessage> chatHistory = new List<ChatMessage>
+            {
+                new(ChatRole.System, """
+                    You reverse-engineer naming templates for Revit families and family types.
+                    Template syntax — literal text plus tokens in braces:
+                      {name} current name · {family} family name · {category} category ·
+                      {param:<Parameter Name>} a parameter's value.
+                    Modifiers appended with |: abbr (looks the value up in an abbreviation dictionary),
+                    upper, lower, clean, nospace. Example: {category|abbr}_{param:Material|abbr}_{param:Width}x{param:Height}
+
+                    Given ONE example of the DESIRED name plus the element's actual data, infer the
+                    template that produces the example from the data:
+                    - Match example fragments to parameter VALUES. Numbers usually come from dimension
+                      parameters; pick the parameter whose value equals the fragment.
+                    - Short codes (Möb, Alu, FEN…) are usually abbreviations of the category or a text
+                      parameter value: use |abbr in the template and list the mapping in "abbreviations".
+                    - Prefer {param:X} tokens over hardcoded literals whenever a fragment matches data.
+                    - Keep the example's literal separators (_ x - .) in the template.
+                    - Use parameter names EXACTLY as given in the data.
+
+                    OUTPUT: ONLY a raw JSON object, no markdown:
+                    { "template": "...", "abbreviations": [ { "full": "<full value>", "abbr": "<short>" } ] }
+                    """),
+                new(ChatRole.User, $"""
+                    Desired example name: {example}
+                    Element data: {JsonSerializer.Serialize(new { name, family, category, parameters })}
+                    """)
+            };
+
+            ChatOptions jsonOptions = new ChatOptions { ResponseFormat = ChatResponseFormat.Json };
+            string raw = await BuildAnswer(chatHistory, jsonOptions);
+            return ParseObject<TemplateSuggestion>(raw);
+        }
+
+        /// <summary>Direct object parse, falling back to the first balanced {...} block (models wrap
+        /// answers in markdown fences or prose despite instructions).</summary>
+        private static T? ParseObject<T>(string json) where T : class
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, _jsonOptions);
+            }
+            catch { }
+
+            int objStart = json.IndexOf('{');
+            while (objStart >= 0)
+            {
+                int depth = 0;
+                int objEnd = -1;
+                for (int j = objStart; j < json.Length; j++)
+                {
+                    if (json[j] == '{') depth++;
+                    else if (json[j] == '}') { depth--; if (depth == 0) { objEnd = j; break; } }
+                }
+                if (objEnd < 0) return null;
+                try
+                {
+                    T? item = JsonSerializer.Deserialize<T>(json[objStart..(objEnd + 1)], _jsonOptions);
+                    if (item is not null) return item;
+                }
+                catch { }
+                objStart = json.IndexOf('{', objStart + 1);
+            }
+            return null;
+        }
+
+        public record AbbreviationEntry(string Full, string Abbr);
+        public record TemplateSuggestion(string Template, List<AbbreviationEntry>? Abbreviations);
 
         /// <summary>Takes the model's first non-empty line and strips wrapping quotes/backticks/asterisks.</summary>
         private static string CleanName(string raw)
@@ -137,8 +272,9 @@ namespace AnalyseTool.Infrastructure
         };
         private async Task<string> BuildAnswer(List<ChatMessage> chatHistory, ChatOptions chatOptions = default)
         {
-            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
+            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(_timeoutSeconds));
             StringBuilder stringBuilder = new StringBuilder();
+            System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, cts.Token))
@@ -149,8 +285,24 @@ namespace AnalyseTool.Infrastructure
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                throw new UnauthorizedAccessException("Cloud model requires Ollama login. Run 'ollama login' in terminal.");
+                Serilog.Log.Warning("AI call unauthorized ({Provider}/{Model})", _providerName, _model);
+                throw new UnauthorizedAccessException(
+                    "The AI endpoint rejected the request (401). Check the provider's API key in Settings " +
+                    "(for Ollama cloud models: run 'ollama login').");
             }
+            catch (OperationCanceledException)
+            {
+                Serilog.Log.Warning("AI call timed out after {Timeout}s ({Provider}/{Model})",
+                    _timeoutSeconds, _providerName, _model);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "AI call failed ({Provider}/{Model})", _providerName, _model);
+                throw;
+            }
+            Serilog.Log.Information("AI call ok: {Provider}/{Model}, {Elapsed} ms, {Chars} chars",
+                _providerName, _model, watch.ElapsedMilliseconds, stringBuilder.Length);
             return stringBuilder.ToString();
         }
 
@@ -158,12 +310,20 @@ namespace AnalyseTool.Infrastructure
         /// Tries full-array parse first; on failure falls back to object-by-object extraction
         /// so partial valid data is never lost.
         /// </summary>
-        private static List<ParameterAiEdit> ParseEdits(string json)
+        private static List<ParameterAiEdit> ParseEdits(string json) =>
+            ParseArray<ParameterAiEdit>(json, e => e is { ElementId: > 0, NewValue: not null, Reason: not null });
+
+        /// <summary>
+        /// Robustly extracts a JSON array of <typeparamref name="T"/> from a model answer: direct array
+        /// parse → unwrap {"output":[...]}-style wrappers → per-object scan (keeping items that pass
+        /// <paramref name="keep"/>), so partial valid data is never lost.
+        /// </summary>
+        private static List<T> ParseArray<T>(string json, Func<T, bool> keep)
         {
             // Try direct array parse
             try
             {
-                return JsonSerializer.Deserialize<List<ParameterAiEdit>>(json, _jsonOptions) ?? [];
+                return JsonSerializer.Deserialize<List<T>>(json, _jsonOptions) ?? [];
             }
             catch { }
 
@@ -184,14 +344,14 @@ namespace AnalyseTool.Infrastructure
                     if (arrayEnd > arrayStart)
                     {
                         string extracted = json[arrayStart..(arrayEnd + 1)];
-                        return JsonSerializer.Deserialize<List<ParameterAiEdit>>(extracted, _jsonOptions) ?? [];
+                        return JsonSerializer.Deserialize<List<T>>(extracted, _jsonOptions) ?? [];
                     }
                 }
             }
             catch { }
 
             // Fallback: scan for individual {...} objects and parse each independently
-            List<ParameterAiEdit> results = new List<ParameterAiEdit>();
+            List<T> results = new List<T>();
             int i = 0;
             while (i < json.Length)
             {
@@ -215,12 +375,9 @@ namespace AnalyseTool.Infrastructure
 
                 try
                 {
-                    ParameterAiEdit? edit = JsonSerializer.Deserialize<ParameterAiEdit>(
-                        json[objStart..(objEnd + 1)], _jsonOptions);
-
-                    // Only keep objects that look like real edits
-                    if (edit is { ElementId: > 0, NewValue: not null, Reason: not null })
-                        results.Add(edit);
+                    T? item = JsonSerializer.Deserialize<T>(json[objStart..(objEnd + 1)], _jsonOptions);
+                    if (item is not null && keep(item))
+                        results.Add(item);
                 }
                 catch { }
 

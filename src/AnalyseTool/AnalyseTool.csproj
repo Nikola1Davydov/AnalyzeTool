@@ -32,6 +32,12 @@
     </PropertyGroup>
 		
     <ItemGroup>
+        <!-- Ships next to the plugin DLL so the Settings window can show it (GetChangelog reads it
+             from PathProvider.RootDirectory); the installer bundle picks it up with the bin folder. -->
+        <None Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
         <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (no prebuilt DLL). -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
@@ -47,6 +53,8 @@
         </PackageReference>
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
         <PackageReference Include="OllamaSharp" Version="5.4.25" />
+        <!-- DPAPI (Windows) — stored AI-provider API keys are encrypted per Windows user. -->
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
         <!-- File logging for beta triage (%LOCALAPPDATA%\AnalyseTool\logs). -->
         <PackageReference Include="Serilog" Version="4.2.0" />
         <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />

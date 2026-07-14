@@ -17,7 +17,7 @@ A reusable checklist to run before publishing a new AnalyseTool version.
       lines starting with `- ` under the matching `## [<version>]` header).
 - [ ] **Extension-authoring changes documented** — if anything changed that matters to extension authors
       (SDK contract, manifest fields, bridge, build configs, new capabilities), it is reflected in **both**
-      `src/ONBOARDING.md` **and** `src/LLM.md`.
+      `ONBOARDING.md` (repo root) **and** `src/LLM.md`.
 - [ ] **SDK version bumped if the SDK changed** — if `src/AnalyseTool.Sdk/**` changed, bump the SDK
       version in `AnalyseTool.Sdk.csproj`: - additive/backward-compatible → bump **minor** (`Version` + `FileVersion`); keep `AssemblyVersion`
       stable within the major (it's the binding identity — moving it breaks older extensions). - breaking contract change → bump **major** (and `AssemblyVersion` major); old extensions are then

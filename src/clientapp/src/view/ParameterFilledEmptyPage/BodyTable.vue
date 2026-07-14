@@ -35,14 +35,6 @@ const tableData = computed(() => {
     const percent =
       params.length > 0 ? Math.round((filled.length / params.length) * 10000) / 100 : 0;
 
-    console.log(`Param: ${paramName}`, {
-      totalCount: params.length,
-      filledCount: filled.length,
-      emptyCount: empty.length,
-      filled,
-      empty,
-    });
-
     return {
       key: paramName,
       data: {
@@ -57,7 +49,6 @@ const tableData = computed(() => {
     };
   });
 
-  console.log("Table data computed:", result);
   return result;
 });
 </script>

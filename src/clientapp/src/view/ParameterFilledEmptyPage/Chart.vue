@@ -74,8 +74,6 @@ const handleChartClick = (evt, elements, chart) => {
     const datasetIndex = first.datasetIndex; // 0 = Filled, 1 = Empty
 
     const paramName = parameterStats.value[dataIndex]?.parameter;
-    console.log("Chart clicked point", { paramName, dataIndex, datasetIndex });
-
     if (!paramName) return;
 
     const matchedEntries = (props.items || []).flatMap((element) =>
@@ -95,11 +93,6 @@ const handleChartClick = (evt, elements, chart) => {
     }
 
     const elementIds = resolveInstanceActionElementIds(props.items || [], matches);
-
-    console.log(
-      `Sending ${elementIds.length} elements for parameter "${paramName}" (dataset ${datasetIndex}):`,
-      elementIds,
-    );
 
     invoke(Commands.SelectionInRevit, {
       elementIds: elementIds,

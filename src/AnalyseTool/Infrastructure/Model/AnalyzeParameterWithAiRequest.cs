@@ -12,5 +12,8 @@ namespace AnalyseTool.Infrastructure.Model
 
         [JsonProperty("model")]
         public string Model { get; set; } = "gemma4:latest";
+
+        [JsonProperty("provider")]
+        public string? Provider { get; set; } // null = built-in local Ollama (back-compat)
     }
 }

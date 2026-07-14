@@ -102,18 +102,67 @@ namespace AnalyseTool.Infrastructure
                 familyId, family.Name, family.FamilyCategory?.Name ?? string.Empty, types);
         }
 
-        /// <summary>Non-empty parameters of a family type, as plain name/value pairs for the UI.</summary>
-        private static List<FamilyParameterInfo> ReadTypeParameters(Element type)
+        /// <summary>
+        /// Non-empty type parameters for a BATCH of types (loadable or system) in one call — feeds the
+        /// naming-rule engine, which composes new type names from parameter values. Values are display
+        /// strings (AsValueString), i.e. already formatted in the project's units.
+        /// </summary>
+        public TypeParametersResult GetTypeParameters(Document doc, IReadOnlyList<long> typeIds)
+        {
+            List<TypeParametersInfo> types = new();
+            foreach (long id in typeIds ?? [])
+            {
+                if (doc.GetElement(new ElementId(id)) is not ElementType type) continue;
+                // ALL parameters (empty values included): the rule builder must offer every parameter a
+                // type carries — an empty value on one type doesn't make the token useless for others.
+                types.Add(new TypeParametersInfo(id, ReadTypeParameters(type, includeEmpty: true)));
+            }
+            return new TypeParametersResult(types);
+        }
+
+        /// <summary>Parameters of a family type as plain name/value pairs. By default only non-empty
+        /// ones (the detail panel); <paramref name="includeEmpty"/> returns all (the naming engine).</summary>
+        private static List<FamilyParameterInfo> ReadTypeParameters(Element type, bool includeEmpty = false)
         {
             List<FamilyParameterInfo> list = new();
             foreach (Parameter p in type.Parameters)
             {
                 if (p?.Definition is null) continue;
-                string value = p.AsValueString() ?? p.AsString() ?? string.Empty;
-                if (string.IsNullOrEmpty(value)) continue;
+                string value = ReadParameterValue(type.Document, p);
+                if (string.IsNullOrEmpty(value) && !includeEmpty) continue;
                 list.Add(new FamilyParameterInfo(p.Definition.Name, value));
             }
             return list.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Reads a parameter's display value WITHOUT ever hitting the native-crash paths:
+        /// Parameter.AsValueString throws an uncatchable AccessViolationException on some parameters
+        /// (StorageType.None, HasValue=false, certain ElementId params) — .NET cannot catch corrupted-
+        /// state exceptions, so the only defense is routing by StorageType and never calling AsValueString
+        /// where it isn't defined. Doubles values keep AsValueString (project units, e.g. "1000").
+        /// </summary>
+        private static string ReadParameterValue(Document doc, Parameter p)
+        {
+            if (!p.HasValue) return string.Empty;
+            switch (p.StorageType)
+            {
+                case StorageType.String:
+                    return p.AsString() ?? string.Empty;
+                case StorageType.Integer: // incl. Yes/No — AsValueString renders "Yes"/"No"
+                case StorageType.Double:  // formatted in the project's display units
+                    return p.AsValueString() ?? string.Empty;
+                case StorageType.ElementId:
+                {
+                    // AsValueString on ElementId params is one of the known crash paths — resolve the
+                    // referenced element's name ourselves instead.
+                    ElementId id = p.AsElementId();
+                    if (id == ElementId.InvalidElementId) return string.Empty;
+                    return doc.GetElement(id)?.Name ?? string.Empty;
+                }
+                default: // StorageType.None — nothing to read, and AsValueString here can crash Revit
+                    return string.Empty;
+            }
         }
 
         /// <summary>
@@ -312,6 +361,13 @@ namespace AnalyseTool.Infrastructure
         [property: JsonProperty("name")] string Name,
         [property: JsonProperty("instanceCount")] int InstanceCount,
         [property: JsonProperty("parameters")] IReadOnlyList<FamilyParameterInfo> Parameters);
+
+    public sealed record TypeParametersInfo(
+        [property: JsonProperty("typeId")] long TypeId,
+        [property: JsonProperty("parameters")] IReadOnlyList<FamilyParameterInfo> Parameters);
+
+    public sealed record TypeParametersResult(
+        [property: JsonProperty("types")] IReadOnlyList<TypeParametersInfo> Types);
 
     public sealed record FamilyTypesResult(
         [property: JsonProperty("familyId")] long FamilyId,

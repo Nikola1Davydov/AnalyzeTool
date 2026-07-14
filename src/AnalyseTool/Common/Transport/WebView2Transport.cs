@@ -64,6 +64,19 @@ namespace AnalyseTool.Common.Transport
             Post(json);
         }
 
+        /// <summary>Pushes a host-initiated broadcast (no request Id) to this WebView — e.g. "the active
+        /// document changed". The frontend routes these by name (see RevitBridge's Event handling).</summary>
+        public void SendEvent(string name, object? payload = null)
+        {
+            string json = JsonConvert.SerializeObject(new WebViewMessage
+            {
+                Type = "Event",
+                Command = name,
+                Payload = payload is null ? JValue.CreateNull() : JToken.FromObject(payload)
+            });
+            Post(json);
+        }
+
         /// <summary>Posts to the WebView, tolerating a window/pane that was closed while a long command
         /// was still running — CoreWebView2 may be null or already disposed by then, and throwing here
         /// would surface inside an async-void handler (or a progress callback) and could crash Revit.</summary>

@@ -55,6 +55,26 @@ interface McpStatus {
 const data = ref<ExtensionsData | null>(null);
 const loading = ref(true);
 
+// --- changelog (CHANGELOG.md ships next to the plugin DLL; rendered as markdown on demand) ---------
+const changelogVisible = ref(false);
+const changelogHtml = ref<string | null>(null);
+const changelogError = ref<string | null>(null);
+async function openChangelog() {
+  changelogVisible.value = true;
+  if (changelogHtml.value) return; // fetched once per window
+  try {
+    const res = await invoke<{ markdown: string | null; error: string | null }>("GetChangelog");
+    if (res?.markdown) {
+      const { marked } = await import("marked"); // lazy — only when the dialog is opened
+      changelogHtml.value = await marked.parse(res.markdown);
+    } else {
+      changelogError.value = res?.error ?? "Changelog not available.";
+    }
+  } catch (e) {
+    changelogError.value = String((e as Error)?.message ?? e);
+  }
+}
+
 // Same update-check the main AnalyseTool window uses (CheckUpdate command), surfaced next to the version.
 const { updateInfo } = storeToRefs(useUpdateStore());
 
@@ -322,6 +342,14 @@ onMounted(() => {
           <div class="text-surface-500 text-xs">Plugin version</div>
           <div class="flex items-center gap-2 flex-wrap">
             <span>{{ data?.pluginVersion ?? "—" }}</span>
+            <button
+              type="button"
+              class="text-primary-600 underline text-xs"
+              v-tooltip.bottom="'Changelog'"
+              @click="openChangelog"
+            >
+              What's new
+            </button>
             <template v-if="updateInfo?.isUpdateAvailable">
               <span
                 class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
@@ -512,6 +540,21 @@ onMounted(() => {
       @created="reload"
     />
 
+    <!-- Changelog (CHANGELOG.md shipped with the plugin, rendered as markdown) -->
+    <Dialog
+      v-model:visible="changelogVisible"
+      modal
+      dismissableMask
+      header="What's new"
+      :style="{ width: 'min(44rem, 95vw)' }"
+    >
+      <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
+      <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
+        <i class="pi pi-spin pi-spinner mr-2" />Loading…
+      </div>
+      <div v-else class="changelog-body max-h-[65vh] overflow-y-auto pr-2" v-html="changelogHtml" />
+    </Dialog>
+
     <!-- C# code execution: gates the ad-hoc ExecuteRevitCode command (AI scratchpad). -->
     <section class="mt-8 border-t border-surface-200 pt-6">
       <div class="flex items-center gap-3 mb-1">
@@ -604,3 +647,43 @@ onMounted(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+/* Minimal markdown styling for the changelog dialog (marked outputs plain h2/ul/li/p). */
+.changelog-body :deep(h2) {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--p-surface-200);
+}
+.changelog-body :deep(h2:first-child) {
+  margin-top: 0;
+}
+.changelog-body :deep(h1) {
+  display: none; /* the dialog header already says what this is */
+}
+.changelog-body :deep(ul) {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.changelog-body :deep(ul ul) {
+  list-style: circle;
+  margin: 0.125rem 0;
+}
+.changelog-body :deep(li) {
+  font-size: 0.875rem;
+  margin: 0.125rem 0;
+}
+.changelog-body :deep(p) {
+  font-size: 0.875rem;
+  margin: 0.375rem 0;
+}
+.changelog-body :deep(code) {
+  background: var(--p-surface-100);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-size: 0.8em;
+}
+</style>

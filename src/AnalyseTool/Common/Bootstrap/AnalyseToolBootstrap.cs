@@ -26,6 +26,7 @@ namespace AnalyseTool.Common.Bootstrap
             Log.Information("Initializing AnalyseTool host (Revit {RevitVersion})", uiApp.Application.VersionNumber);
 
             Context.Init(uiApp);
+            DocumentTracker.Initialize(uiApp);
 
             // Created here because ExternalEvent.Create requires a valid Revit API context,
             // and IExternalCommand.Execute (our caller) is one.
