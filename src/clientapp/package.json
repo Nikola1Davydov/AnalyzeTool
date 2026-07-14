@@ -16,6 +16,7 @@
     "@primeuix/themes": "^1.2.5",
     "@tailwindcss/vite": "^4.1.17",
     "chart.js": "^4.5.1",
+    "marked": "^18.0.6",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.4.1",
