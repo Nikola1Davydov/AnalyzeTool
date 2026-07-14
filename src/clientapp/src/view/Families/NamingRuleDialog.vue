@@ -90,7 +90,7 @@ watch(paramToken, (p) => {
 // element's real data and returns a template + implied abbreviations. The AI authors an editable rule —
 // the live preview below immediately shows what it does; applying stays deterministic.
 const aiStore = useAiSettingsStore();
-const { selectedModel, aiEnabled } = storeToRefs(aiStore);
+const { selectedModel, selectedProvider, aiEnabled } = storeToRefs(aiStore);
 const example = ref("");
 const sampleIndex = ref(0);
 const inferring = ref(false);
@@ -114,6 +114,7 @@ async function inferTemplate() {
       error: string | null;
     }>(Commands.OllamaSuggestTemplate, {
       model: selectedModel.value,
+      provider: selectedProvider.value,
       example: example.value.trim(),
       name: ctx.name,
       family: ctx.family,

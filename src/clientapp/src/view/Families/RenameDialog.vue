@@ -25,7 +25,7 @@ const emit = defineEmits<{ submit: [name: string] }>();
 
 const toast = useToast();
 const aiStore = useAiSettingsStore();
-const { selectedModel, aiEnabled } = storeToRefs(aiStore);
+const { selectedModel, selectedProvider, aiEnabled } = storeToRefs(aiStore);
 
 const value = ref(props.currentName);
 const aiMode = ref(false);
@@ -46,6 +46,7 @@ async function suggest() {
   try {
     const res = await invoke<{ name: string | null; error: string | null }>(Commands.OllamaSuggestName, {
       model: selectedModel.value,
+      provider: selectedProvider.value,
       prompt: prompt.value,
       currentName: value.value,
       context: props.context,

@@ -30,7 +30,7 @@ namespace AnalyseTool.Features.Ai
 
             try
             {
-                AiAnalysisService ai = new AiAnalysisService(req.Model);
+                AiAnalysisService ai = new AiAnalysisService(req.Provider, req.Model);
                 var items = req.Items
                     .Select(i => new AiAnalysisService.NameItem(i.Id, i.CurrentName ?? string.Empty, i.Context ?? string.Empty))
                     .ToList();
@@ -53,8 +53,11 @@ namespace AnalyseTool.Features.Ai
 
         public sealed class Request
         {
-            [Description("Ollama model name to use.")]
+            [Description("Model name to use.")]
             public string? Model { get; set; }
+
+            [Description("AI provider id (AiGetProviders); omit for the built-in local Ollama.")]
+            public string? Provider { get; set; }
 
             [Description("Free-text instruction applied consistently to the whole batch.")]
             public string? Prompt { get; set; }

@@ -186,6 +186,7 @@ async function runAI() {
       items: paramItems,
       prompt: aiPrompt.value,
       model: aiSettingsStore.selectedModel!,
+      provider: aiSettingsStore.selectedProvider,
     });
 
     rawAiResponse.value = detail.raw ?? null;
@@ -237,6 +238,7 @@ async function runAIRaw() {
       items: paramItems,
       prompt: aiPrompt.value,
       model: aiSettingsStore.selectedModel!,
+      provider: aiSettingsStore.selectedProvider,
     });
     rawAiResponse.value = typeof detail === "string" ? detail : JSON.stringify(detail);
     showRawPanel.value = true;

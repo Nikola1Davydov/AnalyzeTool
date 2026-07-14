@@ -18,7 +18,7 @@ namespace AnalyseTool.Features.Ai
 
             try
             {
-                AiAnalysisService ai = new AiAnalysisService(request.Model);
+                AiAnalysisService ai = new AiAnalysisService(request.Provider, request.Model);
                 return await ai.AnalyzeAsync(request.Items, request.Prompt);
             }
             catch (OperationCanceledException)

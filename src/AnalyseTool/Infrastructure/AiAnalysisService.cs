@@ -10,11 +10,22 @@ namespace AnalyseTool.Infrastructure
     internal class AiAnalysisService
     {
         private readonly IChatClient _chat;
-        public AiAnalysisService(string model)
+        private readonly string _providerName;
+        private readonly string _model;
+        private readonly int _timeoutSeconds;
+
+        /// <summary>Back-compat: bare model name = the built-in local Ollama.</summary>
+        public AiAnalysisService(string model) : this(null, model) { }
+
+        /// <summary>Provider-aware: null/empty providerId falls back to local Ollama, anything else is
+        /// resolved through <see cref="AiProviderRegistry"/> (OpenAI-compatible endpoints included).</summary>
+        public AiAnalysisService(string? providerId, string model)
         {
-            _chat = new OllamaApiClient(new Uri("http://localhost:11434"), model);
+            (_chat, AiProvider provider) = AiClientFactory.Create(providerId, model);
+            _providerName = provider.DisplayName;
+            _model = model;
+            _timeoutSeconds = provider.TimeoutSeconds;
         }
-        private const int AiTimeoutSeconds = 120;
 
         public async Task<string> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
         {
@@ -261,8 +272,9 @@ namespace AnalyseTool.Infrastructure
         };
         private async Task<string> BuildAnswer(List<ChatMessage> chatHistory, ChatOptions chatOptions = default)
         {
-            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(AiTimeoutSeconds));
+            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(_timeoutSeconds));
             StringBuilder stringBuilder = new StringBuilder();
+            System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, cts.Token))
@@ -273,8 +285,24 @@ namespace AnalyseTool.Infrastructure
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                throw new UnauthorizedAccessException("Cloud model requires Ollama login. Run 'ollama login' in terminal.");
+                Serilog.Log.Warning("AI call unauthorized ({Provider}/{Model})", _providerName, _model);
+                throw new UnauthorizedAccessException(
+                    "The AI endpoint rejected the request (401). Check the provider's API key in Settings " +
+                    "(for Ollama cloud models: run 'ollama login').");
             }
+            catch (OperationCanceledException)
+            {
+                Serilog.Log.Warning("AI call timed out after {Timeout}s ({Provider}/{Model})",
+                    _timeoutSeconds, _providerName, _model);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "AI call failed ({Provider}/{Model})", _providerName, _model);
+                throw;
+            }
+            Serilog.Log.Information("AI call ok: {Provider}/{Model}, {Elapsed} ms, {Chars} chars",
+                _providerName, _model, watch.ElapsedMilliseconds, stringBuilder.Length);
             return stringBuilder.ToString();
         }
 

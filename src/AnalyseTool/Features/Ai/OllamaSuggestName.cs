@@ -26,7 +26,7 @@ namespace AnalyseTool.Features.Ai
 
             try
             {
-                AiAnalysisService ai = new AiAnalysisService(req.Model);
+                AiAnalysisService ai = new AiAnalysisService(req.Provider, req.Model);
                 string name = await ai.SuggestNameAsync(
                     req.CurrentName ?? string.Empty, req.Context ?? string.Empty, req.Prompt ?? string.Empty);
                 return new { name, error = (string?)null };
@@ -43,8 +43,11 @@ namespace AnalyseTool.Features.Ai
 
         public sealed class Request
         {
-            [Description("Ollama model name to use.")]
+            [Description("Model name to use.")]
             public string? Model { get; set; }
+
+            [Description("AI provider id (AiGetProviders); omit for the built-in local Ollama.")]
+            public string? Provider { get; set; }
 
             [Description("Free-text instruction, e.g. 'translate to English' or 'add prefix WALL_'.")]
             public string? Prompt { get; set; }
