@@ -21,6 +21,24 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 
 <details>
 <summary><b>Compatibility, installation details & troubleshooting</b></summary>
+### Installation
+1. Download the installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) — pick **SingleUser** (current user, no admin) or **MultiUser** (all users, needs admin).
+2. If you switch between SingleUser and MultiUser, **uninstall the previous AnalyseTool first** (otherwise you may end up with two copies / a duplicate ribbon).
+3. Close Revit, then run the installer. Windows SmartScreen may warn "unknown publisher" (the build isn't code-signed yet) — choose **More info → Run anyway**.
+4. Start Revit and open the **AnalyseTool** ribbon tab.
+
+### AI setup
+Install [Ollama](https://ollama.com/download) and keep it running. Then in **Settings** pick the model once — it's shared across every AnalyseTool window:
+- **Local models** (recommended): free local Ollama models.
+- **Cloud models** (optional): add a model name manually; saved cloud models are remembered.
+
+### Troubleshooting
+- **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
+- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (Settings → Reload).
+- **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
+- **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
+- **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
+</details>
 
 ### Compatibility
 - Revit 2025–2027 on Windows.
@@ -87,27 +105,6 @@ Switch to **Library** mode to browse your `.rfa` folders: each file shows its em
 
 ---
 
-
-### Installation
-1. Download the installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) — pick **SingleUser** (current user, no admin) or **MultiUser** (all users, needs admin).
-2. If you switch between SingleUser and MultiUser, **uninstall the previous AnalyseTool first** (otherwise you may end up with two copies / a duplicate ribbon).
-3. Close Revit, then run the installer. Windows SmartScreen may warn "unknown publisher" (the build isn't code-signed yet) — choose **More info → Run anyway**.
-4. Start Revit and open the **AnalyseTool** ribbon tab.
-
-### AI setup
-Install [Ollama](https://ollama.com/download) and keep it running. Then in **Settings** pick the model once — it's shared across every AnalyseTool window:
-- **Local models** (recommended): free local Ollama models.
-- **Cloud models** (optional): add a model name manually; saved cloud models are remembered.
-
-### Troubleshooting
-- **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
-- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (Settings → Reload).
-- **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
-- **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
-- **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
-</details>
-
----
 
 # 🛠️ Build on it — the framework
 
