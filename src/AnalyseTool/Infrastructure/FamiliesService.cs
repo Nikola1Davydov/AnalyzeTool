@@ -128,11 +128,41 @@ namespace AnalyseTool.Infrastructure
             foreach (Parameter p in type.Parameters)
             {
                 if (p?.Definition is null) continue;
-                string value = p.AsValueString() ?? p.AsString() ?? string.Empty;
+                string value = ReadParameterValue(type.Document, p);
                 if (string.IsNullOrEmpty(value) && !includeEmpty) continue;
                 list.Add(new FamilyParameterInfo(p.Definition.Name, value));
             }
             return list.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Reads a parameter's display value WITHOUT ever hitting the native-crash paths:
+        /// Parameter.AsValueString throws an uncatchable AccessViolationException on some parameters
+        /// (StorageType.None, HasValue=false, certain ElementId params) — .NET cannot catch corrupted-
+        /// state exceptions, so the only defense is routing by StorageType and never calling AsValueString
+        /// where it isn't defined. Doubles values keep AsValueString (project units, e.g. "1000").
+        /// </summary>
+        private static string ReadParameterValue(Document doc, Parameter p)
+        {
+            if (!p.HasValue) return string.Empty;
+            switch (p.StorageType)
+            {
+                case StorageType.String:
+                    return p.AsString() ?? string.Empty;
+                case StorageType.Integer: // incl. Yes/No — AsValueString renders "Yes"/"No"
+                case StorageType.Double:  // formatted in the project's display units
+                    return p.AsValueString() ?? string.Empty;
+                case StorageType.ElementId:
+                {
+                    // AsValueString on ElementId params is one of the known crash paths — resolve the
+                    // referenced element's name ourselves instead.
+                    ElementId id = p.AsElementId();
+                    if (id == ElementId.InvalidElementId) return string.Empty;
+                    return doc.GetElement(id)?.Name ?? string.Empty;
+                }
+                default: // StorageType.None — nothing to read, and AsValueString here can crash Revit
+                    return string.Empty;
+            }
         }
 
         /// <summary>
