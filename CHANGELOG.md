@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.3] / 2026-07-14
+
+- 🏗️ **Revit 2027 support** — the plugin (and the extension SDK / build configs) now covers Revit 2025, 2026 and 2027.
+- 🌐 **Multiple AI providers** — connect any OpenAI-compatible endpoint (OpenAI, OpenRouter, Groq, Mistral — or local LM Studio / vLLM) next to the built-in local Ollama: add providers in Settings (base URL + API key + test connection), pick the provider & model once and every AI feature uses it. API keys are stored encrypted (Windows DPAPI) on your machine and never leave it; clear messages for rate-limit / key / credit errors.
+- 🔤 **Naming rules** — compose family/type names from real data with reusable templates, e.g. `{category|abbr}_{param:Material|abbr}_{param:Width}x{param:Height}` → `Möb_Alu_1000x2000`: token builder with the actual parameters of your selection, a shared abbreviation dictionary, live preview on real elements, and one-click apply with review. Rules are deterministic — same input, same names, no AI required to apply.
+- ✨ **AI creates the rule from one example** — type the name you WANT for a sample element and the AI reverse-engineers the template and the abbreviations for you; you review the live preview and save.
+- ☑️ **Multi-select & bulk rename** — select many families or types (checkboxes) and rename them all at once: by naming rule or with a free-text AI instruction (one request for the whole list → consistent scheme), with an editable review table, name-conflict detection and live progress. Bulk delete and the workset move now live in the same contextual bar.
+- 🧲 Component palette — auto-reloads when you switch the active document (and shows a clean "no open document" state); right-click a family → **View in 3D** (the interactive viewer, straight from the palette); tidier toolbar (view & settings moved into the collapsible source row).
+- 🛠️ Fixed the dockable pane sometimes staying **black** when Revit restored it at startup — the pane now initializes reliably, recovers from browser-process crashes, and shows a visible error with a Retry button instead of an empty surface.
+- 🔧 Fixed saved filter rules not working for family **types** in the Family Manager.
+- 📖 Settings — new **"What's new"** button next to the plugin version opens the changelog (shipped with the plugin).
+
 ## [1.4.2] / 2026-07-02
 
 - 🧱 **Family Manager** — a new second ribbon button opening a dedicated window to browse, audit and manage the project's families.

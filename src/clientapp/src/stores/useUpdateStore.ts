@@ -14,7 +14,6 @@ export const useUpdateStore = defineStore("updateInfo", () => {
   const updateInfo = ref<UpdateInfo>({});
 
   const setUpdateInfo = (info: UpdateInfo) => {
-    console.log("Setting update info:", info);
     updateInfo.value = {
       ...updateInfo.value,
       ...info,
