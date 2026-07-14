@@ -13,6 +13,19 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
 ---
+## Quick start
+
+1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
+2. **Open** — start Revit → the **AnalyseTool** ribbon tab.
+3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**.
+
+<details>
+<summary><b>Compatibility, installation details & troubleshooting</b></summary>
+
+### Compatibility
+- Revit 2025–2027 on Windows.
+- Requires the **Microsoft Edge WebView2 Runtime** (present on most up-to-date Windows; the plugin prompts with a download link if it's missing).
+---
 
 ## Two ways to use it
 
@@ -74,18 +87,6 @@ Switch to **Library** mode to browse your `.rfa` folders: each file shows its em
 
 ---
 
-## Quick start
-
-1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
-2. **Open** — start Revit → the **AnalyseTool** ribbon tab.
-3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**.
-
-<details>
-<summary><b>Compatibility, installation details & troubleshooting</b></summary>
-
-### Compatibility
-- Revit 2025–2027 on Windows.
-- Requires the **Microsoft Edge WebView2 Runtime** (present on most up-to-date Windows; the plugin prompts with a download link if it's missing).
 
 ### Installation
 1. Download the installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest) — pick **SingleUser** (current user, no admin) or **MultiUser** (all users, needs admin).
