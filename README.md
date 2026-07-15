@@ -18,6 +18,7 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
 2. **Open** — start Revit → the **AnalyseTool** ribbon tab.
 3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**.
+4. - YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
 <details>
 <summary><b>Compatibility, installation details & troubleshooting</b></summary>
@@ -53,7 +54,6 @@ Install [Ollama](https://ollama.com/download) and keep it running. Then in **Set
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
-- YouTube: https://www.youtube.com/@AnalyseTool-Revit
 ---
 
 
