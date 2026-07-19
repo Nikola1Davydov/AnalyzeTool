@@ -195,14 +195,21 @@ from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP �
 
 ```
 src/
-  AnalyseTool/          C# Revit plugin (host: commands, windows, dockable pane, dispatcher)
-  AnalyseTool.Sdk/      public SDK extension authors compile against
-  AnalyseTool.Launcher/ thin Revit add-in shim that loads the host in isolation
-  AnalyseTool.Mcp/      out-of-process MCP server (exposes commands to AI agents)
-  clientapp/            Vue 3 + Vite + PrimeVue frontend
-  Installer/            packaging & installation assets
-samples/                example extensions
+  AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
+  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), scripting
+  AnalyseTool.Tools/      built-in feature commands (Get/Families/Ai/Actions) — references ONLY the Sdk
+  AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
+  AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)
+  AnalyseTool.App/        host UI: windows, ribbon, dockable pane, WebView2 transport, bootstrap
+  AnalyseTool.Launcher/   thin Revit add-in shim that loads the host in isolation
+  clientapp/              Vue 3 + Vite + PrimeVue frontend
+  Installer/              packaging & installation assets
+samples/                  example extensions (Acme.Sample doubles as the SDK guardrail in CI)
 ```
+
+Dependency contract (enforced by `src/build/Check-Boundaries.ps1` in CI): extensions and
+`Tools` see only the `Sdk`; transports (`Mcp.Bridge`) plug into `Core` from outside; `App`
+composes everything; `Core` and `Tools` are headless (no WPF).
 
 
 ## Feedback

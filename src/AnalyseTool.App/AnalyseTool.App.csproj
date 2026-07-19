@@ -65,7 +65,6 @@
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
 	<ItemGroup>
-		<BuiltFiles Include="$(TargetDir)*.*" Exclude="$(TargetDir)*.pdb;$(TargetDir)*.addin" />
 		<Compile Remove="AboutMe\**" />
 		<Compile Remove="archiv\**" />
 		<Compile Remove="Config\**" />
@@ -86,8 +85,6 @@
 		<Page Remove="Config\**" />
 		<Page Remove="Resources\**" />
 		<Page Remove="Web\**" />
-
-		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
 	</ItemGroup>
     
 	<!-- MCP server + clientapp/dist copying — shared with the Launcher (single source of truth). -->

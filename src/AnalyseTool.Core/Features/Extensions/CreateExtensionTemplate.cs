@@ -360,23 +360,37 @@ namespace AnalyseTool.Core.Features.Extensions
             ## 4. C# project setup (NuGet — the easy way)
 
             ```
-            dotnet add package AnalyseTool.Sdk --prerelease
+            dotnet add package AnalyseTool.Sdk
             ```
 
-            Minimal `.csproj`:
+            Minimal `.csproj` — declare the TFM and the Revit API packages yourself (NuGet ignores
+            build props shipped inside packages during restore, so the SDK package cannot add them):
             ```xml
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
+                <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
+                <TargetFramework>net8.0-windows</TargetFramework>
+                <PlatformTarget>x64</PlatformTarget>
                 <RootNamespace>Acme.Doors</RootNamespace>
                 <AssemblyName>Acme.Doors</AssemblyName>
               </PropertyGroup>
               <ItemGroup>
-                <PackageReference Include="AnalyseTool.Sdk" Version="1.0.*-*" />
+                <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
               </ItemGroup>
             </Project>
             ```
-            The package brings the `Debug/Release R25` + `R26` build configurations, the `net8.0-windows` target,
-            and the Revit API (compile-only). Build with a year config: `dotnet build -c "Release R25"` (or `R26`).
+            Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`)
+            and, for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
 
             > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
             > extension's load context shares the host's copies (type identity), so **do not ship copies of those

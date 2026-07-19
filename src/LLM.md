@@ -5,7 +5,7 @@
 > contract, the manifest schema, the rules, and worked examples — everything the model needs to
 > generate a correct extension in one shot.
 
-You are helping write **extensions for AnalyseTool**, a Revit 2025/2026 add-in. Extensions add
+You are helping write **extensions for AnalyseTool**, a Revit 2025/2026/2027 add-in. Extensions add
 functionality **without rebuilding the host** — the user drops a folder into their extensions
 directory and clicks **Reload**.
 
@@ -192,21 +192,34 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 dotnet add package AnalyseTool.Sdk
 ```
 
-Minimal `.csproj`:
+Minimal `.csproj` — declare the TFM and the Revit API packages yourself (NuGet ignores build props
+shipped inside packages during restore, so the SDK package cannot add them for you):
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Acme.Doors</RootNamespace>
     <AssemblyName>Acme.Doors</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*" />
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>
 ```
-The package brings the `Debug/Release R25`, `R26` and `R27` build configurations, the matching target
-(`net8.0-windows` for R25/R26, `net10.0-windows` for R27) and the Revit API (compile-only). Build with a
-year config: `dotnet build -c "Release R25"` (or `R26` / `R27`).
+Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`) and,
+for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
 
 > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
 > extension's load context shares the host's copies (type identity), so **do not ship copies of those
@@ -263,7 +276,7 @@ const { commands } = await window.AT.invoke("GetCommands");
     index.html           (UI)
     icon.png             (optional)
 ```
-- `<RevitYear>` = `2025` or `2026`.
+- `<RevitYear>` = `2025`, `2026` or `2027`.
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 

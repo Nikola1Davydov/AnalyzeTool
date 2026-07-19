@@ -1,13 +1,11 @@
-﻿using AnalyseTool.App;
-using AnalyseTool.App.Common;
-using AnalyseTool.Core;
+﻿using AnalyseTool.App.Common;
 using AnalyseTool.Core.Common;
 using Microsoft.Web.WebView2.Core;
 using System.Windows;
 using System.Windows.Interop;
 
 
-namespace AnalyseTool
+namespace AnalyseTool.App
 {
     /// <summary>
     /// Interaktionslogik für MainWindow.xaml

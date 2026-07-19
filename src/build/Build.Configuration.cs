@@ -18,23 +18,6 @@ sealed partial class Build
     ];
 
     /// <summary>
-    ///     Projects packed in the Autodesk Bundle.
-    /// </summary>
-    Project[] Bundles =>
-    [
-        Solution.clientapp,
-        Solution.AnalyseTool_Launcher,
-    ];
-
-    /// <summary>
-    ///     Mapping between used installer project and the project containing the installation files.
-    /// </summary>
-    Dictionary<Project, Project> InstallersMap => new()
-    {
-        { Solution.Installer, Solution.AnalyseTool_App }
-    };
-
-    /// <summary>
     ///     Path to build output.
     /// </summary>
     readonly AbsolutePath ArtifactsDirectory = RootDirectory / "output";

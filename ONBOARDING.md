@@ -111,36 +111,53 @@ touched).
 
 ### 4.1 Project setup
 
-**The easy way — NuGet.** Install the SDK package; it brings the contract, the `Debug/Release R25`
-and `R26` build configurations, the right `net8.0-windows` TFM, and the Revit API (compile-only,
-per your chosen config) automatically:
+**The easy way — NuGet.** Install the SDK package for the contract, and declare the target
+framework and the Revit API packages yourself (NuGet deliberately ignores build props shipped
+inside packages during restore, so a package **cannot** add those references for you):
 
 ```
 dotnet add package AnalyseTool.Sdk
 ```
 
-A minimal extension `.csproj` is then just:
+A minimal extension `.csproj`:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Acme.Sample</RootNamespace>
     <AssemblyName>Acme.Sample</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*" />
+    <!-- Compile-only on purpose (see the type-identity note below): the host owns these DLLs. -->
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>
 ```
+
+Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`)
+and, for 2027, the TFM to `net10.0-windows`. (CI builds `samples/Acme.Sample` against the freshly
+packed SDK in exactly this mode — `-p:UseSdkPackage=true` — so this path stays verified.)
 
 > **Tip:** you don't have to write this by hand — **AnalyseTool tab → Settings → New template → C#**
 > scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
 > write commands for you).
 
-Build with a year config (`dotnet build -c "Release R25"`, `"Release R26"` or `"Release R27"`), then deploy your
-DLL + `plugin.json`. (Don't worry about copying the SDK/Revit/Newtonsoft DLLs — the host owns them
-and the extension's load context shares the host's copies, so type identity stays intact even if a
-copy ends up beside your DLL.)
+Build (`dotnet build -c Release`), then deploy your DLL + `plugin.json`. (Don't worry about copying
+the SDK/Revit/Newtonsoft DLLs — the host owns them and the extension's load context shares the
+host's copies, so type identity stays intact even if a copy ends up beside your DLL.)
 
 **The in-repo way (alternative).** If you build inside this repository, copy
 `samples/Acme.Sample/Acme.Sample.csproj`, which references the SDK by project and imports the shared
