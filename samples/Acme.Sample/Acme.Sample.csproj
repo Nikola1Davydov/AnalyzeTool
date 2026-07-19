@@ -1,6 +1,40 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+  <!--
+    TWO build modes — this sample doubles as the SDK's guardrail:
+
+    1. Default (developer inner loop): ProjectReference to the in-repo Sdk + explicit props import.
+    2. Package mode (CI):  -p:UseSdkPackage=true -p:SdkPackageVersion=<version>
+       References the PACKED AnalyseTool.Sdk.nupkg exactly like an external extension author —
+       the props then come from the package's build/ folder (NuGet auto-import), so a broken
+       package (missing props, narrowed contract) fails THIS build.
+  -->
+
+  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" Condition="'$(UseSdkPackage)' != 'true'" />
+
+  <!-- Package mode declares TFM, RevitVersion AND the Revit API packages itself. This is not a
+       workaround, it is THE external-author contract: NuGet deliberately ignores props shipped
+       inside packages during restore (ExcludeRestorePackageImports), so PackageReferences that
+       Extension.props adds from the nupkg are invisible to restore — every SDK consumer must
+       declare the Revit API packages in their own csproj (one ItemGroup, standard in Revit dev). -->
+  <PropertyGroup Condition="'$(UseSdkPackage)' == 'true'">
+    <RevitVersion Condition="'$(RevitVersion)' == '' and $(Configuration.Contains('R27'))">2027</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' and $(Configuration.Contains('R26'))">2026</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2025</RevitVersion>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and $(Configuration.Contains('R27'))">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseSdkPackage)' == 'true'">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
 
   <PropertyGroup>
       <LangVersion>latest</LangVersion>
@@ -11,12 +45,19 @@
     <AssemblyName>Acme.Sample</AssemblyName>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseSdkPackage)' != 'true'">
     <!-- Private=false: compile against the SDK, but do NOT copy it to output.
          The host owns AnalyseTool.Sdk.dll; the extension's ALC shares it (type identity). -->
     <ProjectReference Include="..\..\src\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
       <Private>false</Private>
     </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseSdkPackage)' == 'true'">
+    <!-- Same rule for the package: compile-only, the host provides the runtime copy. -->
+    <PackageReference Include="AnalyseTool.Sdk" Version="$(SdkPackageVersion)">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -27,5 +68,19 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- Debug builds auto-deploy into the live extensions folder: a PERMANENT smoke test of the real
+       collectible-ALC loading path. If a host change breaks type identity across the SDK surface,
+       the very next Revit start (or Reload) shows it — long before an external author hits it. -->
+  <Target Name="DeployToExtensionsFolder" AfterTargets="Build" Condition="$(Configuration.Contains('Debug'))">
+    <PropertyGroup>
+      <AcmeExtensionDir>$(LOCALAPPDATA)\AnalyseTool\extensions\$(RevitVersion)\Acme.Sample</AcmeExtensionDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <AcmeDeployFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AcmeDeployFiles)" DestinationFolder="$(AcmeExtensionDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Text="Acme.Sample deployed to $(AcmeExtensionDir)" Importance="high" />
+  </Target>
 
 </Project>
