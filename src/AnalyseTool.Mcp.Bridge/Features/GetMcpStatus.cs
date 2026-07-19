@@ -1,7 +1,7 @@
-using AnalyseTool.Core.Common.Transport;
+﻿using AnalyseTool.Mcp.Bridge;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Core.Features.Mcp
+namespace AnalyseTool.Mcp.Bridge.Features
 {
     /// <summary>Returns the MCP bridge status (running/port/enabled + the server exe path) for the
     /// Settings page.</summary>

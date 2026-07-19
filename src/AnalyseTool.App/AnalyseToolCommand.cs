@@ -30,7 +30,7 @@ namespace AnalyseTool.App
                 window.Closed += WindowClosed;
 
                 // All commands (built-in + extensions) are dispatched via Sdk.IRevitTask.
-                WebView2Transport transport = new WebView2Transport(window.webView, CoreServices.Dispatcher);
+                WebView2Transport transport = new WebView2Transport(window.webView, CoreServices.Queue);
                 transport.Attach();
 
                 Show(window);

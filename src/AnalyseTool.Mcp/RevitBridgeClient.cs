@@ -25,15 +25,15 @@ internal sealed class RevitBridgeClient
         // instead of letting the AI client time the server out (~30s) and mark it disconnected.
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(8));
-        return await SendAsync(new JsonObject { ["type"] = "list" }, timeout.Token);
+        return await SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeList }, timeout.Token);
     }
 
     public Task<JsonNode?> InvokeAsync(string command, JsonNode? payload, CancellationToken ct)
-        => SendAsync(new JsonObject { ["type"] = "invoke", ["command"] = command, ["payload"] = payload }, ct);
+        => SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeInvoke, [McpWire.Command] = command, [McpWire.Payload] = payload }, ct);
 
     private async Task<JsonNode?> SendAsync(JsonObject envelope, CancellationToken ct)
     {
-        envelope["id"] = Guid.NewGuid().ToString("N");
+        envelope[McpWire.Id] = Guid.NewGuid().ToString("N");
 
         using var client = new TcpClient();
 
@@ -61,9 +61,9 @@ internal sealed class RevitBridgeClient
 
         string responseText = await ReadJsonAsync(stream, ct);
         JsonNode? node = JsonNode.Parse(responseText);
-        if (node?["error"] is JsonNode err)
+        if (node?[McpWire.Error] is JsonNode err)
             throw new InvalidOperationException(err.GetValue<string>());
-        return node?["result"]?.DeepClone();
+        return node?[McpWire.Result]?.DeepClone();
     }
 
     /// <summary>Reads bytes until the buffer is one complete JSON value (the response may span

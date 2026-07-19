@@ -57,6 +57,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+        <ProjectReference Include="..\AnalyseTool.Mcp.Bridge\AnalyseTool.Mcp.Bridge.csproj" />
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
         <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
     </ItemGroup>

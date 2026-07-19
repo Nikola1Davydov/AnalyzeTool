@@ -45,7 +45,7 @@ namespace AnalyseTool.App.Common.Extensions
             // (works the same on a dev-server origin or the virtual host).
             await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ExtensionBridgeScript.Js);
 
-            _transport = new WebView2Transport(_webView, CoreServices.Dispatcher);
+            _transport = new WebView2Transport(_webView, CoreServices.Queue);
             _transport.Attach();
 
             string? devUrl = _extension.Manifest.Ui?.DevUrl;

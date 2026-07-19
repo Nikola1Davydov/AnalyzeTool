@@ -45,7 +45,7 @@ namespace AnalyseTool.App
             _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             _webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
-            _transport = new WebView2Transport(_webView, CoreServices.Dispatcher);
+            _transport = new WebView2Transport(_webView, CoreServices.Queue);
             _transport.Attach();
 
             _webView.CoreWebView2.Navigate(ClientAppHost.ResolveUrl(_webView.CoreWebView2, Route));

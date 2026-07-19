@@ -19,7 +19,7 @@ namespace AnalyseTool.Core.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            var commands = CoreServices.Dispatcher.RegisteredCommands
+            var commands = CoreServices.Queue.RegisteredCommands
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(c => new
                 {

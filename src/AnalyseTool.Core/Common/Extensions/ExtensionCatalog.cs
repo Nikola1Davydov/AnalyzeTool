@@ -54,7 +54,10 @@ namespace AnalyseTool.Core.Common.Extensions
                 }
                 catch (Exception ex)
                 {
-                    UserDialogUtils.Error($"Failed to read extension manifest in '{dir}': {ex.Message}");
+                    // Log-only (no dialog from Core); the broken folder shows up in diagnostics keyed
+                    // by its directory name, so the Settings listing can still explain what's wrong.
+                    Serilog.Log.Error(ex, "Failed to read extension manifest in {Directory}", dir);
+                    ExtensionDiagnostics.SetError(Path.GetFileName(dir), $"Invalid plugin.json: {ex.Message}");
                 }
             }
 

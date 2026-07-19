@@ -11,7 +11,9 @@ namespace AnalyseTool.Core.Common.Bootstrap
     /// </summary>
     internal static class CoreServices
     {
-        public static CommandDispatcher Dispatcher { get; private set; } = null!;
+        /// <summary>The single entry point for command execution. Windows, ribbon and transports
+        /// go through this — the CommandDispatcher itself is not exposed on purpose.</summary>
+        public static CommandQueue Queue { get; private set; } = null!;
         public static ExtensionLoader Loader { get; private set; } = null!;
 
         /// <summary>Revit version year ("2025"), captured once at bootstrap. Lets platform commands
@@ -26,9 +28,9 @@ namespace AnalyseTool.Core.Common.Bootstrap
         /// has no knowledge of the ribbon.</summary>
         public static event Action? ExtensionsReloaded;
 
-        public static void Initialize(CommandDispatcher dispatcher, ExtensionLoader loader, string revitVersion)
+        public static void Initialize(CommandQueue queue, ExtensionLoader loader, string revitVersion)
         {
-            Dispatcher = dispatcher;
+            Queue = queue;
             Loader = loader;
             RevitVersion = revitVersion;
             IsInitialized = true;
@@ -42,7 +44,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
             Log.Information("Reloading extensions");
             Loader.UnloadAll();
             Loader.LoadAll();
-            Log.Information("Reload done — {CommandCount} commands registered", Dispatcher.RegisteredCommands.Count);
+            Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
             ExtensionsReloaded?.Invoke();
         }
     }

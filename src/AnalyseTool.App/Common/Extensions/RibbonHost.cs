@@ -341,8 +341,8 @@ namespace AnalyseTool.App.Common.Extensions
             {
                 try
                 {
-                    object? result = await CoreServices.Dispatcher
-                        .DispatchAsync(commandName, JValue.CreateNull(), CancellationToken.None);
+                    object? result = await CoreServices.Queue.ExecuteAsync(
+                        new Core.Common.Dispatch.CommandRequest(commandName, JValue.CreateNull(), "ribbon"));
                     string text = result is null
                         ? "(no result)"
                         : JToken.FromObject(result).ToString(Formatting.Indented);

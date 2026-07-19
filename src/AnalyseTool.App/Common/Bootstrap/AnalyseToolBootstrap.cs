@@ -3,7 +3,7 @@ using AnalyseTool.Core;
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions;
-using AnalyseTool.Core.Common.Transport;
+using AnalyseTool.Mcp.Bridge;
 using Autodesk.Revit.UI;
 using Serilog;
 using System.Reflection;
@@ -37,6 +37,7 @@ namespace AnalyseTool.App.Common.Bootstrap
             dispatcher.RegisterBuiltIns(
                 typeof(CommandDispatcher).Assembly,
                 typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly,
+                typeof(McpServerController).Assembly,
                 Assembly.GetExecutingAssembly());
 
             // Extensions may reference host/Tools types (they shouldn't, but be safe): share them
@@ -48,15 +49,19 @@ namespace AnalyseTool.App.Common.Bootstrap
             ExtensionLoader loader = new ExtensionLoader(dispatcher, revitVersion);
             loader.LoadAll();
 
+            // The queue is the ONLY way transports and UI reach command execution — the dispatcher
+            // itself never leaves this method.
+            CommandQueue queue = new CommandQueue(dispatcher);
+
             // From here on the platform is reachable ONLY through CoreServices (windows, dock panes,
             // ribbon and Core commands all use it); the reload event refreshes the ribbon buttons.
-            CoreServices.Initialize(dispatcher, loader, revitVersion);
+            CoreServices.Initialize(queue, loader, revitVersion);
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
-            // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
-            // auto-starts it if the user enabled it previously (persisted in mcp.json).
-            McpServerController.Initialize(dispatcher);
+            // MCP transport: the localhost TCP bridge enqueues into the SAME queue; auto-starts if
+            // the user enabled it previously (persisted in mcp.json).
+            McpServerController.Initialize(queue);
 
             Log.Information("AnalyseTool host ready — {CommandCount} commands registered", dispatcher.RegisteredCommands.Count);
         }

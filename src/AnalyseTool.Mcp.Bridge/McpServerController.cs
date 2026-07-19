@@ -1,9 +1,10 @@
+using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Dispatch;
 using Newtonsoft.Json;
 using Serilog;
 using System.IO;
 
-namespace AnalyseTool.Core.Common.Transport
+namespace AnalyseTool.Mcp.Bridge
 {
     /// <summary>
     /// Owns the single <see cref="McpBridgeServer"/> instance plus its persisted on/off + port
@@ -12,7 +13,7 @@ namespace AnalyseTool.Core.Common.Transport
     /// </summary>
     internal static class McpServerController
     {
-        public const int DefaultPort = 17890;
+        public const int DefaultPort = McpWire.DefaultPort;
 
         private static McpBridgeServer? _bridge;
         private static McpSettings _settings = new();
@@ -25,11 +26,11 @@ namespace AnalyseTool.Core.Common.Transport
         public static string ServerExePath =>
             Path.Combine(PathProvider.RootDirectory, "mcp", "AnalyseTool.Mcp.exe");
 
-        public static void Initialize(CommandDispatcher dispatcher)
+        public static void Initialize(CommandQueue queue)
         {
             if (_bridge != null) return;
 
-            _bridge = new McpBridgeServer(dispatcher);
+            _bridge = new McpBridgeServer(queue);
             _settings = Load();
 
             if (_settings.Enabled)

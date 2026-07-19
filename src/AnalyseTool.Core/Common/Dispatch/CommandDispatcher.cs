@@ -1,6 +1,7 @@
 using AnalyseTool.Sdk;
 using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using System.Reflection;
 
 namespace AnalyseTool.Core.Common.Dispatch
@@ -15,6 +16,11 @@ namespace AnalyseTool.Core.Common.Dispatch
         public IReadOnlyCollection<CommandRegistration> RegisteredCommands => _commands.Values;
 
         public bool IsRegistered(string command) => _commands.ContainsKey(command);
+
+        /// <summary>Resolved registration for a command name, or null. Used by the CommandQueue to
+        /// show a pre-execution gate the command's metadata (ReadOnly/Destructive/…).</summary>
+        public CommandRegistration? GetRegistration(string command) =>
+            _commands.TryGetValue(command, out CommandRegistration? reg) ? reg : null;
 
         /// <summary>Removes all extension-provided commands (keeps built-ins) so they can be reloaded.</summary>
         public void ClearExtensions()
@@ -86,9 +92,10 @@ namespace AnalyseTool.Core.Common.Dispatch
             string name = string.IsNullOrEmpty(prefix) ? baseName : $"{prefix}.{baseName}";
             if (_commands.TryGetValue(name, out CommandRegistration? existing))
             {
-                UserDialogUtils.Error(
-                    $"Command name conflict: '{name}' is already registered from '{existing.Source}'. " +
-                    $"Skipping registration from '{source}'.");
+                // Log-only (no dialog from Core): a conflict means the later registration is skipped,
+                // which the author notices in the Settings command list / extension diagnostics.
+                Log.Error("Command name conflict: {Name} is already registered from {Existing}; " +
+                          "skipping registration from {Source}", name, existing.Source, source);
                 return;
             }
 

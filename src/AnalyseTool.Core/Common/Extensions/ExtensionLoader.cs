@@ -58,9 +58,10 @@ namespace AnalyseTool.Core.Common.Extensions
                 }
                 catch (Exception ex)
                 {
+                    // No dialog from Core: the error is logged and lands in ExtensionDiagnostics,
+                    // which the Settings extension listing surfaces to the user.
                     ExtensionDiagnostics.SetError(descriptor.Manifest.Id, ex.Message);
                     Log.Error(ex, "Failed to load extension {Id}", descriptor.Manifest.Id);
-                    UserDialogUtils.Error($"Failed to load extension '{descriptor.Manifest.Id}': {ex.Message}");
                 }
             }
         }
@@ -84,7 +85,6 @@ namespace AnalyseTool.Core.Common.Extensions
                     string error = string.Join(Environment.NewLine, result.Errors);
                     ExtensionDiagnostics.SetError(id, error);
                     Log.Warning("Script extension {Id} failed to compile: {Errors}", id, error);
-                    UserDialogUtils.Error($"Extension '{id}' failed to compile:{Environment.NewLine}{error}");
                     return;
                 }
 
@@ -135,8 +135,10 @@ namespace AnalyseTool.Core.Common.Extensions
             // Different major = breaking contract change → reject cleanly.
             if (referencedSdk == null || referencedSdk.Major != _hostSdkVersion.Major)
             {
-                UserDialogUtils.Error($"Extension '{manifest.Id}' was built against AnalyseTool.Sdk " +
-                    $"{(referencedSdk?.ToString() ?? "<none>")}, incompatible with host SDK {_hostSdkVersion.Major}.x. Skipped.");
+                string error = $"Built against AnalyseTool.Sdk {(referencedSdk?.ToString() ?? "<none>")}, " +
+                    $"incompatible with host SDK {_hostSdkVersion.Major}.x. Skipped.";
+                ExtensionDiagnostics.SetError(manifest.Id, error);
+                Log.Warning("Extension {Id}: {Error}", manifest.Id, error);
                 alc.Unload(); // collectible context — drop the rejected assembly
                 return;
             }
@@ -147,8 +149,10 @@ namespace AnalyseTool.Core.Common.Extensions
             // fine — the shared host copy is version-agnostic, see ExtensionLoadContext.)
             if (referencedSdk > _hostSdkVersion)
             {
-                UserDialogUtils.Error($"Extension '{manifest.Id}' was built against AnalyseTool.Sdk " +
-                    $"{referencedSdk}, newer than this plugin's SDK {_hostSdkVersion}. Update the plugin to use it. Skipped.");
+                string error = $"Built against AnalyseTool.Sdk {referencedSdk}, newer than this plugin's " +
+                    $"SDK {_hostSdkVersion}. Update the plugin to use it. Skipped.";
+                ExtensionDiagnostics.SetError(manifest.Id, error);
+                Log.Warning("Extension {Id}: {Error}", manifest.Id, error);
                 alc.Unload();
                 return;
             }

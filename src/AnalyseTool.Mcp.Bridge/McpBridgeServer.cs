@@ -8,11 +8,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace AnalyseTool.Core.Common.Transport
+namespace AnalyseTool.Mcp.Bridge
 {
     /// <summary>
-    /// Third transport (beside WebView2Transport): a localhost TCP bridge that lets the out-of-process
-    /// MCP server (AnalyseTool.Mcp.exe) reach the SAME CommandDispatcher.
+    /// Second transport (beside WebView2Transport): a localhost TCP bridge that lets the out-of-process
+    /// MCP server (AnalyseTool.Mcp.exe) reach the SAME CommandQueue.
     ///
     /// Plain TCP + JSON (accumulate bytes until one complete JSON value parses) — NO WebSocket
     /// handshake/framing, since we own both ends. Bound to 127.0.0.1 (no admin / url-acl). The MCP
@@ -25,11 +25,13 @@ namespace AnalyseTool.Core.Common.Transport
     /// </summary>
     internal sealed class McpBridgeServer
     {
-        private readonly CommandDispatcher _dispatcher;
+        private const string Source = "mcp";
+
+        private readonly CommandQueue _queue;
         private TcpListener? _listener;
         private CancellationTokenSource? _cts;
 
-        public McpBridgeServer(CommandDispatcher dispatcher) => _dispatcher = dispatcher;
+        public McpBridgeServer(CommandQueue queue) => _queue = queue;
 
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
@@ -110,35 +112,36 @@ namespace AnalyseTool.Core.Common.Transport
             try
             {
                 JObject req = JObject.Parse(message);
-                id = (string?)req["id"];
-                string type = (string?)req["type"] ?? "invoke";
+                id = (string?)req[McpWire.Id];
+                string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
 
-                if (string.Equals(type, "list", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(type, McpWire.TypeList, StringComparison.OrdinalIgnoreCase))
                 {
                     // The code-execution tools (run + save) are only offered to the AI while C# execution
                     // is enabled in Settings (they still hard-refuse when off; hiding avoids tempting use).
                     bool codeExecEnabled = CodeExecutionSettings.Enabled;
 
-                    JArray commands = new(_dispatcher.RegisteredCommands
+                    JArray commands = new(_queue.RegisteredCommands
                         .Where(c => c.ExposeToMcp)
                         .Where(c => codeExecEnabled || !IsCodeExecTool(c.Name))
                         .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                         .Select(c => new JObject
                         {
-                            ["name"] = c.Name,
-                            ["source"] = c.Source,
-                            ["description"] = c.Description,
-                            ["readOnly"] = c.ReadOnly,
-                            ["destructive"] = c.Destructive,
-                            ["inputSchema"] = JToken.Parse(c.InputSchemaJson),
+                            [McpWire.Name] = c.Name,
+                            [McpWire.SourceField] = c.Source,
+                            [McpWire.Description] = c.Description,
+                            [McpWire.ReadOnly] = c.ReadOnly,
+                            [McpWire.Destructive] = c.Destructive,
+                            [McpWire.InputSchema] = JToken.Parse(c.InputSchemaJson),
                         }));
-                    return Ok(id, new JObject { ["commands"] = commands });
+                    return Ok(id, new JObject { [McpWire.Commands] = commands });
                 }
 
-                string command = (string?)req["command"] ?? string.Empty;
-                JToken payload = req["payload"] ?? JValue.CreateNull();
+                string command = (string?)req[McpWire.Command] ?? string.Empty;
+                JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
 
-                object? result = await _dispatcher.DispatchAsync(command, payload, ct).ConfigureAwait(false);
+                object? result = await _queue.ExecuteAsync(
+                    new CommandRequest(command, payload, Source) { CancellationToken = ct }).ConfigureAwait(false);
                 return Ok(id, result is null ? JValue.CreateNull() : JToken.FromObject(result));
             }
             catch (Exception ex)
@@ -153,10 +156,10 @@ namespace AnalyseTool.Core.Common.Transport
             string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
 
         private static string Ok(string? id, JToken result) =>
-            new JObject { ["id"] = id, ["result"] = result }.ToString(Formatting.None);
+            new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
 
         private static string Err(string? id, string message) =>
-            new JObject { ["id"] = id, ["error"] = message }.ToString(Formatting.None);
+            new JObject { [McpWire.Id] = id, [McpWire.Error] = message }.ToString(Formatting.None);
 
         /// <summary>
         /// Reads bytes until the accumulated buffer is one complete JSON value (handles a request that

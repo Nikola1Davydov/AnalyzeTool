@@ -10,13 +10,15 @@ namespace AnalyseTool.App.Common.Transport
 {
     internal sealed class WebView2Transport
     {
-        private readonly WebView2 _webView;
-        private readonly CommandDispatcher _dispatcher;
+        private const string Source = "webview2";
 
-        public WebView2Transport(WebView2 webView, CommandDispatcher dispatcher)
+        private readonly WebView2 _webView;
+        private readonly CommandQueue _queue;
+
+        public WebView2Transport(WebView2 webView, CommandQueue queue)
         {
             _webView = webView;
-            _dispatcher = dispatcher;
+            _queue = queue;
         }
 
         public void Attach()
@@ -43,7 +45,8 @@ namespace AnalyseTool.App.Common.Transport
                 // Progress sink bound to THIS window + request id, so a progress-aware command's updates
                 // are pushed back only to the caller that started it.
                 IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info => SendProgress(command, id, info));
-                object? result = await _dispatcher.DispatchAsync(command, request.Payload, CancellationToken.None, progress);
+                object? result = await _queue.ExecuteAsync(
+                    new CommandRequest(command, request.Payload, Source) { Progress = progress });
                 // Always reply (null -> JSON null) so a caller awaiting this command's response resolves.
                 SendResponse(command, id, result);
             }

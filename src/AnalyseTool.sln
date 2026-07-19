@@ -30,6 +30,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решен
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Tools", "AnalyseTool.Tools\AnalyseTool.Tools.csproj", "{0091D5A5-7E59-4FD1-9794-CAACABC71D53}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Mcp.Bridge", "AnalyseTool.Mcp.Bridge\AnalyseTool.Mcp.Bridge.csproj", "{A8982C19-FE05-4D74-A47A-A475BDA933C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R25|Any CPU = Debug R25|Any CPU
@@ -367,6 +369,54 @@ Global
 		{8F016247-857B-4588-9D94-8B299C8CF83D}.Release|x64.Build.0 = Release|Any CPU
 		{8F016247-857B-4588-9D94-8B299C8CF83D}.Release|x86.ActiveCfg = Release|Any CPU
 		{8F016247-857B-4588-9D94-8B299C8CF83D}.Release|x86.Build.0 = Release|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|Any CPU.ActiveCfg = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|Any CPU.Build.0 = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|x64.ActiveCfg = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|x64.Build.0 = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|x86.ActiveCfg = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R25|x86.Build.0 = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|Any CPU.ActiveCfg = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|Any CPU.Build.0 = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|x64.ActiveCfg = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|x64.Build.0 = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|x86.ActiveCfg = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R26|x86.Build.0 = Debug R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|Any CPU.ActiveCfg = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|Any CPU.Build.0 = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|x64.ActiveCfg = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|x64.Build.0 = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|x86.ActiveCfg = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug R27|x86.Build.0 = Debug R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|Any CPU.ActiveCfg = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|Any CPU.Build.0 = Debug R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|x64.Build.0 = Debug|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Debug|x86.Build.0 = Debug|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|Any CPU.ActiveCfg = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|Any CPU.Build.0 = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|x64.ActiveCfg = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|x64.Build.0 = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|x86.ActiveCfg = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R25|x86.Build.0 = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|Any CPU.ActiveCfg = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|Any CPU.Build.0 = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|x64.ActiveCfg = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|x64.Build.0 = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|x86.ActiveCfg = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R26|x86.Build.0 = Release R26|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|Any CPU.ActiveCfg = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|Any CPU.Build.0 = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|x64.ActiveCfg = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|x64.Build.0 = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|x86.ActiveCfg = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release R27|x86.Build.0 = Release R27|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|Any CPU.ActiveCfg = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|Any CPU.Build.0 = Release R25|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|x64.ActiveCfg = Release|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|x64.Build.0 = Release|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|x86.ActiveCfg = Release|Any CPU
+		{A8982C19-FE05-4D74-A47A-A475BDA933C9}.Release|x86.Build.0 = Release|Any CPU
 		{09641FFA-119E-40FD-9E8A-B3853ACD31D7}.Debug R25|Any CPU.ActiveCfg = Debug R25|Any CPU
 		{09641FFA-119E-40FD-9E8A-B3853ACD31D7}.Debug R25|Any CPU.Build.0 = Debug R25|Any CPU
 		{09641FFA-119E-40FD-9E8A-B3853ACD31D7}.Debug R25|x64.ActiveCfg = Debug R25|Any CPU
@@ -511,6 +561,54 @@ Global
 		{0091D5A5-7E59-4FD1-9794-CAACABC71D53}.Release|x64.Build.0 = Release|Any CPU
 		{0091D5A5-7E59-4FD1-9794-CAACABC71D53}.Release|x86.ActiveCfg = Release|Any CPU
 		{0091D5A5-7E59-4FD1-9794-CAACABC71D53}.Release|x86.Build.0 = Release|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
+            Debug R25|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

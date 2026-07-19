@@ -3,8 +3,9 @@
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
     <PropertyGroup>
-        <!-- WPF: UserDialogUtils uses System.Windows.MessageBox. -->
-        <UseWPF>true</UseWPF>
+        <!-- Deliberately NO UseWPF: Core is headless. It serves UI transports and headless
+             transports (MCP, remote) alike — errors flow through the log and diagnostics,
+             never through dialogs. -->
         <LangVersion>latest</LangVersion>
         <PlatformTarget>x64</PlatformTarget>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -30,8 +31,11 @@
 
     <ItemGroup>
         <!-- The host keeps using Core internals until the split is complete; the types stay internal
-             so extensions (which may only see the Sdk contract) cannot bind to platform internals. -->
+             so extensions (which may only see the Sdk contract) cannot bind to platform internals.
+             Transport satellites get access to the CommandQueue the same way — one IVT line per
+             trusted transport project, nothing else in Core changes. -->
         <InternalsVisibleTo Include="AnalyseTool.App" />
+        <InternalsVisibleTo Include="AnalyseTool.Mcp.Bridge" />
     </ItemGroup>
 
 </Project>
