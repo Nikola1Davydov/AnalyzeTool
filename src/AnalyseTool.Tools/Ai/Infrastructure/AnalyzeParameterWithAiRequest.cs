@@ -1,6 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using AnalyseTool.Tools.Shared;
+using Newtonsoft.Json;
 
-namespace AnalyseTool.Tools.Infrastructure.Model
+namespace AnalyseTool.Tools.Ai
 {
     public sealed class AnalyzeParameterWithAiRequest()
     {

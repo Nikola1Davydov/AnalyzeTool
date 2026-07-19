@@ -1,6 +1,6 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
-namespace AnalyseTool.Tools.Infrastructure.Model
+namespace AnalyseTool.Tools.Elements
 {
     /// <summary>Lean element projection for AI/MCP callers — element identity plus only the
     /// parameters that were explicitly requested. Keeps tool responses token-small.</summary>

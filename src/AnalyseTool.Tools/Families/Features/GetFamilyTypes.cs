@@ -1,8 +1,11 @@
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Read-only: the types of one family, each with its placed-instance count and non-empty type

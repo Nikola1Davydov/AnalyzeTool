@@ -1,7 +1,7 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>Collects family-related information from a document.</summary>
     public sealed class FamiliesService

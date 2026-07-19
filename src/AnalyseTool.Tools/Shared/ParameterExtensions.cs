@@ -1,8 +1,11 @@
-﻿using AnalyseTool.Tools.Infrastructure.Model;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using System.Globalization;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Shared
 {
     internal static class ParameterExtensions
     {

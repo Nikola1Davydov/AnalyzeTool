@@ -1,7 +1,10 @@
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Read-only list of the document's user worksets (id, name, open/editable flags, owner). Returns

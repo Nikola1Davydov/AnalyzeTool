@@ -1,8 +1,8 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
 
-namespace AnalyseTool.Tools.Features.Ai
+namespace AnalyseTool.Tools.Ai
 {
     [RevitCommand(
         Description = "Returns { running, models } for the local Ollama service (model names for the AI " +

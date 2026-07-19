@@ -1,7 +1,10 @@
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Tools.Features.Get
+namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns imported (non-linked) CAD instances in the document (id, name). " +

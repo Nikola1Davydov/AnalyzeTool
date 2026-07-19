@@ -1,8 +1,11 @@
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Ai
 {
     /// <summary>
     /// Turns (providerId, model) into a ready <see cref="IChatClient"/>. The single place that knows

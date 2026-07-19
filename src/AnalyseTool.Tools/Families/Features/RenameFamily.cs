@@ -1,8 +1,11 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>Renames a family in the active document. Returns ok=false on a duplicate/invalid name.</summary>
     [RevitCommand(

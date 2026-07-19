@@ -1,8 +1,11 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Lists the family (.rfa) files under the given library folders, each tagged with its root folder and

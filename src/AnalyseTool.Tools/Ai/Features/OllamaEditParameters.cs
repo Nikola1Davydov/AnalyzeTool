@@ -1,8 +1,10 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
-using AnalyseTool.Tools.Infrastructure.Model;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 
-namespace AnalyseTool.Tools.Features.Ai
+namespace AnalyseTool.Tools.Ai
 {
     [RevitCommand(
         Description = "Asks the AI to propose parameter edits for the given items and returns the edits " +

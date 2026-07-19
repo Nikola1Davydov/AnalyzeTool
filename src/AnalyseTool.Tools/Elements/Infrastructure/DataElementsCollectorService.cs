@@ -1,7 +1,10 @@
-﻿using AnalyseTool.Tools.Infrastructure.Model;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Elements
 {
     public class DataElementsCollectorService
     {

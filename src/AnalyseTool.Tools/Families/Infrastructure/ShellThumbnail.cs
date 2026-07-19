@@ -1,10 +1,10 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Extracts the Windows Explorer thumbnail for a file (via <c>IShellItemImageFactory</c>) — for Revit

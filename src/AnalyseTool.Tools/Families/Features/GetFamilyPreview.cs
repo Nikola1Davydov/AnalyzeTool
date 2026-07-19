@@ -1,10 +1,10 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using System.ComponentModel;
 using System.Drawing.Imaging;
 using System.IO;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Renders a small PNG thumbnail (returned as a base64 data URI) for one family, via the Revit

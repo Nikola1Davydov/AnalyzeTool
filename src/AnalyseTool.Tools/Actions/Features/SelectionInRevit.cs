@@ -1,8 +1,8 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Features.Actions
+namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Selects the given elements (by id) in the active document.",

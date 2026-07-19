@@ -1,7 +1,7 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Tools.Features.Get
+namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns the active document's review warnings, each with its description and the " +

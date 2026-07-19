@@ -1,12 +1,15 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
-namespace AnalyseTool.Tools.Features.Actions
+namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +

@@ -1,9 +1,11 @@
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure.Model;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Features.Get
+namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns elements of a Revit category as a lean list (id, name, category, level, isType). " +

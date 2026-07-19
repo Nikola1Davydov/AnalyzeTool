@@ -1,4 +1,4 @@
-using AnalyseTool.App.Common.Extensions;
+﻿using AnalyseTool.App.Common.Extensions;
 using AnalyseTool.Core;
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
@@ -36,14 +36,14 @@ namespace AnalyseTool.App.Common.Bootstrap
             // Tools, host commands (CheckUpdate, GetChangelog, PickFolder, …) here.
             dispatcher.RegisterBuiltIns(
                 typeof(CommandDispatcher).Assembly,
-                typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly,
+                typeof(AnalyseTool.Tools.Families.GetFamilies).Assembly,
                 typeof(McpServerController).Assembly,
                 Assembly.GetExecutingAssembly());
 
             // Extensions may reference host/Tools types (they shouldn't, but be safe): share them
             // by simple name so crossing types keep one identity. Core registers itself already.
             ExtensionLoadContext.ShareWithExtensions(Assembly.GetExecutingAssembly());
-            ExtensionLoadContext.ShareWithExtensions(typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly);
+            ExtensionLoadContext.ShareWithExtensions(typeof(AnalyseTool.Tools.Families.GetFamilies).Assembly);
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
             ExtensionLoader loader = new ExtensionLoader(dispatcher, revitVersion);

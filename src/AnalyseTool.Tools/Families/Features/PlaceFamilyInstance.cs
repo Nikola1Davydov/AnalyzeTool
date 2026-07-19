@@ -1,10 +1,13 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using System.ComponentModel;
 using RevitCanceled = Autodesk.Revit.Exceptions.OperationCanceledException;
 
-namespace AnalyseTool.Tools.Features.Families
+namespace AnalyseTool.Tools.Families
 {
     /// <summary>
     /// Starts Revit's interactive placement for one loadable family type: activates the FamilySymbol if

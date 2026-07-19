@@ -1,8 +1,8 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Tools.Features.Get
+namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns summary information about the active Revit document (title, path and related metadata).",

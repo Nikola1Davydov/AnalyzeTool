@@ -1,7 +1,10 @@
-using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Infrastructure;
+﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Elements;
+using AnalyseTool.Tools.Families;
+using AnalyseTool.Tools.Shared;
 
-namespace AnalyseTool.Tools.Features.Get
+namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns the names of all element categories present in the active document. " +

@@ -1,4 +1,4 @@
-namespace AnalyseTool.Tools.Infrastructure.Model
+﻿namespace AnalyseTool.Tools.Shared
 {
     public enum ParameterOrigin
     {

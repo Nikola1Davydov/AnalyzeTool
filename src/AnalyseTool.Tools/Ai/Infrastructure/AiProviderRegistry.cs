@@ -1,10 +1,10 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Serilog;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Ai
 {
     public enum AiProviderType
     {

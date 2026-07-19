@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace AnalyseTool.Tools.Infrastructure
+namespace AnalyseTool.Tools.Ai
 {
     /// <summary>
     /// Minimal <see cref="IChatClient"/> over the OpenAI chat-completions protocol — the lingua franca
