@@ -13,12 +13,12 @@
 
     <ItemGroup>
         <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (RoslynScriptCompiler). -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <!-- CommandDispatcher generates JSON Schemas for command inputs via AIJsonUtilities. -->
-        <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="Microsoft.Extensions.AI" />
+        <PackageReference Include="Newtonsoft.Json" />
         <!-- Log calls only; the sinks are configured by the host (AppLog). -->
-        <PackageReference Include="Serilog" Version="4.2.0" />
+        <PackageReference Include="Serilog" />
     </ItemGroup>
 
     <ItemGroup>

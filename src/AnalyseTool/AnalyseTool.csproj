@@ -38,26 +38,28 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
-        <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" />
+        <PackageReference Include="Microsoft.Extensions.AI" />
         <!-- The host uses Newtonsoft directly (dispatcher, manifests, transport). Declared explicitly
              because the SDK no longer exposes it transitively (its ref is PrivateAssets=all). -->
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="Newtonsoft.Json" />
         <!-- Element.GetPreviewImage returns a System.Drawing.Bitmap (Family Control gallery). Compile-only:
              Revit provides the runtime copy, so we don't ship a duplicate and Bitmap keeps type identity
              with the instance Revit hands us. -->
-        <PackageReference Include="System.Drawing.Common" Version="8.0.0">
+        <PackageReference Include="System.Drawing.Common">
             <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
-        <PackageReference Include="OllamaSharp" Version="5.4.25" />
+        <PackageReference Include="Microsoft.Web.WebView2" />
+        <PackageReference Include="OllamaSharp" />
         <!-- DPAPI (Windows) — stored AI-provider API keys are encrypted per Windows user. -->
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" />
         <!-- File logging for beta triage (%LOCALAPPDATA%\AnalyseTool\logs). -->
-        <PackageReference Include="Serilog" Version="4.2.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-        <!-- Unofficial dynamic-ribbon API (Autodesk.Windows); provided by Revit at runtime. -->
-        <PackageReference Include="Nice3point.Revit.Api.AdWindows" Version="$(RevitVersion).*">
+        <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.Sinks.File" />
+        <!-- Unofficial dynamic-ribbon API (Autodesk.Windows); provided by Revit at runtime.
+             Floats per configuration, so the version lives here (VersionOverride), not in
+             Directory.Packages.props. -->
+        <PackageReference Include="Nice3point.Revit.Api.AdWindows" VersionOverride="$(RevitVersion).*">
             <PrivateAssets>all</PrivateAssets>
             <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>

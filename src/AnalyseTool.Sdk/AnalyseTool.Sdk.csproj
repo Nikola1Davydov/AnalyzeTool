@@ -43,7 +43,7 @@
     <!-- PrivateAssets=all: the SDK uses Newtonsoft internally, but consumers don't need it (the host
          provides it at runtime and the SDK's public surface doesn't expose it). So it is NOT a
          package dependency. -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+    <PackageReference Include="Newtonsoft.Json">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>

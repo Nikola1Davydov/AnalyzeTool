@@ -23,6 +23,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Mcp", "AnalyseT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Core", "AnalyseTool.Core\AnalyseTool.Core.csproj", "{22DC6FFB-A72F-4A65-9AC3-20F8B487DF08}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{AE751E58-A355-4CF5-B6A3-630C9AD13B0C}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Packages.props = Directory.Packages.props
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug R25|Any CPU = Debug R25|Any CPU

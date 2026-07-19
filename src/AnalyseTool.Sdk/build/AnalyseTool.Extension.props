@@ -42,12 +42,21 @@
         <TargetFramework>net10.0-windows</TargetFramework>
     </PropertyGroup>
 
+  <!-- The Revit API version floats with the configuration ($(RevitVersion).*), so it cannot live in a
+       central Directory.Packages.props. This file is consumed in BOTH worlds: the AnalyseTool repo
+       (Central Package Management ON — plain Version would be error NU1008, so VersionOverride) and
+       external extension authors via the NuGet package (CPM OFF — VersionOverride would be ignored
+       with NU1009, so plain Version). The conditional metadata picks the right attribute per world. -->
   <ItemGroup>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI">
+      <Version Condition="'$(ManagePackageVersionsCentrally)' != 'true'">$(RevitVersion).*</Version>
+      <VersionOverride Condition="'$(ManagePackageVersionsCentrally)' == 'true'">$(RevitVersion).*</VersionOverride>
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI">
+      <Version Condition="'$(ManagePackageVersionsCentrally)' != 'true'">$(RevitVersion).*</Version>
+      <VersionOverride Condition="'$(ManagePackageVersionsCentrally)' == 'true'">$(RevitVersion).*</VersionOverride>
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>

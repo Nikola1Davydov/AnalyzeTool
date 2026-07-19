@@ -12,9 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Autodesk.PackageBuilder" Version="2.0.1" />
-    <PackageReference Include="Nuke.Common" Version="9.0.4" />
-    <PackageReference Include="Octokit" Version="14.0.0" />
+    <PackageReference Include="Autodesk.PackageBuilder" />
+    <PackageReference Include="Nuke.Common" />
+    <PackageReference Include="Octokit" />
   </ItemGroup>
 
   <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
