@@ -89,32 +89,6 @@
 		<AddinFile Include="$(TargetDir)AnalyzeTool.addin" />
 	</ItemGroup>
     
-	<!-- Build the out-of-process MCP stdio server and ship it next to the plugin (in a "mcp"
-	     subfolder). The Settings page points the AI client's config at <plugin>\mcp\AnalyseTool.Mcp.exe. -->
-	<Target Name="BuildAndCopyMcpServer" AfterTargets="Build">
-		<Message Text="Building + copying AnalyseTool.Mcp server..." Importance="high" />
-
-		<MSBuild Projects="..\AnalyseTool.Mcp\AnalyseTool.Mcp.csproj" Properties="Configuration=$(Configuration)" Targets="Build" />
-
-		<ItemGroup>
-			<McpFiles Include="..\AnalyseTool.Mcp\bin\$(Configuration)\net8.0\**\*.*" />
-		</ItemGroup>
-
-		<Copy SourceFiles="@(McpFiles)" DestinationFolder="$(OutputPath)\mcp\%(RecursiveDir)" SkipUnchangedFiles="true" />
-	</Target>
-
-	<Target Name="CopyDistToRevitPlugin" AfterTargets="Build">
-		<Message Text="Copying clientapp/dist to Revit plugin..." Importance="high" />
-
-		<PropertyGroup>
-			<DistSource>$(SolutionDir)clientapp\dist</DistSource>
-			<DistTarget>$(OutputPath)</DistTarget>
-		</PropertyGroup>
-
-		<ItemGroup>
-			<DistFiles Include="$(DistSource)\**\*.*" />
-		</ItemGroup>
-
-		<Copy SourceFiles="@(DistFiles)" DestinationFolder="$(DistTarget)\%(RecursiveDir)" SkipUnchangedFiles="true" />
-	</Target>	
+	<!-- MCP server + clientapp/dist copying — shared with the Launcher (single source of truth). -->
+	<Import Project="..\PluginAssets.targets" />
 </Project>

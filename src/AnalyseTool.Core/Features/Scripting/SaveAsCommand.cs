@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
@@ -47,7 +47,7 @@ namespace AnalyseTool.Core.Features.Scripting
             if (!IsValidId(id))
                 throw new InvalidOperationException("Id may contain only letters, digits, '.', '-' and '_'.");
 
-            string version = Context.UiApplication.Application.VersionNumber; // year, e.g. "2025"
+            string version = CoreServices.RevitVersion; // year, e.g. "2025"
             string root = ResolveTargetRoot(req.TargetRoot);
             string versionDir = Path.Combine(root, version);
             string directory = Path.Combine(versionDir, id);

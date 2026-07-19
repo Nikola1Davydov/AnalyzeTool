@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
@@ -15,7 +16,7 @@ namespace AnalyseTool.Core.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            string version = Context.UiApplication.Application.VersionNumber;
+            string version = CoreServices.RevitVersion;
 
             var paths = ExtensionSources.Roots()
                 .Select(root => DescribeRoot(root, version))
@@ -114,7 +115,7 @@ namespace AnalyseTool.Core.Features.Extensions
             if (!Directory.Exists(data.BasePath))
                 throw new InvalidOperationException($"Folder does not exist: {data.BasePath}");
 
-            string version = Context.UiApplication.Application.VersionNumber;
+            string version = CoreServices.RevitVersion;
             string root = Path.Combine(data.BasePath, "extensions");
             Directory.CreateDirectory(Path.Combine(root, version));
             ExtensionSources.AddRoot(root);

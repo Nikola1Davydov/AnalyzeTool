@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.Core;
 using Autodesk.Revit.UI;
@@ -113,7 +114,7 @@ namespace AnalyseTool.App.Common.Docking
         /// </summary>
         public static Task EnsureReadyAsync()
         {
-            if (AnalyseToolBootstrap.IsInitialized) return Task.CompletedTask;
+            if (CoreServices.IsInitialized) return Task.CompletedTask;
             if (_ready is not null) return _ready.Task;
             if (!_idlingHooked)
                 return Task.FromException(new InvalidOperationException("Dockable pane host was not registered."));
@@ -125,7 +126,7 @@ namespace AnalyseTool.App.Common.Docking
         private static void OnIdling(object? sender, IdlingEventArgs e)
         {
             // Someone else (a ribbon click) already initialized the host — our work here is done.
-            if (AnalyseToolBootstrap.IsInitialized)
+            if (CoreServices.IsInitialized)
             {
                 Unhook();
                 _ready?.TrySetResult(true);

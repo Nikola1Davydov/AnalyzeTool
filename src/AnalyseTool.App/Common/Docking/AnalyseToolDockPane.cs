@@ -1,4 +1,4 @@
-using AnalyseTool.App.Common.Bootstrap;
+﻿using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Extensions;
 using AnalyseTool.App.Common.Transport;
 using AnalyseTool.Core.Common;
@@ -105,7 +105,7 @@ namespace AnalyseTool.App.Common.Docking
                 // window.AT for extension pages (the clientapp overrides with its own equivalent).
                 await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ExtensionBridgeScript.Js);
 
-                _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
+                _transport = new WebView2Transport(_webView, CoreServices.Dispatcher);
                 _transport.Attach();
 
                 // The pane outlives any document, so push document switches to the page — it re-queries

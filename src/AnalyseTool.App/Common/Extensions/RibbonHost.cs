@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Docking;
 using AnalyseTool.Core.Common.Extensions;
@@ -294,7 +295,7 @@ namespace AnalyseTool.App.Common.Extensions
         public static void Reload(UIApplication uiApp)
         {
             AnalyseToolBootstrap.Initialize(uiApp);
-            AnalyseToolBootstrap.ReloadExtensions();                                  // C# command DLLs
+            CoreServices.ReloadExtensions();                                  // C# command DLLs
             RefreshExtensionButtons(uiApp.Application.VersionNumber);                 // ribbon buttons
 
             TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
@@ -340,7 +341,7 @@ namespace AnalyseTool.App.Common.Extensions
             {
                 try
                 {
-                    object? result = await AnalyseToolBootstrap.Dispatcher
+                    object? result = await CoreServices.Dispatcher
                         .DispatchAsync(commandName, JValue.CreateNull(), CancellationToken.None);
                     string text = result is null
                         ? "(no result)"

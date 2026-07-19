@@ -1,4 +1,5 @@
-﻿using AnalyseTool.App.Common;
+﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.App.Common;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Transport;
 using AnalyseTool.Core;
@@ -29,7 +30,7 @@ namespace AnalyseTool.App
                 window.Closed += WindowClosed;
 
                 // All commands (built-in + extensions) are dispatched via Sdk.IRevitTask.
-                WebView2Transport transport = new WebView2Transport(window.webView, AnalyseToolBootstrap.Dispatcher);
+                WebView2Transport transport = new WebView2Transport(window.webView, CoreServices.Dispatcher);
                 transport.Attach();
 
                 Show(window);

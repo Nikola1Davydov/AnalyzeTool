@@ -14,6 +14,11 @@ namespace AnalyseTool.Core.Common.Bootstrap
         public static CommandDispatcher Dispatcher { get; private set; } = null!;
         public static ExtensionLoader Loader { get; private set; } = null!;
 
+        /// <summary>Revit version year ("2025"), captured once at bootstrap. Lets platform commands
+        /// resolve version-scoped paths without reaching for an ambient UIApplication — the Revit
+        /// API must only ever be touched through IRevitContext.RunInRevitAsync.</summary>
+        public static string RevitVersion { get; private set; } = string.Empty;
+
         public static bool IsInitialized { get; private set; }
 
         /// <summary>Raised after <see cref="ReloadExtensions"/> completes. The host subscribes to
@@ -21,10 +26,11 @@ namespace AnalyseTool.Core.Common.Bootstrap
         /// has no knowledge of the ribbon.</summary>
         public static event Action? ExtensionsReloaded;
 
-        public static void Initialize(CommandDispatcher dispatcher, ExtensionLoader loader)
+        public static void Initialize(CommandDispatcher dispatcher, ExtensionLoader loader, string revitVersion)
         {
             Dispatcher = dispatcher;
             Loader = loader;
+            RevitVersion = revitVersion;
             IsInitialized = true;
         }
 

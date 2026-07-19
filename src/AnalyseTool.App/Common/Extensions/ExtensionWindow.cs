@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Transport;
 using AnalyseTool.Core;
@@ -44,7 +45,7 @@ namespace AnalyseTool.App.Common.Extensions
             // (works the same on a dev-server origin or the virtual host).
             await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ExtensionBridgeScript.Js);
 
-            _transport = new WebView2Transport(_webView, AnalyseToolBootstrap.Dispatcher);
+            _transport = new WebView2Transport(_webView, CoreServices.Dispatcher);
             _transport.Attach();
 
             string? devUrl = _extension.Manifest.Ui?.DevUrl;

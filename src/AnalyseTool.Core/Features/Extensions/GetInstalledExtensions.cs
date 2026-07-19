@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 
@@ -11,7 +12,7 @@ namespace AnalyseTool.Core.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            string revitVersion = Context.UiApplication.Application.VersionNumber; // year, e.g. "2025"
+            string revitVersion = CoreServices.RevitVersion; // year, e.g. "2025"
             string versionDir = ExtensionSources.DefaultVersionDir(revitVersion);
 
             // Host environment info, surfaced in Settings so authors know what to build against.

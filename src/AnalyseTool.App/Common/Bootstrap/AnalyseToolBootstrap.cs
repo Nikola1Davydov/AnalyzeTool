@@ -10,36 +10,31 @@ using System.Reflection;
 
 namespace AnalyseTool.App.Common.Bootstrap
 {
+    /// <summary>Composition root of the host: wires the Core platform (hub, dispatcher, loader,
+    /// MCP transport) once, in a valid Revit API context. Holds NO state of its own — after
+    /// Initialize everything lives in <see cref="CoreServices"/>, the single registry.</summary>
     internal static class AnalyseToolBootstrap
     {
-        private static bool _initialized;
-        private static ExtensionLoader _loader = null!;
-        public static CommandDispatcher Dispatcher { get; private set; } = null!;
-        public static RevitTaskHub RevitTaskHub { get; private set; } = null!;
-
-        /// <summary>True once <see cref="Initialize"/> has run — lets callers that may fire before any
-        /// ribbon click (e.g. an auto-restored dockable pane) decide whether they must defer.</summary>
-        public static bool IsInitialized => _initialized;
-
         public static void Initialize(UIApplication uiApp)
         {
-            if (_initialized) return;
+            if (CoreServices.IsInitialized) return;
 
             AppLog.Initialize();
-            Log.Information("Initializing AnalyseTool host (Revit {RevitVersion})", uiApp.Application.VersionNumber);
+            string revitVersion = uiApp.Application.VersionNumber;
+            Log.Information("Initializing AnalyseTool host (Revit {RevitVersion})", revitVersion);
 
             Context.Init(uiApp);
             DocumentTracker.Initialize(uiApp);
 
             // Created here because ExternalEvent.Create requires a valid Revit API context,
             // and IExternalCommand.Execute (our caller) is one.
-            RevitTaskHub = new RevitTaskHub();
-            RevitTaskHub.Initialize();
+            RevitTaskHub hub = new RevitTaskHub();
+            hub.Initialize();
 
-            Dispatcher = new CommandDispatcher(RevitTaskHub);
+            CommandDispatcher dispatcher = new CommandDispatcher(hub);
             // Built-ins live in three assemblies: platform commands in Core, feature commands in
             // Tools, host commands (CheckUpdate, GetChangelog, PickFolder, …) here.
-            Dispatcher.RegisterBuiltIns(
+            dispatcher.RegisterBuiltIns(
                 typeof(CommandDispatcher).Assembly,
                 typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly,
                 Assembly.GetExecutingAssembly());
@@ -50,28 +45,20 @@ namespace AnalyseTool.App.Common.Bootstrap
             ExtensionLoadContext.ShareWithExtensions(typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly);
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
-            _loader = new ExtensionLoader(Dispatcher, uiApp.Application.VersionNumber);
-            _loader.LoadAll();
+            ExtensionLoader loader = new ExtensionLoader(dispatcher, revitVersion);
+            loader.LoadAll();
 
-            // Core-side commands (ReloadExtensions, SaveAsCommand, …) reach the loader/dispatcher
-            // through CoreServices; the reload event lets the host refresh its ribbon buttons.
-            CoreServices.Initialize(Dispatcher, _loader);
+            // From here on the platform is reachable ONLY through CoreServices (windows, dock panes,
+            // ribbon and Core commands all use it); the reload event refreshes the ribbon buttons.
+            CoreServices.Initialize(dispatcher, loader, revitVersion);
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
             // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
             // auto-starts it if the user enabled it previously (persisted in mcp.json).
-            McpServerController.Initialize(Dispatcher);
+            McpServerController.Initialize(dispatcher);
 
-            _initialized = true;
-            Log.Information("AnalyseTool host ready — {CommandCount} commands registered", Dispatcher.RegisteredCommands.Count);
+            Log.Information("AnalyseTool host ready — {CommandCount} commands registered", dispatcher.RegisteredCommands.Count);
         }
-
-        /// <summary>Reloads extension command DLLs (collectible contexts) so changed code takes effect
-        /// without restarting Revit. No-op until Initialize has run. Delegates to Core — the single
-        /// owner of the loader lifecycle since the platform split.</summary>
-        public static void ReloadExtensions() => CoreServices.ReloadExtensions();
-
-
     }
 }

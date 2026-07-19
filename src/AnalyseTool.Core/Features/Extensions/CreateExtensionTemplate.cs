@@ -1,3 +1,4 @@
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core;
 using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Extensions;
@@ -48,7 +49,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException("Plugin id is required for C# templates.");
 
             string safeFolderName = SanitizeFolderName(payload.FolderName);
-            string version = Context.UiApplication.Application.VersionNumber;
+            string version = CoreServices.RevitVersion;
             string root = ResolveTargetRoot(payload.TargetRoot);
             string extensionRoot = Path.Combine(root, version, safeFolderName);
 
