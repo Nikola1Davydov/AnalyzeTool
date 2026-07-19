@@ -34,13 +34,16 @@ namespace AnalyseTool.Common.Bootstrap
             RevitTaskHub.Initialize();
 
             Dispatcher = new CommandDispatcher(RevitTaskHub);
-            // Built-ins live in two assemblies now: platform commands in Core, host commands here.
+            // Built-ins live in three assemblies now: platform commands in Core, feature commands
+            // in Tools, host commands (CheckUpdate, GetChangelog, …) here.
             Dispatcher.RegisterBuiltIns(typeof(CommandDispatcher).Assembly);
+            Dispatcher.RegisterBuiltIns(typeof(Features.Families.GetFamilies).Assembly);
             Dispatcher.RegisterBuiltIns(Assembly.GetExecutingAssembly());
 
-            // Extensions may reference host types (they shouldn't, but be safe): share this assembly
+            // Extensions may reference host/Tools types (they shouldn't, but be safe): share them
             // by simple name so crossing types keep one identity. Core registers itself already.
             ExtensionLoadContext.ShareWithExtensions(Assembly.GetExecutingAssembly());
+            ExtensionLoadContext.ShareWithExtensions(typeof(Features.Families.GetFamilies).Assembly);
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
             _loader = new ExtensionLoader(Dispatcher, uiApp.Application.VersionNumber);

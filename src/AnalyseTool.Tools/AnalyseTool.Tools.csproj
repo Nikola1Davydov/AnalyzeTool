@@ -1,9 +1,49 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+    <!--
+      THE BOUNDARY: this project references ONLY the Sdk (+ Revit API via the props above) and its
+      feature packages. NO reference to AnalyseTool.Core or the host — Tools commands consume the
+      platform exclusively through the public Sdk contract, exactly like a third-party extension.
+      If a command here needs something more, that is a deliberate Sdk contract decision, not a
+      ProjectReference away.
+    -->
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" />
+        <PackageReference Include="Serilog" />
+        <!-- AI feature: provider-agnostic chat clients + Ollama. -->
+        <PackageReference Include="Microsoft.Extensions.AI" />
+        <PackageReference Include="OllamaSharp" />
+        <!-- DPAPI (Windows) — stored AI-provider API keys are encrypted per Windows user. -->
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+        <!-- Element.GetPreviewImage returns a System.Drawing.Bitmap (family previews). Compile-only:
+             Revit provides the runtime copy, so we don't ship a duplicate and Bitmap keeps type
+             identity with the instance Revit hands us. -->
+        <PackageReference Include="System.Drawing.Common">
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    </ItemGroup>
+
+    <!-- AiProviderRegistry needs ToolData.PLUGIN_NAME for the profile folder. -->
+    <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+    <ItemGroup>
+        <!-- The host bootstrap registers this assembly's commands (typeof(...).Assembly) and a few
+             host features still touch internal models; keep internal so extensions can't bind. -->
+        <InternalsVisibleTo Include="AnalyseTool" />
+    </ItemGroup>
 
 </Project>

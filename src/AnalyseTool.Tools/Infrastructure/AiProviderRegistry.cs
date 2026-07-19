@@ -1,4 +1,3 @@
-using AnalyseTool.Common;
 using Newtonsoft.Json;
 using Serilog;
 using System.IO;
@@ -42,7 +41,12 @@ namespace AnalyseTool.Infrastructure
         private static readonly object _gate = new();
         private static List<AiProvider>? _custom;
 
-        private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "ai-providers.json");
+        // Local (not Core's PathProvider): Tools references only the Sdk, and this settings file is
+        // a private concern of the AI feature — same %LOCALAPPDATA%\<plugin> root by construction.
+        private static string ProfilePath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
+
+        private static string SettingsFile => Path.Combine(ProfilePath, "ai-providers.json");
 
         /// <summary>The always-present local provider. Not persisted; not deletable.</summary>
         public static AiProvider Ollama { get; } = new()
@@ -145,7 +149,7 @@ namespace AnalyseTool.Infrastructure
         {
             try
             {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
+                Directory.CreateDirectory(ProfilePath);
                 File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(list, Formatting.Indented));
             }
             catch (Exception ex)
