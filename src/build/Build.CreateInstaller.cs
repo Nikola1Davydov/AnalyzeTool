@@ -14,7 +14,7 @@ sealed partial class Build
         {
             const string configuration = "Release";
 
-            Log.Information("Project: {Name}", Solution.AnalyseTool.Name);
+            Log.Information("Project: {Name}", Solution.AnalyseTool_App.Name);
 
             DotNetBuild(settings => settings
                 .SetProjectFile(Solution.Installer)

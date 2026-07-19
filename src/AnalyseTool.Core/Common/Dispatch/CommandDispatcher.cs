@@ -28,9 +28,12 @@ namespace AnalyseTool.Common.Dispatch
                 _commands.Remove(key);
         }
 
-        public void RegisterBuiltIns(Assembly coreAssembly)
+        /// <summary>Registers the built-in commands of the given platform assemblies (Core, Tools, App).
+        /// All of them share the source "core" — they ship with the plugin, unlike extensions.</summary>
+        public void RegisterBuiltIns(params Assembly[] assemblies)
         {
-            foreach (Type type in coreAssembly.GetTypes())
+            foreach (Assembly assembly in assemblies)
+            foreach (Type type in assembly.GetTypes())
             {
                 if (!IsRegistrable(type)) continue;
                 TryRegister(type, source: "core", prefix: null);

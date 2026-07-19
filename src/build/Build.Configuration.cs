@@ -1,4 +1,4 @@
-using Nuke.Common;
+﻿using Nuke.Common;
 using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
@@ -31,7 +31,7 @@ sealed partial class Build
     /// </summary>
     Dictionary<Project, Project> InstallersMap => new()
     {
-        { Solution.Installer, Solution.AnalyseTool }
+        { Solution.Installer, Solution.AnalyseTool_App }
     };
 
     /// <summary>

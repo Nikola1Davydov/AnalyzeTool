@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
@@ -31,7 +31,7 @@
     <ItemGroup>
         <!-- The host keeps using Core internals until the split is complete; the types stay internal
              so extensions (which may only see the Sdk contract) cannot bind to platform internals. -->
-        <InternalsVisibleTo Include="AnalyseTool" />
+        <InternalsVisibleTo Include="AnalyseTool.App" />
     </ItemGroup>
 
 </Project>

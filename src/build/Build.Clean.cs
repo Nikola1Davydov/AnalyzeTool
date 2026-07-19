@@ -32,7 +32,7 @@ sealed partial class Build
 
             foreach (var configuration in GlobBuildConfigurations())
                 DotNetClean(settings => settings
-                    .SetProject(Solution.AnalyseTool)
+                    .SetProject(Solution.AnalyseTool_App)
                     .SetConfiguration(configuration)
                     .SetVerbosity(DotNetVerbosity.minimal)
                     .EnableNoLogo());

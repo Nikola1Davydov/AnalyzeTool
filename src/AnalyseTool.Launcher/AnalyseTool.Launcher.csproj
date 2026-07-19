@@ -32,8 +32,12 @@
       <Private>false</Private>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
-    <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj" />
+    <ProjectReference Include="..\AnalyseTool.App\AnalyseTool.App.csproj" />
   </ItemGroup>
+
+  <!-- ToolData constants (AssemblyInfo, plugin name for the isolated ALC). Compiled in, not taken
+       from a referenced assembly — the type is internal in every copy (see ToolData.cs). -->
+  <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
     <!--DEBUG SETTINGS-->
     <PropertyGroup>

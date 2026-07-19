@@ -455,7 +455,7 @@ namespace AnalyseTool.Common.Extensions
                 // Prefer a pre-rendered ImageSource (e.g. a glyph icon); otherwise load the packaged PNG.
                 ImageSource? resolved = image;
                 if (resolved is null && !string.IsNullOrWhiteSpace(appIcon))
-                    resolved = new BitmapImage(new Uri($"pack://application:,,,/AnalyseTool;component/Resources/Icons/{appIcon}"));
+                    resolved = new BitmapImage(new Uri($"pack://application:,,,/AnalyseTool.App;component/Resources/Icons/{appIcon}"));
 
                 if (resolved is not null)
                 {

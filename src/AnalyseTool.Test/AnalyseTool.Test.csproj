@@ -21,7 +21,7 @@
 	
 	<ItemGroup>
 	  <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
-	  <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj" />
+	  <ProjectReference Include="..\AnalyseTool.App\AnalyseTool.App.csproj" />
 	</ItemGroup>
 	
 	<Import Project="..\SharedData\SharedData.projitems" Label="Shared" />

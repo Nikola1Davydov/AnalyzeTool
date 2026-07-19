@@ -1,7 +1,7 @@
 ﻿<RevitAddIns>
     <AddIn Type="Application">
         <Name>RevitAddIn</Name>
-        <Assembly>AnalyseTool/AnalyseTool.dll</Assembly>
+        <Assembly>AnalyseTool/AnalyseTool.App.dll</Assembly>
         <AddInId>8F8F151B-8E8A-492A-B68C-736B9C385BFE</AddInId>
         <FullClassName>AnalyseTool.App</FullClassName>
         <VendorId>DavydovDevelopment</VendorId>

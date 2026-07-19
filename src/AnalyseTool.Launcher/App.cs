@@ -36,7 +36,7 @@ namespace AnalyseTool.Launcher
         private static void LoadIsolatedDlls()
         {
             string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            string basePath = Path.Combine(pluginFolder, "AnalyseTool.dll");
+            string basePath = Path.Combine(pluginFolder, "AnalyseTool.App.dll");
 
             AssemblyDependencyResolver resolver = new AssemblyDependencyResolver(typeof(App).Assembly.Location);
             IsolatedAssemblyLoadContent _isolatedContext = new IsolatedAssemblyLoadContent(SharedData.ToolData.PLUGIN_NAME, resolver);

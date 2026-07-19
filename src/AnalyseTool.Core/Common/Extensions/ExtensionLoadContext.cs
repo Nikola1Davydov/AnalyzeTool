@@ -31,6 +31,8 @@ namespace AnalyseTool.Common.Extensions
             "RevitAPI",
             "RevitAPIUI",
             "Newtonsoft.Json",    // payload JToken crosses the boundary
+            // AnalyseTool.App and AnalyseTool.Tools are shared DYNAMICALLY: the bootstrap calls
+            // ShareWithExtensions for them (Core cannot typeof into assemblies above it).
         };
 
         /// <summary>Additional host-side assemblies shared with extensions by simple name (e.g. the

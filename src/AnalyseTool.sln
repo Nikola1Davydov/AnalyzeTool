@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12009.203
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnalyseTool", "AnalyseTool\AnalyseTool.csproj", "{1306E047-4577-4911-9864-128080703F27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnalyseTool.App", "AnalyseTool.App\AnalyseTool.App.csproj", "{1306E047-4577-4911-9864-128080703F27}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{1ED552DC-C81F-B5C2-8CA8-BF8BDC334B01}"
 EndProject
@@ -526,5 +526,6 @@ Global
 		SharedData\SharedData.projitems*{22dc6ffb-a72f-4a65-9ac3-20f8b487df08}*SharedItemsImports = 5
 		SharedData\SharedData.projitems*{9dfc2c50-aeb9-4324-bc9f-52006bd84037}*SharedItemsImports = 5
 		SharedData\SharedData.projitems*{a72d5c2a-ebbc-497a-99a9-63297a30876b}*SharedItemsImports = 13
+		SharedData\SharedData.projitems*{bf8554b4-844e-4fc8-960a-1c156a62a5f1}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
@@ -43,7 +43,7 @@
     <ItemGroup>
         <!-- The host bootstrap registers this assembly's commands (typeof(...).Assembly) and a few
              host features still touch internal models; keep internal so extensions can't bind. -->
-        <InternalsVisibleTo Include="AnalyseTool" />
+        <InternalsVisibleTo Include="AnalyseTool.App" />
     </ItemGroup>
 
 </Project>
