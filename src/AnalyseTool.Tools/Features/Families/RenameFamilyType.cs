@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>Renames a family type (FamilySymbol). Returns ok=false on a duplicate/invalid name.</summary>
     [RevitCommand(

@@ -1,7 +1,7 @@
-using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>Reloads extension command DLLs (collectible ALC) and refreshes the ribbon buttons,
     /// all without restarting Revit.</summary>

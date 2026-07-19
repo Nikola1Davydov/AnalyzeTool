@@ -1,4 +1,4 @@
-﻿namespace AnalyseTool.Common.Dispatch
+﻿namespace AnalyseTool.App.Common.Dispatch
 {
     internal enum WebMessageTypeEnum
     {

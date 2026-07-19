@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Reassigns the given family instances to a target workset (sets ELEM_PARTITION_PARAM). Returns

@@ -2,7 +2,7 @@ using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>
     /// Model-write operations behind Family Control's actions: delete (families/types — also the Purge

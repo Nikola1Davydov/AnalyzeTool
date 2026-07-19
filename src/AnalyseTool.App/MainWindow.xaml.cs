@@ -1,4 +1,6 @@
-﻿using AnalyseTool.Common;
+﻿using AnalyseTool.App.Common;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common;
 using Microsoft.Web.WebView2.Core;
 using System.Windows;
 using System.Windows.Interop;

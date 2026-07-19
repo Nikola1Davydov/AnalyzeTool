@@ -1,7 +1,8 @@
+using AnalyseTool.Core.Common;
 using Serilog;
 using System.IO;
 
-namespace AnalyseTool.Common
+namespace AnalyseTool.App.Common
 {
     /// <summary>
     /// One-time setup of the Serilog file logger used across the plugin. Writes a daily rolling log to

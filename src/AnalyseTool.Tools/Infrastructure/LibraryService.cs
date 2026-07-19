@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>
     /// Browses on-disk Revit family libraries: lists <c>.rfa</c> files under configured folders, flags the

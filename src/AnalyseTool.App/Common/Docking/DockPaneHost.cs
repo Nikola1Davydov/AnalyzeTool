@@ -1,9 +1,10 @@
-using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.Core;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using Serilog;
 
-namespace AnalyseTool.Common.Docking
+namespace AnalyseTool.App.Common.Docking
 {
     /// <summary>
     /// Owns AnalyseTool's ONE dockable pane and its content routing. We deliberately register a single

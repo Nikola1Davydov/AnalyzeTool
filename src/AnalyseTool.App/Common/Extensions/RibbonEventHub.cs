@@ -1,7 +1,8 @@
+using AnalyseTool.Core.Common;
 using Autodesk.Revit.UI;
 using System.Collections.Concurrent;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
     /// Lets AdWindows ribbon buttons (whose handlers run on the UI thread, outside a Revit API

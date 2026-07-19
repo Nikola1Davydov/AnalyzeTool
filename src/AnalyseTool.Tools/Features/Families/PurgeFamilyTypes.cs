@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Deletes the given family types resiliently for "purge unused". Unlike the batch delete, a type that

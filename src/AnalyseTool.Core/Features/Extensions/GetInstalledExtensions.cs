@@ -1,9 +1,7 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.Utils;
+using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>Lists every installed extension (compatible or not) for the Settings page.</summary>
     [RevitCommand(

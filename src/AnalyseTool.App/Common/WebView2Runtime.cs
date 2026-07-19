@@ -1,8 +1,9 @@
+using AnalyseTool.Core.Common;
 using Microsoft.Web.WebView2.Core;
 using Serilog;
 using System.Diagnostics;
 
-namespace AnalyseTool.Common
+namespace AnalyseTool.App.Common
 {
     /// <summary>
     /// Guards against a missing Microsoft Edge WebView2 Runtime — the whole UI runs on it, so without it

@@ -1,6 +1,6 @@
-using AnalyseTool.Common.Dispatch;
-using AnalyseTool.Common.Extensions.Scripting;
-using AnalyseTool.Features.Scripting;
+using AnalyseTool.Core.Common.Dispatch;
+using AnalyseTool.Core.Common.Extensions.Scripting;
+using AnalyseTool.Core.Features.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.IO;
@@ -8,7 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace AnalyseTool.Common.Transport
+namespace AnalyseTool.Core.Common.Transport
 {
     /// <summary>
     /// Third transport (beside WebView2Transport): a localhost TCP bridge that lets the out-of-process

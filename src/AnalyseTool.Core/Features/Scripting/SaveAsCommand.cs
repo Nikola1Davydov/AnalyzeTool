@@ -1,7 +1,6 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.Extensions.Scripting;
+using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -10,7 +9,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 
-namespace AnalyseTool.Features.Scripting
+namespace AnalyseTool.Core.Features.Scripting
 {
     /// <summary>
     /// Promotes a working C# snippet (e.g. one just run via <see cref="ExecuteRevitCode"/>) into a

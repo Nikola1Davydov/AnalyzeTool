@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>
     /// Minimal <see cref="IChatClient"/> over the OpenAI chat-completions protocol — the lingua franca

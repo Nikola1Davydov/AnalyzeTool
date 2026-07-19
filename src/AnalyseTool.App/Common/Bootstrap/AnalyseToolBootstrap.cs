@@ -1,11 +1,14 @@
-using AnalyseTool.Common.Dispatch;
-using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.Transport;
+using AnalyseTool.App.Common.Extensions;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Dispatch;
+using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Transport;
 using Autodesk.Revit.UI;
 using Serilog;
 using System.Reflection;
 
-namespace AnalyseTool.Common.Bootstrap
+namespace AnalyseTool.App.Common.Bootstrap
 {
     internal static class AnalyseToolBootstrap
     {
@@ -38,13 +41,13 @@ namespace AnalyseTool.Common.Bootstrap
             // Tools, host commands (CheckUpdate, GetChangelog, PickFolder, …) here.
             Dispatcher.RegisterBuiltIns(
                 typeof(CommandDispatcher).Assembly,
-                typeof(Features.Families.GetFamilies).Assembly,
+                typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly,
                 Assembly.GetExecutingAssembly());
 
             // Extensions may reference host/Tools types (they shouldn't, but be safe): share them
             // by simple name so crossing types keep one identity. Core registers itself already.
             ExtensionLoadContext.ShareWithExtensions(Assembly.GetExecutingAssembly());
-            ExtensionLoadContext.ShareWithExtensions(typeof(Features.Families.GetFamilies).Assembly);
+            ExtensionLoadContext.ShareWithExtensions(typeof(AnalyseTool.Tools.Features.Families.GetFamilies).Assembly);
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
             _loader = new ExtensionLoader(Dispatcher, uiApp.Application.VersionNumber);

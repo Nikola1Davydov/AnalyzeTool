@@ -1,8 +1,8 @@
-using AnalyseTool.Common.Dispatch;
-using AnalyseTool.Common.Extensions;
+using AnalyseTool.Core.Common.Dispatch;
+using AnalyseTool.Core.Common.Extensions;
 using Serilog;
 
-namespace AnalyseTool.Common.Bootstrap
+namespace AnalyseTool.Core.Common.Bootstrap
 {
     /// <summary>
     /// Core-side service registry, populated once by the host bootstrap. Platform commands

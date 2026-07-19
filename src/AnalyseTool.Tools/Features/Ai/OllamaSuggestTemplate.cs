@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Ai
+namespace AnalyseTool.Tools.Features.Ai
 {
     /// <summary>
     /// Reverse-engineers a naming-rule TEMPLATE from one example name plus a sample element's data

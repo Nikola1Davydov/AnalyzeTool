@@ -1,7 +1,7 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Read-only inventory of the families in the active document (category, type count, placed-instance

@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Loads the given family (.rfa) files into the current document, one Revit round-trip per file so it

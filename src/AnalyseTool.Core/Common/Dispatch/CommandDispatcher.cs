@@ -3,7 +3,7 @@ using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
-namespace AnalyseTool.Common.Dispatch
+namespace AnalyseTool.Core.Common.Dispatch
 {
     internal sealed class CommandDispatcher
     {

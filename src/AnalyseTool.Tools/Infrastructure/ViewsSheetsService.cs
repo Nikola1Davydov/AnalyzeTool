@@ -1,6 +1,6 @@
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>Collects views and sheets information from a document.</summary>
     public sealed class ViewsSheetsService

@@ -1,12 +1,14 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Transport;
+using AnalyseTool.App.Common;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Transport;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.App
 {
     /// <summary>
     /// "Family Control" page in its own window (the second ribbon button next to AnalyseTool). Loads the
@@ -29,7 +31,7 @@ namespace AnalyseTool.Features.Families
             Height = 720;
             Content = _webView;
 
-            _ = new WindowInteropHelper(this) { Owner = AnalyseTool.Context.UiApplication.MainWindowHandle };
+            _ = new WindowInteropHelper(this) { Owner = Context.UiApplication.MainWindowHandle };
             Loaded += OnLoaded;
             Closed += (_, _) => _transport?.Detach();
         }

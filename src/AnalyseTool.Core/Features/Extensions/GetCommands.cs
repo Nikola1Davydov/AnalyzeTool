@@ -1,8 +1,8 @@
-using AnalyseTool.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>
     /// Lists every registered command (built-in + from extensions) so a web-extension author can

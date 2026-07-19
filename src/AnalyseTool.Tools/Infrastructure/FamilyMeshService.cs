@@ -1,7 +1,7 @@
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>
     /// Tessellates a family's 3D geometry into compact triangle-mesh parts (one per material, carrying an

@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Shape of the per-extension <c>plugin.json</c> sitting next to the extension files.

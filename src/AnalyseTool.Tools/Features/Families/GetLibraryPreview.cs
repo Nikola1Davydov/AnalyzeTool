@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Returns the embedded preview thumbnail of an on-disk family (.rfa) as a PNG data URI, extracted via

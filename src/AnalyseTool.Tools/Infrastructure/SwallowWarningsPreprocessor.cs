@@ -1,6 +1,6 @@
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>
     /// Failure preprocessor for write transactions: deletes all warnings so Revit never raises a MODAL

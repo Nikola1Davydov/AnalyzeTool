@@ -1,6 +1,6 @@
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.App.Features
 {
     /// <summary>
     /// Opens a native folder-picker and returns the chosen path (or null if cancelled). Used to add a

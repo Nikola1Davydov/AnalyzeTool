@@ -1,7 +1,7 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 
-namespace AnalyseTool.Features.Get
+namespace AnalyseTool.Tools.Features.Get
 {
     [RevitCommand(
         Description = "Returns the names of all element categories present in the active document. " +

@@ -1,7 +1,7 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Read-only list of the placed instances of a family (optionally narrowed to one type), each with

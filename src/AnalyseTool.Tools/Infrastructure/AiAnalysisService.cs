@@ -1,11 +1,11 @@
-using AnalyseTool.Infrastructure.Model;
+using AnalyseTool.Tools.Infrastructure.Model;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     internal class AiAnalysisService
     {

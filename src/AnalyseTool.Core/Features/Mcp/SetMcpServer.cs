@@ -1,7 +1,7 @@
-using AnalyseTool.Common.Transport;
+using AnalyseTool.Core.Common.Transport;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Mcp
+namespace AnalyseTool.Core.Features.Mcp
 {
     /// <summary>Enables/disables the MCP bridge (and sets its port), persisting the choice. Starts or
     /// stops the localhost WebSocket listener live.</summary>

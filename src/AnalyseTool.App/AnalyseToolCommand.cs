@@ -1,18 +1,20 @@
-﻿using AnalyseTool.Common;
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Transport;
+﻿using AnalyseTool.App.Common;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Transport;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AnalyseTool
+namespace AnalyseTool.App
 {
     [Transaction(TransactionMode.Manual)]
     public class AnalyseToolCommand : IExternalCommand
     {
-        private static Window _openedWindow;
+        private static Window? _openedWindow;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

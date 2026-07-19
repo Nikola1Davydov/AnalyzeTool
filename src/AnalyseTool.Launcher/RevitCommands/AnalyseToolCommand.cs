@@ -9,7 +9,10 @@ namespace AnalyseTool.Launcher.RevitCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            Type? commandType = App._pluginAssembly?.GetType("AnalyseTool.AnalyseToolCommand");
+            // FQN first, simple-name fallback — a namespace refactor in the plugin assembly must not
+            // silently disconnect the main ribbon button (same pattern as App.ResolveRibbonHost).
+            Type? commandType = App._pluginAssembly?.GetType("AnalyseTool.App.AnalyseToolCommand")
+                ?? App._pluginAssembly?.GetTypes().FirstOrDefault(t => t.Name == "AnalyseToolCommand");
             if (commandType == null)
             {
                 TaskDialog.Show("Error", "Command not found");

@@ -1,11 +1,11 @@
-using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.Extensions.Scripting;
+using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using System.Reflection;
 
-namespace AnalyseTool.Features.Scripting
+namespace AnalyseTool.Core.Features.Scripting
 {
     /// <summary>
     /// Compiles a C# snippet with Roslyn and runs it once (ephemeral) — the AI's "scratchpad" for Revit

@@ -1,5 +1,5 @@
-using AnalyseTool.Common.Dispatch;
-using AnalyseTool.Common.Extensions.Scripting;
+using AnalyseTool.Core.Common.Dispatch;
+using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Serilog;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Loads the C# command half of user-authored extensions discovered by <see cref="ExtensionCatalog"/>.

@@ -1,8 +1,8 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using System.ComponentModel;
 
-namespace AnalyseTool.Features.Ai
+namespace AnalyseTool.Tools.Features.Ai
 {
     /// <summary>
     /// Suggests new names for a BATCH of families/types in one model round-trip (the manager's

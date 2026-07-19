@@ -1,13 +1,15 @@
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Extensions;
-using AnalyseTool.Common.Transport;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Extensions;
+using AnalyseTool.App.Common.Transport;
+using AnalyseTool.Core.Common;
+using AnalyseTool.Core.Common.Bootstrap;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Serilog;
 using System.Text;
 using System.Windows.Controls;
 
-namespace AnalyseTool.Common.Docking
+namespace AnalyseTool.App.Common.Docking
 {
     /// <summary>
     /// The single WebView2 surface hosted inside Revit's one AnalyseTool dockable pane. Its content is a

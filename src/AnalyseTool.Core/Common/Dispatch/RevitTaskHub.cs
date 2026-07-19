@@ -1,7 +1,7 @@
 using Autodesk.Revit.UI;
 using System.Collections.Concurrent;
 
-namespace AnalyseTool.Common.Dispatch
+namespace AnalyseTool.Core.Common.Dispatch
 {
     /// <summary>
     /// Central marshaller onto the Revit thread. One long-lived <see cref="ExternalEvent"/> is

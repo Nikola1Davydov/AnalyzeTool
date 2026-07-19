@@ -1,7 +1,7 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Get
+namespace AnalyseTool.Tools.Features.Get
 {
     [RevitCommand(
         Description = "Returns the in-place family instances in the document (id, name, category). " +

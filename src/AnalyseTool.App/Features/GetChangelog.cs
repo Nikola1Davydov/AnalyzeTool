@@ -1,8 +1,8 @@
-using AnalyseTool.Common;
+using AnalyseTool.Core.Common;
 using AnalyseTool.Sdk;
 using System.IO;
 
-namespace AnalyseTool.Features
+namespace AnalyseTool.App.Features
 {
     /// <summary>
     /// Read-only: the plugin's CHANGELOG.md, shipped next to the plugin DLL by the build/installer.

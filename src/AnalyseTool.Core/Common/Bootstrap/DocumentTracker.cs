@@ -2,7 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Serilog;
 
-namespace AnalyseTool.Common.Bootstrap
+namespace AnalyseTool.Core.Common.Bootstrap
 {
     /// <summary>
     /// Detects when the ACTIVE document changes and raises one event for the host to fan out (e.g. so

@@ -1,9 +1,10 @@
-﻿using Autodesk.Revit.DB;
+﻿using AnalyseTool.Tools.Infrastructure;
+using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 //using System.Text.Json.Serialization;
 
-namespace AnalyseTool.Infrastructure.Model
+namespace AnalyseTool.Tools.Infrastructure.Model
 {
     public sealed record ParameterData : IEquatable<ParameterData>
     {

@@ -1,6 +1,6 @@
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>Collects linked content (Revit links + linked CAD files) from a document.</summary>
     public sealed class LinksService

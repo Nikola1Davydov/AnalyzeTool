@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace AnalyseTool.Common.Dispatch
+namespace AnalyseTool.App.Common.Dispatch
 {
     internal record WebViewMessage
     {

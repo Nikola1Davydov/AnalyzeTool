@@ -6,7 +6,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 
-namespace AnalyseTool.Common.Extensions.Scripting
+namespace AnalyseTool.Core.Common.Extensions.Scripting
 {
     /// <summary>Result of a Roslyn compilation: the emitted assembly bytes (+ PDB) on success, or the
     /// list of compiler error messages on failure.</summary>

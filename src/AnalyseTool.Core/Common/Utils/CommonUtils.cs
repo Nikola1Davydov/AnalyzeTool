@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 
-namespace AnalyseTool.Common.Utils
+namespace AnalyseTool.Core.Common.Utils
 {
     internal class CommonUtils
     {

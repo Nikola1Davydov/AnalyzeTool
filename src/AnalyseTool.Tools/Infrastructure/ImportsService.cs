@@ -1,6 +1,6 @@
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Infrastructure
+namespace AnalyseTool.Tools.Infrastructure
 {
     /// <summary>Collects imported (non-linked) CAD content from a document.</summary>
     public sealed class ImportsService

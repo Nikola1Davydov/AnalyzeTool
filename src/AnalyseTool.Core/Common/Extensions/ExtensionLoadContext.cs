@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Isolated load context for one extension. Its private dependencies are loaded from the

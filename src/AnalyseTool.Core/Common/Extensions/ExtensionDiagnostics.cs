@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Per-extension load diagnostics (currently Roslyn compile errors for script extensions),

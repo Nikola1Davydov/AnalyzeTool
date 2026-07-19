@@ -1,10 +1,9 @@
-using AnalyseTool.Infrastructure.Model;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Net.Http.Headers;
 
-namespace AnalyseTool.Features
+namespace AnalyseTool.App.Features
 {
     [RevitCommand(
         Description = "Checks the release feed for a newer AnalyseTool version and returns update info. " +

@@ -2,7 +2,7 @@ using AnalyseTool.Sdk;
 using System.Diagnostics;
 using System.IO;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>Opens a folder in Windows Explorer. Used by the Settings UI for the
     /// "open" affordance on each extension source path and on each installed extension.</summary>

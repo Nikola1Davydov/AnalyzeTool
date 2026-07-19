@@ -1,13 +1,15 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Transport;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Transport;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common;
+using AnalyseTool.Core.Common.Extensions;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
     /// Hosts one JS extension page in its own top-level WebView2 window: maps the extension folder

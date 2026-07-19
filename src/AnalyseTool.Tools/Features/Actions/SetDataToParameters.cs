@@ -1,13 +1,12 @@
-using AnalyseTool.Infrastructure;
-using AnalyseTool.Infrastructure.Model;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
-namespace AnalyseTool.Features.Actions
+namespace AnalyseTool.Tools.Features.Actions
 {
     [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
@@ -44,7 +43,7 @@ namespace AnalyseTool.Features.Actions
             Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
             if (revitElement == null) return;
 
-            Parameter parameter = null;
+            Parameter? parameter = null;
 
             if (ParameterUtils.IsBuiltInParameter(new ElementId(parameterData.Id)))
             {
@@ -64,8 +63,8 @@ namespace AnalyseTool.Features.Actions
 
                 if (parameter == null)
                 {
-                    ParameterElement parameterElement = doc.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
-                    Definition definition = parameterElement?.GetDefinition();
+                    ParameterElement? parameterElement = doc.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
+                    Definition? definition = parameterElement?.GetDefinition();
 
                     if (definition != null)
                     {

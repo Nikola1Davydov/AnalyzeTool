@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using System.IO;
 
-namespace AnalyseTool.Common.Extensions.Scripting
+namespace AnalyseTool.Core.Common.Extensions.Scripting
 {
     /// <summary>
     /// Persisted on/off switch for ad-hoc C# code execution (the <c>ExecuteRevitCode</c> command).

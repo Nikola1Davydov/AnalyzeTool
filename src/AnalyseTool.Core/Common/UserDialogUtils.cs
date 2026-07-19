@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace AnalyseTool.Common
+namespace AnalyseTool.Core.Common
 {
     internal class UserDialogUtils
     {

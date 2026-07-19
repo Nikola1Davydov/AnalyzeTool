@@ -1,10 +1,10 @@
-using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Utils;
+using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Docking;
+using AnalyseTool.Core.Common.Extensions;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using AdWin = Autodesk.Windows;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
     /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Reload) use the
@@ -78,7 +78,7 @@ namespace AnalyseTool.Common.Extensions
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,
             // which is why one always-present host pane is registered here and its content is swapped by
             // route — features and extensions appear in the dock without a Revit restart.
-            Docking.DockPaneHost.Register(app);
+            DockPaneHost.Register(app);
 
             // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
@@ -269,7 +269,7 @@ namespace AnalyseTool.Common.Extensions
                 return;
             }
 
-            Window window = new Features.Families.FamilyControlWindow();
+            Window window = new AnalyseTool.App.FamilyControlWindow();
             window.Closed += (_, _) => _familyWindow = null;
             _familyWindow = window;
             window.Show();
@@ -288,7 +288,7 @@ namespace AnalyseTool.Common.Extensions
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
-            Docking.DockPaneHost.ShowRoute("#/families-dock");
+            DockPaneHost.ShowRoute("#/families-dock");
         }
 
         public static void Reload(UIApplication uiApp)
@@ -311,7 +311,7 @@ namespace AnalyseTool.Common.Extensions
             ExtensionUi? ui = descriptor.Manifest.Ui;
             if (ui?.Dockable == true)
             {
-                Docking.DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
+                DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
                 return;
             }
 

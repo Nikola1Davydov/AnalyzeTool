@@ -2,7 +2,7 @@
 using Autodesk.Revit.UI;
 using Application = Autodesk.Revit.ApplicationServices.Application;
 
-namespace AnalyseTool
+namespace AnalyseTool.Core
 {
     public class Context
     {

@@ -1,7 +1,7 @@
-using AnalyseTool.Infrastructure;
+using AnalyseTool.Tools.Infrastructure;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Get
+namespace AnalyseTool.Tools.Features.Get
 {
     [RevitCommand(
         Description = "Returns linked content in the document: Revit links and linked CAD files " +

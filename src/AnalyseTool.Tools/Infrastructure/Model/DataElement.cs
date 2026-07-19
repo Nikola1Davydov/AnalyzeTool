@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
-namespace AnalyseTool.Infrastructure.Model
+namespace AnalyseTool.Tools.Infrastructure.Model
 {
     public sealed record DataElement : IEquatable<DataElement>
     {

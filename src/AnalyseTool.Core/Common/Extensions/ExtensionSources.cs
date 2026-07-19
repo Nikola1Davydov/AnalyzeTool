@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using System.IO;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Resolves the directories that are scanned for extensions. Extensions are organised as

@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Drawing.Imaging;
 using System.IO;
 
-namespace AnalyseTool.Features.Families
+namespace AnalyseTool.Tools.Features.Families
 {
     /// <summary>
     /// Renders a small PNG thumbnail (returned as a base64 data URI) for one family, via the Revit

@@ -1,6 +1,7 @@
+using AnalyseTool.Core.Common;
 using Microsoft.Web.WebView2.Core;
 
-namespace AnalyseTool.Common
+namespace AnalyseTool.App.Common
 {
     /// <summary>
     /// One place that decides how every WebView2 window/pane loads the clientapp:

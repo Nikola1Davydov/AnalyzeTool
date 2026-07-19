@@ -1,11 +1,11 @@
-using AnalyseTool.Infrastructure;
 using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Infrastructure;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Net.Http;
 using System.Net.Http.Headers;
 
-namespace AnalyseTool.Features.Ai
+namespace AnalyseTool.Tools.Features.Ai
 {
     /// <summary>Shared helpers for the AI-provider commands: the wire shape (keys NEVER leave the host —
     /// only a hasKey flag) and the per-type model listing.</summary>

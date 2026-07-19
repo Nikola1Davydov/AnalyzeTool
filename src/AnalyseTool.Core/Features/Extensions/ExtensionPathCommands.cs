@@ -1,10 +1,9 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Extensions;
+using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 using System.IO;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>Lists the extension source roots (default + user-added) with per-root validity for the
     /// running Revit version, for the Settings "Extension paths" section.</summary>

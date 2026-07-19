@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace AnalyseTool.Common.Extensions
+namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>Minimal ICommand for AdWindows ribbon buttons (which bind to WPF ICommand, not
     /// Revit IExternalCommand).</summary>

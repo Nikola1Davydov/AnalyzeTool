@@ -1,11 +1,12 @@
-using AnalyseTool.Common;
-using AnalyseTool.Common.Extensions;
+using AnalyseTool.Core;
+using AnalyseTool.Core.Common;
+using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.IO;
 
-namespace AnalyseTool.Features.Extensions
+namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>
     /// Scaffolds an extension on disk in one of three flavours:

@@ -1,7 +1,7 @@
-using AnalyseTool.Common.Extensions.Scripting;
+using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Features.Scripting
+namespace AnalyseTool.Core.Features.Scripting
 {
     /// <summary>Reads the current C# code-execution on/off state for the Settings page.</summary>
     [RevitCommand(

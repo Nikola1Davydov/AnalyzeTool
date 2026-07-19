@@ -1,9 +1,9 @@
-using AnalyseTool.Common.Dispatch;
+using AnalyseTool.Core.Common.Dispatch;
 using Newtonsoft.Json;
 using Serilog;
 using System.IO;
 
-namespace AnalyseTool.Common.Transport
+namespace AnalyseTool.Core.Common.Transport
 {
     /// <summary>
     /// Owns the single <see cref="McpBridgeServer"/> instance plus its persisted on/off + port
