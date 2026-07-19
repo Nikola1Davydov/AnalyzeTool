@@ -83,9 +83,9 @@ namespace AnalyseTool.Features.Scripting
 
             Log.Information("SaveAsCommand: created command {Command} at {Directory}", commandName, directory);
 
-            // Reload picks up the new script (compiles it) and the ribbon refresh adds its button.
-            AnalyseToolBootstrap.ReloadExtensions();
-            RibbonEventHub.Run(uiApp => RibbonHost.RefreshExtensionButtons(uiApp.Application.VersionNumber));
+            // Reload picks up the new script (compiles it); the host's ExtensionsReloaded handler
+            // refreshes the ribbon so the new button appears.
+            CoreServices.ReloadExtensions();
 
             return Task.FromResult<object?>(new
             {

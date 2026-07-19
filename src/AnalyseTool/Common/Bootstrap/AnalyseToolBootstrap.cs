@@ -34,11 +34,23 @@ namespace AnalyseTool.Common.Bootstrap
             RevitTaskHub.Initialize();
 
             Dispatcher = new CommandDispatcher(RevitTaskHub);
+            // Built-ins live in two assemblies now: platform commands in Core, host commands here.
+            Dispatcher.RegisterBuiltIns(typeof(CommandDispatcher).Assembly);
             Dispatcher.RegisterBuiltIns(Assembly.GetExecutingAssembly());
+
+            // Extensions may reference host types (they shouldn't, but be safe): share this assembly
+            // by simple name so crossing types keep one identity. Core registers itself already.
+            ExtensionLoadContext.ShareWithExtensions(Assembly.GetExecutingAssembly());
 
             // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
             _loader = new ExtensionLoader(Dispatcher, uiApp.Application.VersionNumber);
             _loader.LoadAll();
+
+            // Core-side commands (ReloadExtensions, SaveAsCommand, …) reach the loader/dispatcher
+            // through CoreServices; the reload event lets the host refresh its ribbon buttons.
+            CoreServices.Initialize(Dispatcher, _loader);
+            CoreServices.ExtensionsReloaded += () =>
+                RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
             // MCP transport: owns the localhost WebSocket bridge to the SAME dispatcher, and
             // auto-starts it if the user enabled it previously (persisted in mcp.json).
@@ -49,15 +61,9 @@ namespace AnalyseTool.Common.Bootstrap
         }
 
         /// <summary>Reloads extension command DLLs (collectible contexts) so changed code takes effect
-        /// without restarting Revit. No-op until Initialize has run.</summary>
-        public static void ReloadExtensions()
-        {
-            if (!_initialized) return;
-            Log.Information("Reloading extensions");
-            _loader.UnloadAll();
-            _loader.LoadAll();
-            Log.Information("Reload done — {CommandCount} commands registered", Dispatcher.RegisteredCommands.Count);
-        }
+        /// without restarting Revit. No-op until Initialize has run. Delegates to Core — the single
+        /// owner of the loader lifecycle since the platform split.</summary>
+        public static void ReloadExtensions() => CoreServices.ReloadExtensions();
 
 
     }

@@ -5,7 +5,9 @@ namespace AnalyseTool.Common
 {
     internal sealed class PathProvider
     {
-        public static string RootDirectory => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        // typeof-based (not GetExecutingAssembly) so the value stays pinned to this assembly's folder
+        // no matter which assembly of the split platform calls it.
+        public static string RootDirectory => Path.GetDirectoryName(typeof(PathProvider).Assembly.Location)!;
         public static string ProfilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
 
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\extensions — the default extensions root. Extensions live one

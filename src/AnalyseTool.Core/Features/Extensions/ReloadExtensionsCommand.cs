@@ -1,5 +1,4 @@
 using AnalyseTool.Common.Bootstrap;
-using AnalyseTool.Common.Extensions;
 using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Features.Extensions
@@ -14,8 +13,8 @@ namespace AnalyseTool.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            AnalyseToolBootstrap.ReloadExtensions();
-            RibbonEventHub.Run(uiApp => RibbonHost.RefreshExtensionButtons(uiApp.Application.VersionNumber));
+            // Raises ExtensionsReloaded; the host listens and refreshes the ribbon buttons.
+            CoreServices.ReloadExtensions();
             return Task.FromResult<object?>(null);
         }
     }

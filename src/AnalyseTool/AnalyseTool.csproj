@@ -39,8 +39,6 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
-        <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (no prebuilt DLL). -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
         <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
         <!-- The host uses Newtonsoft directly (dispatcher, manifests, transport). Declared explicitly
              because the SDK no longer exposes it transitively (its ref is PrivateAssets=all). -->
@@ -66,6 +64,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
     </ItemGroup>
 

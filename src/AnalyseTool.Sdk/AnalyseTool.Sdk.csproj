@@ -50,6 +50,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="AnalyseTool" />
+    <InternalsVisibleTo Include="AnalyseTool.Core" />
   </ItemGroup>
 
   <!-- Ship the authoring props (auto-imported by consumers) and the author guide as the package README. -->

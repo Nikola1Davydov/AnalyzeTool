@@ -26,12 +26,24 @@ namespace AnalyseTool.Common.Extensions
     {
         private static readonly HashSet<string> SharedWithHost = new(StringComparer.OrdinalIgnoreCase)
         {
-            "AnalyseTool.Sdk",   // the public contract — MUST be the host's copy
-            "AnalyseTool",       // host assembly (extensions shouldn't reference it, but be safe)
+            "AnalyseTool.Sdk",    // the public contract — MUST be the host's copy
+            "AnalyseTool.Core",   // this assembly (extensions shouldn't reference it, but be safe)
             "RevitAPI",
             "RevitAPIUI",
-            "Newtonsoft.Json",   // payload JToken crosses the boundary
+            "Newtonsoft.Json",    // payload JToken crosses the boundary
         };
+
+        /// <summary>Additional host-side assemblies shared with extensions by simple name (e.g. the
+        /// host assembly itself, registered by the bootstrap — Core cannot reference it directly).</summary>
+        private static readonly Dictionary<string, Assembly> AdditionalShared = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Registers a host-side assembly whose types must keep one identity across the
+        /// extension boundary. Called by the bootstrap for the host (and later Tools) assemblies.</summary>
+        public static void ShareWithExtensions(Assembly assembly)
+        {
+            string? name = assembly.GetName().Name;
+            if (name is not null) AdditionalShared[name] = assembly;
+        }
 
         private readonly AssemblyDependencyResolver? _resolver;
 
@@ -67,10 +79,16 @@ namespace AnalyseTool.Common.Extensions
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            if (assemblyName.Name is not null && SharedWithHost.Contains(assemblyName.Name))
-                // Host copy by simple name (version-agnostic). For Revit API names this is null, which
-                // falls through to the default context — Revit provides those, so exact binding is fine.
-                return ResolveSharedFromHost(assemblyName.Name);
+            if (assemblyName.Name is not null)
+            {
+                if (AdditionalShared.TryGetValue(assemblyName.Name, out Assembly? registered))
+                    return registered;
+
+                if (SharedWithHost.Contains(assemblyName.Name))
+                    // Host copy by simple name (version-agnostic). For Revit API names this is null, which
+                    // falls through to the default context — Revit provides those, so exact binding is fine.
+                    return ResolveSharedFromHost(assemblyName.Name);
+            }
 
             string? path = _resolver?.ResolveAssemblyToPath(assemblyName);
             return path is not null ? LoadFromBytes(path) : null;
@@ -81,10 +99,10 @@ namespace AnalyseTool.Common.Extensions
         /// assemblies return null (deferred to the default context, which Revit populates).</summary>
         private static Assembly? ResolveSharedFromHost(string name) => name switch
         {
-            "AnalyseTool.Sdk" => typeof(IRevitTask).Assembly,           // the public contract — host's copy
-            "AnalyseTool" => typeof(ExtensionLoadContext).Assembly,     // host assembly (this type lives in it)
-            "Newtonsoft.Json" => typeof(JToken).Assembly,               // payload JToken crosses the boundary
-            _ => null,                                                   // RevitAPI / RevitAPIUI → default context
+            "AnalyseTool.Sdk" => typeof(IRevitTask).Assembly,             // the public contract — host's copy
+            "AnalyseTool.Core" => typeof(ExtensionLoadContext).Assembly,  // this assembly
+            "Newtonsoft.Json" => typeof(JToken).Assembly,                 // payload JToken crosses the boundary
+            _ => null,                                                     // RevitAPI / RevitAPIUI → default context
         };
 
         /// <summary>Reads the assembly (and its PDB, if present) into memory and loads from there, so

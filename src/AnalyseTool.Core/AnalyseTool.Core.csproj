@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+    <PropertyGroup>
+        <!-- WPF: UserDialogUtils uses System.Windows.MessageBox. -->
+        <UseWPF>true</UseWPF>
+        <LangVersion>latest</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (RoslynScriptCompiler). -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+        <!-- CommandDispatcher generates JSON Schemas for command inputs via AIJsonUtilities. -->
+        <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.2" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <!-- Log calls only; the sinks are configured by the host (AppLog). -->
+        <PackageReference Include="Serilog" Version="4.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    </ItemGroup>
+
+    <!-- PathProvider needs ToolData.PLUGIN_NAME. -->
+    <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+    <ItemGroup>
+        <!-- The host keeps using Core internals until the split is complete; the types stay internal
+             so extensions (which may only see the Sdk contract) cannot bind to platform internals. -->
+        <InternalsVisibleTo Include="AnalyseTool" />
+    </ItemGroup>
+
+</Project>
