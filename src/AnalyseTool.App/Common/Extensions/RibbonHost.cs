@@ -270,7 +270,7 @@ namespace AnalyseTool.App.Common.Extensions
                 return;
             }
 
-            Window window = new AnalyseTool.App.FamilyControlWindow();
+            Window window = new AnalyseTool.App.Common.Extensions.FamilyControlWindow();
             window.Closed += (_, _) => _familyWindow = null;
             _familyWindow = window;
             window.Show();

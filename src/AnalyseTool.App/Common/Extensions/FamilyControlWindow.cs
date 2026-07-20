@@ -9,7 +9,7 @@ using Microsoft.Web.WebView2.Wpf;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AnalyseTool.App
+namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
     /// "Family Control" page in its own window (the second ribbon button next to AnalyseTool). Loads the
