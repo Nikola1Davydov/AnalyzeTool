@@ -1,4 +1,4 @@
-﻿using Nuke.Common;
+using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tools.GitHub;
 using Octokit;
@@ -22,7 +22,7 @@ sealed partial class Build
         {
             // Alle MSI-Dateien ins ArtifactsDirectory kopieren. Solution-relative, so it works wherever
             // the solution sits in the repo (e.g. moved under src/).
-            var installerOutput = Solution.Installer.Directory / "output";
+            var installerOutput = Solution.Delivery.Installer.Directory / "output";
 
             foreach (var msi in installerOutput.GlobFiles("*.msi"))
             {

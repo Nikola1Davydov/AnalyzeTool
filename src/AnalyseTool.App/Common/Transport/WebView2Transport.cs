@@ -15,6 +15,11 @@ namespace AnalyseTool.App.Common.Transport
         private readonly WebView2 _webView;
         private readonly CommandQueue _queue;
 
+        // All attached transports, for host-initiated broadcasts (busy state, …). A window's
+        // transport registers on Attach and leaves on Detach; Post already tolerates a WebView that
+        // died without detaching.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<WebView2Transport, byte> _attached = new();
+
         public WebView2Transport(WebView2 webView, CommandQueue queue)
         {
             _webView = webView;
@@ -24,11 +29,21 @@ namespace AnalyseTool.App.Common.Transport
         public void Attach()
         {
             _webView.WebMessageReceived += OnWebMessageReceived;
+            _attached[this] = 0;
         }
 
         public void Detach()
         {
             _webView.WebMessageReceived -= OnWebMessageReceived;
+            _attached.TryRemove(this, out _);
+        }
+
+        /// <summary>Pushes an Event to EVERY attached window/pane (e.g. "QueueChanged"). Safe from any
+        /// thread — posting marshals to each WebView's dispatcher.</summary>
+        public static void BroadcastEvent(string name, object? payload = null)
+        {
+            foreach (WebView2Transport transport in _attached.Keys)
+                transport.SendEvent(name, payload);
         }
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -86,6 +101,13 @@ namespace AnalyseTool.App.Common.Transport
         /// would surface inside an async-void handler (or a progress callback) and could crash Revit.</summary>
         private void Post(string json)
         {
+            // PostWebMessageAsJson is only valid on the WebView's UI thread; broadcasts (queue state)
+            // arrive from worker threads, so marshal when needed.
+            if (!_webView.Dispatcher.CheckAccess())
+            {
+                _webView.Dispatcher.BeginInvoke(() => Post(json));
+                return;
+            }
             try
             {
                 _webView.CoreWebView2?.PostWebMessageAsJson(json);

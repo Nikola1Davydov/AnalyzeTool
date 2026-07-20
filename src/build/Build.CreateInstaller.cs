@@ -1,4 +1,4 @@
-﻿using Nuke.Common;
+using Nuke.Common;
 using Nuke.Common.Tools.DotNet;
 using Serilog;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
@@ -14,10 +14,10 @@ sealed partial class Build
         {
             const string configuration = "Release";
 
-            Log.Information("Project: {Name}", Solution.AnalyseTool_App.Name);
+            Log.Information("Project: {Name}", Solution.Host.AnalyseTool_App.Name);
 
             DotNetBuild(settings => settings
-                .SetProjectFile(Solution.Installer)
+                .SetProjectFile(Solution.Delivery.Installer)
                 .SetConfiguration(configuration)
                 .SetVersion(ReleaseVersionNumber)
                 .SetVerbosity(DotNetVerbosity.minimal));

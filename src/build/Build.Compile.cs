@@ -1,4 +1,4 @@
-﻿using Nuke.Common;
+using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tools.DotNet;
 using System.Configuration;
@@ -17,7 +17,7 @@ sealed partial class Build
             foreach (string configuration in GlobBuildConfigurations())
             {
                 DotNetBuild(settings => settings
-                    .SetProjectFile(Solution.clientapp)
+                    .SetProjectFile(Solution.Host.clientapp)
                     .SetConfiguration(configuration)
                     .SetVersion(ReleaseVersionNumber)
                     .SetVerbosity(DotNetVerbosity.minimal));
@@ -33,7 +33,7 @@ sealed partial class Build
             foreach (string configuration in GlobBuildConfigurations())
             {
                 DotNetBuild(settings => settings
-                    .SetProjectFile(Solution.AnalyseTool_Launcher)
+                    .SetProjectFile(Solution.Host.AnalyseTool_Launcher)
                     .SetConfiguration(configuration)
                     .SetVersion(ReleaseVersionNumber)
                     .SetVerbosity(DotNetVerbosity.minimal));
@@ -44,8 +44,8 @@ sealed partial class Build
 
     void CopyClientAppDistToLauncher(string configuration)
     {
-        var clientAppDistPath = Solution.clientapp.Directory / "dist";
-        var launcherOutputPath = Solution.AnalyseTool_Launcher.Directory / "bin" / configuration / "AnalyseTool";
+        var clientAppDistPath = Solution.Host.clientapp.Directory / "dist";
+        var launcherOutputPath = Solution.Host.AnalyseTool_Launcher.Directory / "bin" / configuration / "AnalyseTool";
 
         if (!Directory.Exists(clientAppDistPath))
         {

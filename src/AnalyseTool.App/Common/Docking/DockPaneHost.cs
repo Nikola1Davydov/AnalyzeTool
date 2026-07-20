@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.Core;
 using Autodesk.Revit.UI;
@@ -42,8 +43,8 @@ namespace AnalyseTool.App.Common.Docking
                 // Hook Idling HERE: OnStartup is a valid API context, while the pane's WPF Loaded (the
                 // caller of EnsureReadyAsync) is NOT — even subscribing to Idling there throws
                 // "Revit is currently not within an API context", leaving a restored pane black.
-                // The handler no-ops until someone actually awaits EnsureReadyAsync, and unhooks itself
-                // once the host is initialized (by us or by any ribbon click).
+                // The session's ONE permanent Idling handler (see OnIdling): stamps RevitAvailability
+                // on every tick, and doubles as the deferred-bootstrap alarm until the host is up.
                 app.Idling += OnIdling;
                 _idlingHooked = true;
 
@@ -123,12 +124,21 @@ namespace AnalyseTool.App.Common.Docking
             return _ready.Task;
         }
 
+        /// <summary>
+        /// The host's ONE permanent Idling handler, serving two jobs:
+        /// (1) always: stamps <see cref="RevitAvailability"/> — Idling firing IS the "Revit is free"
+        ///     signal (the RevitDBExplorer technique), a stale stamp means a modal dialog / edit mode /
+        ///     native command holds Revit;
+        /// (2) until the host is initialized: acts as the deferred-bootstrap alarm for a pane that
+        ///     Revit restored at startup (armed by <see cref="EnsureReadyAsync"/>).
+        /// Never unhooked — job (1) runs for the whole session and costs one assignment per tick.
+        /// </summary>
         private static void OnIdling(object? sender, IdlingEventArgs e)
         {
-            // Someone else (a ribbon click) already initialized the host — our work here is done.
+            RevitAvailability.ReportIdle();
+
             if (CoreServices.IsInitialized)
             {
-                Unhook();
                 _ready?.TrySetResult(true);
                 return;
             }
@@ -138,7 +148,6 @@ namespace AnalyseTool.App.Common.Docking
             try
             {
                 AnalyseToolBootstrap.Initialize((UIApplication)sender!);
-                Unhook();
                 _ready.TrySetResult(true);
             }
             catch (Exception ex)
@@ -150,13 +159,6 @@ namespace AnalyseTool.App.Common.Docking
                 _ready = null;
                 failed.TrySetException(ex);
             }
-        }
-
-        private static void Unhook()
-        {
-            if (!_idlingHooked) return;
-            _idlingHooked = false;
-            _app!.Idling -= OnIdling;
         }
     }
 }

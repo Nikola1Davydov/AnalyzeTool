@@ -26,11 +26,16 @@
       "enum": [
         "BuildClientApp",
         "BuildLauncher",
+        "CheckBoundaries",
+        "Ci",
         "Clean",
         "CleanFailedRelease",
+        "CompileCi",
         "CreateBundle",
         "CreateInstaller",
-        "PublishGitHub"
+        "PackSdk",
+        "PublishGitHub",
+        "TestSdkPackage"
       ]
     },
     "Verbosity": {

@@ -1,6 +1,7 @@
 name: CI
 
-# Guardrails of the platform split (see src/build/Check-Boundaries.ps1 and samples/Acme.Sample):
+# Thin wrapper: ALL CI logic lives in the Nuke build (src/build/Build.Ci.cs, target `Ci`), so the
+# exact same guardrails run locally via `src\build.cmd Ci`:
 #   1. dependency contract + headless Core/Tools invariant
 #   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
 #   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
@@ -33,40 +34,8 @@ jobs:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
 
-      - name: Dependency contract (boundaries + headless Core)
-        shell: pwsh
-        run: ./src/build/Check-Boundaries.ps1
-
-      - name: Build plugin chain (Debug R25, net8)
-        run: dotnet build "src/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj" -c "Debug R25"
-
-      - name: Build plugin chain (Debug R27, net10)
-        run: dotnet build "src/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj" -c "Debug R27"
-
-      - name: Pack AnalyseTool.Sdk
-        run: dotnet pack "src/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj" -c "Release R25" -o artifacts/sdk-nupkg
-
-      - name: Build Acme.Sample against the packed SDK (external-author simulation)
-        shell: pwsh
-        run: |
-          $pkg = Get-ChildItem artifacts/sdk-nupkg/AnalyseTool.Sdk.*.nupkg | Select-Object -First 1
-          $version = $pkg.Name -replace '^AnalyseTool\.Sdk\.', '' -replace '\.nupkg$', ''
-          Write-Host "Packed SDK version: $version"
-
-          $feed = (Resolve-Path artifacts/sdk-nupkg).Path
-          $cfg = '<?xml version="1.0" encoding="utf-8"?><configuration><packageSources><clear />' +
-                 "<add key=""local-sdk"" value=""$feed"" />" +
-                 '<add key="nuget.org" value="https://api.nuget.org/v3/index.json" />' +
-                 '</packageSources></configuration>'
-          Set-Content nuget.ci.config $cfg -Encoding utf8
-
-          # Isolated package folder so the ProjectReference world cannot leak into this restore.
-          dotnet build samples/Acme.Sample/Acme.Sample.csproj -c "Release R25" `
-            -p:UseSdkPackage=true `
-            -p:SdkPackageVersion=$version `
-            -p:RestoreConfigFile="$PWD/nuget.ci.config" `
-            -p:RestorePackagesPath="$PWD/artifacts/sample-packages"
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Run CI guardrails (Nuke)
+        run: ./src/build.cmd Ci
 
       - name: Upload SDK package artifact
         uses: actions/upload-artifact@v4

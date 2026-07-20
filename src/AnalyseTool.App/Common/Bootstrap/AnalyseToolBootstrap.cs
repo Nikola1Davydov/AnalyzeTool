@@ -59,6 +59,18 @@ namespace AnalyseTool.App.Common.Bootstrap
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
+            // Busy-state push: every window/pane shows what the platform is doing (bottom status bar).
+            // The payload mirrors GetQueueStatus so event and poll stay one shape.
+            queue.RunningChanged += () =>
+                Common.Transport.WebView2Transport.BroadcastEvent(
+                    "QueueChanged", Core.Features.Extensions.GetQueueStatus.Snapshot());
+
+            // Revit-availability stamping runs in the host's single permanent Idling handler
+            // (DockPaneHost.OnIdling, hooked at OnStartup). Freshen the stamp here once: Initialize
+            // runs inside a command context, where Idling hasn't fired for a while by definition —
+            // without this the busy bar would flash a false "Revit is busy" right after bootstrap.
+            RevitAvailability.ReportIdle();
+
             // MCP transport: the localhost TCP bridge enqueues into the SAME queue; auto-starts if
             // the user enabled it previously (persisted in mcp.json).
             McpServerController.Initialize(queue);

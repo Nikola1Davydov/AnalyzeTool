@@ -39,11 +39,34 @@ namespace AnalyseTool.Core.Common.Dispatch
     /// scheduling, priorities, consent gates and per-source policy can be added in ONE place
     /// without touching any transport. Adding a transport must require zero changes here.
     /// </summary>
+    /// <summary>A command currently executing through the queue (for the busy indicator / MCP).</summary>
+    internal sealed record RunningCommand(long Id, string Command, string Source, DateTime StartedUtc);
+
     internal sealed class CommandQueue
     {
         private readonly CommandDispatcher _dispatcher;
 
+        // Observability: which commands are in flight RIGHT NOW (name, transport, started-at). The
+        // queue doesn't schedule yet, but the user must be able to see WHY the tool is busy — both
+        // in the UI (bottom status bar) and over MCP (an agent checks before piling more work on).
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<long, RunningCommand> _running = new();
+        private long _nextRunId;
+
+        /// <summary>Introspection commands stay out of the registry — a status poll must not make the
+        /// tool look busy (and must not re-trigger the event it is answering).</summary>
+        private static readonly HashSet<string> Untracked = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "GetQueueStatus",
+        };
+
         public CommandQueue(CommandDispatcher dispatcher) => _dispatcher = dispatcher;
+
+        /// <summary>Raised (on a worker thread) whenever a command starts or finishes.</summary>
+        public event Action? RunningChanged;
+
+        /// <summary>Snapshot of the commands in flight, oldest first.</summary>
+        public IReadOnlyList<RunningCommand> Running =>
+            _running.Values.OrderBy(r => r.StartedUtc).ToList();
 
         /// <summary>Registered commands, for transport-side introspection (MCP tools/list, the
         /// Settings "Commands" table). Read-only — registration stays a platform concern.</summary>
@@ -62,9 +85,35 @@ namespace AnalyseTool.Core.Common.Dispatch
             }
 
             Log.Debug("Command {Command} invoked via {Source}", request.Command, request.Source);
-            return await _dispatcher
-                .DispatchAsync(request.Command, request.Payload, request.CancellationToken, request.Progress)
-                .ConfigureAwait(false);
+
+            bool track = !Untracked.Contains(request.Command);
+            long runId = 0;
+            if (track)
+            {
+                runId = Interlocked.Increment(ref _nextRunId);
+                _running[runId] = new RunningCommand(runId, request.Command, request.Source, DateTime.UtcNow);
+                NotifyRunningChanged();
+            }
+            try
+            {
+                return await _dispatcher
+                    .DispatchAsync(request.Command, request.Payload, request.CancellationToken, request.Progress)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                if (track)
+                {
+                    _running.TryRemove(runId, out _);
+                    NotifyRunningChanged();
+                }
+            }
+        }
+
+        private void NotifyRunningChanged()
+        {
+            try { RunningChanged?.Invoke(); }
+            catch (Exception ex) { Log.Warning(ex, "A RunningChanged subscriber threw"); }
         }
     }
 }

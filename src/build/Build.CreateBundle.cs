@@ -1,4 +1,4 @@
-﻿using Autodesk.PackageBuilder;
+using Autodesk.PackageBuilder;
 using Namotion.Reflection;
 using Nuke.Common;
 using Nuke.Common.IO;
@@ -17,7 +17,7 @@ sealed partial class Build
         .DependsOn(BuildLauncher)
         .Executes(() =>
         {
-            Project project = Solution.AnalyseTool_Launcher;
+            Project project = Solution.Host.AnalyseTool_Launcher;
             Log.Information("Project: {Name}", project.Name);
 
             // Scans the disk for "Release *" output folders. Skip any whose Revit version we don't

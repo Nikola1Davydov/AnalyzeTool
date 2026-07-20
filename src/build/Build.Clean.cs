@@ -1,4 +1,4 @@
-﻿using Nuke.Common;
+using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
 using Nuke.Common.Tools.DotNet;
@@ -17,8 +17,8 @@ sealed partial class Build
         {
             Project[] excludedProjects =
             [
-                Solution._build,
-                Solution.AnalyseTool_Test,
+                Solution.Delivery._build,
+                Solution.Tests.AnalyseTool_Test,
             ];
 
             CleanDirectory(ArtifactsDirectory);
@@ -32,7 +32,7 @@ sealed partial class Build
 
             foreach (var configuration in GlobBuildConfigurations())
                 DotNetClean(settings => settings
-                    .SetProject(Solution.AnalyseTool_App)
+                    .SetProject(Solution.Host.AnalyseTool_App)
                     .SetConfiguration(configuration)
                     .SetVerbosity(DotNetVerbosity.minimal)
                     .EnableNoLogo());
