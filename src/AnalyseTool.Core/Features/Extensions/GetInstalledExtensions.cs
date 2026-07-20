@@ -17,7 +17,10 @@ namespace AnalyseTool.Core.Features.Extensions
 
             // Host environment info, surfaced in Settings so authors know what to build against.
             string hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version?.ToString() ?? "?";
-            string pluginVersion = typeof(GetInstalledExtensions).Assembly.GetName().Version?.ToString() ?? "?";
+            // The single version source (also used by CheckUpdate/installer) — NOT the assembly version:
+            // this class moved between assemblies during the slice restructuring, and an assembly without
+            // its own AssemblyVersion silently reports 1.0.0.0.
+            string pluginVersion = SharedData.ToolData.PLUGIN_VERSION;
 
             var extensions = ExtensionCatalog.EnumerateAll(ExtensionSources.ScanDirs(revitVersion))
                 .Select(d => new

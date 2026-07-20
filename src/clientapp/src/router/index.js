@@ -1,25 +1,30 @@
 import { createWebHashHistory, createRouter } from "vue-router";
 
-import AboutView from "@/view/AboutView.vue";
-import ParameterFilledEmptyPage from "@/view/ParameterFilledEmptyView.vue";
-import ParameterValueCheckView from "@/view/ParameterValueCheckView.vue";
-import FamiliesView from "@/view/FamiliesView.vue";
-import FamilyPaletteView from "@/view/Families/FamilyPaletteView.vue";
-import ConnectParameters from "@/view/ConnectParameters/ConnectParametersView.vue";
-import ParameterCanvasView from "@/view/InfiniteCanvas/ParameterCanvasView.vue";
-import ExtensionsSettingsView from "@/view/System/ExtensionsSettingsView.vue";
-
+// Views are imported DYNAMICALLY: each plugin window is its own WebView that loads this SPA and
+// shows exactly one route — a static import would make every window (even the narrow dockable
+// palette) parse the code of ALL pages. With dynamic imports Vite emits one chunk per view, so a
+// window parses the app core + its own page only. NOTE: PrimeVue components stay globally
+// registered in main.js on purpose (the canvas relies on runtime component resolution) — only the
+// per-view code and its heavy deps (chart.js, tables, marked) are split out.
 const routes = [
-  { path: "/", component: ParameterCanvasView },
+  { path: "/", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   { path: "/index.html", redirect: "/" },
-  { path: "/about", component: AboutView },
-  { path: "/parameterFilledEmptyPage", component: ParameterFilledEmptyPage },
-  { path: "/parametervaluecheck", component: ParameterValueCheckView },
-  { path: "/families", component: FamiliesView, meta: { layout: "bare" } },
-  { path: "/families-dock", component: FamilyPaletteView, meta: { layout: "bare" } },
-  { path: "/connectParameters", component: ConnectParameters },
-  { path: "/parameterCanvasView", component: ParameterCanvasView },
-  { path: "/system/settings", component: ExtensionsSettingsView, meta: { layout: "bare" } },
+  { path: "/about", component: () => import("@/view/AboutView.vue") },
+  { path: "/parameterFilledEmptyPage", component: () => import("@/view/ParameterFilledEmptyView.vue") },
+  { path: "/parametervaluecheck", component: () => import("@/view/ParameterValueCheckView.vue") },
+  { path: "/families", component: () => import("@/view/FamiliesView.vue"), meta: { layout: "bare" } },
+  {
+    path: "/families-dock",
+    component: () => import("@/view/Families/FamilyPaletteView.vue"),
+    meta: { layout: "bare" },
+  },
+  { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
+  { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
+  {
+    path: "/system/settings",
+    component: () => import("@/view/System/ExtensionsSettingsView.vue"),
+    meta: { layout: "bare" },
+  },
 ];
 
 const router = createRouter({

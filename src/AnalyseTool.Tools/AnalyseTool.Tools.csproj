@@ -14,6 +14,8 @@
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- Version attributes come from AssemblyInfo.cs (ToolData.PLUGIN_VERSION), like App/Launcher. -->
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     </PropertyGroup>
 
     <ItemGroup>
@@ -39,10 +41,7 @@
     <!-- AiProviderRegistry needs ToolData.PLUGIN_NAME for the profile folder. -->
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
-    <ItemGroup>
-        <!-- The host bootstrap registers this assembly's commands (typeof(...).Assembly) and a few
-             host features still touch internal models; keep internal so extensions can't bind. -->
-        <InternalsVisibleTo Include="AnalyseTool.App" />
-    </ItemGroup>
+    <!-- InternalsVisibleTo lives in AssemblyInfo.cs: GenerateAssemblyInfo=False (version attributes
+         come from ToolData) would silently drop csproj-level IVT items. -->
 
 </Project>
