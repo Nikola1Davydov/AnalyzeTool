@@ -237,8 +237,8 @@ public interface IRevitContext
 `RevitPayload` deserializes the incoming JSON:
 
 ```csharp
-var args = ctx.Payload.As<MyArgs>();   // strongly-typed
-string raw = ctx.Payload.RawJson;      // or the raw JSON
+var args = revitContext.Payload.As<MyArgs>();   // strongly-typed
+string raw = revitContext.Payload.RawJson;      // or the raw JSON
 ```
 
 ### 4.3 The one rule: model access only inside `RunInRevitAsync`
@@ -256,9 +256,9 @@ namespace Acme.Sample
     [RevitCommand("Hello")]                 // wire name (see 4.4)
     public sealed class HelloRevit : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
         {
-            return ctx.RunInRevitAsync<object?>(app =>
+            return revitContext.RunInRevitAsync<object?>(app =>
             {
                 var uiDoc = app.ActiveUIDocument;
                 int selectedCount = uiDoc.Selection.GetElementIds().Count;
@@ -274,7 +274,7 @@ namespace Acme.Sample
 **Reads and writes both go inside `RunInRevitAsync`.** For a write, open a transaction *inside* it:
 
 ```csharp
-await ctx.RunInRevitAsync(app =>
+await revitContext.RunInRevitAsync(app =>
 {
     var doc = app.ActiveUIDocument.Document;
     using var t = new Transaction(doc, "Acme: do thing");
@@ -289,10 +289,10 @@ synchronously on the Revit thread and will freeze the UI. Do the slow work first
 just the model touch:
 
 ```csharp
-public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+public async Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
 {
-    var data = await httpClient.GetStringAsync(url, ct);          // off the Revit thread
-    return await ctx.RunInRevitAsync(app => ApplyToModel(app, data)); // on it, briefly
+    var data = await httpClient.GetStringAsync(url, cancellationToken);          // off the Revit thread
+    return await revitContext.RunInRevitAsync(app => ApplyToModel(app, data)); // on it, briefly
 }
 ```
 
@@ -319,7 +319,7 @@ So the sample is called as `AT.invoke("acme.sample.Hello")`.
 ### 4.5 Command metadata (powers MCP)
 
 `[RevitCommand]` carries everything MCP needs to make your command usable by an AI. You still read
-the payload yourself with `ctx.Payload.As<T>()`; you just *declare the input type* so the host can
+the payload yourself with `revitContext.Payload.As<T>()`; you just *declare the input type* so the host can
 publish a JSON schema for it.
 
 ```csharp
@@ -331,10 +331,10 @@ using System.ComponentModel; // for [Description]
     InputType = typeof(SetWallComment.Args))]    // -> generates the tool's input schema
 public sealed class SetWallComment : IRevitTask
 {
-    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
     {
-        Args? args = ctx.Payload.As<Args>();     // deserialize as usual
-        return ctx.RunInRevitAsync<object?>(app => { /* ...use args.ElementIds / args.Comment... */ return null; });
+        Args? args = revitContext.Payload.As<Args>();     // deserialize as usual
+        return revitContext.RunInRevitAsync<object?>(app => { /* ...use args.ElementIds / args.Comment... */ return null; });
     }
 
     internal sealed record Args                  // must be at least `internal` (see note)
@@ -377,11 +377,11 @@ public sealed class BulkUpdate : IRevitTask, IProgressAware
 {
     public IProgress<ProgressInfo>? Progress { get; set; }   // set by the host; null if nobody listens
 
-    public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
     {
         for (int i = 0; i < chunks.Count; i++)
         {
-            await ctx.RunInRevitAsync(app => ProcessChunk(app, chunks[i]));
+            await revitContext.RunInRevitAsync(app => ProcessChunk(app, chunks[i]));
             Progress?.Report(new ProgressInfo((i + 1) / (double)chunks.Count, "Updating…"));
         }
         return new { ok = true };
@@ -564,7 +564,7 @@ AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost WebSo
 - It **discovers commands live**: when the AI lists tools, the bridge returns the current command
   set, so your extension's commands appear as tools automatically (`acme.sample.Hello` →
   a tool named `acme_sample_Hello`). Tool arguments are passed straight through as your command's
-  JSON payload (the same thing `ctx.Payload` deserializes).
+  JSON payload (the same thing `revitContext.Payload` deserializes).
 
 **To turn it on:** open the **AnalyseTool tab → Settings → MCP server**, pick a port, click
 **Start**, then copy the generated **Claude Desktop config** snippet into your client's MCP config.

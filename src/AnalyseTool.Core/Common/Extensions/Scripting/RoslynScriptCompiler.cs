@@ -86,8 +86,8 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
                 "[RevitCommand(Description = " + descLiteral + ")]\n" +
                 "public sealed class Script : IRevitTask\n" +
                 "{\n" +
-                "    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>\n" +
-                "        ctx.RunInRevitAsync<object?>(uiapp =>\n" +
+                "    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>\n" +
+                "        revitContext.RunInRevitAsync<object?>(uiapp =>\n" +
                 "        {\n" +
                 "            var uidoc = uiapp.ActiveUIDocument;\n" +
                 "            var doc = uidoc != null ? uidoc.Document : null;\n";

@@ -3,11 +3,7 @@
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
     <PropertyGroup>
-        <!-- Deliberately NO UseWPF: Core is headless. It serves UI transports and headless
-             transports (MCP, remote) alike — errors flow through the log and diagnostics,
-             never through dialogs. -->
         <LangVersion>latest</LangVersion>
-        <PlatformTarget>x64</PlatformTarget>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>

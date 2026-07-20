@@ -36,8 +36,8 @@ using AnalyseTool.Sdk;
 [RevitCommand(Description = "Counts walls in the active document.", ReadOnly = true)]
 public sealed class CountWalls : IRevitTask
 {
-    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-        ctx.RunInRevitAsync<object?>(uiapp =>
+    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
+        revitContext.RunInRevitAsync<object?>(uiapp =>
         {
             var doc = uiapp.ActiveUIDocument?.Document;
             var count = new Autodesk.Revit.DB.FilteredElementCollector(doc)

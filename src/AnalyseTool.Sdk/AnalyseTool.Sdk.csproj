@@ -6,7 +6,6 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- The SDK is a public CONTRACT, versioned independently of the plugin release. Bump these only

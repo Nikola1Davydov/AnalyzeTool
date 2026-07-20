@@ -163,8 +163,8 @@ namespace AnalyseTool.Core.Features.Scripting
                 $"[RevitCommand(Description = {desc}, ReadOnly = {Bool(readOnly)}, Destructive = {Bool(destructive)})]\n" +
                 $"public sealed class {className} : IRevitTask\n" +
                 "{\n" +
-                "    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>\n" +
-                "        ctx.RunInRevitAsync<object?>(uiapp =>\n" +
+                "    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>\n" +
+                "        revitContext.RunInRevitAsync<object?>(uiapp =>\n" +
                 "        {\n" +
                 "            var uidoc = uiapp.ActiveUIDocument;\n" +
                 "            var doc = uidoc != null ? uidoc.Document : null;\n\n" +

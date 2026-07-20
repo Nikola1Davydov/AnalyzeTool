@@ -21,6 +21,7 @@
             Release R26;
             Release R27;
         </Configurations>
+        <PlatformTarget>x64</PlatformTarget>
     </PropertyGroup>
     
     <PropertyGroup>

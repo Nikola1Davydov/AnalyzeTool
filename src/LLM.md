@@ -31,7 +31,7 @@ namespace AnalyseTool.Sdk
 {
     public interface IRevitTask
     {
-        Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct);
+        Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken);
     }
 
     public interface IRevitContext
@@ -92,8 +92,8 @@ namespace Acme.Doors
     [RevitCommand(Description = "Returns the number of doors in the active document.", ReadOnly = true)]
     public sealed class CountDoors : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-            ctx.RunInRevitAsync<object?>(app =>
+        public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
+            revitContext.RunInRevitAsync<object?>(app =>
             {
                 var doc = app.ActiveUIDocument?.Document;
                 int count = new Autodesk.Revit.DB.FilteredElementCollector(doc)
@@ -113,10 +113,10 @@ namespace Acme.Doors
               Destructive = true, InputType = typeof(Args))]
 public sealed class SetComment : IRevitTask
 {
-    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
     {
-        var args = ctx.Payload.As<Args>()!;                      // read the payload
-        return ctx.RunInRevitAsync<object?>(app =>
+        var args = revitContext.Payload.As<Args>()!;                      // read the payload
+        return revitContext.RunInRevitAsync<object?>(app =>
         {
             var doc = app.ActiveUIDocument.Document;
             using var t = new Autodesk.Revit.DB.Transaction(doc, "Acme: set comments");

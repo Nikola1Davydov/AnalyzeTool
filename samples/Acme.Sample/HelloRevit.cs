@@ -16,10 +16,10 @@ namespace Acme.Sample
         InputType = typeof(HelloRevit.Input))]
     public sealed class HelloRevit : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
         {
-            Input? input = ctx.Payload.As<Input>();
-            return ctx.RunInRevitAsync<object?>(app =>
+            Input? input = revitContext.Payload.As<Input>();
+            return revitContext.RunInRevitAsync<object?>(app =>
             {
                 Autodesk.Revit.UI.UIDocument uiDoc = app.ActiveUIDocument;
                 int selectedCount = uiDoc.Selection.GetElementIds().Count;

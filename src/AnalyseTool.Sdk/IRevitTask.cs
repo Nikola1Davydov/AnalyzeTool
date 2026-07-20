@@ -12,8 +12,8 @@ namespace AnalyseTool.Sdk
         /// only inside <see cref="IRevitContext.RunInRevitAsync{T}"/>; do slow I/O outside it. Throw to
         /// report an error — the message is delivered back to the caller.
         /// </summary>
-        /// <param name="context">Carries the request payload and the Revit-thread marshaller.</param>
+        /// <param name="revitContext">Carries the request payload and the Revit-thread marshaller.</param>
         /// <param name="cancellationToken">Cancellation for the command.</param>
-        Task<object?> ExecuteAsync(IRevitContext context, CancellationToken cancellationToken);
+        Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken);
     }
 }
