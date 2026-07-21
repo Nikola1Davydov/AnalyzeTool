@@ -1,0 +1,108 @@
+THIRD-PARTY SOFTWARE NOTICES
+============================
+
+AnalyseTool bundles the following third-party components. They are the
+property of their respective owners and are distributed under the licenses
+named below. Build-time-only tools (NUKE, WixSharp, test frameworks, Vite,
+etc.) are not redistributed with the product and are therefore not listed.
+
+.NET components (shipped in the plugin folder)
+----------------------------------------------
+
+Newtonsoft.Json                                  MIT
+  Copyright (c) James Newton-King
+  https://github.com/JamesNK/Newtonsoft.Json
+
+Serilog / Serilog.Sinks.File                     Apache-2.0
+  Copyright (c) Serilog Contributors
+  https://github.com/serilog/serilog
+
+Microsoft.CodeAnalysis.CSharp (Roslyn)           MIT
+Microsoft.Extensions.AI                          MIT
+Microsoft.Extensions.Hosting                     MIT
+Microsoft.AspNetCore.Components.WebView.Wpf      MIT
+System.Drawing.Common                            MIT
+System.Security.Cryptography.ProtectedData       MIT
+  Copyright (c) .NET Foundation and Contributors
+  https://github.com/dotnet
+
+Microsoft.Web.WebView2                           Microsoft WebView2 SDK license
+  Copyright (c) Microsoft Corporation
+  Redistributable per the package license:
+  https://www.nuget.org/packages/Microsoft.Web.WebView2/ (License)
+
+OllamaSharp                                      MIT
+  Copyright (c) Andreas Wäscher
+  https://github.com/awaescher/OllamaSharp
+
+ModelContextProtocol (C# SDK)                    MIT
+  Copyright (c) Model Context Protocol contributors
+  https://github.com/modelcontextprotocol/csharp-sdk
+
+Web frontend components (bundled into the clientapp)
+----------------------------------------------------
+
+Vue.js                                           MIT
+  Copyright (c) 2018-present, Yuxi (Evan) You and Vue contributors
+  https://github.com/vuejs/core
+
+Vue Router                                       MIT
+  Copyright (c) 2019-present Eduardo San Martin Morote
+  https://github.com/vuejs/router
+
+Pinia                                            MIT
+  Copyright (c) 2019-present Eduardo San Martin Morote
+  https://github.com/vuejs/pinia
+
+PrimeVue / PrimeIcons / @primeuix/themes /       MIT
+tailwindcss-primeui
+  Copyright (c) 2018-present PrimeTek
+  https://github.com/primefaces/primevue
+
+Tailwind CSS                                     MIT
+  Copyright (c) Tailwind Labs, Inc.
+  https://github.com/tailwindlabs/tailwindcss
+
+Chart.js                                         MIT
+  Copyright (c) Chart.js Contributors
+  https://github.com/chartjs/Chart.js
+
+three.js                                         MIT
+  Copyright (c) 2010-2026 three.js authors
+  https://github.com/mrdoob/three.js
+
+marked                                           MIT
+  Copyright (c) 2011-2026, Christopher Jeffrey
+  https://github.com/markedjs/marked
+
+The bundled clientapp also carries the transitive npm dependencies of the
+packages above; their licenses (MIT/ISC) are recorded in
+src/clientapp/package-lock.json.
+
+License texts
+-------------
+
+MIT License (applies to each component marked "MIT" above, with the
+copyright notice given for that component):
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+
+Apache License 2.0 (applies to each component marked "Apache-2.0" above):
+  see the LICENSE file in this distribution or
+  http://www.apache.org/licenses/LICENSE-2.0
