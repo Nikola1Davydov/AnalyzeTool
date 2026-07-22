@@ -46,6 +46,9 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(_revitVersion))
             {
+                // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
+                if (!ExtensionStateStore.IsEnabled(descriptor.Manifest.Id)) continue;
+
                 // Declared a DLL but ships no build for this Revit year: listed as incompatible,
                 // never loaded — surface WHY in diagnostics instead of failing on a missing file.
                 if (descriptor.DeclaresDll && !descriptor.HasDll)

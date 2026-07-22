@@ -16,7 +16,38 @@ namespace AnalyseTool.Core.Common.Extensions
         [JsonProperty("version")]
         public string Version { get; init; } = string.Empty;
 
-        /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder).
+        // ---- Manifest v2: optional vendor metadata, shown by the Extension Manager. Additive —
+        // ---- v1 manifests without these fields keep working unchanged.
+
+        /// <summary>Short human-readable description for listings.</summary>
+        [JsonProperty("description")]
+        public string? Description { get; init; }
+
+        /// <summary>Vendor / author display name.</summary>
+        [JsonProperty("publisher")]
+        public string? Publisher { get; init; }
+
+        /// <summary>Vendor homepage URL.</summary>
+        [JsonProperty("website")]
+        public string? Website { get; init; }
+
+        /// <summary>Where users get help — errors are attributed to "extension X by Y, contact …".</summary>
+        [JsonProperty("supportUrl")]
+        public string? SupportUrl { get; init; }
+
+        /// <summary>Extension-level icon (PNG relative to the extension folder) for manager listings.
+        /// Distinct from <c>ui.button.icon</c> (the ribbon button); the manager falls back to that.</summary>
+        [JsonProperty("icon")]
+        public string? Icon { get; init; }
+
+        /// <summary>Optional update feed: either an HTTPS URL returning <c>{version, downloadUrl}</c>
+        /// or the shortcut <c>github:owner/repo</c> (latest release, zip asset). Updates download
+        /// from the VENDOR's URL — AnalyseTool never hosts third-party binaries.</summary>
+        [JsonProperty("updateFeed")]
+        public string? UpdateFeed { get; init; }
+
+        /// <summary>Optional C# assembly with IRevitTask commands (relative to the extension folder;
+        /// resolved year-subfolder-first, e.g. <c>2025\Ext.dll</c>, then the folder root).
         /// SDK compatibility is derived automatically from the DLL's AnalyseTool.Sdk reference.</summary>
         [JsonProperty("entryAssembly")]
         public string? EntryAssembly { get; init; }

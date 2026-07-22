@@ -176,7 +176,10 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted. Becomes the command prefix and the folder name. Valid chars: letters/digits/`.`/`-`/`_`. |
 | `version` | ✔ | SemVer string. |
-| `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. |
+| `description` / `publisher` / `website` / `supportUrl` | — | Vendor metadata shown in the extension listing. Recommended when publishing. |
+| `icon` | — | Extension-level PNG (relative path) for listings; falls back to `ui.button.icon`. |
+| `updateFeed` | — | Update source: an HTTPS URL returning `{version, downloadUrl}`, or `github:owner/repo` (latest release, zip asset). Only for published extensions. |
+| `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. Resolved in the Revit-year subfolder first (`2025\`), then the folder root. |
 | `ui` | — | **Omit** for a command-only extension (callable from JS/MCP but no button). |
 | `ui.entryHtml` | — | Page to open. Default `index.html`. |
 | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |

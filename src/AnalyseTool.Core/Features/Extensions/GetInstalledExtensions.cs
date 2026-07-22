@@ -28,6 +28,13 @@ namespace AnalyseTool.Core.Features.Extensions
                     id = d.Manifest.Id,
                     name = string.IsNullOrWhiteSpace(d.Manifest.Ui?.Button?.Name) ? d.Manifest.Id : d.Manifest.Ui!.Button!.Name,
                     version = d.Manifest.Version,
+                    // Manifest v2 vendor metadata (all optional).
+                    description = d.Manifest.Description,
+                    publisher = d.Manifest.Publisher,
+                    website = d.Manifest.Website,
+                    supportUrl = d.Manifest.SupportUrl,
+                    updateFeed = d.Manifest.UpdateFeed,
+                    enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
                     // "dll" = prebuilt assembly (declared, even if no build for this year),

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
+import ToggleSwitch from "primevue/toggleswitch";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
 import AiModelPicker from "@/components/AiModelPicker.vue";
@@ -9,8 +10,14 @@ interface ExtensionRow {
   id: string;
   name: string;
   version: string;
+  description?: string | null;
+  publisher?: string | null;
+  enabled: boolean;
   hasCommands: boolean;
   hasUi: boolean;
+  compatible: boolean;
+  zone: "managed" | "dev";
+  compileError?: string | null;
   directory: string;
 }
 
@@ -142,6 +149,18 @@ async function reload() {
   // Refresh tables — after a reload a path can flip valid/invalid (e.g. a new extension was dropped
   // into it), the extension count changes, and extension commands appear/disappear.
   await Promise.all([load(), loadPaths(), loadCommands()]);
+}
+
+// The backend toggles extensions-state.json and reloads (commands + ribbon), so the
+// full refresh mirrors what just happened on the host side.
+async function setExtensionEnabled(row: ExtensionRow, enabled: boolean) {
+  loading.value = true;
+  try {
+    await invoke("SetExtensionEnabled", { id: row.id, enabled });
+  } catch (e) {
+    console.error("Failed to toggle extension", e);
+  }
+  await Promise.all([load(), loadCommands()]);
 }
 
 function openFolder(path: string | undefined) {
@@ -458,15 +477,36 @@ onMounted(() => {
     <DataTable :value="data?.extensions ?? []" :loading="loading" dataKey="id" class="text-sm">
       <Column header="Extension">
         <template #body="{ data: row }">
-          <div class="font-semibold">{{ row.name || row.id }}</div>
-          <div class="text-surface-500 text-xs">{{ row.id }}</div>
+          <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
+            {{ row.name || row.id }}
+          </div>
+          <div class="text-surface-500 text-xs">
+            {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
+          </div>
+          <div v-if="row.description" class="text-surface-500 text-xs">{{ row.description }}</div>
         </template>
       </Column>
       <Column field="version" header="Version" />
       <Column header="Type">
         <template #body="{ data: row }">
           <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
-          <Tag v-if="row.hasUi" value="UI" severity="warn" />
+          <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
+          <Tag v-if="row.zone === 'dev'" value="Dev" severity="secondary" class="mr-1" />
+          <Tag
+            v-if="!row.compatible"
+            value="Incompatible"
+            severity="danger"
+            v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
+          />
+        </template>
+      </Column>
+      <Column header="Enabled" class="w-20">
+        <template #body="{ data: row }">
+          <ToggleSwitch
+            :modelValue="row.enabled"
+            :disabled="loading"
+            @update:modelValue="setExtensionEnabled(row, !row.enabled)"
+          />
         </template>
       </Column>
       <Column header="" class="w-12">
