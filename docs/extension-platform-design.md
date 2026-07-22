@@ -131,11 +131,34 @@ trap on the way to publishing:
    Lifecycle: script for myself → (one click) → git project → (push + tag) →
    published package; every step is a valid place to stop.
 
+## Registry (the curation point, later iteration)
+
+A separate repo (`AnalyseTool-registry`) holding one JSON list of entries
+`{id, name, publisher, description, repo, updateFeed}` — metadata and links only,
+binaries stay with vendors (#48). The manager fetches it (raw.githubusercontent)
+and renders the **Available** tab; Install downloads from the vendor's release.
+
+Submission flow:
+1. Vendor publishes a release, then submits via an issue form in the registry
+   repo (one field: repo URL). The manager can open that prefilled URL — a
+   "Submit to catalog" action.
+2. A GitHub Action in the registry repo validates the submission (release
+   exists, zip valid, manifest parses, id free) and opens a PR with the entry.
+3. **Merging the PR is the curation act** — listing appears for all users;
+   delisting = removing the entry. Git history = moderation history.
+4. Listing is explicitly NOT endorsement ("third-party, not reviewed") — the
+   install consent dialog stays.
+
+Updates never go through the registry (manager polls the vendor's `updateFeed`
+directly), so a stale registry breaks nothing.
+
 ## Out of scope (deliberately)
 
 - License gating / `ILicenseProvider` (#72) — separate SDK-contract release.
-- "Available" tab / any remote catalog (at most a JSON list of links later, #48).
+- The registry itself ships AFTER the foundation (needs install-from-url +
+  manifest v2 first); the design above is the agreed target.
 - Multi-button manifest (`ui.buttons[]`), package signatures.
+- No payment processing, review/approval of code, or hosted binaries — ever (#48).
 
 ## Implementation phases
 
