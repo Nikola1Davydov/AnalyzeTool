@@ -12,6 +12,7 @@ interface ExtensionRow {
   version: string;
   description?: string | null;
   publisher?: string | null;
+  updateFeed?: string | null;
   enabled: boolean;
   hasCommands: boolean;
   hasUi: boolean;
@@ -216,6 +217,49 @@ async function confirmInstall() {
   }
 }
 
+// ---- Update feeds: manual check (network), then per-row badge + Update action.
+interface UpdateCheckRow {
+  id: string;
+  installed: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  releaseUrl?: string | null;
+  error?: string | null;
+}
+const updateChecks = ref<Record<string, UpdateCheckRow>>({});
+const checkingUpdates = ref(false);
+const updatingId = ref("");
+
+async function checkUpdates() {
+  checkingUpdates.value = true;
+  try {
+    const res = await invoke<{ results: UpdateCheckRow[] }>("CheckExtensionUpdates");
+    const map: Record<string, UpdateCheckRow> = {};
+    for (const r of res?.results ?? []) map[r.id] = r;
+    updateChecks.value = map;
+  } catch (e) {
+    console.error("Update check failed", e);
+  } finally {
+    checkingUpdates.value = false;
+  }
+}
+
+async function updateExtension(row: ExtensionRow) {
+  updatingId.value = row.id;
+  try {
+    await invoke("UpdateExtension", { id: row.id });
+    delete updateChecks.value[row.id];
+    await Promise.all([load(), loadCommands()]);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const prev = updateChecks.value[row.id];
+    if (prev) updateChecks.value[row.id] = { ...prev, error: message };
+    console.error("Update failed", e);
+  } finally {
+    updatingId.value = "";
+  }
+}
+
 // ---- Uninstall (managed zone only; dev folders belong to their author).
 const removeDialogVisible = ref(false);
 const removeBusy = ref(false);
@@ -416,6 +460,13 @@ onMounted(() => {
         <h1 class="text-xl font-bold">Extensions</h1>
       </div>
       <div class="flex gap-2 shrink-0">
+        <Button
+          label="Check updates"
+          icon="pi pi-sync"
+          severity="secondary"
+          :loading="checkingUpdates"
+          @click="checkUpdates"
+        />
         <Button
           label="Install from file…"
           icon="pi pi-download"
@@ -634,7 +685,25 @@ onMounted(() => {
           <div v-if="row.description" class="text-surface-500 text-xs">{{ row.description }}</div>
         </template>
       </Column>
-      <Column field="version" header="Version" />
+      <Column header="Version">
+        <template #body="{ data: row }">
+          <span>{{ row.version }}</span>
+          <Tag
+            v-if="updateChecks[row.id]?.updateAvailable"
+            :value="`→ ${updateChecks[row.id]?.latest}`"
+            severity="success"
+            class="ml-2"
+            v-tooltip.top="'Update available'"
+          />
+          <Tag
+            v-else-if="updateChecks[row.id]?.error"
+            value="feed error"
+            severity="warn"
+            class="ml-2"
+            v-tooltip.top="updateChecks[row.id]?.error"
+          />
+        </template>
+      </Column>
       <Column header="Type">
         <template #body="{ data: row }">
           <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
@@ -657,8 +726,18 @@ onMounted(() => {
           />
         </template>
       </Column>
-      <Column header="" class="w-24">
+      <Column header="" class="w-32">
         <template #body="{ data: row }">
+          <Button
+            v-if="updateChecks[row.id]?.updateAvailable"
+            icon="pi pi-arrow-circle-up"
+            size="small"
+            text
+            severity="success"
+            :loading="updatingId === row.id"
+            v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
+            @click="updateExtension(row)"
+          />
           <Button
             icon="pi pi-folder-open"
             size="small"
