@@ -69,7 +69,7 @@
          properties such as UseSdkPackage automatically flow into these nested builds. -->
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="_ATPackExtensionOneYear"
-             Properties="ATPackYear=%(_ATPackYear.Identity);ATPackConfig=%(_ATPackYear.Config);ATPackBundleDir=$(_ATBundleDir)" />
+             Properties="ATPackYear=%(_ATPackYear.Identity);ATPackConfig=%(_ATPackYear.Config);ATPackBundleDir=$(_ATBundleDir);ATPackObjDir=$(AnalyseToolPackOutput)\_obj\%(_ATPackYear.Identity)\" />
 
     <!-- Shared assets live at the bundle ROOT: the manifest, icons, the web UI — everything except
          sources, build state and the bundle/zip output itself. -->
@@ -94,16 +94,19 @@
              Text="PackExtension: packed $(_ATId) $(_ATVersion) for years [@(_ATPackYear, ', ')] -> $(_ATZipPath)" />
   </Target>
 
-  <!-- One Revit year: restore (rewrites project.assets.json for this year's TFM), then build in a
-       SEPARATE invocation so the build re-evaluates the project against the fresh restore output. -->
+  <!-- One Revit year: restore, then build in a SEPARATE invocation so the build re-evaluates the
+       project against the fresh restore output. Each year gets its OWN intermediate folder
+       (MSBuildProjectExtensionsPath/BaseIntermediateOutputPath): the configurations switch the
+       TargetFramework (net8 for R25/26, net10 for R27) but project.assets.json normally lives in
+       one shared obj\, so years would overwrite each other's restore state (NETSDK1005). -->
   <Target Name="_ATPackExtensionOneYear">
     <Message Importance="high" Text="PackExtension: building '$(ATPackConfig)' for Revit $(ATPackYear)..." />
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="Restore"
-             Properties="Configuration=$(ATPackConfig)" />
+             Properties="Configuration=$(ATPackConfig);MSBuildProjectExtensionsPath=$(ATPackObjDir);BaseIntermediateOutputPath=$(ATPackObjDir)" />
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="Build"
-             Properties="Configuration=$(ATPackConfig);OutDir=$(ATPackBundleDir)\$(ATPackYear)\" />
+             Properties="Configuration=$(ATPackConfig);MSBuildProjectExtensionsPath=$(ATPackObjDir);BaseIntermediateOutputPath=$(ATPackObjDir);OutDir=$(ATPackBundleDir)\$(ATPackYear)\" />
   </Target>
 
 </Project>
