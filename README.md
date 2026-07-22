@@ -1,7 +1,6 @@
 # AnalyseTool for Revit
 
 [![github release version](https://img.shields.io/github/v/release/Nikola1Davydov/AnalyzeTool.svg?include_prereleases)](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest)
-
 [![license](https://img.shields.io/github/license/Nikola1Davydov/AnalyzeTool.svg)](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/LICENSE)
 ![Static Badge](https://img.shields.io/badge/revitVersion-2025--2027-blue)
 [![NuGet](https://img.shields.io/nuget/v/AnalyseTool.Sdk.svg?label=SDK)](https://www.nuget.org/packages/AnalyseTool.Sdk)
