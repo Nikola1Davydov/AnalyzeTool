@@ -52,9 +52,11 @@
     <InternalsVisibleTo Include="AnalyseTool.Core" />
   </ItemGroup>
 
-  <!-- Ship the authoring props (auto-imported by consumers) and the author guide as the package README. -->
+  <!-- Ship the authoring props and the PackExtension publishing target (both auto-imported by
+       consumers) and the author guide as the package README. -->
   <ItemGroup>
     <None Include="build\AnalyseTool.Sdk.props" Pack="true" PackagePath="build\" />
+    <None Include="build\AnalyseTool.Sdk.targets" Pack="true" PackagePath="build\" />
     <None Include="build\AnalyseTool.Extension.props" Pack="true" PackagePath="build\" />
     <None Include="..\..\ONBOARDING.md" Pack="true" PackagePath="\" />
   </ItemGroup>

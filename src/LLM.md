@@ -286,6 +286,47 @@ const { commands } = await window.AT.invoke("GetCommands");
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 
+### 7.1 Publish (optional)
+
+For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole
+publishing pipeline — no extra tooling:
+
+```
+dotnet build -t:PackExtension
+```
+
+builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
+lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
+and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Settings →
+"Install from file…". Script/UI-only extensions need no build: zip the folder itself.
+
+To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
+git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
+notifications for free:
+
+```yaml
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - run: dotnet build -t:PackExtension
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip
+```
+
 ---
 
 ## 8. Rules — ALWAYS / NEVER

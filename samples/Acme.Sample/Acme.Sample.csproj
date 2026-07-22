@@ -11,6 +11,9 @@
   -->
 
   <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" Condition="'$(UseSdkPackage)' != 'true'" />
+  <!-- In package mode NuGet auto-imports this from the nupkg's build/ folder; the dev inner loop
+       imports it explicitly so `dotnet build -t:PackExtension` works identically in both modes. -->
+  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Sdk.targets" Condition="'$(UseSdkPackage)' != 'true'" />
 
   <!-- Package mode declares TFM, RevitVersion AND the Revit API packages itself. This is not a
        workaround, it is THE external-author contract: NuGet deliberately ignores props shipped

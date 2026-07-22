@@ -91,6 +91,23 @@ sealed partial class Build
                 .AddProperty("SdkPackageVersion", version)
                 .AddProperty("RestoreConfigFile", configFile)
                 .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages"));
+
+            // The publishing pipeline the nupkg ships (build/AnalyseTool.Sdk.targets): pack the
+            // sample for every Revit year into the distribution zip, exactly like a vendor's CI
+            // would. A broken PackExtension target or bundle layout fails THIS step.
+            AbsolutePath packOutput = CiArtifactsDirectory / "sample-pack";
+            DotNetMSBuild(settings => settings
+                .SetTargetPath(SampleProject)
+                .SetTargets("PackExtension")
+                .AddProperty("UseSdkPackage", "true")
+                .AddProperty("SdkPackageVersion", version)
+                .AddProperty("RestoreConfigFile", configFile)
+                .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages")
+                .AddProperty("AnalyseToolPackOutput", packOutput));
+
+            AbsolutePath zip = packOutput.GlobFiles("acme.sample-*.zip").FirstOrDefault()
+                ?? throw new System.Exception($"PackExtension produced no zip in {packOutput}");
+            Serilog.Log.Information("PackExtension produced {Zip}", zip.Name);
         });
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>

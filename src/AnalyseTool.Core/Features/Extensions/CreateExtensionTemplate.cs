@@ -460,6 +460,16 @@ namespace AnalyseTool.Core.Features.Extensions
             - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
             - A brand-new ribbon button needs a **Revit restart** the first time.
 
+            ### 7.1 Publish (optional)
+
+            C# extensions built against the `AnalyseTool.Sdk` NuGet package get the publishing pipeline
+            with the package: `dotnet build -t:PackExtension` builds for Revit 2025/2026/2027 (override
+            with `-p:AnalyseToolPackYears=...`) and zips the distribution bundle to
+            `artifacts/<id>-<version>.zip` — the format users install via Settings → "Install from file…".
+            Script/UI-only extensions need no build: zip the folder itself. On GitHub, run PackExtension
+            in a tag-triggered workflow, attach the zip to the release, and set
+            `"updateFeed": "github:you/your-repo"` in plugin.json so users get update notifications.
+
             ---
 
             ## 8. Rules — ALWAYS / NEVER
