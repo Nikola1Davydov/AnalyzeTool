@@ -109,6 +109,19 @@ trap on the way to publishing:
    Revit immediately while living in a proper project location. No clone step:
    the GitHub repo is created empty and receives the local history via push.
 
+   The drawer additionally takes an optional **Repository URL**: when set, the
+   generator also runs `git remote add origin <url>`, so the only remaining step
+   is `git push -u origin main` (pre-written in the generated README/LLM.md).
+   Guardrails:
+   - auto-push is a separate opt-in checkbox, not the default — credential
+     prompts (GCM browser flow) from inside the Revit process are fragile, and a
+     failed push must produce the exact command to run manually;
+   - the drawer hints "create the GitHub repo EMPTY (no README/.gitignore)" —
+     otherwise the first push is rejected as non-fast-forward;
+   - missing git / unset user.name degrades gracefully: full scaffold is still
+     written, git steps are skipped and reported, README carries the full
+     command sequence.
+
 ## Out of scope (deliberately)
 
 - License gating / `ILicenseProvider` (#72) — separate SDK-contract release.
