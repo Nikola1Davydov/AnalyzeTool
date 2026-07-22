@@ -94,6 +94,21 @@ ribbon builder. Applies to both zones. Commands: `EnableExtension`, `DisableExte
 `ONBOARDING.md` (zones, package format, publishing), `src/LLM.md` + the embedded
 copy in `CreateExtensionTemplate` (dev-zone authoring stays step one; §publish added).
 
+## Template generator: two modes
+
+`CreateExtensionTemplate` grows a second mode so the dev zone doesn't become a
+trap on the way to publishing:
+
+1. **For myself** (today's behavior): scaffold into the dev zone, no git.
+2. **Project**: the user picks ANY folder (Documents, D:\projects, …). The
+   generator scaffolds the full project there — `plugin.json`, csproj referencing
+   the Sdk, `.gitignore`, the `release.yml` publishing workflow, LLM.md/README
+   with the three commands to connect an empty GitHub repo — runs `git init` +
+   initial commit when git is available, and **auto-registers the folder as a dev
+   root** via the existing `ExtensionSources.AddRoot`, so the extension is live in
+   Revit immediately while living in a proper project location. No clone step:
+   the GitHub repo is created empty and receives the local history via push.
+
 ## Out of scope (deliberately)
 
 - License gating / `ILicenseProvider` (#72) — separate SDK-contract release.
