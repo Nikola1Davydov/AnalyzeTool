@@ -25,18 +25,22 @@ namespace AnalyseTool.Core.Common.Extensions
     ///
     /// Two zones:
     /// <list type="bullet">
-    /// <item><see cref="DefaultRoot"/> — the MANAGED zone, owned by the Extension Manager.</item>
-    /// <item><see cref="DefaultDevRoot"/> plus any user-added roots — the DEV zone for hand-authored
-    /// extensions. User roots are persisted in <c>extensions.json</c> under the profile folder.</item>
+    /// <item><see cref="DefaultManagedRoot"/> (<c>extensions-dist</c>) — the MANAGED zone, owned by the
+    /// Extension Manager. A NEW folder on purpose: clean invariants, and the historical
+    /// <c>extensions</c> folder keeps its behavior exactly.</item>
+    /// <item><see cref="DefaultDevRoot"/> (<c>extensions</c>) plus any user-added roots — the DEV zone
+    /// for hand-authored extensions. User roots are persisted in <c>extensions.json</c> under the
+    /// profile folder.</item>
     /// </list>
     /// </summary>
     internal static class ExtensionSources
     {
-        /// <summary>Built-in managed root under the user profile.</summary>
-        public static string DefaultRoot => PathProvider.ExtensionsRoot;
+        /// <summary>Built-in managed root under the user profile (installed packages).</summary>
+        public static string DefaultManagedRoot => PathProvider.ExtensionsDistRoot;
 
-        /// <summary>Built-in dev root under the user profile (templates are scaffolded here).</summary>
-        public static string DefaultDevRoot => PathProvider.ExtensionsDevRoot;
+        /// <summary>Built-in dev root under the user profile — the historical <c>extensions</c> folder
+        /// (templates are scaffolded here; the legacy per-year layout also lives here).</summary>
+        public static string DefaultDevRoot => PathProvider.ExtensionsRoot;
 
         private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "extensions.json");
 
@@ -45,7 +49,7 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             List<ExtensionSourceRoot> roots = new()
             {
-                new ExtensionSourceRoot(DefaultRoot, ExtensionZone.Managed, IsDefault: true),
+                new ExtensionSourceRoot(DefaultManagedRoot, ExtensionZone.Managed, IsDefault: true),
                 new ExtensionSourceRoot(DefaultDevRoot, ExtensionZone.Dev, IsDefault: true),
             };
             foreach (string p in LoadUserRoots())
@@ -60,16 +64,16 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>User-added roots only (excludes the built-in defaults).</summary>
         public static IReadOnlyList<string> UserRoots() => LoadUserRoots();
 
-        /// <summary>The legacy per-version directory under the managed root (<c>extensions\&lt;year&gt;</c>) —
+        /// <summary>The legacy per-version directory under the dev root (<c>extensions\&lt;year&gt;</c>) —
         /// still shown in Settings for users whose extensions live in the deprecated layout.</summary>
         public static string DefaultVersionDir(string revitVersion) =>
-            Path.Combine(DefaultRoot, revitVersion);
+            Path.Combine(DefaultDevRoot, revitVersion);
 
         /// <summary>Adds a user dev root (no-op for the built-in roots or duplicates). Returns the normalized path.</summary>
         public static string AddRoot(string path)
         {
             string full = Path.GetFullPath(path.Trim());
-            if (string.Equals(full, DefaultRoot, StringComparison.OrdinalIgnoreCase)
+            if (string.Equals(full, DefaultManagedRoot, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(full, DefaultDevRoot, StringComparison.OrdinalIgnoreCase))
                 return full; // built-ins are always implicit
 

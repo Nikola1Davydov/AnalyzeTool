@@ -18,7 +18,7 @@ gating (#72) is explicitly out of scope for this iteration.
 
 | | Installed (managed) | Dev / Local (unmanaged) |
 | --- | --- | --- |
-| Location | `%LOCALAPPDATA%\AnalyseTool\extensions\` | `extensions-dev\` (new default) + user-added roots (existing `ExtensionSources` feature) |
+| Location | `%LOCALAPPDATA%\AnalyseTool\extensions-dist\` (new folder — clean manager invariants) | `extensions\` (the historical folder, behavior unchanged) + user-added roots (existing `ExtensionSources` feature) |
 | Layout | Package format only (below) | Loose folder: `plugin.json` + `.cs` / DLL / `ui` next to it, no year folders |
 | Owned by | Extension Manager (install / remove / update / consent) | The author; live Reload as today |
 | Manager UI | Installed tab: enable/disable, remove, update badge, diagnostics | Same list with a **Dev** badge: enable/disable, diagnostics, open folder — no install/update semantics |

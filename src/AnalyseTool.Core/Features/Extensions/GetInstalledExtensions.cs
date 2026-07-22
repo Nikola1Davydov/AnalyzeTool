@@ -58,7 +58,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 hostSdkVersion,
                 pluginVersion,
                 extensionsRoot = versionDir, // legacy display value, superseded by managedRoot/devRoot
-                managedRoot = ExtensionSources.DefaultRoot,
+                managedRoot = ExtensionSources.DefaultManagedRoot,
                 devRoot = ExtensionSources.DefaultDevRoot,
                 extensions,
             });

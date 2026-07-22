@@ -273,7 +273,7 @@ const { commands } = await window.AT.invoke("GetCommands");
 ## 7. Deploy & reload
 
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions-dev\<id>\
+%LOCALAPPDATA%\AnalyseTool\extensions\<id>\
     plugin.json
     <YourExt>.dll        (C#)  |  *.cs (script)
     index.html           (UI)

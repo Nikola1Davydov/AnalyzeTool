@@ -447,7 +447,7 @@ namespace AnalyseTool.Core.Features.Extensions
             ## 7. Deploy & reload
 
             ```
-            %LOCALAPPDATA%\AnalyseTool\extensions-dev\<id>\
+            %LOCALAPPDATA%\AnalyseTool\extensions\<id>\
                 plugin.json
                 <YourExt>.dll        (C#)  |  *.cs (script)
                 index.html           (UI)
