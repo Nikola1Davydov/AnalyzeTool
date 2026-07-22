@@ -55,7 +55,11 @@ sealed partial class Build
                 .SetProject(SdkProject)
                 .SetConfiguration("Release R25")
                 .SetOutputDirectory(SdkNupkgDirectory)
-                .SetVerbosity(DotNetVerbosity.minimal));
+                .SetVerbosity(DotNetVerbosity.minimal)
+                // The csproj sets GeneratePackageOnBuild=true; with that flag an explicit
+                // `dotnet pack` SKIPS the implicit build and fails with NU5026 ("file to be
+                // packed was not found on disk"). Turning it off here restores build-then-pack.
+                .AddProperty("GeneratePackageOnBuild", "false"));
         });
 
     /// <summary>
