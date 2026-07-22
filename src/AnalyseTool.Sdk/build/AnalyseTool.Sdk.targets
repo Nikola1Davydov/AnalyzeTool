@@ -1,0 +1,98 @@
+<Project>
+
+  <!--
+    NuGet auto-imports build/<PackageId>.targets for consumers of the AnalyseTool.Sdk package.
+    This ships the PUBLISHING pipeline with the SDK itself — every extension project gets:
+
+        dotnet build -t:PackExtension
+
+    which builds the project for each requested Revit year, lays out the distribution bundle
+    (per-year binaries in year subfolders, shared assets at the root) and zips it into
+    artifacts/<id>-<version>.zip — the exact package format InstallExtensionFromFile consumes.
+    Zero extra tooling: the pipeline arrives with the package reference.
+
+    Knobs (set as properties):
+      AnalyseToolPackYears   semicolon list of Revit years to build, default "2025;2026;2027".
+      AnalyseToolPackOutput  where the zip lands, default <project>\artifacts.
+
+    Script/UI-only extensions have no project to build — they are zipped as-is (the folder IS the
+    bundle); this target serves compiled C# extensions.
+  -->
+
+  <PropertyGroup>
+    <AnalyseToolPackYears Condition="'$(AnalyseToolPackYears)' == ''">2025;2026;2027</AnalyseToolPackYears>
+    <AnalyseToolPackOutput Condition="'$(AnalyseToolPackOutput)' == ''">$(MSBuildProjectDirectory)\artifacts</AnalyseToolPackOutput>
+  </PropertyGroup>
+
+  <!-- Year -> build configuration map, filtered by AnalyseToolPackYears. -->
+  <ItemGroup>
+    <_ATPackYear Include="2025" Condition="$(AnalyseToolPackYears.Contains('2025'))">
+      <Config>Release R25</Config>
+    </_ATPackYear>
+    <_ATPackYear Include="2026" Condition="$(AnalyseToolPackYears.Contains('2026'))">
+      <Config>Release R26</Config>
+    </_ATPackYear>
+    <_ATPackYear Include="2027" Condition="$(AnalyseToolPackYears.Contains('2027'))">
+      <Config>Release R27</Config>
+    </_ATPackYear>
+  </ItemGroup>
+
+  <Target Name="PackExtension">
+    <!-- The manifest is the source of truth: id + version name the zip, entryAssembly is validated. -->
+    <PropertyGroup>
+      <_ATManifestPath>$(MSBuildProjectDirectory)\plugin.json</_ATManifestPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_ATManifestPath)')"
+           Text="PackExtension: plugin.json not found next to the project file — the manifest must live in the extension folder root." />
+
+    <PropertyGroup>
+      <_ATManifest>$([System.IO.File]::ReadAllText('$(_ATManifestPath)'))</_ATManifest>
+      <_ATId>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"id"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATId>
+      <_ATVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATVersion>
+      <_ATEntryAssembly>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"entryAssembly"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATEntryAssembly>
+      <_ATBundleDir>$(AnalyseToolPackOutput)\_bundle\$(_ATId)</_ATBundleDir>
+      <_ATZipPath>$(AnalyseToolPackOutput)\$(_ATId)-$(_ATVersion).zip</_ATZipPath>
+    </PropertyGroup>
+    <Error Condition="'$(_ATId)' == ''"
+           Text="PackExtension: plugin.json is missing the required 'id' field." />
+    <Error Condition="'$(_ATVersion)' == ''"
+           Text="PackExtension: plugin.json is missing the required 'version' field." />
+    <Error Condition="@(_ATPackYear->Count()) == 0"
+           Text="PackExtension: AnalyseToolPackYears ('$(AnalyseToolPackYears)') selects no Revit year — expected values like 2025;2026;2027." />
+
+    <RemoveDir Directories="$(_ATBundleDir)" />
+
+    <!-- Build once per Revit year into the bundle's year folder. Restore runs per year because the
+         configuration switches the TargetFramework (net8 for R25/26, net10 for R27). Command-line
+         (global) properties such as UseSdkPackage automatically flow into these nested builds. -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+             Targets="Restore"
+             Properties="Configuration=%(_ATPackYear.Config)" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+             Targets="Build"
+             Properties="Configuration=%(_ATPackYear.Config);OutDir=$(_ATBundleDir)\%(_ATPackYear.Identity)\" />
+
+    <!-- Shared assets live at the bundle ROOT: the manifest, icons, the web UI — everything except
+         sources, build state and the bundle/zip output itself. -->
+    <ItemGroup>
+      <_ATRootAsset Include="$(MSBuildProjectDirectory)\**\*"
+                    Exclude="$(MSBuildProjectDirectory)\bin\**;$(MSBuildProjectDirectory)\obj\**;$(MSBuildProjectDirectory)\artifacts\**;$(MSBuildProjectDirectory)\.git\**;$(MSBuildProjectDirectory)\.github\**;$(MSBuildProjectDirectory)\.vs\**;$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\**\*.csproj;$(MSBuildProjectDirectory)\**\*.user;$(MSBuildProjectDirectory)\**\*.sln" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ATRootAsset)"
+          DestinationFolder="$(_ATBundleDir)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+
+    <!-- The contract check InstallExtensionFromFile will repeat on the user's side: a declared
+         entry assembly must actually exist for every packed year. -->
+    <Error Condition="'$(_ATEntryAssembly)' != '' and !Exists('$(_ATBundleDir)\%(_ATPackYear.Identity)\$(_ATEntryAssembly)')"
+           Text="PackExtension: entryAssembly '$(_ATEntryAssembly)' missing for Revit %(_ATPackYear.Identity) — the '%(_ATPackYear.Config)' build did not produce it." />
+
+    <MakeDir Directories="$(AnalyseToolPackOutput)" />
+    <Delete Files="$(_ATZipPath)" />
+    <ZipDirectory SourceDirectory="$(_ATBundleDir)" DestinationFile="$(_ATZipPath)" Overwrite="true" />
+
+    <Message Importance="high"
+             Text="PackExtension: packed $(_ATId) $(_ATVersion) for years [@(_ATPackYear, ', ')] -> $(_ATZipPath)" />
+  </Target>
+
+</Project>

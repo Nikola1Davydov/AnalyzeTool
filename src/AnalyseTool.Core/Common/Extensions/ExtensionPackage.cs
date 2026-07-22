@@ -32,8 +32,14 @@ namespace AnalyseTool.Core.Common.Extensions
 
             using ZipArchive zip = OpenZip(zipPath);
 
-            string prefix = LocateManifestPrefix(zip);
-            ZipArchiveEntry manifestEntry = zip.GetEntry(prefix + "plugin.json")!;
+            // Windows PowerShell's Compress-Archive stores entry names with BACKSLASHES; never use
+            // ZipArchive.GetEntry (exact match on the raw name) — resolve through one normalized,
+            // case-insensitive map, matching how the file system itself would behave.
+            Dictionary<string, ZipArchiveEntry> entries = NormalizedEntries(zip);
+
+            string prefix = LocateManifestPrefix(entries.Keys);
+            if (!entries.TryGetValue(prefix + "plugin.json", out ZipArchiveEntry? manifestEntry))
+                throw new InvalidOperationException("No plugin.json found in the package.");
 
             ExtensionManifest? manifest;
             using (StreamReader reader = new(manifestEntry.Open()))
@@ -55,9 +61,8 @@ namespace AnalyseTool.Core.Common.Extensions
                     throw new InvalidOperationException($"Package contains an unsafe path: {entry.FullName}");
             }
 
-            List<string> binaryYears = zip.Entries
-                .Select(e => e.FullName.Replace('\\', '/'))
-                .Where(n => n.StartsWith(prefix, StringComparison.Ordinal))
+            List<string> binaryYears = entries.Keys
+                .Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 .Select(n => n.Substring(prefix.Length))
                 .Where(n => n.Contains('/'))
                 .Select(n => n.Split('/')[0])
@@ -70,8 +75,8 @@ namespace AnalyseTool.Core.Common.Extensions
             if (!string.IsNullOrWhiteSpace(manifest.EntryAssembly))
             {
                 string entryName = manifest.EntryAssembly!.Replace('\\', '/');
-                bool atRoot = zip.GetEntry(prefix + entryName) is not null;
-                bool inAnyYear = binaryYears.Any(y => zip.GetEntry($"{prefix}{y}/{entryName}") is not null);
+                bool atRoot = entries.ContainsKey(prefix + entryName);
+                bool inAnyYear = binaryYears.Any(y => entries.ContainsKey($"{prefix}{y}/{entryName}"));
                 if (!atRoot && !inAnyYear)
                     throw new InvalidOperationException(
                         $"entryAssembly '{manifest.EntryAssembly}' is declared but the package contains no " +
@@ -92,7 +97,7 @@ namespace AnalyseTool.Core.Common.Extensions
             foreach (ZipArchiveEntry entry in zip.Entries)
             {
                 string name = entry.FullName.Replace('\\', '/');
-                if (!name.StartsWith(info.Prefix, StringComparison.Ordinal)) continue;
+                if (!name.StartsWith(info.Prefix, StringComparison.OrdinalIgnoreCase)) continue;
 
                 string relative = name.Substring(info.Prefix.Length);
                 if (relative.Length == 0) continue;
@@ -124,17 +129,28 @@ namespace AnalyseTool.Core.Common.Extensions
             }
         }
 
-        /// <summary>plugin.json at the zip root wins; otherwise exactly one top-level folder must
-        /// contain it (the common "zipped the folder itself" shape).</summary>
-        private static string LocateManifestPrefix(ZipArchive zip)
+        /// <summary>All zip entries keyed by their NORMALIZED name: backslashes → forward slashes
+        /// (Windows Compress-Archive stores backslashes), case-insensitive like the file system.</summary>
+        private static Dictionary<string, ZipArchiveEntry> NormalizedEntries(ZipArchive zip)
         {
-            if (zip.GetEntry("plugin.json") is not null) return string.Empty;
+            Dictionary<string, ZipArchiveEntry> map = new(StringComparer.OrdinalIgnoreCase);
+            foreach (ZipArchiveEntry entry in zip.Entries)
+                map[entry.FullName.Replace('\\', '/')] = entry;
+            return map;
+        }
 
-            List<string> candidates = zip.Entries
-                .Select(e => e.FullName.Replace('\\', '/'))
-                .Where(n => n.Count(c => c == '/') == 1 && n.EndsWith("/plugin.json", StringComparison.Ordinal))
+        /// <summary>plugin.json at the zip root wins; otherwise exactly one top-level folder must
+        /// contain it (the common "zipped the folder itself" shape). Names are pre-normalized.</summary>
+        private static string LocateManifestPrefix(IEnumerable<string> normalizedNames)
+        {
+            List<string> names = normalizedNames.ToList();
+            if (names.Any(n => string.Equals(n, "plugin.json", StringComparison.OrdinalIgnoreCase)))
+                return string.Empty;
+
+            List<string> candidates = names
+                .Where(n => n.Count(c => c == '/') == 1 && n.EndsWith("/plugin.json", StringComparison.OrdinalIgnoreCase))
                 .Select(n => n.Substring(0, n.IndexOf('/') + 1))
-                .Distinct(StringComparer.Ordinal)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             return candidates.Count switch
@@ -147,12 +163,30 @@ namespace AnalyseTool.Core.Common.Extensions
             };
         }
 
+        // Win32 device names are unusable as folder names ("con", "nul", also "con.anything").
+        private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        };
+
         internal static bool IsValidId(string id)
         {
             if (string.IsNullOrWhiteSpace(id)) return false;
             if (id.Contains("..", StringComparison.Ordinal)) return false;
-            if (!char.IsLetterOrDigit(id[0])) return false;
-            return id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
+            // First and last char must be alphanumeric: a trailing '.' would collide with another
+            // folder (Win32 strips trailing dots — 'acme.' and 'acme' are the SAME directory).
+            if (!char.IsLetterOrDigit(id[0]) || !char.IsLetterOrDigit(id[^1])) return false;
+            if (!id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_')) return false;
+            // The installer's own work-folder suffixes would make the extension invisible to the
+            // catalog (it skips *.installing / *.old).
+            if (id.EndsWith(".installing", StringComparison.OrdinalIgnoreCase)
+                || id.EndsWith(".old", StringComparison.OrdinalIgnoreCase)) return false;
+            // Win32 reserved device names apply to the segment before the first dot.
+            string firstSegment = id.Split('.')[0];
+            if (ReservedNames.Contains(firstSegment)) return false;
+            return true;
         }
     }
 }

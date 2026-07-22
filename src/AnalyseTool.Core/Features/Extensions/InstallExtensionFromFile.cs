@@ -34,11 +34,30 @@ namespace AnalyseTool.Core.Features.Extensions
             ExtensionPackageInfo info = ExtensionPackage.Validate(req.Path);
             string id = info.Manifest.Id;
 
+            // One id = one extension. A dev-zone twin would fight the managed copy for the ribbon
+            // button, the dispatcher registration and the enable toggle — refuse with a way out.
+            ExtensionDescriptor? devTwin = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion)
+                .FirstOrDefault(d => d.Zone == ExtensionZone.Dev &&
+                                     string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (devTwin is not null)
+                throw new InvalidOperationException(
+                    $"'{id}' already exists as a dev extension in '{devTwin.Directory}'. " +
+                    "Remove or rename that folder first — one id can only exist once.");
+
             string target = Path.Combine(ExtensionSources.DefaultManagedRoot, id);
             bool exists = Directory.Exists(target);
             if (exists && !req.Overwrite)
-                throw new InvalidOperationException(
-                    $"Extension '{id}' is already installed. Pass overwrite=true to replace it.");
+            {
+                // Structured (not an exception): the UI branches on this to offer the replace flow,
+                // and prose wording can then change without silently breaking that path.
+                return Task.FromResult<object?>(new
+                {
+                    installed = false,
+                    alreadyInstalled = true,
+                    id,
+                    version = info.Manifest.Version,
+                });
+            }
 
             // Stage next to the target so the final step is a same-volume move; the scanner never
             // sees a partial folder. On replace, the old install is parked as '.old' and restored
@@ -60,7 +79,14 @@ namespace AnalyseTool.Core.Features.Extensions
                     if (exists && !Directory.Exists(target)) Directory.Move(backup, target);
                     throw;
                 }
-                if (Directory.Exists(backup)) Directory.Delete(backup, recursive: true);
+                // Best-effort: the swap already succeeded, and a lingering *.old folder is ignored
+                // by the scanner — a locked file here must not turn a successful install into an
+                // error (which would also skip the reload below).
+                if (Directory.Exists(backup))
+                {
+                    try { Directory.Delete(backup, recursive: true); }
+                    catch (Exception ex) { Log.Warning(ex, "Could not delete backup {Backup}; ignored by the scanner", backup); }
+                }
             }
             finally
             {

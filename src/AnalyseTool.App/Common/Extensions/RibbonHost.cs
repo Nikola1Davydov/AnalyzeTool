@@ -479,7 +479,19 @@ namespace AnalyseTool.App.Common.Extensions
                 try
                 {
                     string path = Path.Combine(descriptor.Directory, icon!); // icon lives beside plugin.json
-                    if (File.Exists(path)) return new BitmapImage(new Uri(path));
+                    if (File.Exists(path))
+                    {
+                        // OnLoad + Freeze: read the bytes NOW and release the file handle. The default
+                        // (OnDemand) keeps the PNG locked for the button's lifetime, which would make
+                        // uninstall/update of the extension folder fail until Revit restarts.
+                        BitmapImage bitmap = new();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.UriSource = new Uri(path);
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+                        return bitmap;
+                    }
                 }
                 catch { /* fall through to the default */ }
             }

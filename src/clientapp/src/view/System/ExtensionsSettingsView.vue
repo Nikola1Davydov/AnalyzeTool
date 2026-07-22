@@ -191,23 +191,26 @@ async function confirmInstall() {
   installBusy.value = true;
   installError.value = "";
   try {
-    await invoke("InstallExtensionFromFile", {
-      path: installPath.value,
-      consent: true,
-      overwrite: installOverwrite.value,
-    });
-    installDialogVisible.value = false;
-    await Promise.all([load(), loadPaths(), loadCommands()]);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    // Same-id package already present: keep the dialog open and offer the replace path.
-    if (message.includes("already installed")) {
+    const res = await invoke<{ installed?: boolean; alreadyInstalled?: boolean }>(
+      "InstallExtensionFromFile",
+      {
+        path: installPath.value,
+        consent: true,
+        overwrite: installOverwrite.value,
+      },
+    );
+    // Structured signal from the backend (not error-prose matching): same id already
+    // installed — keep the dialog open and arm the explicit replace flow.
+    if (res?.alreadyInstalled) {
       installOverwrite.value = true;
       installError.value =
         "This extension is already installed. Install again to REPLACE it with this package.";
-    } else {
-      installError.value = message;
+      return;
     }
+    installDialogVisible.value = false;
+    await Promise.all([load(), loadPaths(), loadCommands()]);
+  } catch (e) {
+    installError.value = e instanceof Error ? e.message : String(e);
   } finally {
     installBusy.value = false;
   }
@@ -435,6 +438,8 @@ onMounted(() => {
       modal
       header="Install third-party extension"
       class="w-[34rem]"
+      :closable="!installBusy"
+      :closeOnEscape="!installBusy"
     >
       <div class="text-sm flex flex-col gap-3">
         <div class="break-all text-surface-500">{{ installPath }}</div>
@@ -447,7 +452,13 @@ onMounted(() => {
         <p v-if="installError" class="text-red-500">{{ installError }}</p>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="installDialogVisible = false" />
+        <Button
+          label="Cancel"
+          text
+          severity="secondary"
+          :disabled="installBusy"
+          @click="installDialogVisible = false"
+        />
         <Button
           :label="installOverwrite ? 'Replace installed version' : 'I trust it — install'"
           :severity="installOverwrite ? 'danger' : undefined"
@@ -472,7 +483,13 @@ onMounted(() => {
         <p v-if="removeError" class="text-red-500">{{ removeError }}</p>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="removeDialogVisible = false" />
+        <Button
+          label="Cancel"
+          text
+          severity="secondary"
+          :disabled="removeBusy"
+          @click="removeDialogVisible = false"
+        />
         <Button label="Uninstall" severity="danger" :loading="removeBusy" @click="confirmRemove" />
       </template>
     </Dialog>
