@@ -12,8 +12,11 @@
     Zero extra tooling: the pipeline arrives with the package reference.
 
     Knobs (set as properties):
-      AnalyseToolPackYears   semicolon list of Revit years to build, default "2025;2026;2027".
-      AnalyseToolPackOutput  where the zip lands, default <project>\artifacts.
+      AnalyseToolPackYears      semicolon list of Revit years to build, default "2025;2026;2027".
+      AnalyseToolPackOutput     where the zip lands, default <project>\artifacts.
+      AnalyseToolPackExtraArgs  extra arguments appended verbatim to each per-year `dotnet build`
+                                (e.g. "-p:UseSdkPackage=true") — needed because the year builds run
+                                as child processes, which do not inherit -p properties automatically.
 
     Script/UI-only extensions have no project to build — they are zipped as-is (the folder IS the
     bundle); this target serves compiled C# extensions.
@@ -62,14 +65,15 @@
 
     <RemoveDir Directories="$(_ATBundleDir)" />
 
-    <!-- Build once per Revit year into the bundle's year folder. Restore+Build MUST run as a pair
-         per year: the configuration switches the TargetFramework (net8 for R25/26, net10 for R27)
-         and obj\project.assets.json is per-project — a later year's restore overwrites it, so
-         batching all restores before all builds fails with NETSDK1005. Command-line (global)
-         properties such as UseSdkPackage automatically flow into these nested builds. -->
-    <MSBuild Projects="$(MSBuildProjectFullPath)"
-             Targets="_ATPackExtensionOneYear"
-             Properties="ATPackYear=%(_ATPackYear.Identity);ATPackConfig=%(_ATPackYear.Config);ATPackBundleDir=$(_ATBundleDir);ATPackObjDir=$(AnalyseToolPackOutput)\_obj\%(_ATPackYear.Identity)\" />
+    <!-- Build once per Revit year into the bundle's year folder, each year as its OWN
+         `dotnet build` child process (batched over _ATPackYear). The configuration switches the
+         TargetFramework (net8 for R25/26, net10 for R27) while obj\ state (project.assets.json,
+         nuget.g.props) is per-project — in-process <MSBuild> chaining kept serving one year's
+         restore state to another (NETSDK1005/CS0579). A fresh process per year restores and builds
+         against its own state, exactly like running the builds by hand. OutDir uses forward
+         slashes so the trailing separator can't escape the closing quote. -->
+    <Exec Command="dotnet build &quot;$(MSBuildProjectFullPath)&quot; --configuration &quot;%(_ATPackYear.Config)&quot; --verbosity minimal -p:OutDir=&quot;$(_ATBundleDir)/%(_ATPackYear.Identity)/&quot; $(AnalyseToolPackExtraArgs)"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
 
     <!-- Shared assets live at the bundle ROOT: the manifest, icons, the web UI — everything except
          sources, build state and the bundle/zip output itself. -->
@@ -92,21 +96,6 @@
 
     <Message Importance="high"
              Text="PackExtension: packed $(_ATId) $(_ATVersion) for years [@(_ATPackYear, ', ')] -> $(_ATZipPath)" />
-  </Target>
-
-  <!-- One Revit year: restore, then build in a SEPARATE invocation so the build re-evaluates the
-       project against the fresh restore output. Each year gets its OWN intermediate folder
-       (MSBuildProjectExtensionsPath/BaseIntermediateOutputPath): the configurations switch the
-       TargetFramework (net8 for R25/26, net10 for R27) but project.assets.json normally lives in
-       one shared obj\, so years would overwrite each other's restore state (NETSDK1005). -->
-  <Target Name="_ATPackExtensionOneYear">
-    <Message Importance="high" Text="PackExtension: building '$(ATPackConfig)' for Revit $(ATPackYear)..." />
-    <MSBuild Projects="$(MSBuildProjectFullPath)"
-             Targets="Restore"
-             Properties="Configuration=$(ATPackConfig);MSBuildProjectExtensionsPath=$(ATPackObjDir);BaseIntermediateOutputPath=$(ATPackObjDir)" />
-    <MSBuild Projects="$(MSBuildProjectFullPath)"
-             Targets="Build"
-             Properties="Configuration=$(ATPackConfig);MSBuildProjectExtensionsPath=$(ATPackObjDir);BaseIntermediateOutputPath=$(ATPackObjDir);OutDir=$(ATPackBundleDir)\$(ATPackYear)\" />
   </Target>
 
 </Project>
