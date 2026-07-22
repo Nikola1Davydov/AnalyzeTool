@@ -53,6 +53,7 @@ interface PathRow {
   path: string;
   scanDir: string;
   isDefault: boolean;
+  zone: "managed" | "dev";
   valid: boolean;
   reason: string;
   extensionCount: number;
@@ -99,11 +100,13 @@ async function loadExistingExtensions() {
   }
 }
 
-// Source roots populated from GetExtensionPaths. The "Target root" select is shown only when
-// the user has added at least one extra root — otherwise everything goes to the default root.
+// Source roots populated from GetExtensionPaths. Templates are authored work, so only dev-zone
+// roots are offered — the managed root belongs to the Extension Manager (installed packages).
+// The "Target root" select is shown only when the user has added at least one extra root.
 const availableRoots = ref<PathRow[]>([]);
+const devRoots = computed(() => availableRoots.value.filter((r) => r.zone !== "managed"));
 const rootOptions = computed(() =>
-  availableRoots.value.map((r) => ({
+  devRoots.value.map((r) => ({
     label: r.isDefault ? `${r.scanDir} (default)` : r.scanDir,
     value: r.path,
   })),
@@ -119,7 +122,7 @@ async function loadRoots() {
     const res = await invoke<{ paths: PathRow[] }>("GetExtensionPaths");
     availableRoots.value = res?.paths ?? [];
     if (!templateForm.value.targetRoot) {
-      const def = availableRoots.value.find((p) => p.isDefault);
+      const def = devRoots.value.find((p) => p.isDefault) ?? devRoots.value[0];
       templateForm.value.targetRoot = def?.path ?? "";
     }
   } catch (e) {

@@ -49,9 +49,12 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException("Plugin id is required for C# templates.");
 
             string safeFolderName = SanitizeFolderName(payload.FolderName);
-            string version = CoreServices.RevitVersion;
+            string version = CoreServices.RevitVersion; // still used for the generated csproj's Revit API package
             string root = ResolveTargetRoot(payload.TargetRoot);
-            string extensionRoot = Path.Combine(root, version, safeFolderName);
+            // Extensions live directly under the root (no year folder): scripts/UI are version-
+            // independent, and a locally built DLL lands in the folder root (see BuildCsproj OutDir),
+            // which the loader resolves as the fallback after <year>\.
+            string extensionRoot = Path.Combine(root, safeFolderName);
 
             if (Directory.Exists(extensionRoot))
                 throw new InvalidOperationException($"Extension folder already exists: {safeFolderName}");
@@ -441,13 +444,16 @@ namespace AnalyseTool.Core.Features.Extensions
             ## 7. Deploy & reload
 
             ```
-            %LOCALAPPDATA%\AnalyseTool\extensions\<RevitYear>\<id>\
+            %LOCALAPPDATA%\AnalyseTool\extensions-dev\<id>\
                 plugin.json
                 <YourExt>.dll        (C#)  |  *.cs (script)
                 index.html           (UI)
                 icon.png             (optional)
             ```
-            - `<RevitYear>` = `2025` or `2026`.
+            - The extension folder sits DIRECTLY under a source root — no Revit-year subfolder.
+              (To ship prebuilt DLLs for several Revit versions, put them in year subfolders like
+              `<id>\2025\<YourExt>.dll` — the host picks the running year's build, falling back to
+              the folder root. Scripts and UI are version-independent and always live in the root.)
             - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
             - A brand-new ribbon button needs a **Revit restart** the first time.
 
@@ -478,13 +484,13 @@ namespace AnalyseTool.Core.Features.Extensions
             - [ ] Tell the user the deploy path and that they click **Reload** (or restart for a new button).
             """;
 
-        /// <summary>Returns one of the registered extension source roots, defaulting to the built-in one
-        /// when the caller didn't specify (or specified the default itself). Rejects anything else, so we
-        /// can never scaffold into a folder the host wouldn't actually scan.</summary>
+        /// <summary>Returns one of the registered extension source roots, defaulting to the dev root
+        /// when the caller didn't specify (templates are user-authored work-in-progress). Rejects
+        /// anything else, so we can never scaffold into a folder the host wouldn't actually scan.</summary>
         private static string ResolveTargetRoot(string requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
-                return ExtensionSources.DefaultRoot;
+                return ExtensionSources.DefaultDevRoot;
 
             string full = Path.GetFullPath(requested.Trim());
             bool registered = ExtensionSources.Roots()

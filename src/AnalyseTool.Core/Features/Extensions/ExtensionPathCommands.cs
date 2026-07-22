@@ -18,32 +18,29 @@ namespace AnalyseTool.Core.Features.Extensions
         {
             string version = CoreServices.RevitVersion;
 
-            var paths = ExtensionSources.Roots()
+            var paths = ExtensionSources.AllRoots()
                 .Select(root => DescribeRoot(root, version))
                 .ToList();
 
             return Task.FromResult<object?>(new { revitVersion = version, paths });
         }
 
-        internal static object DescribeRoot(string root, string version)
+        internal static object DescribeRoot(ExtensionSourceRoot root, string version)
         {
-            bool isDefault = string.Equals(root, ExtensionSources.DefaultRoot, StringComparison.OrdinalIgnoreCase);
-            string versionDir = Path.Combine(root, version);
-            bool rootExists = Directory.Exists(root);
-            bool versionExists = Directory.Exists(versionDir);
-            int count = versionExists ? ExtensionCatalog.EnumerateAll(versionDir).Count : 0;
+            bool rootExists = Directory.Exists(root.Path);
+            int count = rootExists ? ExtensionCatalog.ScanRoot(root, version, strict: false).Count : 0;
 
             string reason =
                 !rootExists ? "Folder not found"
-                : !versionExists ? $"No '{version}' subfolder"
                 : count == 0 ? $"No extensions for {version}"
                 : string.Empty;
 
             return new
             {
-                path = root,            // root — used by remove
-                scanDir = versionDir,   // what is actually scanned (root + version) — used for display
-                isDefault,
+                path = root.Path,       // root — used by remove
+                scanDir = root.Path,    // extensions now live directly under the root
+                isDefault = root.IsDefault,
+                zone = root.Zone == ExtensionZone.Dev ? "dev" : "managed",
                 valid = count > 0,
                 reason,
                 extensionCount = count,
@@ -70,7 +67,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
         internal sealed record Request
         {
-            [Description("Absolute path to a folder that contains (or will contain) a Revit-version sub-folder.")]
+            [Description("Absolute path to a folder that contains (or will contain) extension folders.")]
             public string Path { get; set; } = string.Empty;
         }
     }
@@ -99,10 +96,10 @@ namespace AnalyseTool.Core.Features.Extensions
         }
     }
 
-    /// <summary>Scaffolds the <c>extensions\&lt;version&gt;</c> layout inside a chosen base folder and registers
-    /// <c>&lt;base&gt;\extensions</c> as a source root, so a new external location is ready to drop into.</summary>
+    /// <summary>Creates <c>&lt;base&gt;\extensions</c> inside a chosen base folder and registers it as a dev
+    /// source root — extensions then live directly under it (<c>&lt;root&gt;\&lt;id&gt;</c>, no version subfolder).</summary>
     [RevitCommand(
-        Description = "Creates the extensions/<version> folder structure in a base folder and registers it as a source root.",
+        Description = "Creates an extensions folder in a base folder and registers it as a source root.",
         InputType = typeof(CreateExtensionRoot.Request),
         HiddenFromMcp = true)]
     internal sealed class CreateExtensionRoot : IRevitTask
@@ -115,17 +112,16 @@ namespace AnalyseTool.Core.Features.Extensions
             if (!Directory.Exists(data.BasePath))
                 throw new InvalidOperationException($"Folder does not exist: {data.BasePath}");
 
-            string version = CoreServices.RevitVersion;
             string root = Path.Combine(data.BasePath, "extensions");
-            Directory.CreateDirectory(Path.Combine(root, version));
+            Directory.CreateDirectory(root);
             ExtensionSources.AddRoot(root);
 
-            return Task.FromResult<object?>(new { root, version });
+            return Task.FromResult<object?>(new { root });
         }
 
         internal sealed record Request
         {
-            [Description("Base folder; the structure is created as <base>\\extensions\\<version>.")]
+            [Description("Base folder; the structure is created as <base>\\extensions.")]
             public string BasePath { get; set; } = string.Empty;
         }
     }

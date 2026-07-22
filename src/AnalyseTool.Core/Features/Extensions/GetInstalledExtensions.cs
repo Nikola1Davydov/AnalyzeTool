@@ -22,7 +22,7 @@ namespace AnalyseTool.Core.Features.Extensions
             // its own AssemblyVersion silently reports 1.0.0.0.
             string pluginVersion = SharedData.ToolData.PLUGIN_VERSION;
 
-            var extensions = ExtensionCatalog.EnumerateAll(ExtensionSources.ScanDirs(revitVersion))
+            var extensions = ExtensionCatalog.EnumerateAll(revitVersion)
                 .Select(d => new
                 {
                     id = d.Manifest.Id,
@@ -30,8 +30,15 @@ namespace AnalyseTool.Core.Features.Extensions
                     version = d.Manifest.Version,
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
-                    // "dll" = prebuilt assembly, "script" = Roslyn-compiled .cs, "js" = UI-only.
-                    kind = d.HasDll ? "dll" : d.HasScript ? "script" : "js",
+                    // "dll" = prebuilt assembly (declared, even if no build for this year),
+                    // "script" = Roslyn-compiled .cs, "js" = UI-only.
+                    kind = d.DeclaresDll ? "dll" : d.HasScript ? "script" : "js",
+                    // False = declared DLL has no build for the running Revit year (never loaded).
+                    compatible = d.IsCompatibleWithHost,
+                    zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",
+                    legacyLayout = d.IsLegacyLayout,
+                    // Which Revit years the extension ships binaries for (current layout only).
+                    binaryYears = d.BinaryYears,
                     compileError = ExtensionDiagnostics.GetError(d.Manifest.Id),
                     directory = d.Directory,
                 })
@@ -43,7 +50,9 @@ namespace AnalyseTool.Core.Features.Extensions
                 hostRevit = revitVersion,
                 hostSdkVersion,
                 pluginVersion,
-                extensionsRoot = versionDir,
+                extensionsRoot = versionDir, // legacy display value, superseded by managedRoot/devRoot
+                managedRoot = ExtensionSources.DefaultRoot,
+                devRoot = ExtensionSources.DefaultDevRoot,
                 extensions,
             });
         }

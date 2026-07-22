@@ -270,13 +270,16 @@ const { commands } = await window.AT.invoke("GetCommands");
 ## 7. Deploy & reload
 
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions\<RevitYear>\<id>\
+%LOCALAPPDATA%\AnalyseTool\extensions-dev\<id>\
     plugin.json
     <YourExt>.dll        (C#)  |  *.cs (script)
     index.html           (UI)
     icon.png             (optional)
 ```
-- `<RevitYear>` = `2025`, `2026` or `2027`.
+- The extension folder sits DIRECTLY under a source root — no Revit-year subfolder.
+  (To ship prebuilt DLLs for several Revit versions, put them in year subfolders like
+  `<id>\2025\<YourExt>.dll` — the host picks the running year's build, falling back to
+  the folder root. Scripts and UI are version-independent and always live in the root.)
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 

@@ -47,14 +47,13 @@ namespace AnalyseTool.Core.Features.Scripting
             if (!IsValidId(id))
                 throw new InvalidOperationException("Id may contain only letters, digits, '.', '-' and '_'.");
 
-            string version = CoreServices.RevitVersion; // year, e.g. "2025"
+            // Scripts are version-independent, so they live directly under the root (no year folder).
             string root = ResolveTargetRoot(req.TargetRoot);
-            string versionDir = Path.Combine(root, version);
-            string directory = Path.Combine(versionDir, id);
+            string directory = Path.Combine(root, id);
 
-            // Defense-in-depth: the resolved folder must stay inside the version dir.
-            string fullVersionDir = Path.GetFullPath(versionDir);
-            if (!Path.GetFullPath(directory).StartsWith(fullVersionDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            // Defense-in-depth: the resolved folder must stay inside the root.
+            string fullRoot = Path.GetFullPath(root);
+            if (!Path.GetFullPath(directory).StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Invalid extension id (path escapes the extensions folder).");
 
             if (Directory.Exists(directory))
@@ -221,12 +220,13 @@ namespace AnalyseTool.Core.Features.Scripting
             return id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
         }
 
-        /// <summary>Returns a registered extension source root (default when unspecified); rejects
-        /// anything not registered so we never scaffold where the host wouldn't scan.</summary>
+        /// <summary>Returns a registered extension source root (the dev root when unspecified — saved
+        /// scripts are user-authored); rejects anything not registered so we never scaffold where the
+        /// host wouldn't scan.</summary>
         private static string ResolveTargetRoot(string? requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
-                return ExtensionSources.DefaultRoot;
+                return ExtensionSources.DefaultDevRoot;
 
             string full = Path.GetFullPath(requested.Trim());
             bool registered = ExtensionSources.Roots()

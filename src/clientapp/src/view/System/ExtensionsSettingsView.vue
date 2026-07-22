@@ -24,8 +24,9 @@ interface ExtensionsData {
 
 interface PathRow {
   path: string; // root — used for remove
-  scanDir: string; // root + version — what's actually scanned (shown to the user)
+  scanDir: string; // what's actually scanned (extensions live directly under the root)
   isDefault: boolean;
+  zone: "managed" | "dev";
   valid: boolean;
   reason: string;
   extensionCount: number;

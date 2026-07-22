@@ -3,52 +3,75 @@ using System.IO;
 
 namespace AnalyseTool.Core.Common.Extensions
 {
+    /// <summary>Which zone an extension source root belongs to — the semantics differ, the on-disk
+    /// layout parsing does not (see <see cref="ExtensionCatalog"/>).</summary>
+    internal enum ExtensionZone
+    {
+        /// <summary>Owned by the Extension Manager: packages are installed / removed / updated here.</summary>
+        Managed,
+
+        /// <summary>Authored by the user: loose folders, live Reload, no install/update semantics.</summary>
+        Dev,
+    }
+
+    /// <summary>One extension source root with its zone semantics.</summary>
+    internal sealed record ExtensionSourceRoot(string Path, ExtensionZone Zone, bool IsDefault);
+
     /// <summary>
-    /// Resolves the directories that are scanned for extensions. Extensions are organised as
-    /// <c>&lt;root&gt;\&lt;revitVersion&gt;\&lt;extension&gt;</c> (e.g. <c>...\extensions\2025\acme.sample</c>), so a
-    /// single machine can host builds for several Revit versions at once and we only ever load the
-    /// folder matching the running host.
+    /// Resolves the roots that are scanned for extensions. An extension is a folder with a
+    /// <c>plugin.json</c> directly under a root (<c>&lt;root&gt;\&lt;id&gt;</c>); per-Revit-year binaries live in
+    /// optional year subfolders inside it (<c>&lt;id&gt;\2025\...</c>). The legacy layout
+    /// <c>&lt;root&gt;\&lt;revitYear&gt;\&lt;id&gt;</c> is still recognized (deprecated).
     ///
-    /// The default root is <see cref="PathProvider.ExtensionsRoot"/>. Users can add extra roots from
-    /// Settings; they are persisted in <c>extensions.json</c> under the profile folder and must follow
-    /// the same per-version layout. An added root that does not yet contain the version folder is kept
-    /// but simply contributes nothing until it does.
+    /// Two zones:
+    /// <list type="bullet">
+    /// <item><see cref="DefaultRoot"/> — the MANAGED zone, owned by the Extension Manager.</item>
+    /// <item><see cref="DefaultDevRoot"/> plus any user-added roots — the DEV zone for hand-authored
+    /// extensions. User roots are persisted in <c>extensions.json</c> under the profile folder.</item>
+    /// </list>
     /// </summary>
     internal static class ExtensionSources
     {
-        /// <summary>Built-in root under the user profile.</summary>
+        /// <summary>Built-in managed root under the user profile.</summary>
         public static string DefaultRoot => PathProvider.ExtensionsRoot;
+
+        /// <summary>Built-in dev root under the user profile (templates are scaffolded here).</summary>
+        public static string DefaultDevRoot => PathProvider.ExtensionsDevRoot;
 
         private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "extensions.json");
 
-        /// <summary>All roots to search: the default one first, then any user-added roots (deduped).</summary>
-        public static IReadOnlyList<string> Roots()
+        /// <summary>All roots with zone info: managed default, dev default, then user-added dev roots (deduped).</summary>
+        public static IReadOnlyList<ExtensionSourceRoot> AllRoots()
         {
-            List<string> roots = new() { DefaultRoot };
+            List<ExtensionSourceRoot> roots = new()
+            {
+                new ExtensionSourceRoot(DefaultRoot, ExtensionZone.Managed, IsDefault: true),
+                new ExtensionSourceRoot(DefaultDevRoot, ExtensionZone.Dev, IsDefault: true),
+            };
             foreach (string p in LoadUserRoots())
-                if (!roots.Any(r => string.Equals(r, p, StringComparison.OrdinalIgnoreCase)))
-                    roots.Add(p);
+                if (!roots.Any(r => string.Equals(r.Path, p, StringComparison.OrdinalIgnoreCase)))
+                    roots.Add(new ExtensionSourceRoot(p, ExtensionZone.Dev, IsDefault: false));
             return roots;
         }
 
-        /// <summary>User-added roots only (excludes the default).</summary>
+        /// <summary>All root paths (both zones) — for callers that only validate/display paths.</summary>
+        public static IReadOnlyList<string> Roots() => AllRoots().Select(r => r.Path).ToList();
+
+        /// <summary>User-added roots only (excludes the built-in defaults).</summary>
         public static IReadOnlyList<string> UserRoots() => LoadUserRoots();
 
-        /// <summary>Version-scoped scan directories for the running Revit version (the year, e.g. "2025").</summary>
-        public static IReadOnlyList<string> ScanDirs(string revitVersion) =>
-            Roots().Select(root => Path.Combine(root, revitVersion)).ToList();
-
-        /// <summary>The default root's version directory (where new templates are created and the
-        /// "Open folder" button lands).</summary>
+        /// <summary>The legacy per-version directory under the managed root (<c>extensions\&lt;year&gt;</c>) —
+        /// still shown in Settings for users whose extensions live in the deprecated layout.</summary>
         public static string DefaultVersionDir(string revitVersion) =>
             Path.Combine(DefaultRoot, revitVersion);
 
-        /// <summary>Adds a user root (no-op for the default root or duplicates). Returns the normalized path.</summary>
+        /// <summary>Adds a user dev root (no-op for the built-in roots or duplicates). Returns the normalized path.</summary>
         public static string AddRoot(string path)
         {
             string full = Path.GetFullPath(path.Trim());
-            if (string.Equals(full, DefaultRoot, StringComparison.OrdinalIgnoreCase))
-                return full; // default is always implicit
+            if (string.Equals(full, DefaultRoot, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(full, DefaultDevRoot, StringComparison.OrdinalIgnoreCase))
+                return full; // built-ins are always implicit
 
             List<string> roots = LoadUserRoots().ToList();
             if (!roots.Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
@@ -59,7 +82,7 @@ namespace AnalyseTool.Core.Common.Extensions
             return full;
         }
 
-        /// <summary>Removes a user root (the default root cannot be removed).</summary>
+        /// <summary>Removes a user root (the built-in roots cannot be removed).</summary>
         public static void RemoveRoot(string path)
         {
             string full = Path.GetFullPath(path.Trim());

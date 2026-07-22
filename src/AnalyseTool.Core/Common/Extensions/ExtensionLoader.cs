@@ -44,8 +44,19 @@ namespace AnalyseTool.Core.Common.Extensions
 
         public void LoadAll()
         {
-            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(ExtensionSources.ScanDirs(_revitVersion)))
+            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(_revitVersion))
             {
+                // Declared a DLL but ships no build for this Revit year: listed as incompatible,
+                // never loaded — surface WHY in diagnostics instead of failing on a missing file.
+                if (descriptor.DeclaresDll && !descriptor.HasDll)
+                {
+                    string error = $"No build for Revit {_revitVersion}: '{descriptor.Manifest.EntryAssembly}' " +
+                        $"not found in '{_revitVersion}\\' or the extension root.";
+                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
+                    Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
+                    continue;
+                }
+
                 if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
 
                 ExtensionDiagnostics.Clear(descriptor.Manifest.Id);
@@ -120,7 +131,9 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             ExtensionManifest manifest = descriptor.Manifest;
 
-            string entryPath = Path.Combine(descriptor.Directory, manifest.EntryAssembly!);
+            // Resolved by the catalog for the running Revit version: <dir>\<year>\<entry> first,
+            // then <dir>\<entry>. Guard again for the delete-between-scan-and-load race.
+            string entryPath = descriptor.EntryAssemblyPath!;
             if (!File.Exists(entryPath))
                 throw new FileNotFoundException($"Entry assembly '{manifest.EntryAssembly}' not found.", entryPath);
 

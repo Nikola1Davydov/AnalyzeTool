@@ -107,9 +107,12 @@ namespace AnalyseTool.App.Common.Extensions
         {
             if (AdWin.ComponentManager.Ribbon is null) return; // ribbon not ready yet
 
+            // Incompatible extensions (a declared DLL with no build for this Revit year) get no
+            // button: their commands never load, so the UI would only produce dead invokes. They
+            // stay visible in the Settings listing with the diagnostics explaining why.
             List<ExtensionDescriptor> found = ExtensionCatalog
-                .Scan(ExtensionSources.ScanDirs(revitVersion))
-                .Where(d => d.HasUi)
+                .Scan(revitVersion)
+                .Where(d => d.HasUi && d.IsCompatibleWithHost)
                 .ToList();
 
             HashSet<string> foundIds = new(found.Select(d => d.Manifest.Id), StringComparer.OrdinalIgnoreCase);
