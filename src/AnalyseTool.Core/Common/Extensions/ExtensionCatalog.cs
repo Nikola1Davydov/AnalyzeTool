@@ -77,6 +77,13 @@ namespace AnalyseTool.Core.Common.Extensions
 
             foreach (string dir in Directory.GetDirectories(root.Path))
             {
+                // Installer work folders (staging/backup of InstallExtensionFromFile) are never
+                // extensions, even when a crash leaves them behind with a plugin.json inside.
+                string dirName = Path.GetFileName(dir);
+                if (dirName.EndsWith(".installing", StringComparison.OrdinalIgnoreCase)
+                    || dirName.EndsWith(".old", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 if (YearDir.IsMatch(Path.GetFileName(dir)))
                 {
                     // Legacy container <root>\<year>\<id> — only the running year contributes.

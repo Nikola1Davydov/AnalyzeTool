@@ -163,6 +163,83 @@ async function setExtensionEnabled(row: ExtensionRow, enabled: boolean) {
   await Promise.all([load(), loadCommands()]);
 }
 
+// ---- Install from file: pick a zip, show the third-party disclaimer, then install.
+// The backend refuses without consent=true, so the dialog is not just decoration.
+const installDialogVisible = ref(false);
+const installBusy = ref(false);
+const installError = ref("");
+const installPath = ref("");
+const installOverwrite = ref(false);
+
+async function pickPackageAndAskConsent() {
+  installError.value = "";
+  installOverwrite.value = false;
+  try {
+    const res = await invoke<{ path: string | null }>("BrowseForFile", {
+      title: "Select an extension package",
+      filter: "Extension package (*.zip)|*.zip",
+    });
+    if (!res?.path) return;
+    installPath.value = res.path;
+    installDialogVisible.value = true;
+  } catch (e) {
+    console.error("File picker failed", e);
+  }
+}
+
+async function confirmInstall() {
+  installBusy.value = true;
+  installError.value = "";
+  try {
+    await invoke("InstallExtensionFromFile", {
+      path: installPath.value,
+      consent: true,
+      overwrite: installOverwrite.value,
+    });
+    installDialogVisible.value = false;
+    await Promise.all([load(), loadPaths(), loadCommands()]);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    // Same-id package already present: keep the dialog open and offer the replace path.
+    if (message.includes("already installed")) {
+      installOverwrite.value = true;
+      installError.value =
+        "This extension is already installed. Install again to REPLACE it with this package.";
+    } else {
+      installError.value = message;
+    }
+  } finally {
+    installBusy.value = false;
+  }
+}
+
+// ---- Uninstall (managed zone only; dev folders belong to their author).
+const removeDialogVisible = ref(false);
+const removeBusy = ref(false);
+const removeError = ref("");
+const removeTarget = ref<ExtensionRow | null>(null);
+
+function askRemove(row: ExtensionRow) {
+  removeTarget.value = row;
+  removeError.value = "";
+  removeDialogVisible.value = true;
+}
+
+async function confirmRemove() {
+  if (!removeTarget.value) return;
+  removeBusy.value = true;
+  removeError.value = "";
+  try {
+    await invoke("RemoveExtension", { id: removeTarget.value.id });
+    removeDialogVisible.value = false;
+    await Promise.all([load(), loadPaths(), loadCommands()]);
+  } catch (e) {
+    removeError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    removeBusy.value = false;
+  }
+}
+
 function openFolder(path: string | undefined) {
   if (!path) return;
   invoke("OpenFolder", { path }).catch((e) => console.error(e));
@@ -337,6 +414,12 @@ onMounted(() => {
       </div>
       <div class="flex gap-2 shrink-0">
         <Button
+          label="Install from file…"
+          icon="pi pi-download"
+          severity="secondary"
+          @click="pickPackageAndAskConsent"
+        />
+        <Button
           label="New template"
           icon="pi pi-plus"
           severity="contrast"
@@ -345,6 +428,54 @@ onMounted(() => {
         <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
       </div>
     </div>
+
+    <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48). -->
+    <Dialog
+      v-model:visible="installDialogVisible"
+      modal
+      header="Install third-party extension"
+      class="w-[34rem]"
+    >
+      <div class="text-sm flex flex-col gap-3">
+        <div class="break-all text-surface-500">{{ installPath }}</div>
+        <p>
+          This package contains <b>third-party code</b> that will run inside Revit with full access
+          to your models and machine. Its <b>publisher is responsible</b> for what it does —
+          AnalyseTool does not review, endorse or guarantee third-party extensions. Install only if
+          you trust the source.
+        </p>
+        <p v-if="installError" class="text-red-500">{{ installError }}</p>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" @click="installDialogVisible = false" />
+        <Button
+          :label="installOverwrite ? 'Replace installed version' : 'I trust it — install'"
+          :severity="installOverwrite ? 'danger' : undefined"
+          :loading="installBusy"
+          @click="confirmInstall"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Uninstall confirmation (managed zone only). -->
+    <Dialog
+      v-model:visible="removeDialogVisible"
+      modal
+      header="Uninstall extension"
+      class="w-[28rem]"
+    >
+      <div class="text-sm flex flex-col gap-3">
+        <p>
+          Remove <b>{{ removeTarget?.name || removeTarget?.id }}</b> and delete its folder? This
+          cannot be undone.
+        </p>
+        <p v-if="removeError" class="text-red-500">{{ removeError }}</p>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" @click="removeDialogVisible = false" />
+        <Button label="Uninstall" severity="danger" :loading="removeBusy" @click="confirmRemove" />
+      </template>
+    </Dialog>
 
     <!-- Environment / About: what the host currently provides, so authors know what to build against. -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
@@ -509,7 +640,7 @@ onMounted(() => {
           />
         </template>
       </Column>
-      <Column header="" class="w-12">
+      <Column header="" class="w-24">
         <template #body="{ data: row }">
           <Button
             icon="pi pi-folder-open"
@@ -518,6 +649,15 @@ onMounted(() => {
             severity="secondary"
             v-tooltip.left="'Open in Explorer'"
             @click="openFolder(row.directory)"
+          />
+          <Button
+            v-if="row.zone === 'managed'"
+            icon="pi pi-trash"
+            size="small"
+            text
+            severity="danger"
+            v-tooltip.left="'Uninstall'"
+            @click="askRemove(row)"
           />
         </template>
       </Column>
