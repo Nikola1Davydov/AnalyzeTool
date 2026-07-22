@@ -122,6 +122,15 @@ trap on the way to publishing:
      written, git steps are skipped and reported, README carries the full
      command sequence.
 
+3. **Promote to project**: a manager action on any dev-zone extension, for the
+   "started for myself, now I want to publish" lifecycle. Pick a target folder
+   (+ optional repository URL) → the host MOVES the extension there, scaffolds
+   whatever is missing (csproj, `.gitignore`, `release.yml`, README), runs the
+   same git steps as project mode, registers the new folder as a dev root and
+   removes the old dev-zone copy. The extension keeps working throughout.
+   Lifecycle: script for myself → (one click) → git project → (push + tag) →
+   published package; every step is a valid place to stop.
+
 ## Out of scope (deliberately)
 
 - License gating / `ILicenseProvider` (#72) — separate SDK-contract release.
