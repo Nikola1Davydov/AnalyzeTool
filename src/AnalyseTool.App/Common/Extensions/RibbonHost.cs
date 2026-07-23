@@ -52,6 +52,25 @@ namespace AnalyseTool.App.Common.Extensions
         private static readonly Dictionary<string, Window> _extWindows =
             new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>The host's togglable main buttons: key -> (display name, PushButton). The Manage
+        /// stack is not here on purpose — Settings must always stay reachable.</summary>
+        private static readonly Dictionary<string, (string Name, PushButton Button)> _staticButtons =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Keys + display names of the togglable host buttons, for the Settings listing.</summary>
+        public static IReadOnlyList<(string Key, string Name)> StaticButtonInfos() =>
+            _staticButtons.Select(kv => (kv.Key, kv.Value.Name)).ToList();
+
+        /// <summary>Re-applies <see cref="HostButtonState"/> to the host buttons. Revit UI thread only.</summary>
+        public static void ApplyStaticButtonVisibility()
+        {
+            foreach ((string key, (_, PushButton button)) in _staticButtons)
+            {
+                try { button.Visible = HostButtonState.IsVisible(key); }
+                catch { /* ribbon may not be ready; next Build applies the state anyway */ }
+            }
+        }
+
         public static void Build(UIControlledApplication app, string launcherPath)
         {
             AppLog.Initialize();
@@ -62,19 +81,24 @@ namespace AnalyseTool.App.Common.Extensions
 
             // Static buttons via the official API.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
-            AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
-                MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
+            RegisterStaticButton("AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME,
+                AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
+                    MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png"));
 
             // Second top-level button, sitting next to the main one: the Family Manager window.
-            AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
-                FamilyControlCommandClass, "Browse, audit and manage the families in this project",
-                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (grid)
+            RegisterStaticButton("AnalyseToolFamilies", "Family Manager",
+                AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
+                    FamilyControlCommandClass, "Browse, audit and manage the families in this project",
+                    image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (grid)
 
             // Third button next to the others: the dockable placement palette (types grouped by family,
             // click a type to place it). Uses the same launcher slot pattern as the other static buttons.
-            AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
-                FamilyPaletteCommandClass, "Place a component — dockable family palette",
-                image: BuildGlyphIcon("")); // Segoe MDL2 "ViewAll" (list)
+            RegisterStaticButton("AnalyseToolPalette", "Component",
+                AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
+                    FamilyPaletteCommandClass, "Place a component — dockable family palette",
+                    image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (list)
+
+            ApplyStaticButtonVisibility();
 
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,
             // which is why one always-present host pane is registered here and its content is swapped by
@@ -446,13 +470,21 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
-        private static void AddStaticButton(RibbonPanel panel, string name, string text, string assemblyPath,
+        /// <summary>Remembers a togglable host button so Settings can list it and
+        /// <see cref="ApplyStaticButtonVisibility"/> can show/hide it live.</summary>
+        private static void RegisterStaticButton(string key, string displayName, PushButton? button)
+        {
+            if (button is not null)
+                _staticButtons[key] = (displayName, button);
+        }
+
+        private static PushButton? AddStaticButton(RibbonPanel panel, string name, string text, string assemblyPath,
             string className, string? tooltip, string? appIcon = null, ImageSource? image = null)
         {
             PushButtonData data = new(name, text, assemblyPath, className);
             if (!string.IsNullOrWhiteSpace(tooltip)) data.ToolTip = tooltip;
 
-            if (panel.AddItem(data) is not PushButton pushButton) return;
+            if (panel.AddItem(data) is not PushButton pushButton) return null;
 
             try
             {
@@ -468,6 +500,8 @@ namespace AnalyseTool.App.Common.Extensions
                 }
             }
             catch { /* icon is best-effort */ }
+
+            return pushButton;
         }
 
         /// <summary>Loads the button icon from the file named in the manifest (which must sit next to

@@ -460,12 +460,44 @@ async function copyConfig() {
   }
 }
 
+// ---- Host ribbon buttons (System tab): hide/show the three main buttons. UI-only —
+// the commands behind them stay registered (MCP, AT.invoke, dock).
+interface HostButtonRow {
+  key: string;
+  name: string;
+  visible: boolean;
+}
+const hostButtons = ref<HostButtonRow[]>([]);
+const hostButtonBusy = ref("");
+
+async function loadHostButtons() {
+  try {
+    const res = await invoke<{ buttons: HostButtonRow[] }>("GetHostButtons");
+    hostButtons.value = res?.buttons ?? [];
+  } catch (e) {
+    console.error("Failed to load host buttons", e);
+  }
+}
+
+async function setHostButtonVisible(row: HostButtonRow, visible: boolean) {
+  hostButtonBusy.value = row.key;
+  try {
+    await invoke("SetHostButtonVisible", { key: row.key, visible });
+  } catch (e) {
+    console.error("Failed to toggle host button", e);
+  } finally {
+    hostButtonBusy.value = "";
+  }
+  await loadHostButtons();
+}
+
 onMounted(() => {
   load();
   loadPaths();
   loadMcp();
   loadCodeExec();
   loadCommands();
+  loadHostButtons();
   useUpdateStore().loadUpdateData();
 });
 </script>
@@ -951,6 +983,30 @@ onMounted(() => {
           <div class="text-surface-500 text-xs">Extensions folder</div>
           <div class="break-all">{{ data?.extensionsRoot ?? "—" }}</div>
         </div>
+      </div>
+    </section>
+
+    <!-- Host ribbon buttons: hide unused main buttons. UI-only; commands stay callable. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-1">Ribbon buttons</h2>
+      <p class="text-xs text-surface-500 mb-3">
+        Hide the main buttons you don't use. This is UI-only — their commands stay available to
+        extensions, the dock and AI over MCP. Settings and Reload always stay visible.
+      </p>
+      <div class="flex flex-col gap-2 max-w-md">
+        <div
+          v-for="b in hostButtons"
+          :key="b.key"
+          class="flex items-center justify-between text-sm"
+        >
+          <span>{{ b.name }}</span>
+          <ToggleSwitch
+            :modelValue="b.visible"
+            :disabled="hostButtonBusy === b.key"
+            @update:modelValue="setHostButtonVisible(b, !b.visible)"
+          />
+        </div>
+        <div v-if="!hostButtons.length" class="text-surface-500 text-xs">Not available.</div>
       </div>
     </section>
 
