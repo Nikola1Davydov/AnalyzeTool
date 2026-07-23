@@ -860,11 +860,13 @@ onMounted(() => {
         </div>
         <InputText v-model="commandSearch" placeholder="Search…" class="w-56 shrink-0" />
       </div>
+      <!-- Own tab now — take the remaining viewport height instead of a fixed cap; the column
+           header stays sticky while the list scrolls. -->
       <DataTable
         :value="filteredCommands"
         dataKey="name"
         scrollable
-        scrollHeight="22rem"
+        scrollHeight="calc(100vh - 21rem)"
         class="text-sm"
       >
         <Column header="Command">
