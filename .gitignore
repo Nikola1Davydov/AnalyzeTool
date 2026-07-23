@@ -449,3 +449,6 @@ __screenshots__/
 /src/.github/copilot-instructions.md
 /output/AnalyseTool.Launcher.bundle/AnalyseTool.Launcher.bundle/Contents
 /output
+
+# WixSharp-generated sources (BuildMsi emits them on every installer build)
+/src/Installer/wix/

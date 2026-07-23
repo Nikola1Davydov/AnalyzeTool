@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="build\AnalyseTool.Extension.props" />
 
@@ -6,7 +6,6 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- The SDK is a public CONTRACT, versioned independently of the plugin release. Bump these only
@@ -18,15 +17,17 @@
     <!-- AssemblyVersion can move within a major: ExtensionLoadContext hands extensions the host's copy
          of AnalyseTool.Sdk by simple name (version-agnostic), so an extension built against an older
          minor still binds. MAJOR remains the hard compatibility key (checked at load).
-         1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting). -->
+         1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting).
+         1.1.1: packaging fixes only, contract unchanged — embedded MIT license text, authoring props
+                work under both CPM on/off, IRevitTask parameter names in the XML docs. -->
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <FileVersion>1.1.1.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
     <!-- Prerelease while the platform is in beta; promote to a stable release at GA. -->
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>
@@ -43,13 +44,14 @@
     <!-- PrivateAssets=all: the SDK uses Newtonsoft internally, but consumers don't need it (the host
          provides it at runtime and the SDK's public surface doesn't expose it). So it is NOT a
          package dependency. -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+    <PackageReference Include="Newtonsoft.Json">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="AnalyseTool" />
+    <InternalsVisibleTo Include="AnalyseTool.App" />
+    <InternalsVisibleTo Include="AnalyseTool.Core" />
   </ItemGroup>
 
   <!-- Ship the authoring props (auto-imported by consumers) and the author guide as the package README. -->

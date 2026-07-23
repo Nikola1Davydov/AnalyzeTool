@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Out-of-process MCP server. The AI client (Claude Desktop, etc.) spawns this exe and talks MCP
@@ -26,8 +26,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" Version="1.3.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Wire contract shared with the in-Revit bridge (AnalyseTool.Mcp.Bridge) — compiled into both
+         sides so field renames break the build, not the runtime. A linked file, NOT a ProjectReference:
+         the bridge is net8/net10-windows and drags Core/Revit deps this exe must never load. -->
+    <Compile Include="..\AnalyseTool.Mcp.Bridge\McpWire.cs" Link="McpWire.cs" />
   </ItemGroup>
 
 </Project>

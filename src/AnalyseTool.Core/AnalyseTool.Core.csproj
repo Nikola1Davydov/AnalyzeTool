@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- Version attributes come from AssemblyInfo.cs (ToolData.PLUGIN_VERSION), like App/Launcher. -->
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Roslyn: compiles user/AI C# scripts into extensions at runtime (RoslynScriptCompiler). -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <!-- CommandDispatcher generates JSON Schemas for command inputs via AIJsonUtilities. -->
+        <PackageReference Include="Microsoft.Extensions.AI" />
+        <PackageReference Include="Newtonsoft.Json" />
+        <!-- Log calls only; the sinks are configured by the host (AppLog). -->
+        <PackageReference Include="Serilog" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    </ItemGroup>
+
+    <!-- PathProvider needs ToolData.PLUGIN_NAME. -->
+    <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+    <!-- InternalsVisibleTo lives in AssemblyInfo.cs: GenerateAssemblyInfo=False (version attributes
+         come from ToolData) would silently drop csproj-level IVT items. -->
+
+</Project>

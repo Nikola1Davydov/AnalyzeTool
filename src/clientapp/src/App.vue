@@ -9,6 +9,7 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 import HeaderLayout from "@/layout/HeaderLayout.vue";
 import Sidebar from "@/layout/Sidebar.vue";
 import FooterLayout from "./layout/FooterLayout.vue";
+import RevitBusyBar from "@/components/RevitBusyBar.vue";
 
 const toast = useToast();
 const notificationStore = useNotificationStore();
@@ -51,6 +52,10 @@ provide("sidebarActions", {
 
 <template>
   <Toast position="top-right" />
+
+  <!-- Global busy strip: shows in EVERY window (bare and chrome layouts) while the platform runs a
+       long command or Revit can't execute queued work (user in a modal dialog / edit mode). -->
+  <RevitBusyBar />
 
   <!-- Bare layout for system pages -->
   <router-view v-if="isBare" />

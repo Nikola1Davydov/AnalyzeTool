@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+    <!--
+      In-process side of the MCP subsystem (its pair, AnalyseTool.Mcp, is the out-of-process stdio
+      exe an AI client launches). This project is deliberately a SEPARATE transport that plugs into
+      the platform from outside: it references Core and enqueues into the CommandQueue — the living
+      proof of the rule "adding a transport requires zero changes to Core".
+    -->
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" />
+        <PackageReference Include="Serilog" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The host bootstrap starts the controller and registers this assembly's commands. -->
+        <InternalsVisibleTo Include="AnalyseTool.App" />
+    </ItemGroup>
+
+</Project>

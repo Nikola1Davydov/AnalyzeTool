@@ -1,4 +1,4 @@
-using Nuke.Common;
+﻿using Nuke.Common;
 using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
@@ -16,23 +16,6 @@ sealed partial class Build
     [
         "Release R*"
     ];
-
-    /// <summary>
-    ///     Projects packed in the Autodesk Bundle.
-    /// </summary>
-    Project[] Bundles =>
-    [
-        Solution.clientapp,
-        Solution.AnalyseTool_Launcher,
-    ];
-
-    /// <summary>
-    ///     Mapping between used installer project and the project containing the installation files.
-    /// </summary>
-    Dictionary<Project, Project> InstallersMap => new()
-    {
-        { Solution.Installer, Solution.AnalyseTool }
-    };
 
     /// <summary>
     ///     Path to build output.

@@ -1,0 +1,33 @@
+<Project>
+
+  <!--
+    Shared plugin-folder assets, imported by BOTH plugin-shaped outputs:
+      - AnalyseTool.App      (the host assembly's own bin\<cfg>\AnalyseTool folder)
+      - AnalyseTool.Launcher (the deployable bundle that CopyToRevitFolder ships to Addins)
+    One definition instead of two drifting copies (they had already diverged once).
+    Paths are anchored to THIS file's folder (src\), so no SolutionDir property is required.
+  -->
+
+  <!-- The out-of-process MCP stdio server ships in a "mcp" subfolder; the Settings page points
+       the AI client's config at <plugin>\mcp\AnalyseTool.Mcp.exe. -->
+  <Target Name="ATBuildAndCopyMcpServer" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
+    <Message Text="Copying AnalyseTool.Mcp server into the plugin folder..." Importance="high" />
+    <!-- Idempotent: within a Launcher/solution build MSBuild dedups this against the ProjectReference
+         build of the same project; a standalone App build actually builds it here. -->
+    <MSBuild Projects="$(MSBuildThisFileDirectory)AnalyseTool.Mcp\AnalyseTool.Mcp.csproj" Properties="Configuration=$(Configuration)" Targets="Build" />
+    <ItemGroup>
+      <ATMcpFiles Include="$(MSBuildThisFileDirectory)AnalyseTool.Mcp\bin\$(Configuration)\net8.0\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ATMcpFiles)" DestinationFolder="$(OutputPath)\mcp\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- The compiled web frontend (clientapp/dist) is served from the plugin folder in Release. -->
+  <Target Name="ATCopyClientAppDist" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
+    <Message Text="Copying clientapp/dist into the plugin folder..." Importance="high" />
+    <ItemGroup>
+      <ATDistFiles Include="$(MSBuildThisFileDirectory)clientapp\dist\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ATDistFiles)" DestinationFolder="$(OutputPath)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

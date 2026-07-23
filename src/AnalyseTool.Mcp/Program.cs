@@ -9,8 +9,8 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 // The AI client launches this exe (stdio). It forwards each tool call to the in-Revit bridge over a
-// localhost WebSocket. Port comes from --port (default matches McpServerController.DefaultPort).
-int port = ParsePort(args) ?? 17890;
+// localhost TCP. Port comes from --port (default shared with the bridge via McpWire).
+int port = ParsePort(args) ?? AnalyseTool.Mcp.McpWire.DefaultPort;
 
 // Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
 // client's MCP server log so it's unambiguous which build is running and which port it targets.
@@ -43,21 +43,21 @@ builder.Services
             // Discover the live command set from Revit. If Revit isn't running / MCP is disabled,
             // return an empty list rather than failing the whole server; tools appear once reachable.
             JsonNode? listed = await bridge.ListCommandsAsync(ct);
-            if (listed?["commands"] is JsonArray commands)
+            if (listed?[McpWire.Commands] is JsonArray commands)
             {
                 foreach (JsonNode? entry in commands)
                 {
-                    string? command = entry?["name"]?.GetValue<string>();
+                    string? command = entry?[McpWire.Name]?.GetValue<string>();
                     if (string.IsNullOrEmpty(command)) continue;
-                    string source = entry?["source"]?.GetValue<string>() ?? "core";
+                    string source = entry?[McpWire.SourceField]?.GetValue<string>() ?? "core";
 
                     string toolName = ToToolName(command, toolToCommand);
                     toolToCommand[toolName] = command;
 
-                    string? description = entry?["description"]?.GetValue<string>();
-                    bool readOnly = entry?["readOnly"]?.GetValue<bool>() ?? false;
-                    bool destructive = entry?["destructive"]?.GetValue<bool>() ?? false;
-                    JsonNode? schema = entry?["inputSchema"];
+                    string? description = entry?[McpWire.Description]?.GetValue<string>();
+                    bool readOnly = entry?[McpWire.ReadOnly]?.GetValue<bool>() ?? false;
+                    bool destructive = entry?[McpWire.Destructive]?.GetValue<bool>() ?? false;
+                    JsonNode? schema = entry?[McpWire.InputSchema];
 
                     tools.Add(new Tool
                     {

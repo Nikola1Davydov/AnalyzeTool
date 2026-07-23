@@ -4,16 +4,15 @@
     
   <PropertyGroup>
 	<ImplicitUsings>disable</ImplicitUsings>
-	<PlatformTarget>x64</PlatformTarget>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 	
 	<ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Nice3point.TUnit.Revit" Version="2026.0.4" />
-    <PackageReference Include="NUnit" Version="3.13.3" />
-    <PackageReference Include="NUnit.Analyzers" Version="4.10.0">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Nice3point.TUnit.Revit" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -21,7 +20,7 @@
 	
 	<ItemGroup>
 	  <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
-	  <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj" />
+	  <ProjectReference Include="..\AnalyseTool.App\AnalyseTool.App.csproj" />
 	</ItemGroup>
 	
 	<Import Project="..\SharedData\SharedData.projitems" Label="Shared" />

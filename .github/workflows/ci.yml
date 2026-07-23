@@ -1,0 +1,44 @@
+name: CI
+
+# Thin wrapper: ALL CI logic lives in the Nuke build (src/build/Build.Ci.cs, target `Ci`), so the
+# exact same guardrails run locally via `src\build.cmd Ci`:
+#   1. dependency contract + headless Core/Tools invariant
+#   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
+#   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build + guardrails
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+
+      - name: Run CI guardrails (Nuke)
+        run: ./src/build.cmd Ci
+
+      - name: Upload SDK package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-nupkg
+          path: artifacts/sdk-nupkg/*.nupkg

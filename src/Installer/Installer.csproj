@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-	  <PackageReference Include="WixSharp.bin" Version="1.26.0"/>
-	  <PackageReference Include="WixSharp.wix.bin" Version="3.14.1"/>
+	  <PackageReference Include="WixSharp.bin" />
+	  <PackageReference Include="WixSharp.wix.bin" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

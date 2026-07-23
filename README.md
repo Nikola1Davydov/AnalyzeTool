@@ -170,8 +170,8 @@ using AnalyseTool.Sdk;
 [RevitCommand(Description = "Counts the walls in the active document.", ReadOnly = true)]
 public sealed class CountWalls : IRevitTask
 {
-    public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-        ctx.RunInRevitAsync<object?>(app =>
+    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
+        revitContext.RunInRevitAsync<object?>(app =>
         {
             var doc = app.ActiveUIDocument.Document;
             int count = new Autodesk.Revit.DB.FilteredElementCollector(doc)
@@ -192,16 +192,27 @@ from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP �
 
 ```
 src/
-  AnalyseTool/          C# Revit plugin (host: commands, windows, dockable pane, dispatcher)
-  AnalyseTool.Sdk/      public SDK extension authors compile against
-  AnalyseTool.Launcher/ thin Revit add-in shim that loads the host in isolation
-  AnalyseTool.Mcp/      out-of-process MCP server (exposes commands to AI agents)
-  clientapp/            Vue 3 + Vite + PrimeVue frontend
-  Installer/            packaging & installation assets
-samples/                example extensions
+  AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
+  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), scripting
+  AnalyseTool.Tools/      built-in feature commands (Get/Families/Ai/Actions) — references ONLY the Sdk
+  AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
+  AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)
+  AnalyseTool.App/        host UI: windows, ribbon, dockable pane, WebView2 transport, bootstrap
+  AnalyseTool.Launcher/   thin Revit add-in shim that loads the host in isolation
+  clientapp/              Vue 3 + Vite + PrimeVue frontend
+  Installer/              packaging & installation assets
+samples/                  example extensions (Acme.Sample doubles as the SDK guardrail in CI)
 ```
+
+Dependency contract (enforced by `src/build/Check-Boundaries.ps1` in CI): extensions and
+`Tools` see only the `Sdk`; transports (`Mcp.Bridge`) plug into `Core` from outside; `App`
+composes everything; `Core` and `Tools` are headless (no WPF).
 
 
 ## Feedback
 
 Found a bug or have an idea? Use the [issue tracker](https://github.com/Nikola1Davydov/AnalyzeTool/issues) (or the **Report a bug** ribbon button) and attach the latest log from `%LOCALAPPDATA%\AnalyseTool\logs`. PRs welcome.
+
+## License
+
+AnalyseTool is licensed under the [Apache License 2.0](LICENSE), with one exception: the public extension SDK, [`AnalyseTool.Sdk`](src/AnalyseTool.Sdk), is licensed under the [MIT License](src/AnalyseTool.Sdk/LICENSE) so extension authors can consume it without any strings attached. Bundled third-party components are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
