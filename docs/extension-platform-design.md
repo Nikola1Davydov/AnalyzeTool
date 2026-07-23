@@ -152,6 +152,21 @@ Submission flow:
 Updates never go through the registry (manager polls the vendor's `updateFeed`
 directly), so a stale registry breaks nothing.
 
+### Popularity signals (no-server model)
+
+- **Downloads**: GitHub already counts release-asset downloads (`download_count`
+  per asset) — free for every `github:`-hosted extension. Custom HTTPS feeds may
+  report an optional `downloads` number; absent otherwise.
+- **Votes**: the vendor repo's GitHub stars. Real ratings/reviews would require
+  accounts, moderation and anti-abuse — the marketplace infrastructure #48
+  rejects. "Vote" in the manager = open the repo page (also drives vendor
+  visibility). Known limit: stars are per-repo, not per-extension.
+- **Aggregation**: clients must NOT poll the GitHub API themselves (60 req/h
+  anonymous limit). A scheduled Action in the registry repo refreshes
+  stars/downloads for all entries (its token has ample limits) and commits them
+  into `registry.json` — clients still fetch one static file; the git history
+  doubles as a popularity timeline. Available tab sorts by either number.
+
 ## Out of scope (deliberately)
 
 - License gating / `ILicenseProvider` (#72) — separate SDK-contract release.
