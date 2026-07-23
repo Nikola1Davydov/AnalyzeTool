@@ -2,6 +2,11 @@
 import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import ToggleSwitch from "primevue/toggleswitch";
+import Tabs from "primevue/tabs";
+import TabList from "primevue/tablist";
+import Tab from "primevue/tab";
+import TabPanels from "primevue/tabpanels";
+import TabPanel from "primevue/tabpanel";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
 import AiModelPicker from "@/components/AiModelPicker.vue";
@@ -467,33 +472,39 @@ onMounted(() => {
 
 <template>
   <div class="p-6">
-    <div class="flex items-start justify-between mb-4 gap-4">
-      <div>
-        <h1 class="text-xl font-bold">Extensions</h1>
-      </div>
-      <div class="flex gap-2 shrink-0">
-        <Button
-          label="Check updates"
-          icon="pi pi-sync"
-          severity="secondary"
-          :loading="checkingUpdates"
-          @click="checkUpdates"
-        />
-        <Button
-          label="Install from file…"
-          icon="pi pi-download"
-          severity="secondary"
-          @click="pickPackageAndAskConsent"
-        />
-        <Button
-          label="New template"
-          icon="pi pi-plus"
-          severity="contrast"
-          @click="openTemplateDrawer"
-        />
-        <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
-      </div>
-    </div>
+    <h1 class="text-xl font-bold mb-4">Settings</h1>
+
+    <Tabs value="extensions">
+      <TabList>
+        <Tab value="extensions">Extensions</Tab>
+        <Tab value="commands">Commands</Tab>
+        <Tab value="system">System</Tab>
+      </TabList>
+      <TabPanels class="!px-0">
+        <TabPanel value="extensions">
+          <!-- Extension actions: the whole manager lifecycle in one row. -->
+          <div class="flex flex-wrap gap-2 justify-end mb-4">
+            <Button
+              label="Check updates"
+              icon="pi pi-sync"
+              severity="secondary"
+              :loading="checkingUpdates"
+              @click="checkUpdates"
+            />
+            <Button
+              label="Install from file…"
+              icon="pi pi-download"
+              severity="secondary"
+              @click="pickPackageAndAskConsent"
+            />
+            <Button
+              label="New template"
+              icon="pi pi-plus"
+              severity="contrast"
+              @click="openTemplateDrawer"
+            />
+            <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
+          </div>
 
     <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48). -->
     <Dialog
@@ -556,66 +567,6 @@ onMounted(() => {
         <Button label="Uninstall" severity="danger" :loading="removeBusy" @click="confirmRemove" />
       </template>
     </Dialog>
-
-    <!-- Environment / About: what the host currently provides, so authors know what to build against. -->
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
-      <h2 class="text-sm font-bold mb-3">Environment</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <div>
-          <div class="text-surface-500 text-xs">Revit</div>
-          <div>{{ data?.hostRevit ?? "—" }}</div>
-        </div>
-        <div>
-          <div class="text-surface-500 text-xs">SDK version</div>
-          <div>{{ data?.hostSdkVersion ?? "—" }}</div>
-        </div>
-        <div>
-          <div class="text-surface-500 text-xs">Plugin version</div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <span>{{ data?.pluginVersion ?? "—" }}</span>
-            <button
-              type="button"
-              class="text-primary-600 underline text-xs"
-              v-tooltip.bottom="'Changelog'"
-              @click="openChangelog"
-            >
-              What's new
-            </button>
-            <template v-if="updateInfo?.isUpdateAvailable">
-              <span
-                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
-                :style="{ background: 'var(--p-primary-color)' }"
-              >
-                <i class="pi pi-arrow-up text-[10px]" />
-                v{{ updateInfo.latestVersion }}
-              </span>
-              <a
-                v-if="updateInfo.releaseUrl"
-                :href="updateInfo.releaseUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-primary-600 underline font-semibold text-xs"
-              >
-                Download
-              </a>
-            </template>
-          </div>
-        </div>
-        <div class="col-span-2 md:col-span-1">
-          <div class="text-surface-500 text-xs">Extensions folder</div>
-          <div class="break-all">{{ data?.extensionsRoot ?? "—" }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- AI model: the global model every window uses, saved cloud models, and Ollama status. -->
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
-      <h2 class="text-sm font-bold mb-3">AI model</h2>
-      <p class="text-xs text-surface-500 mb-3">
-        Shared across all AnalyseTool windows. Changing it here applies everywhere.
-      </p>
-      <AiModelPicker manage />
-    </section>
 
     <!-- Extension paths: the source roots scanned for the running Revit version (default + user-added). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
@@ -895,6 +846,9 @@ onMounted(() => {
       </DataTable>
     </section>
 
+        </TabPanel>
+
+        <TabPanel value="commands">
     <!-- Commands: everything callable from a web extension via AT.invoke(name, payload). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-6">
       <div class="flex items-start justify-between mb-3 gap-3">
@@ -944,26 +898,68 @@ onMounted(() => {
       </DataTable>
     </section>
 
-    <CreateExtensionTemplateDrawer
-      v-model:visible="templateDrawerVisible"
-      :extensionsRoot="data?.extensionsRoot"
-      @created="reload"
-    />
+        </TabPanel>
 
-    <!-- Changelog (CHANGELOG.md shipped with the plugin, rendered as markdown) -->
-    <Dialog
-      v-model:visible="changelogVisible"
-      modal
-      dismissableMask
-      header="What's new"
-      :style="{ width: 'min(44rem, 95vw)' }"
-    >
-      <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
-      <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
-        <i class="pi pi-spin pi-spinner mr-2" />Loading…
+        <TabPanel value="system">
+    <!-- Environment / About: what the host currently provides, so authors know what to build against. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">Environment</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div>
+          <div class="text-surface-500 text-xs">Revit</div>
+          <div>{{ data?.hostRevit ?? "—" }}</div>
+        </div>
+        <div>
+          <div class="text-surface-500 text-xs">SDK version</div>
+          <div>{{ data?.hostSdkVersion ?? "—" }}</div>
+        </div>
+        <div>
+          <div class="text-surface-500 text-xs">Plugin version</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span>{{ data?.pluginVersion ?? "—" }}</span>
+            <button
+              type="button"
+              class="text-primary-600 underline text-xs"
+              v-tooltip.bottom="'Changelog'"
+              @click="openChangelog"
+            >
+              What's new
+            </button>
+            <template v-if="updateInfo?.isUpdateAvailable">
+              <span
+                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
+                :style="{ background: 'var(--p-primary-color)' }"
+              >
+                <i class="pi pi-arrow-up text-[10px]" />
+                v{{ updateInfo.latestVersion }}
+              </span>
+              <a
+                v-if="updateInfo.releaseUrl"
+                :href="updateInfo.releaseUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-primary-600 underline font-semibold text-xs"
+              >
+                Download
+              </a>
+            </template>
+          </div>
+        </div>
+        <div class="col-span-2 md:col-span-1">
+          <div class="text-surface-500 text-xs">Extensions folder</div>
+          <div class="break-all">{{ data?.extensionsRoot ?? "—" }}</div>
+        </div>
       </div>
-      <div v-else class="changelog-body max-h-[65vh] overflow-y-auto pr-2" v-html="changelogHtml" />
-    </Dialog>
+    </section>
+
+    <!-- AI model: the global model every window uses, saved cloud models, and Ollama status. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">AI model</h2>
+      <p class="text-xs text-surface-500 mb-3">
+        Shared across all AnalyseTool windows. Changing it here applies everywhere.
+      </p>
+      <AiModelPicker manage />
+    </section>
 
     <!-- C# code execution: gates the ad-hoc ExecuteRevitCode command (AI scratchpad). -->
     <section class="mt-8 border-t border-surface-200 pt-6">
@@ -1055,6 +1051,30 @@ onMounted(() => {
         >
       </div>
     </section>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+
+    <CreateExtensionTemplateDrawer
+      v-model:visible="templateDrawerVisible"
+      :extensionsRoot="data?.extensionsRoot"
+      @created="reload"
+    />
+
+    <!-- Changelog (CHANGELOG.md shipped with the plugin, rendered as markdown) -->
+    <Dialog
+      v-model:visible="changelogVisible"
+      modal
+      dismissableMask
+      header="What's new"
+      :style="{ width: 'min(44rem, 95vw)' }"
+    >
+      <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
+      <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
+        <i class="pi pi-spin pi-spinner mr-2" />Loading…
+      </div>
+      <div v-else class="changelog-body max-h-[65vh] overflow-y-auto pr-2" v-html="changelogHtml" />
+    </Dialog>
   </div>
 </template>
 
