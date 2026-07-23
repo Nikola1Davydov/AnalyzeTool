@@ -167,18 +167,20 @@ directly), so a stale registry breaks nothing.
   into `registry.json` — clients still fetch one static file; the git history
   doubles as a popularity timeline. Available tab sorts by either number.
 
-### GitHub sign-in: optional, never required
+### GitHub sign-in: optional, never required — PARKED (far future)
 
-Browsing, installing and updating stay anonymous forever — a mandatory login
-would gate the funnel on an account most Revit users don't have, contradicts
-the "nothing leaves your machine" stance, and is technically unnecessary
-(static registry + public release assets). An OPTIONAL "Connect GitHub" adds:
-- voting in place (starring requires auth; without it the Vote button opens
+Decision: the platform works fully anonymously — a mandatory login would gate
+the funnel on an account most Revit users don't have, contradicts the "nothing
+leaves your machine" stance, and is technically unnecessary (static registry +
+public release assets). An OPTIONAL "Connect GitHub" is deliberately parked for
+a distant iteration; when it comes, it would add:
+- voting in place (starring requires auth; until then the Vote button opens
   the repo page in the browser);
 - **paid/private extensions**: a vendor can sell access to a PRIVATE repo —
   the user's token then authorizes the `github:` feed and the download.
   Paid distribution with zero AnalyseTool involvement in money or hosting (#48);
 - authenticated rate limits for heavy users.
+Nothing in the foundation or the registry depends on it.
 
 ## Out of scope (deliberately)
 
