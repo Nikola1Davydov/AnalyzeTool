@@ -131,7 +131,7 @@ trap on the way to publishing:
    Lifecycle: script for myself → (one click) → git project → (push + tag) →
    published package; every step is a valid place to stop.
 
-## Registry (the curation point, later iteration)
+## Registry (the curation point, later iteration — tracked as #76)
 
 A separate repo (`AnalyseTool-registry`) holding one JSON list of entries
 `{id, name, publisher, description, repo, updateFeed}` — metadata and links only,
