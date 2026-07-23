@@ -38,6 +38,9 @@
         <!-- Ships next to the plugin DLL so the Settings window can show it (GetChangelog reads it
              from PathProvider.RootDirectory); the installer bundle picks it up with the bin folder. -->
         <None Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
+        <!-- License attribution ships with every distributed copy (MSI and bundle) the same way. -->
+        <None Include="..\..\NOTICE" Link="NOTICE" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

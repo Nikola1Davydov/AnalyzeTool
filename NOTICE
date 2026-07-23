@@ -1,0 +1,9 @@
+AnalyseTool
+Copyright 2026 Nikolai Davydov
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+The AnalyseTool.Sdk package is licensed separately under the MIT License
+(see src/AnalyseTool.Sdk/LICENSE).
+
+This product bundles third-party software; see THIRD-PARTY-NOTICES.txt
+for the components and their licenses.
