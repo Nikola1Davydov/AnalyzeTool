@@ -12,14 +12,18 @@ interface ExtensionRow {
   version: string;
   description?: string | null;
   publisher?: string | null;
+  website?: string | null;
+  supportUrl?: string | null;
   updateFeed?: string | null;
   enabled: boolean;
   hasCommands: boolean;
   hasUi: boolean;
   compatible: boolean;
   zone: "managed" | "dev";
+  legacyLayout?: boolean;
   compileError?: string | null;
   directory: string;
+  icon?: string | null; // data URI served by the backend
 }
 
 interface ExtensionsData {
@@ -62,6 +66,14 @@ interface McpStatus {
 }
 
 const data = ref<ExtensionsData | null>(null);
+
+// Two zones, two sections: installed packages (manager-owned) vs the user's own dev folders.
+const managedExtensions = computed(() =>
+  (data.value?.extensions ?? []).filter((e) => e.zone === "managed"),
+);
+const devExtensions = computed(() =>
+  (data.value?.extensions ?? []).filter((e) => e.zone !== "managed"),
+);
 const loading = ref(true);
 
 // --- changelog (CHANGELOG.md ships next to the plugin DLL; rendered as markdown on demand) ---------
@@ -673,94 +685,215 @@ onMounted(() => {
       </DataTable>
     </section>
 
-    <DataTable :value="data?.extensions ?? []" :loading="loading" dataKey="id" class="text-sm">
-      <Column header="Extension">
-        <template #body="{ data: row }">
-          <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
-            {{ row.name || row.id }}
+    <!-- Installed: packages owned by the Extension Manager (extensions-dist). -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">
+        Installed
+        <span class="text-surface-500 font-normal">— packages managed by AnalyseTool</span>
+      </h2>
+      <DataTable :value="managedExtensions" :loading="loading" dataKey="id" class="text-sm">
+        <Column header="Extension">
+          <template #body="{ data: row }">
+            <div class="flex items-start gap-3">
+              <img v-if="row.icon" :src="row.icon" class="w-8 h-8 rounded shrink-0 mt-0.5" alt="" />
+              <div
+                v-else
+                class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
+              >
+                <i class="pi pi-box" />
+              </div>
+              <div>
+                <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
+                  {{ row.name || row.id }}
+                </div>
+                <div class="text-surface-500 text-xs">
+                  {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
+                  <a v-if="row.website" :href="row.website" class="ml-1" v-tooltip.top="'Website'">
+                    <i class="pi pi-external-link text-xs" />
+                  </a>
+                  <a
+                    v-if="row.supportUrl"
+                    :href="row.supportUrl"
+                    class="ml-1"
+                    v-tooltip.top="'Support'"
+                  >
+                    <i class="pi pi-question-circle text-xs" />
+                  </a>
+                </div>
+                <div v-if="row.description" class="text-surface-500 text-xs">
+                  {{ row.description }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </Column>
+        <Column header="Version">
+          <template #body="{ data: row }">
+            <span>{{ row.version }}</span>
+            <Tag
+              v-if="updateChecks[row.id]?.updateAvailable"
+              :value="`→ ${updateChecks[row.id]?.latest}`"
+              severity="success"
+              class="ml-2"
+              v-tooltip.top="'Update available'"
+            />
+            <Tag
+              v-else-if="updateChecks[row.id]?.error"
+              value="feed error"
+              severity="warn"
+              class="ml-2"
+              v-tooltip.top="updateChecks[row.id]?.error"
+            />
+          </template>
+        </Column>
+        <Column header="Type">
+          <template #body="{ data: row }">
+            <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
+            <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
+            <Tag
+              v-if="!row.compatible"
+              value="Incompatible"
+              severity="danger"
+              v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
+            />
+            <Tag
+              v-else-if="row.compileError"
+              value="Error"
+              severity="danger"
+              v-tooltip.top="row.compileError"
+            />
+          </template>
+        </Column>
+        <Column header="Enabled" class="w-20">
+          <template #body="{ data: row }">
+            <ToggleSwitch
+              :modelValue="row.enabled"
+              :disabled="loading"
+              @update:modelValue="setExtensionEnabled(row, !row.enabled)"
+            />
+          </template>
+        </Column>
+        <Column header="" class="w-32">
+          <template #body="{ data: row }">
+            <Button
+              v-if="updateChecks[row.id]?.updateAvailable"
+              icon="pi pi-arrow-circle-up"
+              size="small"
+              text
+              severity="success"
+              :loading="updatingId === row.id"
+              v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
+              @click="updateExtension(row)"
+            />
+            <Button
+              icon="pi pi-folder-open"
+              size="small"
+              text
+              severity="secondary"
+              v-tooltip.left="'Open in Explorer'"
+              @click="openFolder(row.directory)"
+            />
+            <Button
+              icon="pi pi-trash"
+              size="small"
+              text
+              severity="danger"
+              v-tooltip.left="'Uninstall'"
+              @click="askRemove(row)"
+            />
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-4">
+            No installed packages yet — use "Install from file…" to add one.
           </div>
-          <div class="text-surface-500 text-xs">
-            {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
+        </template>
+      </DataTable>
+    </section>
+
+    <!-- Development: the user's own folders (default dev root + added paths). Reload-driven. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">
+        Development
+        <span class="text-surface-500 font-normal">— your own extension folders, reloaded live</span>
+      </h2>
+      <DataTable :value="devExtensions" :loading="loading" dataKey="id" class="text-sm">
+        <Column header="Extension">
+          <template #body="{ data: row }">
+            <div class="flex items-start gap-3">
+              <img v-if="row.icon" :src="row.icon" class="w-8 h-8 rounded shrink-0 mt-0.5" alt="" />
+              <div
+                v-else
+                class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
+              >
+                <i class="pi pi-wrench" />
+              </div>
+              <div>
+                <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
+                  {{ row.name || row.id }}
+                </div>
+                <div class="text-surface-500 text-xs">{{ row.id }}</div>
+                <div v-if="row.description" class="text-surface-500 text-xs">
+                  {{ row.description }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </Column>
+        <Column field="version" header="Version" />
+        <Column header="Type">
+          <template #body="{ data: row }">
+            <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
+            <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
+            <Tag
+              v-if="row.legacyLayout"
+              value="Legacy layout"
+              severity="secondary"
+              class="mr-1"
+              v-tooltip.top="'Old extensions\\<year>\\<id> layout — move the folder directly under the root'"
+            />
+            <Tag
+              v-if="!row.compatible"
+              value="Incompatible"
+              severity="danger"
+              v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
+            />
+            <Tag
+              v-else-if="row.compileError"
+              value="Error"
+              severity="danger"
+              v-tooltip.top="row.compileError"
+            />
+          </template>
+        </Column>
+        <Column header="Enabled" class="w-20">
+          <template #body="{ data: row }">
+            <ToggleSwitch
+              :modelValue="row.enabled"
+              :disabled="loading"
+              @update:modelValue="setExtensionEnabled(row, !row.enabled)"
+            />
+          </template>
+        </Column>
+        <Column header="" class="w-16">
+          <template #body="{ data: row }">
+            <Button
+              icon="pi pi-folder-open"
+              size="small"
+              text
+              severity="secondary"
+              v-tooltip.left="'Open in Explorer'"
+              @click="openFolder(row.directory)"
+            />
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-4">
+            No dev extensions — create one with "New template" or drop a folder into the dev root.
           </div>
-          <div v-if="row.description" class="text-surface-500 text-xs">{{ row.description }}</div>
         </template>
-      </Column>
-      <Column header="Version">
-        <template #body="{ data: row }">
-          <span>{{ row.version }}</span>
-          <Tag
-            v-if="updateChecks[row.id]?.updateAvailable"
-            :value="`→ ${updateChecks[row.id]?.latest}`"
-            severity="success"
-            class="ml-2"
-            v-tooltip.top="'Update available'"
-          />
-          <Tag
-            v-else-if="updateChecks[row.id]?.error"
-            value="feed error"
-            severity="warn"
-            class="ml-2"
-            v-tooltip.top="updateChecks[row.id]?.error"
-          />
-        </template>
-      </Column>
-      <Column header="Type">
-        <template #body="{ data: row }">
-          <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
-          <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
-          <Tag v-if="row.zone === 'dev'" value="Dev" severity="secondary" class="mr-1" />
-          <Tag
-            v-if="!row.compatible"
-            value="Incompatible"
-            severity="danger"
-            v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
-          />
-        </template>
-      </Column>
-      <Column header="Enabled" class="w-20">
-        <template #body="{ data: row }">
-          <ToggleSwitch
-            :modelValue="row.enabled"
-            :disabled="loading"
-            @update:modelValue="setExtensionEnabled(row, !row.enabled)"
-          />
-        </template>
-      </Column>
-      <Column header="" class="w-32">
-        <template #body="{ data: row }">
-          <Button
-            v-if="updateChecks[row.id]?.updateAvailable"
-            icon="pi pi-arrow-circle-up"
-            size="small"
-            text
-            severity="success"
-            :loading="updatingId === row.id"
-            v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
-            @click="updateExtension(row)"
-          />
-          <Button
-            icon="pi pi-folder-open"
-            size="small"
-            text
-            severity="secondary"
-            v-tooltip.left="'Open in Explorer'"
-            @click="openFolder(row.directory)"
-          />
-          <Button
-            v-if="row.zone === 'managed'"
-            icon="pi pi-trash"
-            size="small"
-            text
-            severity="danger"
-            v-tooltip.left="'Uninstall'"
-            @click="askRemove(row)"
-          />
-        </template>
-      </Column>
-      <template #empty>
-        <div class="text-surface-500 p-4">No extensions installed.</div>
-      </template>
-    </DataTable>
+      </DataTable>
+    </section>
 
     <!-- Commands: everything callable from a web extension via AT.invoke(name, payload). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-6">

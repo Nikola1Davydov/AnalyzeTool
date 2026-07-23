@@ -48,6 +48,9 @@ namespace AnalyseTool.Core.Features.Extensions
                     binaryYears = d.BinaryYears,
                     compileError = ExtensionDiagnostics.GetError(d.Manifest.Id),
                     directory = d.Directory,
+                    // Extension icon as a data URI — the WebView cannot read extension folders
+                    // directly. Manifest-level icon first, ribbon-button icon as fallback.
+                    icon = LoadIconDataUri(d),
                 })
                 .OrderBy(e => e.name)
                 .ToList();
@@ -62,6 +65,26 @@ namespace AnalyseTool.Core.Features.Extensions
                 devRoot = ExtensionSources.DefaultDevRoot,
                 extensions,
             });
+        }
+
+        private const long MaxIconBytes = 256 * 1024; // listing thumbnails; anything bigger is skipped
+
+        private static string? LoadIconDataUri(ExtensionDescriptor descriptor)
+        {
+            string? relative = descriptor.Manifest.Icon ?? descriptor.Manifest.Ui?.Button?.Icon;
+            if (string.IsNullOrWhiteSpace(relative)) return null;
+
+            try
+            {
+                string path = System.IO.Path.Combine(descriptor.Directory, relative);
+                System.IO.FileInfo file = new(path);
+                if (!file.Exists || file.Length > MaxIconBytes) return null;
+                return "data:image/png;base64," + Convert.ToBase64String(System.IO.File.ReadAllBytes(path));
+            }
+            catch
+            {
+                return null; // icon is best-effort, never fail the listing
+            }
         }
     }
 }
