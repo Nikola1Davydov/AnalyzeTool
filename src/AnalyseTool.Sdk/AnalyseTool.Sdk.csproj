@@ -17,15 +17,17 @@
     <!-- AssemblyVersion can move within a major: ExtensionLoadContext hands extensions the host's copy
          of AnalyseTool.Sdk by simple name (version-agnostic), so an extension built against an older
          minor still binds. MAJOR remains the hard compatibility key (checked at load).
-         1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting). -->
+         1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting).
+         1.1.1: packaging fixes only, contract unchanged — embedded MIT license text, authoring props
+                work under both CPM on/off, IRevitTask parameter names in the XML docs. -->
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <FileVersion>1.1.1.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
     <!-- Prerelease while the platform is in beta; promote to a stable release at GA. -->
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>

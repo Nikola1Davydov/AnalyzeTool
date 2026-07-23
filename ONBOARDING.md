@@ -31,13 +31,13 @@ your page  ──AT.invoke("acme.sample.Hello")──▶  WebView2 transport
                                                       ▼
                                               CommandDispatcher  ──▶  your IRevitTask
                                                       ▲
-(future) MCP / AI  ────────────────────────────────-─┘
+AI client  ─────────────── MCP server ───────────────┘
 ```
 
-The dispatcher is **transport-neutral**: today the WebView2 bridge calls it; an MCP server is
-planned. Anything you write as an `IRevitTask` is automatically available to both — so **never**
-touch the WebView, the network, or transport details from inside a command. Return a
-serializable result; the transport delivers it.
+The dispatcher is **transport-neutral**: the WebView2 bridge and the MCP server (AI clients such
+as Claude Desktop — see §9) both call it. Anything you write as an `IRevitTask` is automatically
+available to both — so **never** touch the WebView, the network, or transport details from inside
+a command. Return a serializable result; the transport delivers it.
 
 ---
 
@@ -551,7 +551,7 @@ your command is registered, it shows up as an MCP tool.
 How it fits together:
 
 ```
-AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost WebSocket──▶  in-Revit bridge
+AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost TCP──▶  in-Revit bridge
                                                                                   │
                                                                                   ▼
                                                                           CommandDispatcher
@@ -559,8 +559,8 @@ AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost WebSo
 
 - `AnalyseTool.Mcp.exe` is a tiny stdio server that ships with the plugin (at
   `<plugin>\mcp\AnalyseTool.Mcp.exe`). The AI client spawns it.
-- It forwards each tool call over a localhost WebSocket to a bridge **inside Revit**, which calls
-  the same `CommandDispatcher` your commands are registered in.
+- It forwards each tool call over a localhost TCP connection to a bridge **inside Revit**, which
+  calls the same `CommandDispatcher` your commands are registered in.
 - It **discovers commands live**: when the AI lists tools, the bridge returns the current command
   set, so your extension's commands appear as tools automatically (`acme.sample.Hello` →
   a tool named `acme_sample_Hello`). Tool arguments are passed straight through as your command's

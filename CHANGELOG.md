@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.4] / 2026-07-23
+
+- ⏳ **Revit busy indicator** — every AnalyseTool window shows a bottom status strip while something runs (command name, source, elapsed time) and warns **proactively** when Revit itself is blocked by an open dialog or edit mode — before you click and wonder why nothing happens. AI agents get the same insight via the new `GetQueueStatus` command (MCP): check it before heavy commands, wait while Revit is busy.
+- ⚖️ **License** — the plugin is now licensed under **Apache 2.0** (the `AnalyseTool.Sdk` package stays MIT); NOTICE and third-party attributions ship with the plugin.
+- 📦 SDK 1.1.1 — packaging fixes for extension authors (contract unchanged): the authoring props now work in projects with and without Central Package Management, the MIT license text is embedded in the package, and the docs/templates consistently use full parameter names (`revitContext`, `cancellationToken`).
+- 🧱 Internal: the codebase was restructured into feature slices with a headless core; both transports — the WebView UI and the MCP server — now reach commands through one shared queue. CI logic moved into the Nuke build, so `build.cmd Ci` runs the exact CI checks locally.
+
 ## [1.4.3] / 2026-07-14
 
 - 🏗️ **Revit 2027 support** — the plugin (and the extension SDK / build configs) now covers Revit 2025, 2026 and 2027.
