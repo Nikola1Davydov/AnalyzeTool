@@ -189,6 +189,9 @@ Nothing in the foundation or the registry depends on it.
   manifest v2 first); the design above is the agreed target.
 - Multi-button manifest (`ui.buttons[]`), package signatures.
 - No payment processing, review/approval of code, or hosted binaries — ever (#48).
+- `AnalyseTool.Extension.Sdk` — an MSBuild project SDK reducing the author csproj
+  to one line (restore-visible props kill the §4.1 boilerplate): planned as #75,
+  shipped together with the next AnalyseTool.Sdk release to nuget.org.
 
 ## Implementation phases
 
