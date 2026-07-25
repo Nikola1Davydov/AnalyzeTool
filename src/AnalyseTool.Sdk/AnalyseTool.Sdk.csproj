@@ -35,7 +35,10 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>ONBOARDING.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <!-- Off deliberately: with pack-on-build an explicit `dotnet pack` SKIPS the build and fails
+         with NU5026, which is why the CI pack target had to override it. Packing is a release step
+         (PackSdk / PublishSdkPackage), not something every developer build should do. -->
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
