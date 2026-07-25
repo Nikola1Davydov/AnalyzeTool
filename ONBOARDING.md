@@ -132,7 +132,9 @@ A minimal extension `.csproj`:
   </PropertyGroup>
   <ItemGroup>
     <!-- Compile-only on purpose (see the type-identity note below): the host owns these DLLs. -->
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+    <!-- Exact version, never a range: pinning is what keeps someone else's release from
+         changing a build of yours that already works. -->
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">

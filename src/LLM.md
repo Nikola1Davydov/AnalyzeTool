@@ -207,7 +207,9 @@ shipped inside packages during restore, so the SDK package cannot add them for y
     <AssemblyName>Acme.Doors</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+    <!-- Exact version, never a range: a pinned package is the reason your build cannot be
+         broken by someone else's release. -->
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">

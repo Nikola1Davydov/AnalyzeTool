@@ -126,10 +126,16 @@ namespace AnalyseTool.Core.Features.Extensions
                 char.ToUpperInvariant(seg[0]) + seg.Substring(1).ToLowerInvariant()));
         }
 
+        /// <summary>The target framework the running Revit dictates: 2025/2026 are .NET 8, 2027 moved to
+        /// .NET 10. It is not a free choice — the Nice3point Revit API package for a year is built for
+        /// that year's runtime, so a net8 project referencing the 2027 package fails restore (NU1202).</summary>
+        private static string TargetFrameworkFor(string revitVersion) =>
+            int.TryParse(revitVersion, out int year) && year >= 2027 ? "net10.0-windows" : "net8.0-windows";
+
         private static string BuildCsproj(string sdkDllPath, string revitVersion, string assemblyName) => $$"""
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
-                <TargetFramework>net8.0-windows</TargetFramework>
+                <TargetFramework>{{TargetFrameworkFor(revitVersion)}}</TargetFramework>
                 <LangVersion>latest</LangVersion>
                 <Nullable>enable</Nullable>
                 <ImplicitUsings>enable</ImplicitUsings>
@@ -381,7 +387,9 @@ namespace AnalyseTool.Core.Features.Extensions
                 <AssemblyName>Acme.Doors</AssemblyName>
               </PropertyGroup>
               <ItemGroup>
-                <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+                <!-- Exact version, never a range: a pinned package is the reason your build cannot
+                     be broken by someone else's release. -->
+                <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
                   <ExcludeAssets>runtime</ExcludeAssets>
                 </PackageReference>
                 <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
