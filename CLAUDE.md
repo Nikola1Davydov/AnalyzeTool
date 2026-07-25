@@ -53,5 +53,5 @@ powershell -File src/build/Check-Boundaries.ps1
 ## Docs to keep in sync
 
 - `ONBOARDING.md` — extension author guide (mirrored to the GitHub wiki), also the NuGet README of the Sdk package.
-- `src/LLM.md` — paste-into-AI extension authoring instructions. Also the guide `CreateExtensionTemplate` drops into a new extension folder: it is embedded into `AnalyseTool.Core` as a resource (`AnalyseTool.Core.csproj`) and served verbatim, so there is no second copy to keep in step. The csproj/Hello.cs templates live next to it in `src/AnalyseTool.Core/Features/Extensions/Templates/`.
+- `src/LLM.md` — paste-into-AI extension authoring instructions. Also the guide `CreateExtensionTemplate` drops into a new extension folder: it is embedded into `AnalyseTool.Core` as a resource (`AnalyseTool.Core.csproj`) and served verbatim, so there is no second copy to keep in step. The csproj/.gitignore templates live next to it in `src/AnalyseTool.Core/Features/Extensions/Templates/`; the Hello.cs starter is a string literal in `CreateExtensionTemplate.cs` (its filename as a resource triggers MSBuild's culture inference — see the `WithCulture` note in `AnalyseTool.Core.csproj`).
 - `CHANGELOG.md` — ships next to the plugin DLL (Settings window displays it).

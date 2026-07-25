@@ -135,7 +135,6 @@ namespace AnalyseTool.Core.Features.Extensions
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs.txt";
         private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
 
@@ -188,8 +187,34 @@ namespace AnalyseTool.Core.Features.Extensions
                 ("SdkDllPath", sdkDllPath),
                 ("RevitVersion", revitVersion));
 
-        private static string BuildHelloCs(string ns) =>
-            Fill(ReadTemplate(HelloResource), ("Namespace", ns));
+        /// <summary>The starter command — inline, unlike the other templates, and deliberately so.
+        /// This was the file whose NAME broke resource embedding: AssignCulture read the ".cs" of
+        /// Hello.cs.txt as Czech and routed it into a satellite assembly (see the WithCulture note in
+        /// AnalyseTool.Core.csproj). Nineteen lines gain little from a .txt file anyway, and as a
+        /// literal the namespace hole is checked by the compiler again.
+        /// The blank line before the closing delimiter is the generated file's trailing newline.</summary>
+        private static string BuildHelloCs(string ns) => $$"""
+            using AnalyseTool.Sdk;
+
+            namespace {{ns}};
+
+            [RevitCommand(
+                Description = "Returns the active document's title.",
+                ReadOnly = true)]
+            internal sealed class Hello : IRevitTask
+            {
+                public async Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
+                {
+                    var documentName = await revitContext.RunInRevitAsync<string?>(app =>
+                    {
+                        var name = app.ActiveUIDocument?.Document.Title ?? "(no active document)";
+                        return name;
+                    });
+                    return documentName;
+                }
+            }
+
+            """;
 
         /// <summary>The author guide, served verbatim from the embedded <c>src/LLM.md</c>. It takes no
         /// arguments on purpose: the document is the same for every extension — the two parameters the

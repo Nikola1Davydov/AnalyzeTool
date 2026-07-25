@@ -32,22 +32,18 @@
          LLM.md is the REPOSITORY's own src/LLM.md, not a copy of it — the generated author guide and
          the paste-into-AI document are now the same file by construction. -->
     <ItemGroup>
-        <!-- *.csproj.xml and *.cs.txt, not the real extensions: that keeps both templates out of the
-             solution and out of Core's default **\*.cs compile glob by construction. Excluding them
-             instead (<Compile Remove>) would give the editor C# highlighting, but a lost exclusion
-             would then compile the template into Core silently — not worth it for 19 lines.
+        <!-- *.csproj.xml, not a real .csproj: that keeps the template out of the solution and the CI
+             globs by construction. (The Hello.cs starter is NOT here — it lives as a string literal
+             in CreateExtensionTemplate.cs, because its natural filename is exactly the trap below.)
 
              WithCulture="false" is NOT decoration. MSBuild's AssignCulture task reads the
-             second-to-last extension of every EmbeddedResource as a potential culture code, and the
-             "cs" in Hello.cs.txt is Czech — so the file was routed into the cs\ satellite assembly
-             and GetManifestResourceStream on the main assembly threw at runtime. LogicalName does not
-             prevent that; only this attribute does. Keep it on every entry so the next dotted
-             filename cannot re-open the trap. -->
+             second-to-last extension of every EmbeddedResource as a potential culture code — the
+             "cs" in the former Hello.cs.txt template was Czech, so that file went into the cs\
+             satellite assembly and GetManifestResourceStream on the main assembly threw at runtime.
+             LogicalName does not prevent that; only this attribute does. Keep it on every entry so
+             the next dotted filename cannot re-open the trap. -->
         <EmbeddedResource Include="Features\Extensions\Templates\Template.csproj.xml"
                           LogicalName="AnalyseTool.Core.Templates.Extension.csproj.xml"
-                          WithCulture="false" />
-        <EmbeddedResource Include="Features\Extensions\Templates\Hello.cs.txt"
-                          LogicalName="AnalyseTool.Core.Templates.Hello.cs.txt"
                           WithCulture="false" />
         <EmbeddedResource Include="Features\Extensions\Templates\gitignore.txt"
                           LogicalName="AnalyseTool.Core.Templates.gitignore.txt"
