@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$targetFramework$</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>$assemblyName$</AssemblyName>
+    <RootNamespace>$assemblyName$</RootNamespace>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutDir>$(SolutionDir)</OutDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- AnalyseTool SDK — loaded from the installed plugin. Don't ship a copy. -->
+    <Reference Include="AnalyseTool.Sdk">
+      <HintPath>$sdkDllPath$</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Revit API & Newtonsoft are provided by the host at runtime. -->
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$revitVersion$.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$revitVersion$.*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
