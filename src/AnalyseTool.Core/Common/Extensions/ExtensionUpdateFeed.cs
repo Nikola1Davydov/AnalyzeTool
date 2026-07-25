@@ -25,13 +25,15 @@ namespace AnalyseTool.Core.Common.Extensions
         private static readonly Regex GithubRef = new(@"^github:(?<owner>[A-Za-z0-9_.-]+)/(?<repo>[A-Za-z0-9_.-]+)$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        public static async Task<ExtensionUpdateInfo> ResolveAsync(string feed, CancellationToken ct)
+        /// <param name="extensionId">The id the feed was declared for — used to pick the right asset
+        /// when a release carries several zips.</param>
+        public static async Task<ExtensionUpdateInfo> ResolveAsync(string feed, string extensionId, CancellationToken ct)
         {
             feed = feed.Trim();
 
             Match github = GithubRef.Match(feed);
             if (github.Success)
-                return await ResolveGithubAsync(github.Groups["owner"].Value, github.Groups["repo"].Value, ct);
+                return await ResolveGithubAsync(github.Groups["owner"].Value, github.Groups["repo"].Value, extensionId, ct);
 
             if (feed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 return await ResolveJsonFeedAsync(feed, ct);
@@ -40,22 +42,40 @@ namespace AnalyseTool.Core.Common.Extensions
                 $"Unsupported updateFeed '{feed}' — expected 'github:owner/repo' or an https:// URL.");
         }
 
-        private static async Task<ExtensionUpdateInfo> ResolveGithubAsync(string owner, string repo, CancellationToken ct)
+        private static async Task<ExtensionUpdateInfo> ResolveGithubAsync(
+            string owner, string repo, string extensionId, CancellationToken ct)
         {
             string json = await GetStringAsync($"https://api.github.com/repos/{owner}/{repo}/releases/latest", ct);
             GitHubRelease? release = JsonConvert.DeserializeObject<GitHubRelease>(json);
             if (release is null || string.IsNullOrWhiteSpace(release.TagName))
                 throw new InvalidOperationException($"github:{owner}/{repo} has no published release.");
 
-            string version = release.TagName.TrimStart('v', 'V');
-            string? zipUrl = release.Assets?
-                .FirstOrDefault(a => a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true)
-                ?.BrowserDownloadUrl;
-            if (string.IsNullOrWhiteSpace(zipUrl))
+            string version = release.TagName!.TrimStart('v', 'V');
+
+            // Re-running a release workflow does not replace a release, it EDITS it — so assets
+            // accumulate, and a repo that published 1.0.0 and 1.0.1 under one tag carries both zips.
+            // Picking "the first zip" there is a coin flip that installs the wrong version silently,
+            // so an ambiguous release is an error naming what it found. PackExtension emits
+            // <id>-<version>.zip, which is what makes the unambiguous pick possible.
+            List<GitHubAsset> zips = (release.Assets ?? new())
+                .Where(a => !string.IsNullOrWhiteSpace(a.BrowserDownloadUrl)
+                            && a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true)
+                .ToList();
+            if (zips.Count == 0)
                 throw new InvalidOperationException(
                     $"The latest release of github:{owner}/{repo} ({release.TagName}) has no .zip asset.");
 
-            return new ExtensionUpdateInfo(version, zipUrl!, release.HtmlUrl);
+            GitHubAsset? asset = zips.Count == 1
+                ? zips[0]
+                : zips.FirstOrDefault(a => string.Equals(a.Name, $"{extensionId}-{version}.zip",
+                                                         StringComparison.OrdinalIgnoreCase));
+            if (asset is null)
+                throw new InvalidOperationException(
+                    $"Release {release.TagName} of github:{owner}/{repo} carries {zips.Count} zip assets and none " +
+                    $"is named '{extensionId}-{version}.zip', so the right package cannot be identified. " +
+                    $"Found: {string.Join(", ", zips.Select(a => a.Name))}. Publish one package per release.");
+
+            return new ExtensionUpdateInfo(version, asset.BrowserDownloadUrl!, release.HtmlUrl);
         }
 
         private static async Task<ExtensionUpdateInfo> ResolveJsonFeedAsync(string url, CancellationToken ct)

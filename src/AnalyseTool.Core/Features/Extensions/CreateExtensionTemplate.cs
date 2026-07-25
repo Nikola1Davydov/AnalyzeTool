@@ -469,6 +469,10 @@ namespace AnalyseTool.Core.Features.Extensions
             Script/UI-only extensions need no build: zip the folder itself. On GitHub, run PackExtension
             in a tag-triggered workflow, attach the zip to the release, and set
             `"updateFeed": "github:you/your-repo"` in plugin.json so users get update notifications.
+            `plugin.json` owns the version — it ships inside the package, the tag only exists in the
+            repository — so bump it there and let the tag follow. One package per release: re-running
+            a workflow edits the existing release, so a second zip piles up next to the first and the
+            update feed refuses to guess which one is the package.
 
             ---
 

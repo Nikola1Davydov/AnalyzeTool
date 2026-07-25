@@ -63,6 +63,17 @@
     <Error Condition="@(_ATPackYear->Count()) == 0"
            Text="PackExtension: AnalyseToolPackYears ('$(AnalyseToolPackYears)') selects no Revit year — expected values like 2025;2026;2027." />
 
+    <!-- plugin.json is the single source of truth for the version: it travels inside the package and
+         is what the installed extension reports, while a git tag exists only in the repository. CI
+         passes the tag as AnalyseToolExpectedVersion so the two can never drift apart unnoticed —
+         publishing 1.0.1 under tag v1.0.0 would leave the manager comparing versions that mean
+         nothing. Nothing is rewritten: the mismatch is reported, the author decides. -->
+    <PropertyGroup>
+      <_ATExpectedVersion>$(AnalyseToolExpectedVersion.TrimStart('v', 'V'))</_ATExpectedVersion>
+    </PropertyGroup>
+    <Error Condition="'$(_ATExpectedVersion)' != '' and '$(_ATExpectedVersion)' != '$(_ATVersion)'"
+           Text="PackExtension: asked to publish version '$(_ATExpectedVersion)' (tag) but plugin.json declares '$(_ATVersion)'. The manifest decides what ships — set 'version' in plugin.json to the version you want to release, commit, and tag THAT commit." />
+
     <!-- One extension folder = one project. Any OTHER project checked out or copied below it (a
          dependency repo cloned into the folder, a nested sample) has its sources swept into this
          project's default `**\*.cs` glob and produces hundreds of unrelated CS0579/CS8802 errors

@@ -28,7 +28,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 string installed = d.Manifest.Version;
                 try
                 {
-                    ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(d.Manifest.UpdateFeed!, ct);
+                    ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(d.Manifest.UpdateFeed!, id, ct);
                     return (object)new
                     {
                         id,
@@ -101,7 +101,7 @@ namespace AnalyseTool.Core.Features.Extensions
             if (string.IsNullOrWhiteSpace(installed.Manifest.UpdateFeed))
                 throw new InvalidOperationException($"Extension '{id}' declares no updateFeed.");
 
-            ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(installed.Manifest.UpdateFeed!, ct);
+            ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(installed.Manifest.UpdateFeed!, id, ct);
             string zipPath = await ExtensionUpdateFeed.DownloadPackageAsync(latest.DownloadUrl, installed.Manifest.Id, ct);
 
             // The feed must serve the SAME extension it was declared for — checked BEFORE anything
@@ -111,6 +111,16 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException(
                     $"The update feed of '{id}' served a package with id '{packageInfo.Manifest.Id}' — " +
                     "refusing to install it. Check the vendor's feed.");
+
+            // What the feed ADVERTISED (the tag) and what the package CONTAINS (plugin.json) are two
+            // different numbers, and a stale asset on a re-edited release makes them disagree. An
+            // "update" that silently installs an older build is worse than no update at all.
+            if (!CheckExtensionUpdates.IsNewer(packageInfo.Manifest.Version, installed.Manifest.Version))
+                throw new InvalidOperationException(
+                    $"The feed of '{id}' announced {latest.Version}, but the package it served contains " +
+                    $"version {packageInfo.Manifest.Version}, which is not newer than the installed " +
+                    $"{installed.Manifest.Version}. Refusing to downgrade — the release's zip asset and its " +
+                    "tag are out of step.");
 
             ExtensionInstallResult result = ExtensionInstaller.InstallPackage(
                 zipPath, overwrite: true, CoreServices.RevitVersion);

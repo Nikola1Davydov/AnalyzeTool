@@ -308,7 +308,8 @@ notifications for free:
 name: Release
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*"]        # the tag must match "version" in plugin.json
+  workflow_dispatch: {} # or publish the branch as-is; the tag is derived from the manifest
 permissions:
   contents: write
 jobs:
@@ -321,11 +322,22 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
-      - run: dotnet build -t:PackExtension
+      - id: manifest
+        shell: pwsh
+        run: echo "version=$((Get-Content plugin.json | ConvertFrom-Json).version)" >> $env:GITHUB_OUTPUT
+      # On a tag push the tag is handed to PackExtension, which fails if it disagrees with plugin.json.
+      - run: dotnet build -t:PackExtension -p:AnalyseToolExpectedVersion=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.manifest.outputs.version }}
           files: artifacts/*.zip
 ```
+
+**`plugin.json` owns the version.** It travels inside the package and is what the installed
+extension reports; a git tag exists only in the repository. So bump `version` there, and let the
+tag follow. Publish ONE package per release: re-running a workflow EDITS the existing release
+rather than replacing it, so a second zip just piles up next to the first, and the update feed
+then refuses to guess which one is the package.
 
 ---
 
