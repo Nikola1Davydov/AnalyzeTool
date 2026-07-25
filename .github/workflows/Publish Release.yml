@@ -38,8 +38,14 @@ jobs:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
 
+      # PublishSdkPackage is part of the release, not an option: the design doc makes publishing the
+      # package a release condition, and release 1.4.4 already proved why — its notes announced SDK
+      # 1.1.1, but nothing in this pipeline pushed it, so nuget.org silently stayed at 1.1.0. The
+      # target runs the full Ci gate first and skips versions the feed already has, so releases that
+      # do not bump the SDK version are a no-op on the feed. A missing NUGET_API_KEY fails the
+      # release — loudly, which is the point.
       - name: Publish release
-        run: ./src/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
+        run: ./src/build.cmd PublishGitHub PublishSdkPackage --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NuGetApiKey: ${{ secrets.NUGET_API_KEY }}
