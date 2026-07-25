@@ -63,6 +63,16 @@
     <Error Condition="@(_ATPackYear->Count()) == 0"
            Text="PackExtension: AnalyseToolPackYears ('$(AnalyseToolPackYears)') selects no Revit year — expected values like 2025;2026;2027." />
 
+    <!-- One extension folder = one project. Any OTHER project checked out or copied below it (a
+         dependency repo cloned into the folder, a nested sample) has its sources swept into this
+         project's default `**\*.cs` glob and produces hundreds of unrelated CS0579/CS8802 errors
+         that say nothing about the real cause. Name it once, before the build. -->
+    <ItemGroup>
+      <_ATForeignProject Include="$(MSBuildProjectDirectory)\**\*.csproj" Exclude="$(MSBuildProjectFullPath)" />
+    </ItemGroup>
+    <Error Condition="@(_ATForeignProject->Count()) &gt; 0"
+           Text="PackExtension: another project file lives inside the extension folder (@(_ATForeignProject, '; ')). Its sources are compiled into '$(MSBuildProjectName)' by the default source glob. Move that project OUTSIDE this folder — in CI, check dependency repositories out as SIBLING directories (actions/checkout with a 'path:' next to the extension, never below it)." />
+
     <RemoveDir Directories="$(_ATBundleDir)" />
 
     <!-- Build once per Revit year into the bundle's year folder, each year as its OWN
