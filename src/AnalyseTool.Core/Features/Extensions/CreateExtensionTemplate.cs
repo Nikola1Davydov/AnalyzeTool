@@ -135,7 +135,7 @@ namespace AnalyseTool.Core.Features.Extensions
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs";
+        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs.txt";
         private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
 
         /// <summary>
@@ -159,9 +159,9 @@ namespace AnalyseTool.Core.Features.Extensions
         /// <summary>Substitutes <c>__Token__</c> placeholders, then refuses to return a half-filled
         /// template. While the text was an interpolated literal the compiler caught a renamed
         /// placeholder; in a file it is just a string, so without this the generator would hand the
-        /// user a project with "__AssemblyName__" inside it. The double-underscore form is what lets
-        /// the C# template stay valid C# — and it cannot collide with MSBuild's <c>$(SolutionDir)</c>
-        /// in the csproj template either.</summary>
+        /// user a project with "__AssemblyName__" inside it. The double-underscore form is used in both
+        /// templates: one convention, and in the csproj it cannot be mistaken for — or collide with —
+        /// MSBuild's own <c>$(SolutionDir)</c>.</summary>
         private static string Fill(string template, params (string Token, string Value)[] values)
         {
             foreach ((string token, string value) in values)
