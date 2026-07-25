@@ -6,7 +6,6 @@ using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.IO;
-using System.Text.RegularExpressions;
 
 namespace AnalyseTool.Core.Features.Extensions
 {
@@ -107,7 +106,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
                 // bin\ and obj\ are the only things in this folder that are not part of the extension.
                 string gitignorePath = Path.Combine(extensionRoot, ".gitignore");
-                File.WriteAllText(gitignorePath, ReadTemplate(GitignoreResource));
+                File.WriteAllText(gitignorePath, BuildGitignore());
                 filesCreated.Add(gitignorePath);
 
                 string llmInstructionsPath = Path.Combine(extensionRoot, "LLM.md");
@@ -132,69 +131,496 @@ namespace AnalyseTool.Core.Features.Extensions
                 char.ToUpperInvariant(seg[0]) + seg.Substring(1).ToLowerInvariant()));
         }
 
-        // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
-        // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
-        private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs.txt";
-        private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
-        private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
+        /// <summary>The csproj of a generated extension. A single RevitVersion drives the output folder,
+        /// the API package versions and — through an MSBuild condition — the target framework, so an author
+        /// retargeting the project cannot end up with a year and a runtime that disagree (NU1202).</summary>
+        private static string BuildCsproj(string sdkDllPath, string revitVersion, string assemblyName) => $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <!-- The Revit year drives everything below: the output folder, the API packages and the runtime.
+                     Retarget by editing this one number. -->
+                <RevitVersion>{{revitVersion}}</RevitVersion>
 
-        /// <summary>
-        /// Template texts are EMBEDDED RESOURCES, not C# string literals. The csproj is then real XML
-        /// that an editor validates and a human can build — as a literal it carried a hard-coded
-        /// net8.0-windows into Revit 2027 projects unnoticed. The author guide is literally
-        /// <c>src/LLM.md</c> instead of a 300-line copy kept in step by hand. Resources travel inside
-        /// AnalyseTool.Core.dll, so packaging and installation have no extra file to lose.
-        /// </summary>
-        private static string ReadTemplate(string resourceName)
-        {
-            using Stream? stream = typeof(CreateExtensionTemplate).Assembly.GetManifestResourceStream(resourceName);
-            if (stream is null)
-                throw new InvalidOperationException(
-                    $"Template resource '{resourceName}' is missing from AnalyseTool.Core — check the EmbeddedResource entries in AnalyseTool.Core.csproj.");
+                <!-- Not a free choice: the Nice3point package for a year is built for that year's runtime, so a
+                     net8 project referencing the 2027 package fails restore (NU1202). -->
+                <TargetFramework Condition="'$(RevitVersion)' &lt; '2027'">net8.0-windows</TargetFramework>
+                <TargetFramework Condition="'$(RevitVersion)' &gt;= '2027'">net10.0-windows</TargetFramework>
 
-            using StreamReader reader = new(stream);
-            return reader.ReadToEnd();
-        }
+                <LangVersion>latest</LangVersion>
+                <Nullable>enable</Nullable>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <AssemblyName>{{assemblyName}}</AssemblyName>
+                <RootNamespace>{{assemblyName}}</RootNamespace>
+                <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
 
-        /// <summary>Substitutes <c>__Token__</c> placeholders, then refuses to return a half-filled
-        /// template. While the text was an interpolated literal the compiler caught a renamed
-        /// placeholder; in a file it is just a string, so without this the generator would hand the
-        /// user a project with "__AssemblyName__" inside it. The double-underscore form is used in both
-        /// templates: one convention, and in the csproj it cannot be mistaken for — or collide with —
-        /// MSBuild's own <c>$(SolutionDir)</c>.</summary>
-        private static string Fill(string template, params (string Token, string Value)[] values)
-        {
-            foreach ((string token, string value) in values)
-                template = template.Replace($"__{token}__", value);
+                <!-- Build into <extension>\<year>\, the same layout a published package uses — so this folder
+                     mirrors the package (bin\ and obj\ aside), builds for several Revit years sit side by side
+                     instead of overwriting each other, and the host resolves the entry assembly year-first
+                     exactly as it will after install.
+                     Not $(SolutionDir): no solution is generated here, and outside Visual Studio that property is
+                     undefined, which silently sent the output to bin\ and left the extension unloadable. -->
+                <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
+              </PropertyGroup>
+              <ItemGroup>
+                <!-- AnalyseTool SDK — loaded from the installed plugin. Don't ship a copy. -->
+                <Reference Include="AnalyseTool.Sdk">
+                  <HintPath>{{sdkDllPath}}</HintPath>
+                  <Private>false</Private>
+                </Reference>
+                <!-- Revit API & Newtonsoft are provided by the host at runtime. -->
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="{{revitVersion}}.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="{{revitVersion}}.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+              </ItemGroup>
+            </Project>
 
-            string[] unresolved = Regex.Matches(template, @"__[A-Za-z][A-Za-z0-9]*__")
-                .Select(match => match.Value)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-            if (unresolved.Length > 0)
-                throw new InvalidOperationException(
-                    $"Template placeholders were not substituted: {string.Join(", ", unresolved)}");
+            """;
 
-            return template;
-        }
+        private static string BuildHelloCs(string ns) => $$"""
+            using AnalyseTool.Sdk;
 
-        private static string BuildCsproj(string sdkDllPath, string revitVersion, string assemblyName) =>
-            // The template derives its TFM from RevitVersion in MSBuild rather than taking it
-            // pre-computed, so an author who retargets the project cannot end up with a year and a
-            // runtime that disagree — the failure that reaches them as an opaque NU1202.
-            Fill(ReadTemplate(CsprojResource),
-                ("AssemblyName", assemblyName),
-                ("SdkDllPath", sdkDllPath),
-                ("RevitVersion", revitVersion));
+            namespace {{ns}};
 
-        private static string BuildHelloCs(string ns) =>
-            Fill(ReadTemplate(HelloResource), ("Namespace", ns));
+            [RevitCommand(
+                Description = "Returns the active document's title.",
+                ReadOnly = true)]
+            internal sealed class Hello : IRevitTask
+            {
+                public async Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
+                {
+                    var documentName = await revitContext.RunInRevitAsync<string?>(app =>
+                    {
+                        var name = app.ActiveUIDocument?.Document.Title ?? "(no active document)";
+                        return name;
+                    });
+                    return documentName;
+                }
+            }
 
-        /// <summary>The author guide, served verbatim from the embedded <c>src/LLM.md</c>. It takes no
-        /// arguments on purpose: the document is the same for every extension — the two parameters the
-        /// previous hand-written copy accepted were never used by it.</summary>
-        private static string BuildLLMInstructions() => ReadTemplate(LlmResource);
+            """;
+
+        /// <summary>bin\ and obj\ are the only things in a generated folder that are not part of the
+        /// extension — the compiled assembly goes to &lt;year&gt;\, which must stay tracked.</summary>
+        private static string BuildGitignore() => """
+            # Build byproducts. The compiled extension itself goes to <year>\ (see OutDir in the .csproj),
+            # which is part of the extension and must NOT be ignored.
+            bin/
+            obj/
+
+            """;
+
+        /// <summary>The extension-author guide dropped next to a generated extension. This is a COPY of
+        /// src/LLM.md and the two must be kept in step by hand — see CLAUDE.md. (An embedded-resource
+        /// version removed the duplication, but the resource did not resolve at runtime in the deployed
+        /// plugin, so the text lives here until that is understood.)</summary>
+        private static string BuildLLMInstructions() => """
+            # AnalyseTool — AI instructions for writing extensions
+
+            > **How to use this file:** paste it into Claude / ChatGPT as context, then ask it to build an
+            > AnalyseTool extension (e.g. "write a command that renumbers selected doors"). It contains the full
+            > contract, the manifest schema, the rules, and worked examples — everything the model needs to
+            > generate a correct extension in one shot.
+
+            You are helping write **extensions for AnalyseTool**, a Revit 2025/2026/2027 add-in. Extensions add
+            functionality **without rebuilding the host** — the user drops a folder into their extensions
+            directory and clicks **Reload**.
+
+            ---
+
+            ## 1. The three kinds of extension
+
+            | Kind | Ships | Role | Build needed? |
+            | --- | --- | --- | --- |
+            | **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | yes (`dotnet build`) |
+            | **Script** | a plain `.cs` file | ADDS commands, compiled at runtime by Roslyn | **no** |
+            | **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | no |
+
+            One folder can be C#-only, UI-only, script, or a combination. **The principle:** C#/script
+            extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+
+            ---
+
+            ## 2. The C# contract (this is the whole surface)
+
+            ```csharp
+            namespace AnalyseTool.Sdk
+            {
+                public interface IRevitTask
+                {
+                    Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken);
+                }
+
+                public interface IRevitContext
+                {
+                    RevitPayload Payload { get; }                         // the JSON the caller sent
+                    Task<T> RunInRevitAsync<T>(Func<UIApplication, T> work); // touch the model ONLY here
+                    Task   RunInRevitAsync(Action<UIApplication> work);
+                }
+
+                public sealed class RevitPayload
+                {
+                    public T?     As<T>();      // deserialize the payload (case-insensitive)
+                    public string RawJson { get; }
+                }
+
+                // Optional metadata. Without a name argument the wire name = the class name.
+                [AttributeUsage(AttributeTargets.Class)]
+                public sealed class RevitCommandAttribute : Attribute
+                {
+                    public RevitCommandAttribute();
+                    public RevitCommandAttribute(string name);
+                    public string? Name { get; }
+                    public string? Description { get; set; }   // shown to humans + AI (MCP)
+                    public bool    ReadOnly   { get; set; }    // command only reads the model
+                    public bool    Destructive{ get; set; }    // command may modify/delete
+                    public Type?   InputType  { get; set; }    // generates the JSON input schema
+                    public bool    HiddenFromMcp { get; set; } // callable from JS, hidden from the AI tool list
+                }
+
+                // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
+                // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
+                // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }.
+                // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
+                // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
+                public sealed record ProgressInfo(double Fraction, string? Message = null);
+                public interface IProgressAware
+                {
+                    IProgress<ProgressInfo>? Progress { get; set; }
+                }
+            }
+            ```
+
+            ### The ONE rule
+            - **Touch the Revit model ONLY inside `RunInRevitAsync`.** Reads and writes both go there. It runs
+              on the Revit thread in a valid API context (transactions allowed).
+            - **Keep slow I/O (HTTP, AI, file reads) OUTSIDE `RunInRevitAsync`** — its body runs synchronously on
+              the Revit thread and will freeze the UI. Do slow work first, then marshal only the model touch.
+            - **Never** touch the WebView, the network, or any transport detail from a command. Return a
+              serializable object; the host delivers it. Throw to report an error (the message reaches the caller).
+
+            ### Minimal C# command
+
+            ```csharp
+            using AnalyseTool.Sdk;
+
+            namespace Acme.Doors
+            {
+                [RevitCommand(Description = "Returns the number of doors in the active document.", ReadOnly = true)]
+                public sealed class CountDoors : IRevitTask
+                {
+                    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
+                        revitContext.RunInRevitAsync<object?>(app =>
+                        {
+                            var doc = app.ActiveUIDocument?.Document;
+                            int count = new Autodesk.Revit.DB.FilteredElementCollector(doc)
+                                .OfCategory(Autodesk.Revit.DB.BuiltInCategory.OST_Doors)
+                                .WhereElementIsNotElementType()
+                                .GetElementCount();
+                            return new { count };
+                        });
+                }
+            }
+            ```
+
+            ### C# command that writes (transaction inside RunInRevitAsync)
+
+            ```csharp
+            [RevitCommand(Description = "Sets the Comments parameter on the given elements.",
+                          Destructive = true, InputType = typeof(Args))]
+            public sealed class SetComment : IRevitTask
+            {
+                public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
+                {
+                    var args = revitContext.Payload.As<Args>()!;                      // read the payload
+                    return revitContext.RunInRevitAsync<object?>(app =>
+                    {
+                        var doc = app.ActiveUIDocument.Document;
+                        using var t = new Autodesk.Revit.DB.Transaction(doc, "Acme: set comments");
+                        t.Start();
+                        foreach (long id in args.ElementIds)
+                        {
+                            var el = doc.GetElement(new Autodesk.Revit.DB.ElementId(id));
+                            el?.get_Parameter(Autodesk.Revit.DB.BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
+                              ?.Set(args.Comment);
+                        }
+                        t.Commit();
+                        return new { updated = args.ElementIds.Count };
+                    });
+                }
+
+                internal sealed record Args
+                {
+                    [System.ComponentModel.Description("Element ids to update.")]
+                    public List<long> ElementIds { get; set; } = new();
+                    [System.ComponentModel.Description("Text to write into Comments.")]
+                    public string Comment { get; set; } = "";
+                }
+            }
+            ```
+
+            ### Command naming
+            Wire name = `[RevitCommand]` name, else the class name. The host prefixes it with the extension `id`:
+            ```
+            id "acme.doors"  +  class "CountDoors"  →  "acme.doors.CountDoors"
+            ```
+            Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
+
+            ---
+
+            ## 3. The manifest — `plugin.json` (required, sits in the extension folder root)
+
+            ```json
+            {
+              "id": "acme.doors",
+              "version": "1.0.0",
+              "entryAssembly": "Acme.Doors.dll",
+              "ui": {
+                "entryHtml": "index.html",
+                "tab": "AnalyseTool",
+                "panel": "Acme",
+                "button": {
+                  "name": "Doors",
+                  "tooltip": "Open the Doors tool",
+                  "icon": "icon.png",
+                  "command": "acme.doors.CountDoors"
+                }
+              }
+            }
+            ```
+
+            | Field | Required | Meaning |
+            | --- | --- | --- |
+            | `id` | ✔ | Unique, lowercase, dotted. Becomes the command prefix and the folder name. Valid chars: letters/digits/`.`/`-`/`_`. |
+            | `version` | ✔ | SemVer string. |
+            | `description` / `publisher` / `website` / `supportUrl` | — | Vendor metadata shown in the extension listing. Recommended when publishing. |
+            | `icon` | — | Extension-level PNG (relative path) for listings; falls back to `ui.button.icon`. |
+            | `updateFeed` | — | Update source: an HTTPS URL returning `{version, downloadUrl}`, or `github:owner/repo` (latest release, zip asset). Only for published extensions. |
+            | `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. Resolved in the Revit-year subfolder first (`2025\`), then the folder root. |
+            | `ui` | — | **Omit** for a command-only extension (callable from JS/MCP but no button). |
+            | `ui.entryHtml` | — | Page to open. Default `index.html`. |
+            | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |
+            | `ui.button.name` | — | Button label (also the display name). |
+            | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
+            | `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
+
+            ---
+
+            ## 4. C# project setup (NuGet — the easy way)
+
+            ```
+            dotnet add package AnalyseTool.Sdk
+            ```
+
+            Minimal `.csproj` — declare the TFM and the Revit API packages yourself (NuGet ignores build props
+            shipped inside packages during restore, so the SDK package cannot add them for you):
+            ```xml
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
+                <TargetFramework>net8.0-windows</TargetFramework>
+                <PlatformTarget>x64</PlatformTarget>
+                <RootNamespace>Acme.Doors</RootNamespace>
+                <AssemblyName>Acme.Doors</AssemblyName>
+                <!-- Build into <extension>\<year>\ — the layout a package uses, so the folder you develop in is
+                     the folder you ship, and builds for several Revit years coexist. -->
+                <OutDir>$(MSBuildProjectDirectory)\2025\</OutDir>
+              </PropertyGroup>
+              <ItemGroup>
+                <!-- Exact version, never a range: a pinned package is the reason your build cannot be
+                     broken by someone else's release. -->
+                <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+                <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+                  <PrivateAssets>all</PrivateAssets>
+                  <ExcludeAssets>runtime</ExcludeAssets>
+                </PackageReference>
+              </ItemGroup>
+            </Project>
+            ```
+            Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`) and,
+            for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
+
+            > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
+            > extension's load context shares the host's copies (type identity), so **do not ship copies of those
+            > DLLs**. With the NuGet package this is automatic. Deploy only your DLL + `plugin.json` (+ assets).
+
+            ---
+
+            ## 5. Script extension (no build at all)
+
+            Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
+            Two accepted forms:
+
+            **Body form** — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object:
+            ```csharp
+            var walls = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().GetElementCount();
+            return new { walls };
+            ```
+            Registered as `<id>.Script`.
+
+            **Class form** — a full `IRevitTask` (as in §2), for metadata and multiple commands.
+
+            `plugin.json` for a script extension (no `entryAssembly`):
+            ```json
+            { "id": "acme.walls", "version": "1.0.0",
+              "ui": { "panel": "Acme", "button": { "name": "Count walls", "command": "acme.walls.Script" } } }
+            ```
+
+            ---
+
+            ## 6. JS / UI extension
+
+            The host opens your `index.html` in a WebView and injects `window.AT`. Any framework works.
+
+            ```js
+            // Call any registered command (built-in or from any extension). Returns a Promise.
+            const res = await window.AT.invoke("acme.doors.CountDoors", /* optional payload */ {});
+
+            // Discover what you can call (name, source, description, payload schema, flags):
+            const { commands } = await window.AT.invoke("GetCommands");
+            ```
+            - `invoke` is id-correlated, so concurrent calls are fine; it **resolves** with the result and
+              **rejects** with the error message.
+            - Built with a framework: set Vite `base: "./"` (relative assets) and ship `dist` next to `plugin.json`.
+
+            ---
+
+            ## 7. Deploy & reload
+
+            ```
+            %LOCALAPPDATA%\AnalyseTool\extensions\<id>\
+                plugin.json
+                2025\<YourExt>.dll   (C# — one folder per Revit year)
+                *.cs                 (script)
+                index.html           (UI)
+                icon.png             (optional)
+            ```
+            - The extension folder sits DIRECTLY under a source root — the Revit year is a subfolder INSIDE it,
+              never above it. This is the same layout a published package has, so the folder you develop in is
+              the one you zip, and builds for several Revit years sit side by side.
+            - The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
+              single-year extension works without year folders. Scripts and UI are version-independent and
+              always live in the root.
+            - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
+            - A brand-new ribbon button needs a **Revit restart** the first time.
+
+            ### 7.1 Publish (optional)
+
+            For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole
+            publishing pipeline — no extra tooling:
+
+            ```
+            dotnet build -t:PackExtension
+            ```
+
+            builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
+            lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
+            and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Settings →
+            "Install from file…". Script/UI-only extensions need no build: zip the folder itself.
+
+            To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
+            git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
+            notifications for free:
+
+            ```yaml
+            name: Release
+            on:
+              push:
+                tags: ["v*"]        # the tag must match "version" in plugin.json
+              workflow_dispatch: {} # or publish the branch as-is; the tag is derived from the manifest
+            permissions:
+              contents: write
+            jobs:
+              release:
+                runs-on: windows-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - uses: actions/setup-dotnet@v4
+                    with:
+                      dotnet-version: |
+                        8.0.x
+                        10.0.x
+                  - id: manifest
+                    shell: pwsh
+                    run: echo "version=$((Get-Content plugin.json | ConvertFrom-Json).version)" >> $env:GITHUB_OUTPUT
+                  # On a tag push the tag is handed to PackExtension, which fails if it disagrees with plugin.json.
+                  - run: dotnet build -t:PackExtension -p:AnalyseToolExpectedVersion=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+                  - uses: softprops/action-gh-release@v2
+                    with:
+                      tag_name: v${{ steps.manifest.outputs.version }}
+                      files: artifacts/*.zip
+            ```
+
+            **`plugin.json` owns the version.** It travels inside the package and is what the installed
+            extension reports; a git tag exists only in the repository. So bump `version` there, and let the
+            tag follow. Publish ONE package per release: re-running a workflow EDITS the existing release
+            rather than replacing it, so a second zip just piles up next to the first, and the update feed
+            then refuses to guess which one is the package.
+
+            ---
+
+            ## 8. Rules — ALWAYS / NEVER
+
+            - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
+            - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
+              `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
+              the generated schema balloons.
+            - **NEVER** ship copies of `AnalyseTool.Sdk` / Revit API / `Newtonsoft.Json` in the extension output.
+            - **NEVER** touch the WebView, sockets, or threads from a command — return a serializable object.
+            - **Category names are language-specific.** On a German Revit a wall's category is `"Wände"`, not
+              `"Walls"`. To resolve names, call `GetCategoriesInRevit` first; don't hard-code English names.
+            - Return plain, serializable data (numbers, strings, lists, anonymous objects). Don't return raw
+              Revit `Element`/`Parameter` objects.
+
+            ---
+
+            ## 9. AI features — reuse the ONE shared model (do not build your own picker)
+
+            AnalyseTool has a **single, global AI (Ollama) model** shared by every window. It is **not** stored in a
+            C# backend — it lives in the WebView's `localStorage`, which is shared across all plugin windows (same
+            WebView2 profile + origin). So an AI-powered UI extension must **read** the active model, never re-prompt
+            the user to pick one.
+
+            - **Model selection lives ONLY in the Settings window.** Every other window shows a read-only indicator
+              (active model + Ollama on/off). Do not add a model dropdown to your extension UI.
+            - **localStorage keys** (read these to know the active model): `ollama-model` (model name),
+              `ai-model-source` (`"local"` | `"cloud"`), `ai-cloud-models` (JSON array of saved cloud model names).
+              A `storage` event fires when another window changes them.
+            - **Ollama status / local models:** `AT.invoke("OllamaGetModels")` → `{ running: bool, models: string[]|null }`
+              (`running:false` = Ollama unreachable; distinct from "running with 0 models").
+            - **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host): `OllamaAnalyse`,
+              `OllamaEditParameters` (returns suggested parameter edits), `OllamaSuggestName` (one new name from a
+              current name + instruction). Pass `{ model, prompt, … }` where `model` is the shared model name.
+            - In your **own** C# AI command: take the model name in the payload, and run the AI/HTTP call **outside**
+              `RunInRevitAsync` (see §2 — slow I/O must not block the Revit thread); marshal only the model touch.
+
+            ---
+
+            ## 10. Checklist for a generated extension
+
+            - [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for script/UI).
+            - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
+            - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
+                  for commands that take arguments.
+            - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
+            - [ ] Tell the user the deploy path and that they click **Reload** (or restart for a new button).
+
+            """;
 
         /// <summary>Returns one of the registered extension source roots, defaulting to the dev root
         /// when the caller didn't specify (templates are user-authored work-in-progress). Rejects
