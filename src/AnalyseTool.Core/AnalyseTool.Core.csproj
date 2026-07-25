@@ -24,6 +24,39 @@
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
     </ItemGroup>
 
+    <!-- What CreateExtensionTemplate writes into a new extension folder. Embedded rather than copied
+         next to the DLL: Core ships as a single assembly into the add-in folder, and a loose file is
+         one more thing packaging or an installer can drop. LogicalName is explicit so a folder rename
+         cannot silently change a resource name the code looks up by string.
+
+         LLM.md is the REPOSITORY's own src/LLM.md, not a copy of it — the generated author guide and
+         the paste-into-AI document are now the same file by construction. -->
+    <ItemGroup>
+        <!-- *.csproj.xml and *.cs.txt, not the real extensions: that keeps both templates out of the
+             solution and out of Core's default **\*.cs compile glob by construction. Excluding them
+             instead (<Compile Remove>) would give the editor C# highlighting, but a lost exclusion
+             would then compile the template into Core silently — not worth it for 19 lines.
+
+             WithCulture="false" is NOT decoration. MSBuild's AssignCulture task reads the
+             second-to-last extension of every EmbeddedResource as a potential culture code, and the
+             "cs" in Hello.cs.txt is Czech — so the file was routed into the cs\ satellite assembly
+             and GetManifestResourceStream on the main assembly threw at runtime. LogicalName does not
+             prevent that; only this attribute does. Keep it on every entry so the next dotted
+             filename cannot re-open the trap. -->
+        <EmbeddedResource Include="Features\Extensions\Templates\Template.csproj.xml"
+                          LogicalName="AnalyseTool.Core.Templates.Extension.csproj.xml"
+                          WithCulture="false" />
+        <EmbeddedResource Include="Features\Extensions\Templates\Hello.cs.txt"
+                          LogicalName="AnalyseTool.Core.Templates.Hello.cs.txt"
+                          WithCulture="false" />
+        <EmbeddedResource Include="Features\Extensions\Templates\gitignore.txt"
+                          LogicalName="AnalyseTool.Core.Templates.gitignore.txt"
+                          WithCulture="false" />
+        <EmbeddedResource Include="..\LLM.md"
+                          LogicalName="AnalyseTool.Core.Templates.LLM.md"
+                          WithCulture="false" />
+    </ItemGroup>
+
     <!-- PathProvider needs ToolData.PLUGIN_NAME. -->
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
