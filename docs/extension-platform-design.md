@@ -19,7 +19,7 @@ gating (#72) is explicitly out of scope for this iteration.
 | | Installed (managed) | Dev / Local (unmanaged) |
 | --- | --- | --- |
 | Location | `%LOCALAPPDATA%\AnalyseTool\extensions-dist\` (new folder — clean manager invariants) | `extensions\` (the historical folder, behavior unchanged) + user-added roots (existing `ExtensionSources` feature) |
-| Layout | Package format only (below) | Loose folder: `plugin.json` + `.cs` / DLL / `ui` next to it, no year folders |
+| Layout | Package format only (below) | Same package format: `CreateExtensionTemplate` scaffolds it and the generated project builds into `<year>\`, so the dev folder IS the package. A hand-made folder with the DLL at the root still loads (rule 1 below) |
 | Owned by | Extension Manager (install / remove / update / consent) | The author; live Reload as today |
 | Manager UI | Installed tab: enable/disable, remove, update badge, diagnostics | Same list with a **Dev** badge: enable/disable, diagnostics, open folder — no install/update semantics |
 
@@ -41,7 +41,8 @@ MyExt/
 ```
 
 Resolution rules (host running year Y):
-1. `entryAssembly` is looked up in `<Y>/` first, then in the folder root.
+1. `entryAssembly` is looked up in `<Y>/` first, then in the folder root. Generated projects
+   produce the first form; the root remains the fallback for hand-made single-year folders.
 2. Scripts (`*.cs`) and `ui/` always come from the root.
 3. Neither found for Y → the extension is listed as **incompatible with Revit Y**
    in the manager, and is not loaded (no silent invisibility).

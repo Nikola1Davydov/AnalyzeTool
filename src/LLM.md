@@ -205,6 +205,9 @@ shipped inside packages during restore, so the SDK package cannot add them for y
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Acme.Doors</RootNamespace>
     <AssemblyName>Acme.Doors</AssemblyName>
+    <!-- Build into <extension>\<year>\ — the layout a package uses, so the folder you develop in is
+         the folder you ship, and builds for several Revit years coexist. -->
+    <OutDir>$(MSBuildProjectDirectory)\2025\</OutDir>
   </PropertyGroup>
   <ItemGroup>
     <!-- Exact version, never a range: a pinned package is the reason your build cannot be
@@ -277,14 +280,17 @@ const { commands } = await window.AT.invoke("GetCommands");
 ```
 %LOCALAPPDATA%\AnalyseTool\extensions\<id>\
     plugin.json
-    <YourExt>.dll        (C#)  |  *.cs (script)
+    2025\<YourExt>.dll   (C# — one folder per Revit year)
+    *.cs                 (script)
     index.html           (UI)
     icon.png             (optional)
 ```
-- The extension folder sits DIRECTLY under a source root — no Revit-year subfolder.
-  (To ship prebuilt DLLs for several Revit versions, put them in year subfolders like
-  `<id>\2025\<YourExt>.dll` — the host picks the running year's build, falling back to
-  the folder root. Scripts and UI are version-independent and always live in the root.)
+- The extension folder sits DIRECTLY under a source root — the Revit year is a subfolder INSIDE it,
+  never above it. This is the same layout a published package has, so the folder you develop in is
+  the one you zip, and builds for several Revit years sit side by side.
+- The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
+  single-year extension works without year folders. Scripts and UI are version-independent and
+  always live in the root.
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 

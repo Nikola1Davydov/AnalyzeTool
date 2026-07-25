@@ -40,6 +40,8 @@
                           LogicalName="AnalyseTool.Core.Templates.Extension.csproj.xml" />
         <EmbeddedResource Include="Features\Extensions\Templates\Hello.cs.txt"
                           LogicalName="AnalyseTool.Core.Templates.Hello.cs.txt" />
+        <EmbeddedResource Include="Features\Extensions\Templates\gitignore.txt"
+                          LogicalName="AnalyseTool.Core.Templates.gitignore.txt" />
         <EmbeddedResource Include="..\LLM.md"
                           LogicalName="AnalyseTool.Core.Templates.LLM.md" />
     </ItemGroup>

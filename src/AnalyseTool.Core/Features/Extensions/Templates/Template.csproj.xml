@@ -1,16 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>__TargetFramework__</TargetFramework>
+    <!-- The Revit year drives everything below: the output folder, the API packages and the runtime.
+         Retarget by editing this one number. -->
+    <RevitVersion>__RevitVersion__</RevitVersion>
+
+    <!-- Not a free choice: the Nice3point package for a year is built for that year's runtime, so a
+         net8 project referencing the 2027 package fails restore (NU1202). -->
+    <TargetFramework Condition="'$(RevitVersion)' &lt; '2027'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' &gt;= '2027'">net10.0-windows</TargetFramework>
+
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>__AssemblyName__</AssemblyName>
     <RootNamespace>__AssemblyName__</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <!-- Build straight into the extension folder, where the loader looks for the entry assembly.
-         NOT $(SolutionDir): no solution is generated here, and outside Visual Studio that property is
-         undefined, so OutDir fell back to bin\ and the extension stayed unloadable after a build. -->
-    <OutDir>$(MSBuildProjectDirectory)\</OutDir>
+
+    <!-- Build into <extension>\<year>\, the same layout a published package uses — so this folder
+         mirrors the package (bin\ and obj\ aside), builds for several Revit years sit side by side
+         instead of overwriting each other, and the host resolves the entry assembly year-first
+         exactly as it will after install.
+         Not $(SolutionDir): no solution is generated here, and outside Visual Studio that property is
+         undefined, which silently sent the output to bin\ and left the extension unloadable. -->
+    <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
   </PropertyGroup>
   <ItemGroup>
     <!-- AnalyseTool SDK — loaded from the installed plugin. Don't ship a copy. -->

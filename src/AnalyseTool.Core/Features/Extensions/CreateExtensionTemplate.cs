@@ -50,11 +50,12 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException("Plugin id is required for C# templates.");
 
             string safeFolderName = SanitizeFolderName(payload.FolderName);
-            string version = CoreServices.RevitVersion; // still used for the generated csproj's Revit API package
+            string version = CoreServices.RevitVersion; // drives the generated csproj: packages, TFM, output folder
             string root = ResolveTargetRoot(payload.TargetRoot);
-            // Extensions live directly under the root (no year folder): scripts/UI are version-
-            // independent, and a locally built DLL lands in the folder root (see BuildCsproj OutDir),
-            // which the loader resolves as the fallback after <year>\.
+            // The extension folder sits directly under the root and is laid out exactly like a published
+            // package: plugin.json / scripts / ui at the top (version-independent), compiled binaries in
+            // <year>\ (see the template's OutDir). Publishing is then zipping this folder, and what the
+            // author tests is what ships.
             string extensionRoot = Path.Combine(root, safeFolderName);
 
             if (Directory.Exists(extensionRoot))
@@ -104,6 +105,11 @@ namespace AnalyseTool.Core.Features.Extensions
                 File.WriteAllText(helloCsPath, BuildHelloCs(assemblyName));
                 filesCreated.Add(helloCsPath);
 
+                // bin\ and obj\ are the only things in this folder that are not part of the extension.
+                string gitignorePath = Path.Combine(extensionRoot, ".gitignore");
+                File.WriteAllText(gitignorePath, ReadTemplate(GitignoreResource));
+                filesCreated.Add(gitignorePath);
+
                 string llmInstructionsPath = Path.Combine(extensionRoot, "LLM.md");
                 File.WriteAllText(llmInstructionsPath, BuildLLMInstructions());
                 filesCreated.Add(llmInstructionsPath);
@@ -126,17 +132,12 @@ namespace AnalyseTool.Core.Features.Extensions
                 char.ToUpperInvariant(seg[0]) + seg.Substring(1).ToLowerInvariant()));
         }
 
-        /// <summary>The target framework the running Revit dictates: 2025/2026 are .NET 8, 2027 moved to
-        /// .NET 10. It is not a free choice — the Nice3point Revit API package for a year is built for
-        /// that year's runtime, so a net8 project referencing the 2027 package fails restore (NU1202).</summary>
-        private static string TargetFrameworkFor(string revitVersion) =>
-            int.TryParse(revitVersion, out int year) && year >= 2027 ? "net10.0-windows" : "net8.0-windows";
-
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
         private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs.txt";
         private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
+        private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
 
         /// <summary>
         /// Template texts are EMBEDDED RESOURCES, not C# string literals. The csproj is then real XML
@@ -179,8 +180,10 @@ namespace AnalyseTool.Core.Features.Extensions
         }
 
         private static string BuildCsproj(string sdkDllPath, string revitVersion, string assemblyName) =>
+            // The template derives its TFM from RevitVersion in MSBuild rather than taking it
+            // pre-computed, so an author who retargets the project cannot end up with a year and a
+            // runtime that disagree — the failure that reaches them as an opaque NU1202.
             Fill(ReadTemplate(CsprojResource),
-                ("TargetFramework", TargetFrameworkFor(revitVersion)),
                 ("AssemblyName", assemblyName),
                 ("SdkDllPath", sdkDllPath),
                 ("RevitVersion", revitVersion));
