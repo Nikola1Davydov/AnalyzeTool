@@ -261,8 +261,14 @@ async function checkUpdates() {
   }
 }
 
+// A failed update must SAY so. The per-row tag alone could never show it: the error is written
+// onto a row whose updateAvailable is still true, and the tag hangs off a v-else-if — so the
+// banner carries the message, in full, where a tooltip would truncate a .NET exception.
+const updateError = ref("");
+
 async function updateExtension(row: ExtensionRow) {
   updatingId.value = row.id;
+  updateError.value = "";
   try {
     await invoke("UpdateExtension", { id: row.id });
     delete updateChecks.value[row.id];
@@ -271,6 +277,7 @@ async function updateExtension(row: ExtensionRow) {
     const message = e instanceof Error ? e.message : String(e);
     const prev = updateChecks.value[row.id];
     if (prev) updateChecks.value[row.id] = { ...prev, error: message };
+    updateError.value = `${row.name || row.id}: ${message}`;
     console.error("Update failed", e);
   } finally {
     updatingId.value = "";
@@ -674,6 +681,14 @@ onMounted(() => {
         Installed
         <span class="text-surface-500 font-normal">— packages managed by AnalyseTool</span>
       </h2>
+      <div
+        v-if="updateError"
+        class="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-start gap-2"
+      >
+        <i class="pi pi-exclamation-triangle mt-0.5" />
+        <span class="grow whitespace-pre-wrap break-words">{{ updateError }}</span>
+        <Button icon="pi pi-times" size="small" text severity="danger" @click="updateError = ''" />
+      </div>
       <DataTable :value="managedExtensions" :loading="loading" dataKey="id" class="text-sm">
         <Column header="Extension">
           <template #body="{ data: row }">
@@ -720,10 +735,12 @@ onMounted(() => {
               class="ml-2"
               v-tooltip.top="'Update available'"
             />
+            <!-- Independent of the update tag: an update that FAILS leaves updateAvailable true,
+                 so an v-else-if here would hide the very error the user needs to see. -->
             <Tag
-              v-else-if="updateChecks[row.id]?.error"
-              value="feed error"
-              severity="warn"
+              v-if="updateChecks[row.id]?.error"
+              value="error"
+              severity="danger"
               class="ml-2"
               v-tooltip.top="updateChecks[row.id]?.error"
             />
