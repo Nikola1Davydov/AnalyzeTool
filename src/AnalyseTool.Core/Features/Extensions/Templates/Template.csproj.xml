@@ -7,7 +7,10 @@
     <AssemblyName>__AssemblyName__</AssemblyName>
     <RootNamespace>__AssemblyName__</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <OutDir>$(SolutionDir)</OutDir>
+    <!-- Build straight into the extension folder, where the loader looks for the entry assembly.
+         NOT $(SolutionDir): no solution is generated here, and outside Visual Studio that property is
+         undefined, so OutDir fell back to bin\ and the extension stayed unloadable after a build. -->
+    <OutDir>$(MSBuildProjectDirectory)\</OutDir>
   </PropertyGroup>
   <ItemGroup>
     <!-- AnalyseTool SDK — loaded from the installed plugin. Don't ship a copy. -->

@@ -24,6 +24,7 @@ interface ExtensionRow {
   hasCommands: boolean;
   hasUi: boolean;
   compatible: boolean;
+  binaryYears?: string[]; // Revit years this extension actually ships a build for
   zone: "managed" | "dev";
   legacyLayout?: boolean;
   compileError?: string | null;
@@ -71,6 +72,22 @@ interface McpStatus {
 }
 
 const data = ref<ExtensionsData | null>(null);
+
+// "Incompatible" is the wrong word for an extension that was simply never built — the two states
+// need different fixes (build the project vs. ship a build for this Revit year), so they say so.
+// A freshly generated C# template hits the first one and used to be flagged as broken.
+function buildState(row: ExtensionRow): { label: string; tip: string } {
+  const years = row.binaryYears ?? [];
+  if (years.length === 0)
+    return {
+      label: "Not built",
+      tip: "No compiled assembly found. Build the project in the extension folder (dotnet build), then Reload.",
+    };
+  return {
+    label: "Incompatible",
+    tip: `No build for Revit ${data.value?.hostRevit} — this extension ships ${years.join(", ")}.`,
+  };
+}
 
 // Two zones, two sections: installed packages (manager-owned) vs the user's own dev folders.
 const managedExtensions = computed(() =>
@@ -752,9 +769,9 @@ onMounted(() => {
             <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
             <Tag
               v-if="!row.compatible"
-              value="Incompatible"
+              :value="buildState(row).label"
               severity="danger"
-              v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
+              v-tooltip.top="row.compileError || buildState(row).tip"
             />
             <Tag
               v-else-if="row.compileError"
@@ -854,9 +871,9 @@ onMounted(() => {
             />
             <Tag
               v-if="!row.compatible"
-              value="Incompatible"
+              :value="buildState(row).label"
               severity="danger"
-              v-tooltip.top="row.compileError || `No build for Revit ${data?.hostRevit}`"
+              v-tooltip.top="row.compileError || buildState(row).tip"
             />
             <Tag
               v-else-if="row.compileError"
