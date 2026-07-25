@@ -189,9 +189,31 @@ Nothing in the foundation or the registry depends on it.
   manifest v2 first); the design above is the agreed target.
 - Multi-button manifest (`ui.buttons[]`), package signatures.
 - No payment processing, review/approval of code, or hosted binaries — ever (#48).
-- `AnalyseTool.Extension.Sdk` — an MSBuild project SDK reducing the author csproj
-  to one line (restore-visible props kill the §4.1 boilerplate): planned as #75,
-  shipped together with the next AnalyseTool.Sdk release to nuget.org.
+- `AnalyseTool.Extension.Sdk` — an MSBuild project SDK reducing the author csproj to
+  one line (#75): **rejected, not deferred.** It would buy only the shorter file, and
+  nobody types that file by hand — `CreateExtensionTemplate` generates it. Against
+  that: a second package, a third version to keep straight, unreadable errors when
+  the SDK fails to resolve, and — because a `Sdk="…"` attribute cannot be
+  conditional — a SEPARATE sample project in CI, since Acme.Sample's two-mode switch
+  cannot cover it. The §4.1 boilerplate is accepted deliberately.
+
+## Publishing the SDK package is a release condition
+
+Not a nicety. Until `AnalyseTool.Sdk` is on a feed, an extension author's only way to
+build is to check this repository out **by branch** and import its MSBuild files by
+path — mutable state shared with every author, where one bad commit here breaks their
+builds retroactively and without their consent. That is not a hypothetical: a
+malformed MSBuild expression in `AnalyseTool.Sdk.targets` did exactly that during the
+first end-to-end publishing test.
+
+A published version is immutable, so a mistake only reaches whoever chooses to move to
+it — provided consumers pin an EXACT version. Floating ranges (`1.1.*`) give the
+property straight back and are therefore banned from every template and doc.
+
+`PublishSdkPackage` (src/build/Build.Publish.NuGet.cs) depends on the whole `Ci`
+target, so `TestSdkPackage` — which builds an external-author project against the
+freshly packed nupkg — stands between a broken package and the feed. Trial runs go to
+a private feed (GitHub Packages); nuget.org waits until the contract settles.
 
 ## Implementation phases
 
