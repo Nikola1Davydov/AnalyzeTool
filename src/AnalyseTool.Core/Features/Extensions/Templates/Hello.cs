@@ -1,6 +1,6 @@
 using AnalyseTool.Sdk;
 
-namespace $namespace$;
+namespace __Namespace__;
 
 [RevitCommand(
     Description = "Returns the active document's title.",

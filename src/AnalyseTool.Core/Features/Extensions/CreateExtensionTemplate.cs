@@ -135,7 +135,7 @@ namespace AnalyseTool.Core.Features.Extensions
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs.txt";
+        private const string HelloResource = "AnalyseTool.Core.Templates.Hello.cs";
         private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
 
         /// <summary>
@@ -156,17 +156,18 @@ namespace AnalyseTool.Core.Features.Extensions
             return reader.ReadToEnd();
         }
 
-        /// <summary>Substitutes <c>$token$</c> placeholders, then refuses to return a half-filled
+        /// <summary>Substitutes <c>__Token__</c> placeholders, then refuses to return a half-filled
         /// template. While the text was an interpolated literal the compiler caught a renamed
         /// placeholder; in a file it is just a string, so without this the generator would hand the
-        /// user a project with "$assemblyName$" inside it. MSBuild's own <c>$(SolutionDir)</c> cannot
-        /// match — the pattern allows only letters and digits between the dollars.</summary>
+        /// user a project with "__AssemblyName__" inside it. The double-underscore form is what lets
+        /// the C# template stay valid C# — and it cannot collide with MSBuild's <c>$(SolutionDir)</c>
+        /// in the csproj template either.</summary>
         private static string Fill(string template, params (string Token, string Value)[] values)
         {
             foreach ((string token, string value) in values)
-                template = template.Replace($"${token}$", value);
+                template = template.Replace($"__{token}__", value);
 
-            string[] unresolved = Regex.Matches(template, @"\$[A-Za-z][A-Za-z0-9]*\$")
+            string[] unresolved = Regex.Matches(template, @"__[A-Za-z][A-Za-z0-9]*__")
                 .Select(match => match.Value)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
@@ -179,13 +180,13 @@ namespace AnalyseTool.Core.Features.Extensions
 
         private static string BuildCsproj(string sdkDllPath, string revitVersion, string assemblyName) =>
             Fill(ReadTemplate(CsprojResource),
-                ("targetFramework", TargetFrameworkFor(revitVersion)),
-                ("assemblyName", assemblyName),
-                ("sdkDllPath", sdkDllPath),
-                ("revitVersion", revitVersion));
+                ("TargetFramework", TargetFrameworkFor(revitVersion)),
+                ("AssemblyName", assemblyName),
+                ("SdkDllPath", sdkDllPath),
+                ("RevitVersion", revitVersion));
 
         private static string BuildHelloCs(string ns) =>
-            Fill(ReadTemplate(HelloResource), ("namespace", ns));
+            Fill(ReadTemplate(HelloResource), ("Namespace", ns));
 
         /// <summary>The author guide, served verbatim from the embedded <c>src/LLM.md</c>. It takes no
         /// arguments on purpose: the document is the same for every extension — the two parameters the

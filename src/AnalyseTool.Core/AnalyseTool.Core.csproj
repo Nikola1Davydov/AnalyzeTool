@@ -32,10 +32,16 @@
          LLM.md is the REPOSITORY's own src/LLM.md, not a copy of it — the generated author guide and
          the paste-into-AI document are now the same file by construction. -->
     <ItemGroup>
+        <!-- Hello.cs keeps the .cs extension so an editor treats it as C#, which is the point of
+             having it as a file at all — so it MUST be removed from the default **\*.cs compile glob,
+             or Core tries to compile the template as part of itself. Placeholders are __Token__
+             rather than $token$ precisely so the template still reads as valid C#. -->
+        <Compile Remove="Features\Extensions\Templates\**\*.cs" />
+
         <EmbeddedResource Include="Features\Extensions\Templates\Template.csproj.xml"
                           LogicalName="AnalyseTool.Core.Templates.Extension.csproj.xml" />
-        <EmbeddedResource Include="Features\Extensions\Templates\Hello.cs.txt"
-                          LogicalName="AnalyseTool.Core.Templates.Hello.cs.txt" />
+        <EmbeddedResource Include="Features\Extensions\Templates\Hello.cs"
+                          LogicalName="AnalyseTool.Core.Templates.Hello.cs" />
         <EmbeddedResource Include="..\LLM.md"
                           LogicalName="AnalyseTool.Core.Templates.LLM.md" />
     </ItemGroup>
