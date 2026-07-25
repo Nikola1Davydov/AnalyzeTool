@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- The Revit year drives everything below: the output folder, the API packages and the runtime.
-         Retarget by editing this one number. -->
+         Retarget by editing this one number — or without editing at all:
+             dotnet build -p:RevitVersion=2026
+         (a command-line property overrides this one), so per-year builds stack up side by side. -->
     <RevitVersion>__RevitVersion__</RevitVersion>
 
     <!-- Not a free choice: the Nice3point package for a year is built for that year's runtime, so a

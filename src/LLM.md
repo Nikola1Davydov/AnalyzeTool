@@ -200,14 +200,18 @@ shipped inside packages during restore, so the SDK package cannot add them for y
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- The Revit year drives the TFM, the API packages and the output folder. -->
+    <RevitVersion>2025</RevitVersion>
+    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 — not a free choice,
+         the Nice3point package for a year targets that year's runtime (else restore fails: NU1202). -->
+    <TargetFramework Condition="'$(RevitVersion)' &lt; '2027'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' &gt;= '2027'">net10.0-windows</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Acme.Doors</RootNamespace>
     <AssemblyName>Acme.Doors</AssemblyName>
     <!-- Build into <extension>\<year>\ — the layout a package uses, so the folder you develop in is
          the folder you ship, and builds for several Revit years coexist. -->
-    <OutDir>$(MSBuildProjectDirectory)\2025\</OutDir>
+    <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
   </PropertyGroup>
   <ItemGroup>
     <!-- Exact version, never a range: a pinned package is the reason your build cannot be
@@ -215,19 +219,29 @@ shipped inside packages during restore, so the SDK package cannot add them for y
     <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*">
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
 </Project>
 ```
-Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`) and,
-for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
+Build: `dotnet build -c Release`. Target another Revit year by editing `RevitVersion` — the TFM, the
+API packages and the output folder all follow from it. There is no per-year build configuration and
+none is needed: to build for another year without touching the file, pass the property on the
+command line, where it overrides the one in the csproj:
+
+```
+dotnet build -c Release -p:RevitVersion=2026
+dotnet build -c Release -p:RevitVersion=2027
+```
+
+Each build lands in its own `<year>\` folder, so the years accumulate side by side — run one command
+per year you ship.
 
 > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
 > extension's load context shares the host's copies (type identity), so **do not ship copies of those
