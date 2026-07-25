@@ -6,9 +6,13 @@ name: CI
 #   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
 #   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
 
+# Every branch, not just main/dev: the Sdk's build files (Extension.props, Sdk.targets) are consumed
+# by extension repositories that check this repo out by BRANCH, so an unverified push there breaks
+# builds outside this repository. TestSdkPackage is the guardrail that catches it — it has to run
+# before the push is visible to anyone, not after someone reports the failure.
 on:
   push:
-    branches: [main, dev]
+    branches: ["**"]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
