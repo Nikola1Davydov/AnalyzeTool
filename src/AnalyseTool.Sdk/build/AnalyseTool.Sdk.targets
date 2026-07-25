@@ -69,7 +69,9 @@
          publishing 1.0.1 under tag v1.0.0 would leave the manager comparing versions that mean
          nothing. Nothing is rewritten: the mismatch is reported, the author decides. -->
     <PropertyGroup>
-      <_ATExpectedVersion>$(AnalyseToolExpectedVersion.TrimStart('v', 'V'))</_ATExpectedVersion>
+      <!-- Regex, not TrimStart: MSBuild cannot bind a params char[] overload, so TrimStart('v','V')
+           fails to resolve at evaluation time (MSB4184). -->
+      <_ATExpectedVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(AnalyseToolExpectedVersion)', '^[vV]', ''))</_ATExpectedVersion>
     </PropertyGroup>
     <Error Condition="'$(_ATExpectedVersion)' != '' and '$(_ATExpectedVersion)' != '$(_ATVersion)'"
            Text="PackExtension: asked to publish version '$(_ATExpectedVersion)' (tag) but plugin.json declares '$(_ATVersion)'. The manifest decides what ships — set 'version' in plugin.json to the version you want to release, commit, and tag THAT commit." />
