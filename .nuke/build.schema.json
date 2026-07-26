@@ -37,7 +37,8 @@
         "PackSdk",
         "PublishGitHub",
         "TestExtensionTemplate",
-        "TestSdkPackage"
+        "TestSdkPackage",
+        "ValidateReleaseVersion"
       ]
     },
     "Verbosity": {

@@ -14,19 +14,24 @@ sealed partial class Build
     ///     Create the Autodesk .bundle package.
     /// </summary>
     Target CreateBundle => _ => _
-        .DependsOn(BuildLauncher)
+        .DependsOn(ValidateReleaseVersion, BuildLauncher)
         .Executes(() =>
         {
             Project project = Solution.Host.AnalyseTool_Launcher;
             Log.Information("Project: {Name}", project.Name);
 
-            // Scans the disk for "Release *" output folders. Skip any whose Revit version we don't
-            // recognize (e.g. a stale "Release R27" bin left over from a dev build) — otherwise
-            // GetVersionYear("") would throw. Only shipped versions (see GetRevitVersion) are bundled.
-            string[] targetDirectories = Directory
-                .GetDirectories(project.Directory, "Release *", SearchOption.AllDirectories)
-                .Where(dir => GetRevitVersion(dir).Length > 0)
-                .ToArray();
+            // ONLY bin\, and only its top level. Searching the whole project directory recursively
+            // also matched obj\Release R25 — which shipped reference assemblies (ref\, refint\),
+            // generated sources and *.FileListAbsolute.txt (absolute build paths) into the public
+            // download. Skip any folder whose Revit version we don't recognize, otherwise
+            // GetVersionYear("") throws on a stale bin left over from a dev build.
+            string binDirectory = Path.Combine(project.Directory, "bin");
+            string[] targetDirectories = Directory.Exists(binDirectory)
+                ? Directory
+                    .GetDirectories(binDirectory, "Release *", SearchOption.TopDirectoryOnly)
+                    .Where(dir => GetRevitVersion(dir).Length > 0)
+                    .ToArray()
+                : [];
             Assert.NotEmpty(targetDirectories, "No files were found to create a bundle");
 
             string bundleName = $"{project.Name}.bundle";
@@ -42,14 +47,14 @@ sealed partial class Build
                 CopyAssemblies(contentDirectory, contentsDirectory / version);
             }
 
-            GenerateManifest(project, targetDirectories, manifestPath);
+            GenerateManifest(project, targetDirectories, contentsDirectory, manifestPath);
             CompressFolder(bundleRoot);
         });
 
     /// <summary>
     ///     Generate the Autodesk manifest for the bundle.
     /// </summary>
-    void GenerateManifest(Project project, string[] directories, AbsolutePath manifestDirectory)
+    void GenerateManifest(Project project, string[] directories, AbsolutePath contentsDirectory, AbsolutePath manifestDirectory)
     {
         BuilderUtils.Build<PackageContentsBuilder>(builder =>
         {
@@ -67,13 +72,26 @@ sealed partial class Build
 
             foreach (string version in versions)
             {
-                
                 builder.Components.CreateEntry($"Revit {version}")
                     .RevitPlatform(GetVersionYear(version))
                     .AppName(project.Name)
-                    .ModuleName($"./Contents/{version}/{project.Name}.addin");
+                    .ModuleName($"./Contents/{version}/{FindAddInFileName(contentsDirectory / version)}");
             }
         }, manifestDirectory);
+    }
+
+    /// <summary>
+    ///     Name of the .addin that was actually copied for a Revit version. Derived from the file on
+    ///     disk, never from the project name: the Launcher writes its manifest as
+    ///     <c>$(PluginSubDir).addin</c> ("AnalyseTool.addin"), so composing the name from
+    ///     <c>project.Name</c> produced "AnalyseTool.Launcher.addin" — a ModuleName pointing at a file
+    ///     that is not in the bundle, leaving every .bundle install with a dead ApplicationPlugins entry.
+    /// </summary>
+    static string FindAddInFileName(AbsolutePath versionDirectory)
+    {
+        string[] addInFiles = Directory.GetFiles(versionDirectory, "*.addin", SearchOption.TopDirectoryOnly);
+        Assert.HasSingleItem(addInFiles, $"Expected exactly one .addin in {versionDirectory}");
+        return Path.GetFileName(addInFiles[0]);
     }
 
     /// <summary>

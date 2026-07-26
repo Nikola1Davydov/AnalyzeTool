@@ -3,6 +3,7 @@ using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Core.Features.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -28,10 +29,15 @@ namespace AnalyseTool.Mcp.Bridge
         private const string Source = "mcp";
 
         private readonly CommandQueue _queue;
+        private readonly string _token;
         private TcpListener? _listener;
         private CancellationTokenSource? _cts;
 
-        public McpBridgeServer(CommandQueue queue) => _queue = queue;
+        public McpBridgeServer(CommandQueue queue, string token)
+        {
+            _queue = queue;
+            _token = token ?? string.Empty;
+        }
 
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
@@ -40,44 +46,84 @@ namespace AnalyseTool.Mcp.Bridge
         {
             if (IsRunning) return;
 
-            _cts = new CancellationTokenSource();
-            _listener = new TcpListener(IPAddress.Loopback, port);
-            _listener.Start();
-            Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+            CancellationTokenSource cts = new();
+            TcpListener listener = new(IPAddress.Loopback, port);
+            try
+            {
+                listener.Start();
+            }
+            catch
+            {
+                // Port in use, most likely. Leave no half-started state behind: Stop() early-returns
+                // on !IsRunning, so anything stashed in the fields here would never be cleaned up.
+                cts.Dispose();
+                throw;
+            }
+
+            _cts = cts;
+            _listener = listener;
+            Port = ((IPEndPoint)listener.LocalEndpoint).Port;
             IsRunning = true;
 
-            _ = AcceptLoopAsync(_listener, _cts.Token);
+            _ = AcceptLoopAsync(listener, cts.Token);
         }
 
         public void Stop()
         {
-            if (!IsRunning) return;
             IsRunning = false;
 
-            try { _cts?.Cancel(); } catch { /* ignore */ }
-            try { _listener?.Stop(); } catch { /* ignore */ }
+            CancellationTokenSource? cts = _cts;
+            TcpListener? listener = _listener;
             _listener = null;
             _cts = null;
             Port = 0;
+
+            try { cts?.Cancel(); } catch { /* ignore */ }
+            try { listener?.Stop(); } catch { /* ignore */ }
+            cts?.Dispose();
         }
 
         private async Task AcceptLoopAsync(TcpListener listener, CancellationToken ct)
         {
-            while (!ct.IsCancellationRequested)
+            try
             {
-                TcpClient client;
-                try
+                while (!ct.IsCancellationRequested)
                 {
-                    client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
-                }
-                catch
-                {
-                    break; // listener stopped / cancelled
-                }
+                    TcpClient client;
+                    try
+                    {
+                        client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+                    {
+                        break; // listener stopped / cancelled — the only reasons to leave the loop
+                    }
+                    catch (Exception ex)
+                    {
+                        // A single failed accept (a client that vanished mid-handshake, a transient
+                        // socket error) used to end the loop for the whole session while IsRunning
+                        // still said "running": Settings showed green, every agent call failed, and
+                        // only a Revit restart brought it back.
+                        Log.Warning(ex, "MCP bridge: accept failed; continuing to listen");
+                        continue;
+                    }
 
-                // Each connection handled independently; concurrency across connections is fine
-                // (the dispatcher marshals model access onto the single Revit thread anyway).
-                _ = HandleClientAsync(client, ct);
+                    // Each connection handled independently; concurrency across connections is fine
+                    // (the dispatcher marshals model access onto the single Revit thread anyway).
+                    _ = HandleClientAsync(client, ct);
+                }
+            }
+            finally
+            {
+                // Whatever ended the loop, this listener is no longer accepting — say so, so the status
+                // in Settings cannot claim otherwise. The identity check keeps a lingering old loop
+                // from clearing the flag of a server that has since been restarted.
+                if (ReferenceEquals(_listener, listener))
+                {
+                    if (!ct.IsCancellationRequested)
+                        Log.Warning("MCP bridge: accept loop ended unexpectedly");
+                    IsRunning = false;
+                }
             }
         }
 
@@ -113,17 +159,20 @@ namespace AnalyseTool.Mcp.Bridge
             {
                 JObject req = JObject.Parse(message);
                 id = (string?)req[McpWire.Id];
+
+                // Loopback is not an authorization boundary: every process running as this user can
+                // open this port, and what is behind it drives Revit. The token proves the caller was
+                // configured by the user (Settings hands it out in the client config snippet).
+                if (!IsAuthorized((string?)req[McpWire.Token]))
+                    return Err(id, "Unauthorized: missing or wrong bridge token. Re-copy the MCP client " +
+                                   "configuration from AnalyseTool Settings — it now includes a --token argument.");
+
                 string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
 
                 if (string.Equals(type, McpWire.TypeList, StringComparison.OrdinalIgnoreCase))
                 {
-                    // The code-execution tools (run + save) are only offered to the AI while C# execution
-                    // is enabled in Settings (they still hard-refuse when off; hiding avoids tempting use).
-                    bool codeExecEnabled = CodeExecutionSettings.Enabled;
-
                     JArray commands = new(_queue.RegisteredCommands
-                        .Where(c => c.ExposeToMcp)
-                        .Where(c => codeExecEnabled || !IsCodeExecTool(c.Name))
+                        .Where(IsAvailableToAi)
                         .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                         .Select(c => new JObject
                         {
@@ -141,7 +190,16 @@ namespace AnalyseTool.Mcp.Bridge
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
 
                 object? result = await _queue.ExecuteAsync(
-                    new CommandRequest(command, payload, Source) { CancellationToken = ct }).ConfigureAwait(false);
+                    new CommandRequest(command, payload, Source)
+                    {
+                        CancellationToken = ct,
+                        // The SAME predicate that builds tools/list also gates invoke. Listing is a
+                        // convenience; this is the access boundary. HiddenFromMcp is load-bearing —
+                        // SetCodeExecution carries it precisely so the AI cannot grant itself code
+                        // execution — and a name absent from tools/list is still a name an agent can
+                        // guess, so filtering the catalogue alone protects nothing.
+                        Gate = registration => Task.FromResult(IsAvailableToAi(registration)),
+                    }).ConfigureAwait(false);
                 return Ok(id, result is null ? JValue.CreateNull() : JToken.FromObject(result));
             }
             catch (Exception ex)
@@ -149,6 +207,29 @@ namespace AnalyseTool.Mcp.Bridge
                 return Err(id, ex.Message);
             }
         }
+
+        /// <summary>Constant-time token comparison. An empty configured token means the host could not
+        /// persist one (unwritable profile folder); refuse rather than fall open.</summary>
+        private bool IsAuthorized(string? presented)
+        {
+            if (string.IsNullOrEmpty(_token) || string.IsNullOrEmpty(presented)) return false;
+
+            byte[] expected = Encoding.UTF8.GetBytes(_token);
+            byte[] actual = Encoding.UTF8.GetBytes(presented);
+            return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(expected, actual);
+        }
+
+        /// <summary>
+        /// Whether a registered command may be reached by the AI at all — the one rule shared by
+        /// tools/list and invoke, so the two can never drift apart:
+        /// <list type="bullet">
+        /// <item><c>HiddenFromMcp</c> commands are local plugin management, never AI tools;</item>
+        /// <item>the code-execution tools additionally require the Settings toggle (they hard-refuse
+        /// when off anyway — this keeps them out of reach instead of merely out of sight).</item>
+        /// </list>
+        /// </summary>
+        private static bool IsAvailableToAi(CommandRegistration command) =>
+            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeExecTool(command.Name));
 
         /// <summary>The C#-execution tools gated behind the Settings toggle.</summary>
         private static bool IsCodeExecTool(string name) =>
@@ -161,6 +242,10 @@ namespace AnalyseTool.Mcp.Bridge
         private static string Err(string? id, string message) =>
             new JObject { [McpWire.Id] = id, [McpWire.Error] = message }.ToString(Formatting.None);
 
+        /// <summary>Requests are command payloads, not file uploads — anything larger is a mistake or an
+        /// attack, and reading it costs the Revit process its memory.</summary>
+        private const int MaxMessageBytes = 8 * 1024 * 1024;
+
         /// <summary>
         /// Reads bytes until the accumulated buffer is one complete JSON value (handles a request that
         /// spans several TCP reads). Returns null on EOF / connection close.
@@ -169,6 +254,7 @@ namespace AnalyseTool.Mcp.Bridge
         {
             using MemoryStream ms = new();
             byte[] buffer = new byte[8192];
+            JsonBoundaryScanner scanner = new();
 
             while (true)
             {
@@ -185,17 +271,64 @@ namespace AnalyseTool.Mcp.Bridge
                 if (read == 0) return null; // EOF
                 ms.Write(buffer, 0, read);
 
-                string text = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-                if (IsCompleteJson(text)) return text;
+                // Structural scan, resuming where the last read stopped: O(total bytes) for the whole
+                // message. The previous version decoded the entire buffer to a string and ran
+                // JToken.Parse in a try/catch after EVERY 8 KB read — quadratic work plus an exception
+                // per read, so a few megabytes of junk from any local process pegged a core and
+                // allocated gigabytes.
+                if (scanner.ConsumedCompleteValue(ms.GetBuffer(), (int)ms.Length))
+                    return Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
 
-                if (ms.Length > 32 * 1024 * 1024) return null; // sanity cap
+                if (ms.Length > MaxMessageBytes) return null;
             }
         }
 
-        private static bool IsCompleteJson(string text)
+        /// <summary>
+        /// Tracks JSON nesting depth across reads to spot the end of the top-level value. Strings and
+        /// escapes are honoured so braces inside a payload string don't confuse the depth count. This
+        /// answers "is the message complete", not "is it valid" — parsing still decides that.
+        /// </summary>
+        private struct JsonBoundaryScanner
         {
-            try { JToken.Parse(text); return true; }
-            catch { return false; }
+            private int _offset;      // bytes already scanned
+            private int _depth;       // open { and [
+            private bool _inString;
+            private bool _escaped;
+
+            public bool ConsumedCompleteValue(byte[] buffer, int length)
+            {
+                for (; _offset < length; _offset++)
+                {
+                    char c = (char)buffer[_offset];
+
+                    if (_inString)
+                    {
+                        if (_escaped) _escaped = false;
+                        else if (c == '\\') _escaped = true;
+                        else if (c == '"') _inString = false;
+                        continue;
+                    }
+
+                    switch (c)
+                    {
+                        case '"': _inString = true; break;
+                        case '{':
+                        case '[': _depth++; break;
+                        case '}':
+                        case ']':
+                            if (--_depth <= 0)
+                            {
+                                _offset++;
+                                return true;
+                            }
+                            break;
+                    }
+                }
+
+                // The protocol only ever sends objects, so anything that hasn't closed its outermost
+                // bracket yet is simply an incomplete read — keep waiting for more bytes.
+                return false;
+            }
         }
     }
 }

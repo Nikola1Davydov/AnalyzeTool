@@ -16,8 +16,13 @@ internal sealed class RevitBridgeClient
 {
     private const string Host = "127.0.0.1";
     private readonly int _port;
+    private readonly string _token;
 
-    public RevitBridgeClient(int port) => _port = port;
+    public RevitBridgeClient(int port, string token)
+    {
+        _port = port;
+        _token = token;
+    }
 
     public async Task<JsonNode?> ListCommandsAsync(CancellationToken ct)
     {
@@ -34,6 +39,8 @@ internal sealed class RevitBridgeClient
     private async Task<JsonNode?> SendAsync(JsonObject envelope, CancellationToken ct)
     {
         envelope[McpWire.Id] = Guid.NewGuid().ToString("N");
+        // The bridge rejects anything without the session token (see McpWire).
+        envelope[McpWire.Token] = _token;
 
         using var client = new TcpClient();
 

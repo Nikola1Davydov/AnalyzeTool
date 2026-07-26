@@ -107,9 +107,12 @@ namespace AnalyseTool.Core.Common.Extensions
                     File.WriteAllBytes(Path.ChangeExtension(cachedDll, ".pdb"), result.Pdb);
             }
 
+            // Tracked before the load for the same reason as in LoadDllCommands: an untracked
+            // collectible context can never be unloaded.
             ExtensionLoadContext alc = new ExtensionLoadContext(cachedDll, id);
-            Assembly assembly = alc.LoadEntry(cachedDll); // byte-load: cache file stays unlocked
             _contexts.Add(alc);
+
+            Assembly assembly = alc.LoadEntry(cachedDll); // byte-load: cache file stays unlocked
             _dispatcher.RegisterExtension(assembly, id);
             Log.Information("Loaded script extension {Id}", id);
         }
@@ -140,7 +143,13 @@ namespace AnalyseTool.Core.Common.Extensions
             if (!File.Exists(entryPath))
                 throw new FileNotFoundException($"Entry assembly '{manifest.EntryAssembly}' not found.", entryPath);
 
+            // Track the context BEFORE anything that can throw. A collectible ALC that was created but
+            // never reached _contexts is unreachable and can never be unloaded — and the paths below
+            // throw routinely (a half-written DLL, a corrupt image), so the leak accumulates exactly
+            // when the author is reloading most: while fixing a broken build.
             ExtensionLoadContext alc = new ExtensionLoadContext(entryPath, manifest.Id);
+            _contexts.Add(alc);
+
             Assembly assembly = alc.LoadEntry(entryPath); // byte-load: does not lock the DLL on disk
 
             // Compatibility is derived from the SDK the DLL was actually built against (its
@@ -155,7 +164,7 @@ namespace AnalyseTool.Core.Common.Extensions
                     $"incompatible with host SDK {_hostSdkVersion.Major}.x. Skipped.";
                 ExtensionDiagnostics.SetError(manifest.Id, error);
                 Log.Warning("Extension {Id}: {Error}", manifest.Id, error);
-                alc.Unload(); // collectible context — drop the rejected assembly
+                UnloadAndForget(alc); // collectible context — drop the rejected assembly
                 return;
             }
 
@@ -169,13 +178,21 @@ namespace AnalyseTool.Core.Common.Extensions
                     $"SDK {_hostSdkVersion}. Update the plugin to use it. Skipped.";
                 ExtensionDiagnostics.SetError(manifest.Id, error);
                 Log.Warning("Extension {Id}: {Error}", manifest.Id, error);
-                alc.Unload();
+                UnloadAndForget(alc);
                 return;
             }
 
-            _contexts.Add(alc);
             _dispatcher.RegisterExtension(assembly, manifest.Id);
             Log.Information("Loaded DLL extension {Id} (SDK {Sdk})", manifest.Id, referencedSdk);
+        }
+
+        /// <summary>Unloads a context we decided not to use and stops tracking it, so the next
+        /// <see cref="UnloadAll"/> doesn't try to unload it a second time.</summary>
+        private void UnloadAndForget(ExtensionLoadContext context)
+        {
+            _contexts.Remove(context);
+            try { context.Unload(); }
+            catch { /* references may still be alive; GC collects later */ }
         }
     }
 }

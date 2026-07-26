@@ -31,8 +31,8 @@ namespace AnalyseTool.Core.Features.Extensions
                     // Manifest v2 vendor metadata (all optional).
                     description = d.Manifest.Description,
                     publisher = d.Manifest.Publisher,
-                    website = d.Manifest.Website,
-                    supportUrl = d.Manifest.SupportUrl,
+                    website = SafeLink(d.Manifest.Website),
+                    supportUrl = SafeLink(d.Manifest.SupportUrl),
                     updateFeed = d.Manifest.UpdateFeed,
                     enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
                     hasCommands = d.HasCommands,
@@ -65,6 +65,22 @@ namespace AnalyseTool.Core.Features.Extensions
                 devRoot = ExtensionSources.DefaultDevRoot,
                 extensions,
             });
+        }
+
+        /// <summary>
+        /// Vendor links are free-form manifest text, so only <c>http</c>/<c>https</c> leave this
+        /// command. Anything else — above all <c>javascript:</c>, which would run in the origin that
+        /// hosts <c>AT.invoke</c> and therefore reaches the whole command surface — is dropped here,
+        /// at the single point every consumer reads. The UI validates again before rendering; this is
+        /// the copy that also covers MCP and any future listing consumer.
+        /// </summary>
+        internal static string? SafeLink(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+            return Uri.TryCreate(url.Trim(), UriKind.Absolute, out Uri? parsed)
+                && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+                ? parsed.AbsoluteUri
+                : null;
         }
 
         private const long MaxIconBytes = 256 * 1024; // listing thumbnails; anything bigger is skipped

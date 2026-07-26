@@ -36,15 +36,28 @@ namespace AnalyseTool.Core.Common.Bootstrap
             IsInitialized = true;
         }
 
+        /// <summary>Serializes reloads. Every reload path funnels through this class — the ribbon button,
+        /// install/update/remove, enable/disable, SaveAsCommand — but they arrive on different threads
+        /// (UI thread, MCP thread pool). Two interleaved reloads used to drop load contexts from the
+        /// loader's list without unloading them (a permanent leak) and register the same names twice.</summary>
+        private static readonly object ReloadGate = new();
+
         /// <summary>Reloads extension command DLLs (collectible contexts) so changed code takes effect
         /// without restarting Revit. No-op until Initialize has run.</summary>
         public static void ReloadExtensions()
         {
             if (!IsInitialized) return;
-            Log.Information("Reloading extensions");
-            Loader.UnloadAll();
-            Loader.LoadAll();
-            Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+
+            lock (ReloadGate)
+            {
+                Log.Information("Reloading extensions");
+                Loader.UnloadAll();
+                Loader.LoadAll();
+                Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+            }
+
+            // Outside the lock: subscribers touch the ribbon (and hop to the Revit UI thread to do it),
+            // so holding the gate across them invites a deadlock for no benefit.
             ExtensionsReloaded?.Invoke();
         }
     }

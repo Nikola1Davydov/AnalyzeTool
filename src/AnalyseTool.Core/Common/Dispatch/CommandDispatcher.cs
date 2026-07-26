@@ -2,18 +2,26 @@ using AnalyseTool.Sdk;
 using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace AnalyseTool.Core.Common.Dispatch
 {
     internal sealed class CommandDispatcher
     {
-        private readonly Dictionary<string, CommandRegistration> _commands = new(StringComparer.OrdinalIgnoreCase);
+        // Concurrent because the registry is READ from every transport thread (a WebView2 window on the
+        // UI thread, an MCP connection on a thread-pool thread) while a reload REWRITES it: extension
+        // install/remove/enable and the ribbon's Reload all rebuild the extension half in place. A plain
+        // Dictionary resizing under a concurrent TryGetValue surfaces as a phantom "command is not
+        // registered" — or worse, a spin inside the bucket walk.
+        private readonly ConcurrentDictionary<string, CommandRegistration> _commands = new(StringComparer.OrdinalIgnoreCase);
         private readonly RevitTaskHub _hub;
 
         public CommandDispatcher(RevitTaskHub hub) => _hub = hub;
 
-        public IReadOnlyCollection<CommandRegistration> RegisteredCommands => _commands.Values;
+        /// <summary>Point-in-time snapshot — callers enumerate it (MCP tools/list, the Settings command
+        /// table) while a reload may be replacing the registry underneath them.</summary>
+        public IReadOnlyCollection<CommandRegistration> RegisteredCommands => _commands.Values.ToArray();
 
         public bool IsRegistered(string command) => _commands.ContainsKey(command);
 
@@ -31,7 +39,7 @@ namespace AnalyseTool.Core.Common.Dispatch
                 .ToList();
 
             foreach (string key in toRemove)
-                _commands.Remove(key);
+                _commands.TryRemove(key, out _);
         }
 
         /// <summary>Registers the built-in commands of the given platform assemblies (Core, Tools, App).
@@ -90,22 +98,26 @@ namespace AnalyseTool.Core.Common.Dispatch
             // No [RevitCommand] at all, or [RevitCommand] without an explicit name -> use the class name.
             string baseName = string.IsNullOrEmpty(attr?.Name) ? type.Name : attr!.Name!;
             string name = string.IsNullOrEmpty(prefix) ? baseName : $"{prefix}.{baseName}";
-            if (_commands.TryGetValue(name, out CommandRegistration? existing))
-            {
-                // Log-only (no dialog from Core): a conflict means the later registration is skipped,
-                // which the author notices in the Settings command list / extension diagnostics.
-                Log.Error("Command name conflict: {Name} is already registered from {Existing}; " +
-                          "skipping registration from {Source}", name, existing.Source, source);
-                return;
-            }
 
-            _commands[name] = new CommandRegistration(
+            CommandRegistration registration = new(
                 name, type, source,
                 attr?.Description,
                 attr?.ReadOnly ?? false,
                 attr?.Destructive ?? false,
                 BuildInputSchema(attr?.InputType),
                 ExposeToMcp: !(attr?.HiddenFromMcp ?? false));
+
+            // TryAdd, not check-then-set: first registration wins, and the winner is decided atomically.
+            if (!_commands.TryAdd(name, registration))
+            {
+                // Log-only (no dialog from Core): a conflict means the later registration is skipped,
+                // which the author notices in the Settings command list / extension diagnostics.
+                string existingSource = _commands.TryGetValue(name, out CommandRegistration? existing)
+                    ? existing.Source
+                    : "<unknown>";
+                Log.Error("Command name conflict: {Name} is already registered from {Existing}; " +
+                          "skipping registration from {Source}", name, existingSource, source);
+            }
         }
 
         /// <summary>Generates a JSON Schema for the declared input type (via Microsoft.Extensions.AI, already

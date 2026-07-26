@@ -712,15 +712,22 @@ The snippet looks like:
   "mcpServers": {
     "analysetool-revit": {
       "command": "C:\\...\\AnalyseTool\\mcp\\AnalyseTool.Mcp.exe",
-      "args": ["--port", "17890"]
+      "args": ["--port", "17890", "--token", "<generated per machine>"]
     }
   }
 }
 ```
 
 Notes:
+- **Copy the snippet from Settings, don't retype it.** The `--token` value is a per-machine secret
+  that authorizes the client against Revit: the bridge listens on 127.0.0.1, which keeps the network
+  out but not other processes running as you, so every request must carry the token. Calls without it
+  are refused.
 - Start Revit (with the MCP server enabled) **before** the AI client lists tools — if Revit is down
   at that moment the tool list comes back empty until the client refetches.
+- **Not every command is an AI tool.** Commands declared `HiddenFromMcp` (plugin management, the C#
+  code-execution switch) are neither listed nor callable over MCP — the bridge enforces that on the
+  invoke path, not just when building the tool list.
 - Nothing extra is required in your extension. To make a command *useful* to an AI, give it a
   `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` (see §4.5)
   — that becomes the tool's description, safety hints, and input schema automatically.

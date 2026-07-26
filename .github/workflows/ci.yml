@@ -17,6 +17,11 @@ on:
     branches: [main, dev]
   workflow_dispatch:
 
+# This job builds and runs code from every pushed branch; it needs to read the repo and nothing else.
+# Without this block the token inherits the repository default, which may still be write-all.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build + guardrails
@@ -37,6 +42,8 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          # Without this, any .csproj edit means a fully cold restore instead of a near-hit.
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Run CI guardrails (Nuke)
         run: ./src/build.cmd Ci

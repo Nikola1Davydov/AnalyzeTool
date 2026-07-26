@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, defineAsyncComponent } from "vue";
 import { storeToRefs } from "pinia";
 import ToggleSwitch from "primevue/toggleswitch";
 import Tabs from "primevue/tabs";
@@ -9,7 +9,21 @@ import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 import AiModelPicker from "@/components/AiModelPicker.vue";
+
+// Lazily loaded: the drawer carries the full extension scaffold (csproj, plugin.json and index.html
+// templates) and is opened rarely, so it gets its own chunk instead of riding in the entry bundle.
+const CreateExtensionTemplateDrawer = defineAsyncComponent(
+  () => import("@/view/System/CreateExtensionTemplateDrawer.vue"),
+);
+
+const notifications = useNotificationStore();
+
+/** Message from a rejected invoke, ready to show. */
+function errorText(e: unknown): string {
+  return String((e as Error)?.message ?? e);
+}
 
 interface ExtensionRow {
   id: string;
@@ -40,6 +54,20 @@ interface ExtensionsData {
   extensions: ExtensionRow[];
 }
 
+// Vendor links come from the extension's own plugin.json. Binding one straight into :href would
+// let "javascript:…" run in THIS origin, where window.AT reaches every registered command — so a
+// UI-only extension could grant itself C# execution. The host strips non-http(s) links too
+// (GetInstalledExtensions.SafeLink); this is the render-time half of the same rule.
+function safeLink(url?: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : null;
+  } catch {
+    return null; // not an absolute URL — nothing safe to link to
+  }
+}
+
 interface PathRow {
   path: string; // root — used for remove
   scanDir: string; // what's actually scanned (extensions live directly under the root)
@@ -68,6 +96,7 @@ interface McpStatus {
   wsUrl: string;
   serverExePath: string;
   serverExeExists: boolean;
+  token: string;
   lastError: string | null;
 }
 
@@ -105,6 +134,10 @@ const changelogError = ref<string | null>(null);
 async function openChangelog() {
   changelogVisible.value = true;
   if (changelogHtml.value) return; // fetched once per window
+  // Clear the previous failure: the template checks the error branch first, so a single failed
+  // fetch used to keep showing its message for the rest of the window's life — even after a
+  // later open succeeded and the content was sitting right there, unrendered.
+  changelogError.value = null;
   try {
     const res = await invoke<{ markdown: string | null; error: string | null }>("GetChangelog");
     if (res?.markdown) {
@@ -167,8 +200,12 @@ async function load() {
   loading.value = true;
   try {
     data.value = await invoke<ExtensionsData>("GetInstalledExtensions");
+    // Update results were computed against the versions we are replacing right now. Keeping them
+    // showed "update available → 2.0.0" next to a row that already reads 2.0.0 after a reinstall,
+    // with an Update button that would re-download what is installed.
+    updateChecks.value = {};
   } catch (e) {
-    console.error("Failed to load extensions", e);
+    notifications.error(`Could not load the extension list: ${errorText(e)}`);
   } finally {
     loading.value = false;
   }
@@ -188,12 +225,24 @@ async function reload() {
 
 // The backend toggles extensions-state.json and reloads (commands + ribbon), so the
 // full refresh mirrors what just happened on the host side.
+//
+// The switch is updated optimistically and put back on failure. That is not cosmetic: PrimeVue's
+// ToggleSwitch holds its own internal value and only re-reads the prop when the prop CHANGES, so
+// leaving row.enabled untouched after a rejected call left the switch showing a state the host
+// never accepted — silently, since the failure only reached the console.
 async function setExtensionEnabled(row: ExtensionRow, enabled: boolean) {
+  const previous = row.enabled;
+  row.enabled = enabled;
   loading.value = true;
   try {
     await invoke("SetExtensionEnabled", { id: row.id, enabled });
   } catch (e) {
-    console.error("Failed to toggle extension", e);
+    row.enabled = previous;
+    loading.value = false;
+    notifications.error(
+      `Could not ${enabled ? "enable" : "disable"} "${row.name || row.id}": ${errorText(e)}`,
+    );
+    return;
   }
   await Promise.all([load(), loadCommands()]);
 }
@@ -272,7 +321,9 @@ async function checkUpdates() {
     for (const r of res?.results ?? []) map[r.id] = r;
     updateChecks.value = map;
   } catch (e) {
-    console.error("Update check failed", e);
+    // The button stops spinning either way — without a message the user cannot tell "no updates"
+    // from "the check never ran".
+    notifications.error(`Update check failed: ${errorText(e)}`);
   } finally {
     checkingUpdates.value = false;
   }
@@ -419,13 +470,17 @@ async function loadCodeExec() {
 }
 
 async function setCodeExec(enabled: boolean) {
+  const previous = codeExec.value;
+  codeExec.value = enabled;
   codeExecBusy.value = true;
   try {
     const res = await invoke<{ enabled: boolean }>("SetCodeExecution", { enabled });
     codeExec.value = !!res?.enabled;
   } catch (e) {
-    console.error("Failed to update code-execution setting", e);
-    await loadCodeExec(); // revert the checkbox to the real state
+    // Of every toggle in this window, this is the one that must never lie: it gates arbitrary C#
+    // execution inside Revit. Restore the value we know the host still holds and say so out loud.
+    codeExec.value = previous;
+    notifications.error(`Could not change the C# code-execution setting: ${errorText(e)}`);
   } finally {
     codeExecBusy.value = false;
   }
@@ -464,7 +519,9 @@ const clientConfig = computed(() => {
       mcpServers: {
         "analysetool-revit": {
           command: mcp.value.serverExePath,
-          args: ["--port", String(mcp.value.port)],
+          // --token is required: Revit rejects bridge calls that don't carry it, so a config copied
+          // before this version has to be replaced with this one.
+          args: ["--port", String(mcp.value.port), "--token", mcp.value.token],
         },
       },
     },
@@ -504,14 +561,18 @@ async function loadHostButtons() {
 }
 
 async function setHostButtonVisible(row: HostButtonRow, visible: boolean) {
+  const previous = row.visible;
+  row.visible = visible; // optimistic, restored below — see setExtensionEnabled for why
   hostButtonBusy.value = row.key;
   try {
     await invoke("SetHostButtonVisible", { key: row.key, visible });
   } catch (e) {
-    console.error("Failed to toggle host button", e);
-  } finally {
+    row.visible = previous;
     hostButtonBusy.value = "";
+    notifications.error(`Could not ${visible ? "show" : "hide"} "${row.name}": ${errorText(e)}`);
+    return;
   }
+  hostButtonBusy.value = "";
   await loadHostButtons();
 }
 
@@ -522,7 +583,8 @@ onMounted(() => {
   loadCodeExec();
   loadCommands();
   loadHostButtons();
-  useUpdateStore().loadUpdateData();
+  // No loadUpdateData() here: App.vue already runs it for every window, and the store has no
+  // in-flight guard — calling it again just spent a second GitHub API request on a result we hold.
 });
 </script>
 
@@ -530,7 +592,9 @@ onMounted(() => {
   <div class="p-6">
     <h1 class="text-xl font-bold mb-4">Settings</h1>
 
-    <Tabs value="extensions">
+    <!-- lazy: without it every panel mounts and re-renders on every refresh, including the full
+         commands table sitting on a hidden tab. -->
+    <Tabs value="extensions" lazy>
       <TabList>
         <Tab value="extensions">Extensions</Tab>
         <Tab value="commands">Commands</Tab>
@@ -723,12 +787,21 @@ onMounted(() => {
                 </div>
                 <div class="text-surface-500 text-xs">
                   {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
-                  <a v-if="row.website" :href="row.website" class="ml-1" v-tooltip.top="'Website'">
+                  <a
+                    v-if="safeLink(row.website)"
+                    :href="safeLink(row.website)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ml-1"
+                    v-tooltip.top="'Website'"
+                  >
                     <i class="pi pi-external-link text-xs" />
                   </a>
                   <a
-                    v-if="row.supportUrl"
-                    :href="row.supportUrl"
+                    v-if="safeLink(row.supportUrl)"
+                    :href="safeLink(row.supportUrl)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     class="ml-1"
                     v-tooltip.top="'Support'"
                   >
@@ -1141,6 +1214,11 @@ onMounted(() => {
           class="bg-surface-100 text-surface-700 text-xs rounded p-3 overflow-auto whitespace-pre-wrap break-all"
           >{{ clientConfig }}</pre
         >
+        <p class="text-xs text-surface-500 mt-1">
+          The <code>--token</code> argument authorizes this client against Revit — without it every
+          call is refused. If you configured the MCP server before this version, replace your old
+          config with the snippet above. Keep it local, like any other machine credential.
+        </p>
       </div>
     </section>
         </TabPanel>

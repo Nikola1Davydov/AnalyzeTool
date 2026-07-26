@@ -2,47 +2,77 @@ name: Publish Release
 
 on:
   push:
+    # Version tags only. This used to be '*', so pushing any scratch tag ("wip", "test") started a
+    # full release build — which then failed looking for its changelog section and, on the way out,
+    # deleted that tag from origin.
     tags:
-      - '*'
+      - '[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
     inputs:
       version:
         description: "Release version"
         required: true
         type: string
-        
+
 permissions:
   contents: write
+
+# One release at a time: two concurrent runs would race on Release.Create, and the loser's cleanup
+# would delete the tag of the release that just succeeded.
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
 
 jobs:
   release:
     name: Publish release
     runs-on: windows-2022
+    env:
+      # Never interpolate ${{ }} straight into a shell line — the value reaches the shell as an
+      # environment variable instead, so it cannot break out of the command.
+      RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # The release builds Release R25/R26/R27, and R27 targets net10.0-windows — do not rely on
+      # whatever the runner image happens to preinstall (ci.yml installs both for the same reason).
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # BuildClientApp shells out to `npm run build` through clientapp.esproj.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Create release tag
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -e
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          git tag "$RELEASE_VERSION"
+          git push origin "$RELEASE_VERSION"
 
       - name: Cache packages
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
       # This publishes the PLUGIN only. The AnalyseTool.Sdk package is pushed to nuget.org by hand —
       # see RELEASE_CHECKLIST.md. It changes a few times a year, which did not justify the standing
       # machinery (a trusted-publishing policy, an OIDC step, and a target re-running the whole Ci
       # gate on every release).
       - name: Publish release
-        run: ./src/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
+        shell: bash
+        run: ./src/build.cmd PublishGitHub --ReleaseVersion "$RELEASE_VERSION"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
