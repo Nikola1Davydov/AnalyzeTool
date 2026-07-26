@@ -54,6 +54,14 @@ A reusable checklist to run before publishing a new AnalyseTool version.
 - [ ] Release pipeline is green; the GitHub release was created with the changelog body.
 - [ ] Both installers (**SingleUser** + **MultiUser**) install on a clean machine; WebView2-missing prompt
       works when the runtime is absent.
-- [ ] SDK published to nuget.org at the new version (needs the `NUGET_API_KEY` repo secret) — otherwise it
-      is only attached to the GitHub release.
+- [ ] **SDK package — publish by hand if its contract changed.** The release pipeline does NOT push it.
+      1. Bump `<Version>` (and `FileVersion`) in `src/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj`. A version
+         already on the feed is immutable, so a fix without a bump reaches nobody — that is how the
+         packaging fixes announced in 1.4.4 stayed unpublished.
+      2. Take the `.nupkg` from the `sdk-nupkg` artifact of a **green** CI run, or build it with
+         `src\build.cmd PackSdk`. Green matters: `TestSdkPackage` builds an external-author project
+         against that exact package, and a published version cannot be recalled.
+      3. `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`
+      4. Only now bump the pinned version in `ONBOARDING.md` §4.1 and `src/LLM.md` §4 — they must
+         name a version authors can actually restore.
 - [ ] If releasing from `main`, `dev` is merged into `main` first.

@@ -211,10 +211,16 @@ A published version is immutable, so a mistake only reaches whoever chooses to m
 it — provided consumers pin an EXACT version. Floating ranges (`1.1.*`) give the
 property straight back and are therefore banned from every template and doc.
 
-`PublishSdkPackage` (src/build/Build.Publish.NuGet.cs) depends on the whole `Ci`
-target, so `TestSdkPackage` — which builds an external-author project against the
-freshly packed nupkg — stands between a broken package and the feed. Trial runs go to
-a private feed (GitHub Packages); nuget.org waits until the contract settles.
+The package has been on nuget.org since 1.0.0. Pushing a new version is a **manual**
+step — see `RELEASE_CHECKLIST.md`. A publishing target existed briefly and was removed:
+the contract changes a few times a year, which did not pay for a trusted-publishing
+policy, an OIDC step in the release workflow, and a target re-running the whole `Ci`
+gate on every plugin release. Automating it again is tracked as #81.
+
+What that costs: `TestSdkPackage` — which builds an external-author project against the
+freshly packed nupkg — no longer stands between a broken package and the feed by
+construction. It still runs on every push, so the signal exists; the checklist says to
+push only from a green run.
 
 ## Implementation phases
 

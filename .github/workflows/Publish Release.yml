@@ -13,10 +13,7 @@ on:
         
 permissions:
   contents: write
-  # Trusted Publishing: NuGet/login exchanges this job's OIDC token for a short-lived nuget.org API
-  # key — no long-lived secret to store or rotate. The policy on nuget.org names THIS workflow file.
-  id-token: write
-  
+
 jobs:
   release:
     name: Publish release
@@ -41,26 +38,11 @@ jobs:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
 
-      # Exchanges the job's OIDC token for a temporary nuget.org API key, per the Trusted Publishing
-      # policy registered for this repository + workflow file. NUGET_USER is a repository VARIABLE
-      # (Settings → Secrets and variables → Actions → Variables) holding the nuget.org profile name
-      # that owns AnalyseTool.Sdk. While it is unset, the step is skipped and the push falls back to
-      # the NUGET_API_KEY secret below — so either auth mode works, and having neither fails the
-      # release loudly.
-      - name: NuGet login (trusted publishing)
-        id: nuget-login
-        if: vars.NUGET_USER != ''
-        uses: NuGet/login@v1
-        with:
-          user: ${{ vars.NUGET_USER }}
-
-      # PublishSdkPackage is part of the release, not an option: the design doc makes publishing the
-      # package a release condition, and release 1.4.4 already proved why — its notes announced SDK
-      # 1.1.1, but nothing in this pipeline pushed it, so nuget.org silently stayed at 1.1.0. The
-      # target runs the full Ci gate first and skips versions the feed already has, so releases that
-      # do not bump the SDK version are a no-op on the feed.
+      # This publishes the PLUGIN only. The AnalyseTool.Sdk package is pushed to nuget.org by hand —
+      # see RELEASE_CHECKLIST.md. It changes a few times a year, which did not justify the standing
+      # machinery (a trusted-publishing policy, an OIDC step, and a target re-running the whole Ci
+      # gate on every release).
       - name: Publish release
-        run: ./src/build.cmd PublishGitHub PublishSdkPackage --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
+        run: ./src/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NuGetApiKey: ${{ steps.nuget-login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}
