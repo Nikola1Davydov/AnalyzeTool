@@ -21,6 +21,10 @@ sealed partial class Build : NukeBuild
             .Select(pair => pair.Key)
             .Select(config => config.Remove(config.LastIndexOf('|')))
             .Where(config => Configurations.Any(wildcard => FileSystemName.MatchesSimpleExpression(wildcard, config)))
+            // The solution declares every configuration for three platforms (Any CPU, x64, x86), so
+            // stripping the platform yields "Release R25" three times. Without this the callers build
+            // each configuration three times over — and BuildClientApp runs `npm run build` nine.
+            .Distinct()
             .ToList();
 
         Assert.NotEmpty(configurations, $"No solution configurations have been found. Pattern: {string.Join(" | ", Configurations)}");

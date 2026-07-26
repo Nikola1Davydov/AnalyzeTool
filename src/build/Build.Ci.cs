@@ -12,7 +12,7 @@ sealed partial class Build
     // CI guardrails live HERE (not in the workflow YAML) so the exact same pipeline runs locally
     // (`src/build.cmd Ci`) and on GitHub — ci.yml is reduced to "checkout, setup .NET, run Ci".
     //   1. dependency contract + headless Core/Tools invariant (Check-Boundaries.ps1)
-    //   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
+    //   2. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
     //   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
     //   4. the extension template the plugin generates actually builds, and Core's embedded
     //      template resources are really in the assembly (Build.Ci.Template.cs)
@@ -34,12 +34,16 @@ sealed partial class Build
                 .AssertZeroExitCode();
         });
 
-    /// <summary>The full plugin chain for both TFM worlds: Debug R25 (net8) and Debug R27 (net10).</summary>
+    /// <summary>
+    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
+    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
+    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
+    /// </summary>
     Target CompileCi => _ => _
         .DependsOn(CheckBoundaries)
         .Executes(() =>
         {
-            foreach (string configuration in new[] { "Debug R25", "Debug R27" })
+            foreach (string configuration in new[] { "Debug R25", "Debug R26", "Debug R27" })
             {
                 DotNetBuild(settings => settings
                     .SetProjectFile(LauncherProject)
