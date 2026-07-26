@@ -308,6 +308,39 @@ const { commands } = await window.AT.invoke("GetCommands");
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 
+### 7.0 Migrating an extension from the OLD layout
+
+If you are asked to update an existing extension, check which layout it uses first. The old one put
+the Revit year **above** the extension; the current one puts it **inside**:
+
+```
+OLD (deprecated, still loads)          NEW
+extensions\2025\acme.doors\            extensions\acme.doors\
+    plugin.json                            plugin.json          <- ONE copy
+    Acme.Doors.dll                         index.html           <- ONE copy
+    index.html                             icon.png
+extensions\2026\acme.doors\                2025\Acme.Doors.dll
+    plugin.json      (duplicate)           2026\Acme.Doors.dll
+    Acme.Doors.dll
+    index.html       (duplicate)
+```
+
+Rules for the conversion — they cover every case:
+
+1. **DLLs** move into a `<year>\` subfolder of the extension, one per Revit version.
+2. **Everything else** (`plugin.json`, `*.cs` scripts, `index.html`, `ui/`, `icon.png`, assets) goes
+   in the extension root, exactly ONCE. The old layout duplicated these per year; they are
+   version-independent, so collapse them to a single copy. If the duplicates differ, the newest wins
+   — say so rather than guessing silently.
+3. **`plugin.json` needs no change.** The year folders are the version declaration. If an old
+   manifest still carries a `targetRevit` field, DELETE it — it is not read.
+4. **The csproj** gets `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>` and the
+   `RevitVersion`-driven TFM/packages from §4, so the build writes into the right subfolder itself.
+   Remove any post-build copy step that targeted `extensions\<year>\<id>\`.
+
+Do NOT delete the old folder as part of the migration — leave that to the user; both layouts load,
+so nothing breaks while both exist.
+
 ### 7.1 Publish (optional)
 
 For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole

@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.5] / unreleased
+
+- 🧩 **Extension manager** — Settings now installs, removes, enables/disables and updates extensions instead of only listing them. Two zones are kept apart: **Installed** packages the manager owns, and your own **Dev** folders it never touches. Install from a `.zip` (with a third-party consent prompt), see an update badge when a newer version is published, and read per-extension diagnostics when something fails to load.
+- 📦 **One package for every Revit version** — an extension is now a single zip whose per-year binaries live inside it (`MyExt\2025\MyExt.dll`), with `plugin.json`, scripts, `ui/` and the icon in the root. No more one folder per Revit year: the extension folder sits directly under the extensions root and the year is a subfolder of it. Old `extensions\<year>\<id>\` folders keep loading unchanged.
+- 🚚 **Publishing pipeline for authors** — `dotnet build -t:PackExtension` builds every Revit year and produces the release zip; a `github:owner/repo` feed in `plugin.json` is enough for the manager to offer updates. No server, no marketplace.
+- 🏷️ **Manifest v2** (additive, old manifests keep working) — `description`, `publisher`, `website`, `supportUrl`, `icon` and `updateFeed`; `ui.button.command` lets a ribbon button run a command instead of opening a page.
+- 🛠️ Fixed **"New template → C#"** producing a project that built into `bin\` instead of the extension folder — following the documented `dotnet build` gave an extension the host could not load. The generated project now derives its output folder, its Revit API packages and its target framework from a single `RevitVersion` property, so `dotnet build -p:RevitVersion=2026` retargets it without editing a file.
+- 🔍 An extension that was never built now reads **"Not built"** with instructions, instead of **"Incompatible"** — which sent authors looking for a Revit-version problem that was not there. "Incompatible" is kept for its real case and now names the years the extension does ship.
+- 📖 `ONBOARDING.md` and the paste-into-AI `LLM.md` rewritten for the new layout, including a migration section for extensions built against the old one.
+
+## [1.4.4] / 2026-07-23
+
+- ⏳ **Revit busy indicator** — every AnalyseTool window shows a bottom status strip while something runs (command name, source, elapsed time) and warns **proactively** when Revit itself is blocked by an open dialog or edit mode — before you click and wonder why nothing happens. AI agents get the same insight via the new `GetQueueStatus` command (MCP): check it before heavy commands, wait while Revit is busy.
+- ⚖️ **License** — the plugin is now licensed under **Apache 2.0** (the `AnalyseTool.Sdk` package stays MIT); NOTICE and third-party attributions ship with the plugin.
+- 📦 SDK 1.1.1 — packaging fixes for extension authors (contract unchanged): the authoring props now work in projects with and without Central Package Management, the MIT license text is embedded in the package, and the docs/templates consistently use full parameter names (`revitContext`, `cancellationToken`).
+- 🤝 New template — **every** template flavour (UI-only included) now ships `LLM.md`, the paste-into-AI authoring guide; previously only C# templates got it.
+- 🧱 Internal: the codebase was restructured into feature slices with a headless core; both transports — the WebView UI and the MCP server — now reach commands through one shared queue. CI logic moved into the Nuke build, so `build.cmd Ci` runs the exact CI checks locally.
+
 ## [1.4.3] / 2026-07-14
 
 - 🏗️ **Revit 2027 support** — the plugin (and the extension SDK / build configs) now covers Revit 2025, 2026 and 2027.
