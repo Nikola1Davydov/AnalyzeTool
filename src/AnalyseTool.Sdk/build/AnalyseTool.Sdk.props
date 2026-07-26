@@ -1,15 +1,19 @@
 <Project>
 
   <!--
-    NuGet auto-imports build/<PackageId>.props for consumers of the AnalyseTool.Sdk package.
-    It pulls in the shared authoring settings (R25/R26/R27 configurations, the matching TFM —
-    net8.0-windows for R25/R26, net10.0-windows for R27 — and the Revit API referenced compile-only for
-    the chosen RevitVersion). So an extension author just does:
+    NuGet auto-imports build/<PackageId>.props for consumers of the AnalyseTool.Sdk package. It
+    brings the shared authoring settings: the R25/R26/R27 configurations and the matching TFM
+    (net8.0-windows for R25/R26, net10.0-windows for R27).
 
-        dotnet add package AnalyseTool.Sdk
-
-    and gets a turnkey setup — pick a "Release R25" / "Release R26" / "Release R27" config and build.
+    It does NOT bring the Revit API references, and cannot: package-shipped props are invisible to
+    the first restore, so an author has to declare Nice3point.Revit.Api.* in their own csproj (see
+    ONBOARDING §4.1). Adding them here as well would only duplicate what they wrote — NU1504 on
+    every build after the first. The marker below tells Extension.props which world it is in.
   -->
+
+  <PropertyGroup>
+    <_AnalyseToolSdkFromPackage>true</_AnalyseToolSdkFromPackage>
+  </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)AnalyseTool.Extension.props" />
 

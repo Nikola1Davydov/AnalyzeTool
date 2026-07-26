@@ -19,16 +19,17 @@
          minor still binds. MAJOR remains the hard compatibility key (checked at load).
          1.1: added IProgressAware / ProgressInfo (additive — commands can opt into progress reporting). -->
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.1.0</FileVersion>
+    <FileVersion>1.1.2.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). It is AHEAD
-         of nuget.org on purpose: 1.1.1 holds the packaging fixes announced in plugin release 1.4.4
-         that were never pushed. Docs pin 1.1.0 — what authors can actually restore today — so bump
-         them in the same commit as the push, never before it. -->
-    <Version>1.1.1</Version>
+    <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). Ahead of
+         nuget.org on purpose: 1.1.2 drops the Revit API references from the package-facing props,
+         which duplicated the ones every consumer must declare themselves (NU1504). A published
+         version is immutable, so the fix needs a new number to reach anyone. Docs pin 1.1.1 — what
+         authors can restore today — and move only in the same commit as the push. -->
+    <Version>1.1.2</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>

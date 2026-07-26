@@ -48,7 +48,7 @@ powershell -File src/build/Check-Boundaries.ps1
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
 2. Build chain for R25 (net8) and R27 (net10).
 3. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
-4. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\<year>\` — a live smoke test of the real ALC loading path.
+4. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\Acme.Sample\` (manifest + UI in the root, assembly in `<year>\`) — a live smoke test of the real ALC loading path, in the layout authors are told to use.
 
 ## Docs to keep in sync
 

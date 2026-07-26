@@ -58,11 +58,17 @@
   </PropertyGroup>
 
   <!-- The Revit API version floats with the configuration ($(RevitVersion).*), so it cannot live in a
-       central Directory.Packages.props. This file is consumed in BOTH worlds: the AnalyseTool repo
-       (Central Package Management ON — plain Version would be error NU1008, so VersionOverride) and
-       external extension authors via the NuGet package (CPM OFF — VersionOverride would be ignored
-       with NU1009, so plain Version). The conditional metadata picks the right attribute per world. -->
-  <ItemGroup>
+       central Directory.Packages.props. Central Package Management ON (the AnalyseTool repo) needs
+       VersionOverride — plain Version is error NU1008 — and CPM OFF needs plain Version, since
+       VersionOverride would be ignored with NU1009. The conditional metadata picks the right one.
+
+       SKIPPED when this file arrives from the NuGet package. A package consumer MUST declare these
+       two references in their own csproj: package-shipped props are invisible to the FIRST restore
+       (the package is not on disk yet), so nothing else can put them there. On every later restore
+       the package IS present, this file is imported, and its copies collide with the author's —
+       which is the NU1504 duplicate-PackageReference warning every consumer was getting, six times
+       per build, caused by the very setup our own §4.1 tells them to write. -->
+  <ItemGroup Condition="'$(_AnalyseToolSdkFromPackage)' != 'true'">
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI">
       <Version Condition="'$(ManagePackageVersionsCentrally)' != 'true'">$(RevitVersion).*</Version>
       <VersionOverride Condition="'$(ManagePackageVersionsCentrally)' == 'true'">$(RevitVersion).*</VersionOverride>
