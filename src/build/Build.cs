@@ -8,9 +8,14 @@ using System.Linq;
 sealed partial class Build : NukeBuild
 {
     /// <summary>
-    ///     Pipeline entry point.
+    ///     Pipeline entry point. The default target is deliberately the read-only guardrail run:
+    ///     bare <c>build.cmd</c> must not do anything outward-facing. It used to default to
+    ///     <c>PublishGitHub</c>, so a run with no arguments went straight at creating a GitHub
+    ///     release — and <c>CleanFailedRelease</c> deletes the tag from origin when that fails.
+    ///     Both workflows name their target explicitly (ci.yml -> Ci, Publish Release.yml ->
+    ///     PublishGitHub), so nothing relies on the default; publishing is now an explicit ask.
     /// </summary>
-    public static int Main() => Execute<Build>(build => build.PublishGitHub);
+    public static int Main() => Execute<Build>(build => build.Ci);
 
     /// <summary>
     ///     Extract solution configuration names from the solution file.
