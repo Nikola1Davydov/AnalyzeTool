@@ -13,8 +13,10 @@ namespace AnalyseTool.Core.Features.Extensions
     /// <summary>
     /// Scaffolds an extension on disk in one of three flavours:
     ///   • <c>UiOnly</c>  — plugin.json + index.html (plain HTML/CSS/JS, no build).
-    ///   • <c>Csharp</c>  — plugin.json + csproj + Hello.cs + README (built with <c>dotnet build</c>).
+    ///   • <c>Csharp</c>  — plugin.json + csproj + Hello.cs (built with <c>dotnet build</c>).
     ///   • <c>Combo</c>   — both.
+    /// Every flavour additionally gets <c>LLM.md</c>, the paste-into-AI authoring guide — it covers
+    /// C#, script AND JS/UI authoring, so UI-only templates need it just as much.
     /// C# files reference the SDK by absolute HintPath to the currently installed
     /// <c>AnalyseTool.Sdk.dll</c>, so authors always build against the running host version.
     /// </summary>
@@ -106,14 +108,18 @@ namespace AnalyseTool.Core.Features.Extensions
                 filesCreated.Add(helloCsPath);
 
                 // bin\ and obj\ are the only things in this folder that are not part of the extension.
+                // C# flavours only: a script or UI folder has no build output to ignore.
                 string gitignorePath = Path.Combine(extensionRoot, ".gitignore");
                 File.WriteAllText(gitignorePath, ReadTemplate(GitignoreResource));
                 filesCreated.Add(gitignorePath);
-
-                string llmInstructionsPath = Path.Combine(extensionRoot, "LLM.md");
-                File.WriteAllText(llmInstructionsPath, BuildLLMInstructions());
-                filesCreated.Add(llmInstructionsPath);
             }
+
+            // LLM.md — for EVERY flavour, not just C#: the guide covers C#, script and JS/UI authoring,
+            // and a UI-only author needs the AT.invoke contract just as much as a C# author needs
+            // IRevitTask.
+            string llmInstructionsPath = Path.Combine(extensionRoot, "LLM.md");
+            File.WriteAllText(llmInstructionsPath, BuildLLMInstructions());
+            filesCreated.Add(llmInstructionsPath);
 
             return Task.FromResult<object?>(new
             {

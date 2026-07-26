@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+    <PropertyGroup Label="Globals">
+      <WebView2EnableCsWinRTProjection>False</WebView2EnableCsWinRTProjection>
+    </PropertyGroup>
     
     <PropertyGroup>
         <UseWPF>true</UseWPF>
