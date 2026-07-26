@@ -14,6 +14,8 @@ sealed partial class Build
     //   1. dependency contract + headless Core/Tools invariant (Check-Boundaries.ps1)
     //   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
     //   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+    //   4. the extension template the plugin generates actually builds, and Core's embedded
+    //      template resources are really in the assembly (Build.Ci.Template.cs)
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath SdkNupkgDirectory => CiArtifactsDirectory / "sdk-nupkg";
@@ -115,6 +117,6 @@ sealed partial class Build
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, TestSdkPackage)
+        .DependsOn(CompileCi, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }
