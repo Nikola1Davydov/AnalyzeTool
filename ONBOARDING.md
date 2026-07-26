@@ -17,16 +17,27 @@ There are three kinds of extension, and they play different roles:
 | Kind | What it ships | What it does | Build needed? |
 | --- | --- | --- | --- |
 | **C# extension** | a `.dll` of command classes | **ADDS** commands to the host's shared command dispatcher | yes |
-| **Script extension** | a plain `.cs` file | ADDS commands too — compiled at load time by Roslyn | **no** |
 | **JS / UI extension** | an HTML page (any framework) | **CONSUMES** commands by calling `window.AT.invoke(...)` | no |
+| **Script extension** | a plain `.cs` file | ADDS commands too — compiled at load time by Roslyn | no — see the caveat |
 
 > **The one principle:** C# and script extensions *add* commands to the Core; JS extensions
 > *consume* them.
 
 A single extension folder can be any of these, or a combination. The sample
 (`samples/Acme.Sample`) is C# + UI: a `Hello` command plus an `index.html` page with a button
-that calls it. A script extension is the shortest path to a working command — drop a `.cs` file
-next to `plugin.json`, omit `entryAssembly`, hit Reload. Same contract, no project, no build.
+that calls it.
+
+**If you are writing an extension for other people, write a C# one.** A script skips the build
+step, but "no build" does not mean "no compiler" — it means the compiler runs on your user's
+machine, at load time, inside Revit, where a syntax error is a red banner rather than something
+you saw and fixed. And because a script has no per-year folders (§2), it cannot declare which
+Revit versions it supports: code that is valid on 2025 and invalid on 2027 stays invisible until
+someone on 2027 opens Revit, and the manager cannot flag it as incompatible either. Everything
+below about packaging and updates assumes per-year DLLs.
+
+Scripts earn their place elsewhere: one-off automation you keep to yourself, and the AI path —
+an agent trying something over MCP, or **Save as command** promoting a snippet that worked into a
+permanent one.
 
 Every command — built-in or from any C# extension — is reachable through the same channels:
 
@@ -636,10 +647,11 @@ Two red tags mean different things, and the difference is the fix:
 - [ ] Output is just your DLL + `plugin.json` (SDK/Revit refs `Private=false`).
 - [ ] Test: `await window.AT.invoke("<id>.<Command>")` from any extension page or the console.
 
-**Script extension** (no project, no build)
+**Script extension** (personal or AI-authored only — not for distribution, see §1)
 - [ ] `plugin.json` with `id` and **no** `entryAssembly`.
 - [ ] One or more `.cs` files in the folder **root**, each with `IRevitTask` classes.
 - [ ] Reload — Roslyn compiles them at load; errors show as the extension's diagnostics.
+- [ ] Shipping this to someone? Make it a C# project instead.
 
 **UI-only extension**
 - [ ] `plugin.json` with `id`, `ui` (`entryHtml`, `tab`, `panel`, `button`), **no** `entryAssembly`.

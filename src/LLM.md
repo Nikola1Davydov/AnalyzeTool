@@ -11,16 +11,28 @@ directory and clicks **Reload**.
 
 ---
 
-## 1. The three kinds of extension
+## 1. What to generate
 
-| Kind | Ships | Role | Build needed? |
+| Kind | Ships | Role | Use it |
 | --- | --- | --- | --- |
-| **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | yes (`dotnet build`) |
-| **Script** | a plain `.cs` file | ADDS commands, compiled at runtime by Roslyn | **no** |
-| **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | no |
+| **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | **always — this is the default** |
+| **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | when the extension needs a page |
+| **Script** | a plain `.cs` file, compiled at load by Roslyn | ADDS commands | only when explicitly asked (§5) |
 
-One folder can be C#-only, UI-only, script, or a combination. **The principle:** C#/script
-extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+**The principle:** C# extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+One folder can be C#-only, UI-only, or both.
+
+> **Generate a compiled C# project (a `.dll`), not a script.** Skipping the build does not remove
+> the compiler — it moves it onto the user's machine, at load time, inside Revit, where a syntax
+> error becomes a red banner instead of a build error you can see and fix. Worse, a script has no
+> per-year folders, so it cannot declare which Revit versions it supports: code that is valid on
+> 2025 and invalid on 2027 looks fine until a user on 2027 opens Revit, and the manager cannot even
+> flag it as incompatible. Everything the platform offers for distribution — the package format,
+> `PackExtension`, update feeds — is built around per-year DLLs.
+>
+> Write a script ONLY when the request is explicitly for one (see §5). If a request would be
+> naturally served by a script — "just run this quickly", "no project please" — produce the C#
+> project anyway and say why in one sentence.
 
 ---
 
@@ -249,7 +261,16 @@ per year you ship.
 
 ---
 
-## 5. Script extension (no build at all)
+## 5. Script extension — NOT the default, read §1 first
+
+Scripts exist for the machine-authored path: an agent trying something out over MCP, the
+**Save as command** flow that promotes a working AI snippet into a permanent one, and code
+embedded into the host. They are **not** the way to hand an extension to a user — there is no
+build, so there is no compile error until Revit loads it, and no year folders, so there is no way
+to say which Revit versions it supports.
+
+Generate one only when the request explicitly asks for a script, or when you are the agent running
+the code yourself. For anything a person will install, generate the C# project from §4.
 
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
@@ -398,6 +419,8 @@ then refuses to guess which one is the package.
 
 ## 8. Rules — ALWAYS / NEVER
 
+- **ALWAYS** generate a compiled C# project (`.dll`). A script (§5) is only for an explicit request
+  or for code you run yourself as an agent — never for an extension a user will install.
 - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
@@ -435,7 +458,9 @@ the user to pick one.
 
 ## 10. Checklist for a generated extension
 
-- [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for script/UI).
+- [ ] A compiled C# project — not a script — unless a script was explicitly requested (§1, §5).
+- [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for UI-only).
+- [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
       for commands that take arguments.
