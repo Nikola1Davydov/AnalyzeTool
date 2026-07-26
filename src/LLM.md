@@ -228,7 +228,7 @@ shipped inside packages during restore, so the SDK package cannot add them for y
   <ItemGroup>
     <!-- Exact version, never a range: a pinned package is the reason your build cannot be
          broken by someone else's release. -->
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.0">
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.1">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
