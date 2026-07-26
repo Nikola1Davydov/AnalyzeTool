@@ -27,6 +27,7 @@
         "BuildClientApp",
         "BuildLauncher",
         "CheckBoundaries",
+        "CheckCoreResources",
         "Ci",
         "Clean",
         "CleanFailedRelease",
@@ -35,6 +36,7 @@
         "CreateInstaller",
         "PackSdk",
         "PublishGitHub",
+        "TestExtensionTemplate",
         "TestSdkPackage"
       ]
     },

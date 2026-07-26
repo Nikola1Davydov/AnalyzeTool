@@ -1,0 +1,145 @@
+<Project>
+
+  <!--
+    NuGet auto-imports build/<PackageId>.targets for consumers of the AnalyseTool.Sdk package.
+    This ships the PUBLISHING pipeline with the SDK itself — every extension project gets:
+
+        dotnet build -t:PackExtension
+
+    which builds the project for each requested Revit year, lays out the distribution bundle
+    (per-year binaries in year subfolders, shared assets at the root) and zips it into
+    artifacts/<id>-<version>.zip — the exact package format InstallExtensionFromFile consumes.
+    Zero extra tooling: the pipeline arrives with the package reference.
+
+    Knobs (set as properties):
+      AnalyseToolPackYears      semicolon list of Revit years to build, default "2025;2026;2027".
+      AnalyseToolPackOutput     where the zip lands, default <project>\artifacts.
+      AnalyseToolPackExtraArgs  extra arguments appended verbatim to each per-year `dotnet build`
+                                (e.g. "-p:UseSdkPackage=true") — needed because the year builds run
+                                as child processes, which do not inherit -p properties automatically.
+
+    Script/UI-only extensions have no project to build — they are zipped as-is (the folder IS the
+    bundle); this target serves compiled C# extensions.
+  -->
+
+  <PropertyGroup>
+    <AnalyseToolPackYears Condition="'$(AnalyseToolPackYears)' == ''">2025;2026;2027</AnalyseToolPackYears>
+    <AnalyseToolPackOutput Condition="'$(AnalyseToolPackOutput)' == ''">$(MSBuildProjectDirectory)\artifacts</AnalyseToolPackOutput>
+  </PropertyGroup>
+
+  <!-- Year -> build configuration map, filtered by AnalyseToolPackYears. -->
+  <ItemGroup>
+    <_ATPackYear Include="2025" Condition="$(AnalyseToolPackYears.Contains('2025'))">
+      <Config>Release R25</Config>
+    </_ATPackYear>
+    <_ATPackYear Include="2026" Condition="$(AnalyseToolPackYears.Contains('2026'))">
+      <Config>Release R26</Config>
+    </_ATPackYear>
+    <_ATPackYear Include="2027" Condition="$(AnalyseToolPackYears.Contains('2027'))">
+      <Config>Release R27</Config>
+    </_ATPackYear>
+  </ItemGroup>
+
+  <Target Name="PackExtension">
+    <!-- The manifest is the source of truth: id + version name the zip, entryAssembly is validated. -->
+    <PropertyGroup>
+      <_ATManifestPath>$(MSBuildProjectDirectory)\plugin.json</_ATManifestPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_ATManifestPath)')"
+           Text="PackExtension: plugin.json not found next to the project file — the manifest must live in the extension folder root." />
+
+    <PropertyGroup>
+      <_ATManifest>$([System.IO.File]::ReadAllText('$(_ATManifestPath)'))</_ATManifest>
+      <_ATId>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"id"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATId>
+      <_ATVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATVersion>
+      <_ATEntryAssembly>$([System.Text.RegularExpressions.Regex]::Match($(_ATManifest), '"entryAssembly"\s*:\s*"([^"]+)"').Groups[1].Value)</_ATEntryAssembly>
+      <_ATBundleDir>$(AnalyseToolPackOutput)\_bundle\$(_ATId)</_ATBundleDir>
+      <_ATZipPath>$(AnalyseToolPackOutput)\$(_ATId)-$(_ATVersion).zip</_ATZipPath>
+    </PropertyGroup>
+    <Error Condition="'$(_ATId)' == ''"
+           Text="PackExtension: plugin.json is missing the required 'id' field." />
+    <Error Condition="'$(_ATVersion)' == ''"
+           Text="PackExtension: plugin.json is missing the required 'version' field." />
+    <Error Condition="@(_ATPackYear->Count()) == 0"
+           Text="PackExtension: AnalyseToolPackYears ('$(AnalyseToolPackYears)') selects no Revit year — expected values like 2025;2026;2027." />
+
+    <!-- plugin.json is the single source of truth for the version: it travels inside the package and
+         is what the installed extension reports, while a git tag exists only in the repository. CI
+         passes the tag as AnalyseToolExpectedVersion so the two can never drift apart unnoticed —
+         publishing 1.0.1 under tag v1.0.0 would leave the manager comparing versions that mean
+         nothing. Nothing is rewritten: the mismatch is reported, the author decides. -->
+    <PropertyGroup>
+      <!-- Regex, not TrimStart: MSBuild cannot bind a params char[] overload, so TrimStart('v','V')
+           fails to resolve at evaluation time (MSB4184). -->
+      <_ATExpectedVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(AnalyseToolExpectedVersion)', '^[vV]', ''))</_ATExpectedVersion>
+    </PropertyGroup>
+    <Error Condition="'$(_ATExpectedVersion)' != '' and '$(_ATExpectedVersion)' != '$(_ATVersion)'"
+           Text="PackExtension: asked to publish version '$(_ATExpectedVersion)' (tag) but plugin.json declares '$(_ATVersion)'. The manifest decides what ships — set 'version' in plugin.json to the version you want to release, commit, and tag THAT commit." />
+
+    <!-- One extension folder = one project. Any OTHER project checked out or copied below it (a
+         dependency repo cloned into the folder, a nested sample) has its sources swept into this
+         project's default `**\*.cs` glob and produces hundreds of unrelated CS0579/CS8802 errors
+         that say nothing about the real cause. Name it once, before the build. -->
+    <ItemGroup>
+      <_ATForeignProject Include="$(MSBuildProjectDirectory)\**\*.csproj" Exclude="$(MSBuildProjectFullPath)" />
+    </ItemGroup>
+    <Error Condition="@(_ATForeignProject->Count()) &gt; 0"
+           Text="PackExtension: another project file lives inside the extension folder (@(_ATForeignProject, '; ')). Its sources are compiled into '$(MSBuildProjectName)' by the default source glob. Move that project OUTSIDE this folder — in CI, check dependency repositories out as SIBLING directories (actions/checkout with a 'path:' next to the extension, never below it)." />
+
+    <RemoveDir Directories="$(_ATBundleDir)" />
+
+    <!-- Build once per Revit year, each year as its OWN `dotnet build` child process (batched over
+         _ATPackYear). The configuration switches the TargetFramework (net8 for R25/26, net10 for R27)
+         while obj\ state (project.assets.json, nuget.g.props) is per-project — in-process <MSBuild>
+         chaining kept serving one year's restore state to another (NETSDK1005/CS0579). A fresh
+         process per year restores and builds against its own state, exactly like running the builds
+         by hand.
+
+         The year folder is passed as AnalyseToolPackYearDir, NOT as OutDir: command-line properties
+         are GLOBAL and flow into every referenced project, so an OutDir would make a referenced
+         AnalyseTool.Sdk (or any helper project) write ITS output into the year folder too — exactly
+         the duplicate copies <Private>false</Private> exists to prevent. _ATCopyYearOutput below
+         copies only THIS project's build output, so the year folder holds the extension alone.
+         Forward slashes keep the trailing separator from escaping the closing quote. -->
+    <Exec Command="dotnet build &quot;$(MSBuildProjectFullPath)&quot; --configuration &quot;%(_ATPackYear.Config)&quot; --verbosity minimal -p:AnalyseToolPackYearDir=&quot;$(_ATBundleDir)/%(_ATPackYear.Identity)/&quot; $(AnalyseToolPackExtraArgs)"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
+
+    <!-- Shared assets live at the bundle ROOT: the manifest, icons, the web UI — everything except
+         sources, build state, tooling dotfiles (.gitignore & friends are not part of a shipped
+         extension) and the bundle/zip output itself. -->
+    <ItemGroup>
+      <_ATRootAsset Include="$(MSBuildProjectDirectory)\**\*"
+                    Exclude="$(MSBuildProjectDirectory)\bin\**;$(MSBuildProjectDirectory)\obj\**;$(MSBuildProjectDirectory)\artifacts\**;$(MSBuildProjectDirectory)\.git\**;$(MSBuildProjectDirectory)\.github\**;$(MSBuildProjectDirectory)\.vs\**;$(MSBuildProjectDirectory)\**\.*;$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\**\*.csproj;$(MSBuildProjectDirectory)\**\*.user;$(MSBuildProjectDirectory)\**\*.sln" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ATRootAsset)"
+          DestinationFolder="$(_ATBundleDir)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+
+    <!-- The contract check InstallExtensionFromFile will repeat on the user's side: a declared
+         entry assembly must actually exist for every packed year. -->
+    <Error Condition="'$(_ATEntryAssembly)' != '' and !Exists('$(_ATBundleDir)\%(_ATPackYear.Identity)\$(_ATEntryAssembly)')"
+           Text="PackExtension: entryAssembly '$(_ATEntryAssembly)' missing for Revit %(_ATPackYear.Identity) — the '%(_ATPackYear.Config)' build did not produce it." />
+
+    <MakeDir Directories="$(AnalyseToolPackOutput)" />
+    <Delete Files="$(_ATZipPath)" />
+    <ZipDirectory SourceDirectory="$(_ATBundleDir)" DestinationFile="$(_ATZipPath)" Overwrite="true" />
+
+    <Message Importance="high"
+             Text="PackExtension: packed $(_ATId) $(_ATVersion) for years [@(_ATPackYear, ', ')] -> $(_ATZipPath)" />
+  </Target>
+
+  <!-- Delivers one year's build into the bundle. Runs only in the child processes PackExtension
+       spawns (AnalyseToolPackYearDir set) and copies THIS project's output directory only, so
+       compile-only references — AnalyseTool.Sdk above all — stay out of the package: the host owns
+       those assemblies and the extension's load context hands out the host's copy, so a shipped
+       duplicate is dead weight that also misreports what the extension actually carries. -->
+  <Target Name="_ATCopyYearOutput" AfterTargets="Build" Condition="'$(AnalyseToolPackYearDir)' != ''">
+    <ItemGroup>
+      <_ATYearOutput Include="$(TargetDir)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ATYearOutput)"
+          DestinationFolder="$(AnalyseToolPackYearDir)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

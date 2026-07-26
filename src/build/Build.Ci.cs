@@ -14,6 +14,8 @@ sealed partial class Build
     //   1. dependency contract + headless Core/Tools invariant (Check-Boundaries.ps1)
     //   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
     //   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+    //   4. the extension template the plugin generates actually builds, and Core's embedded
+    //      template resources are really in the assembly (Build.Ci.Template.cs)
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath SdkNupkgDirectory => CiArtifactsDirectory / "sdk-nupkg";
@@ -87,10 +89,34 @@ sealed partial class Build
                 .AddProperty("SdkPackageVersion", version)
                 .AddProperty("RestoreConfigFile", configFile)
                 .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages"));
+
+            // The publishing pipeline the nupkg ships (build/AnalyseTool.Sdk.targets): pack the
+            // sample for every Revit year into the distribution zip, exactly like a vendor's CI
+            // would. A broken PackExtension target or bundle layout fails THIS step. The per-year
+            // builds run as child `dotnet build` processes, so the package-mode properties must be
+            // forwarded explicitly via AnalyseToolPackExtraArgs (child processes don't inherit -p).
+            AbsolutePath packOutput = CiArtifactsDirectory / "sample-pack";
+            string packExtraArgs =
+                $"-p:UseSdkPackage=true -p:SdkPackageVersion={version} " +
+                $"-p:RestoreConfigFile={configFile} " +
+                $"-p:RestorePackagesPath={CiArtifactsDirectory / "sample-packages"}";
+            DotNetMSBuild(settings => settings
+                .SetTargetPath(SampleProject)
+                .SetTargets("PackExtension")
+                .AddProperty("UseSdkPackage", "true")
+                .AddProperty("SdkPackageVersion", version)
+                .AddProperty("RestoreConfigFile", configFile)
+                .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages")
+                .AddProperty("AnalyseToolPackOutput", packOutput)
+                .AddProperty("AnalyseToolPackExtraArgs", packExtraArgs));
+
+            AbsolutePath zip = packOutput.GlobFiles("acme.sample-*.zip").FirstOrDefault()
+                ?? throw new System.Exception($"PackExtension produced no zip in {packOutput}");
+            Serilog.Log.Information("PackExtension produced {Zip}", zip.Name);
         });
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, TestSdkPackage)
+        .DependsOn(CompileCi, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

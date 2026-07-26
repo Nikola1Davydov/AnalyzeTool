@@ -12,8 +12,8 @@ on:
         type: string
         
 permissions:
-  contents: write  
-  
+  contents: write
+
 jobs:
   release:
     name: Publish release
@@ -38,8 +38,11 @@ jobs:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj', '**/Directory.Packages.props') }}
 
+      # This publishes the PLUGIN only. The AnalyseTool.Sdk package is pushed to nuget.org by hand —
+      # see RELEASE_CHECKLIST.md. It changes a few times a year, which did not justify the standing
+      # machinery (a trusted-publishing policy, an OIDC step, and a target re-running the whole Ci
+      # gate on every release).
       - name: Publish release
         run: ./src/build.cmd PublishGitHub --ReleaseVersion ${{ github.event.inputs.version || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NuGetApiKey: ${{ secrets.NUGET_API_KEY }}

@@ -47,14 +47,13 @@ namespace AnalyseTool.Core.Features.Scripting
             if (!IsValidId(id))
                 throw new InvalidOperationException("Id may contain only letters, digits, '.', '-' and '_'.");
 
-            string version = CoreServices.RevitVersion; // year, e.g. "2025"
+            // Scripts are version-independent, so they live directly under the root (no year folder).
             string root = ResolveTargetRoot(req.TargetRoot);
-            string versionDir = Path.Combine(root, version);
-            string directory = Path.Combine(versionDir, id);
+            string directory = Path.Combine(root, id);
 
-            // Defense-in-depth: the resolved folder must stay inside the version dir.
-            string fullVersionDir = Path.GetFullPath(versionDir);
-            if (!Path.GetFullPath(directory).StartsWith(fullVersionDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            // Defense-in-depth: the resolved folder must stay inside the root.
+            string fullRoot = Path.GetFullPath(root);
+            if (!Path.GetFullPath(directory).StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Invalid extension id (path escapes the extensions folder).");
 
             if (Directory.Exists(directory))
@@ -147,31 +146,42 @@ namespace AnalyseTool.Core.Features.Scripting
         {
             string desc = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(
                 string.IsNullOrWhiteSpace(description) ? $"{className} command." : description!, quote: true);
+            // The snippet is pasted inside the RunInRevitAsync lambda, so every line carries that depth.
             string indentedBody = string.Join("\n",
                 body.Replace("\r\n", "\n").Split('\n').Select(line => "            " + line));
 
-            return
-                "using System;\n" +
-                "using System.Collections.Generic;\n" +
-                "using System.Linq;\n" +
-                "using System.Threading;\n" +
-                "using System.Threading.Tasks;\n" +
-                "using Autodesk.Revit.DB;\n" +
-                "using Autodesk.Revit.UI;\n" +
-                "using AnalyseTool.Sdk;\n\n" +
-                $"namespace {ns};\n\n" +
-                $"[RevitCommand(Description = {desc}, ReadOnly = {Bool(readOnly)}, Destructive = {Bool(destructive)})]\n" +
-                $"public sealed class {className} : IRevitTask\n" +
-                "{\n" +
-                "    public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>\n" +
-                "        revitContext.RunInRevitAsync<object?>(uiapp =>\n" +
-                "        {\n" +
-                "            var uidoc = uiapp.ActiveUIDocument;\n" +
-                "            var doc = uidoc != null ? uidoc.Document : null;\n\n" +
-                indentedBody + "\n\n" +
-                "            return null;\n" +
-                "        });\n" +
-                "}\n";
+            // A raw string literal rather than concatenation: this text has to COMPILE — Roslyn builds
+            // it at runtime — so a mistake surfaces to the user as a broken generated command. It
+            // should therefore read as C# here, not as escaped fragments joined by '+'.
+            // The blank line before the closing delimiter is the generated file's trailing newline.
+            return $$"""
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Autodesk.Revit.DB;
+            using Autodesk.Revit.UI;
+            using AnalyseTool.Sdk;
+
+            namespace {{ns}};
+
+            [RevitCommand(Description = {{desc}}, ReadOnly = {{Bool(readOnly)}}, Destructive = {{Bool(destructive)}})]
+            public sealed class {{className}} : IRevitTask
+            {
+                public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
+                    revitContext.RunInRevitAsync<object?>(uiapp =>
+                    {
+                        var uidoc = uiapp.ActiveUIDocument;
+                        var doc = uidoc != null ? uidoc.Document : null;
+
+            {{indentedBody}}
+
+                        return null;
+                    });
+            }
+
+            """;
         }
 
         private static string Bool(bool value) => value ? "true" : "false";
@@ -221,12 +231,13 @@ namespace AnalyseTool.Core.Features.Scripting
             return id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
         }
 
-        /// <summary>Returns a registered extension source root (default when unspecified); rejects
-        /// anything not registered so we never scaffold where the host wouldn't scan.</summary>
+        /// <summary>Returns a registered extension source root (the dev root when unspecified — saved
+        /// scripts are user-authored); rejects anything not registered so we never scaffold where the
+        /// host wouldn't scan.</summary>
         private static string ResolveTargetRoot(string? requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
-                return ExtensionSources.DefaultRoot;
+                return ExtensionSources.DefaultDevRoot;
 
             string full = Path.GetFullPath(requested.Trim());
             bool registered = ExtensionSources.Roots()

@@ -11,6 +11,9 @@
   -->
 
   <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" Condition="'$(UseSdkPackage)' != 'true'" />
+  <!-- In package mode NuGet auto-imports this from the nupkg's build/ folder; the dev inner loop
+       imports it explicitly so `dotnet build -t:PackExtension` works identically in both modes. -->
+  <Import Project="..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Sdk.targets" Condition="'$(UseSdkPackage)' != 'true'" />
 
   <!-- Package mode declares TFM, RevitVersion AND the Revit API packages itself. This is not a
        workaround, it is THE external-author contract: NuGet deliberately ignores props shipped
@@ -74,13 +77,23 @@
        the very next Revit start (or Reload) shows it — long before an external author hits it. -->
   <Target Name="DeployToExtensionsFolder" AfterTargets="Build" Condition="$(Configuration.Contains('Debug'))">
     <PropertyGroup>
-      <AcmeExtensionDir>$(LOCALAPPDATA)\AnalyseTool\extensions\$(RevitVersion)\Acme.Sample</AcmeExtensionDir>
+      <!-- Current layout: the extension folder sits directly under the root and the Revit year is a
+           subfolder INSIDE it. The old extensions\<year>\<id>\ still loads, but deploying that way
+           would exercise the deprecated resolution path and contradict what ONBOARDING §2 tells
+           authors to do. -->
+      <AcmeExtensionDir>$(LOCALAPPDATA)\AnalyseTool\extensions\Acme.Sample</AcmeExtensionDir>
     </PropertyGroup>
     <ItemGroup>
-      <AcmeDeployFiles Include="$(TargetDir)**\*.*" />
+      <!-- Version-independent — the manifest and the UI belong in the extension ROOT. plugin.json in
+           particular: the catalog scans for it there and nowhere else. -->
+      <AcmeRootFiles Include="plugin.json;index.html" />
+      <!-- Per-year — the assembly goes where the loader looks first: <extension>\<year>\. -->
+      <AcmeYearFiles Include="$(TargetDir)$(AssemblyName).dll" />
+      <AcmeYearFiles Include="$(TargetDir)$(AssemblyName).pdb" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
     </ItemGroup>
-    <Copy SourceFiles="@(AcmeDeployFiles)" DestinationFolder="$(AcmeExtensionDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Message Text="Acme.Sample deployed to $(AcmeExtensionDir)" Importance="high" />
+    <Copy SourceFiles="@(AcmeRootFiles)" DestinationFolder="$(AcmeExtensionDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(AcmeYearFiles)" DestinationFolder="$(AcmeExtensionDir)\$(RevitVersion)" SkipUnchangedFiles="true" />
+    <Message Text="Acme.Sample deployed to $(AcmeExtensionDir) (binaries in $(RevitVersion)\)" Importance="high" />
   </Target>
 
 </Project>
