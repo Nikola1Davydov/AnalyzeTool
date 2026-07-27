@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fragments</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+         background: #0b0e14; color: #d7dce5; display: grid; grid-template-columns: 1fr 340px;
+         height: 100vh; overflow: hidden; }
+  #scene { position: relative; }
+  #scene .hint { position: absolute; inset: auto 0 12px 0; text-align: center; color: #55607a;
+                 font-size: 12px; pointer-events: none; }
+  aside { border-left: 1px solid #1d2431; padding: 18px; overflow-y: auto; background: #0e1219; }
+  h1 { font-size: 15px; margin: 0 0 2px; color: #fff; }
+  p.sub { margin: 0 0 16px; color: #8b95a7; font-size: 12px; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  button { flex: 1; padding: 9px 10px; border-radius: 7px; border: 1px solid #2a3446;
+           background: #18202e; color: #dce3ee; font: inherit; font-size: 13px; cursor: pointer; }
+  button:hover:not(:disabled) { background: #1f293a; border-color: #3a4459; }
+  button.primary { background: #1d4ed8; border-color: #2563eb; color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  label.opt { display: flex; align-items: center; gap: 7px; color: #8b95a7; font-size: 12px;
+              margin-bottom: 14px; }
+  #status { font-size: 12px; padding: 8px 10px; border-radius: 7px; margin-bottom: 14px;
+            background: #131a26; color: #9aa4b6; border: 1px solid #1d2431; }
+  #status.ok { background: #10331f; color: #6ee7a0; border-color: #1d5c37; }
+  #status.bad { background: #351417; color: #f2969b; border-color: #6b2429; }
+  .fact { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0;
+          border-bottom: 1px solid #171d29; font-size: 12px; }
+  .fact span { color: #8b95a7; }
+  .fact b { color: #e8edf5; font-weight: 600; text-align: right; word-break: break-word; }
+  .fact.hero b { color: #6ee7a0; font-size: 14px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7c869a;
+       margin: 18px 0 6px; }
+  code { color: #8fb8ff; font-size: 11px; word-break: break-all; }
+</style>
+</head>
+<body>
+<div id="scene"><div class="hint">drag to orbit · scroll to zoom</div></div>
+<aside>
+  <h1>Fragments</h1>
+  <p class="sub">Exports the open model and renders it here.</p>
+
+  <div class="row">
+    <button id="view" class="primary">Active view</button>
+    <button id="all">Whole model</button>
+  </div>
+  <label class="opt"><input type="checkbox" id="params" checked /> include all parameters</label>
+
+  <div id="status">Ready.</div>
+  <div id="facts"></div>
+
+  <h2>Output</h2>
+  <code id="path"></code>
+</aside>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

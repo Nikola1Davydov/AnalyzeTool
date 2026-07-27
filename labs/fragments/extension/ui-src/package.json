@@ -1,0 +1,12 @@
+{
+  "name": "analysetool-fragments-ui",
+  "private": true,
+  "type": "module",
+  "description": "The extension's WebView page: exports the open Revit model and renders the result in place.",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": {
+    "@thatopen/fragments": "3.4.7",
+    "esbuild": "^0.25.0",
+    "three": "^0.182.0"
+  }
+}

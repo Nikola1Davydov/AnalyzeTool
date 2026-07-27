@@ -458,3 +458,5 @@ __screenshots__/
 /labs/fragments/tools/gen/
 /labs/fragments/out/
 /labs/fragments/viewer/node_modules/
+/labs/fragments/extension/ui/
+/labs/fragments/extension/ui-src/node_modules/

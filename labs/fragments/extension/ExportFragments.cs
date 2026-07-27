@@ -48,7 +48,7 @@ namespace AnalyseTool.Fragments.Ext
                 FragmentModel model = new RevitFragmentExporter(options).Export(document);
                 long tessellateMs = Environment.TickCount64 - startedAt;
 
-                string path = ResolvePath(input?.Path, document.Title, activeViewOnly);
+                string path = ResolvePath(input?.Path);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
                 startedAt = Environment.TickCount64;
@@ -77,18 +77,21 @@ namespace AnalyseTool.Fragments.Ext
             });
         }
 
-        private static string ResolvePath(string? requested, string title, bool activeViewOnly)
+        /// <summary>
+        /// Defaults to <c>model.frag</c> in this extension's own folder — the folder WebView2 serves
+        /// the page from, so the UI reaches it with a plain relative fetch.
+        /// <para>
+        /// The path is rebuilt from the well-known extensions root rather than read off the assembly:
+        /// the collectible ALC loads extensions from BYTES, so <c>Assembly.Location</c> is empty here.
+        /// </para>
+        /// </summary>
+        private static string ResolvePath(string? requested)
         {
             if (!string.IsNullOrWhiteSpace(requested)) return Path.GetFullPath(requested!);
 
-            string name = title;
-            foreach (char invalid in Path.GetInvalidFileNameChars())
-                name = name.Replace(invalid, '_');
-            if (string.IsNullOrWhiteSpace(name)) name = "model";
-
             return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                $"{name}{(activeViewOnly ? "-view" : "")}.frag");
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AnalyseTool", "extensions", "AnalyseTool.Fragments", "model.frag");
         }
 
         public sealed record Input
@@ -99,7 +102,8 @@ namespace AnalyseTool.Fragments.Ext
             [Description("Write every readable parameter as an attribute. Defaults to true.")]
             public bool? IncludeAllParameters { get; set; }
 
-            [Description("Where to write the file. Defaults to the desktop, named after the document.")]
+            [Description("Where to write the file. Defaults to model.frag inside this extension's " +
+                         "own folder, which is where the viewer page looks for it.")]
             public string? Path { get; set; }
         }
     }

@@ -117,17 +117,24 @@ It is deliberately NOT a command in `Tools/`: that project may ProjectReference 
 so putting the writer there today would either break `Check-Boundaries.ps1` or make the shipping
 plugin build depend on this prototype.
 
+```bash
+# once: build the WebView page (node is deliberately not a build dependency of the plugin)
+cd labs/fragments/extension/ui-src && npm install && node build.mjs
+```
+
 ```powershell
 # R25 / R26 / R27 — Debug deploys straight to the live extensions folder
 dotnet build labs/fragments/extension -c "Debug R25"
 ```
 
-That lands `plugin.json` in `%LOCALAPPDATA%\AnalyseTool\extensions\AnalyseTool.Fragments\` with the
+That lands `plugin.json` and `ui/` in `%LOCALAPPDATA%\AnalyseTool\extensions\AnalyseTool.Fragments\` with the
 assemblies under `<year>\`. A brand-new extension needs one Revit restart; after that a rebuild plus
 **Settings → Reload** is the whole loop.
 
-Then run **Export** from AnalyseTool with `activeViewOnly: true` — far quicker, and a wrong result
-shows up just as well. The command returns the path plus the numbers that decide what to fix:
+Then open **AnalyseTool → Fragments** on the ribbon. The page has two buttons — *Active view* and
+*Whole model*; start with the active view, it is far quicker and a wrong result shows up just as
+well. It exports, loads the result and renders it in place, next to the numbers that decide what to
+fix:
 
 | field | what it tells you |
 | --- | --- |
@@ -136,17 +143,24 @@ shows up just as well. The command returns the path plus the numbers that decide
 | `triangles` | tessellation cost; if it is huge, merging coplanar triangles into polygons is the next optimisation |
 | `tessellateMs` / `writeMs` / `bytes` | where the time and the size actually go |
 
-To look at the result, point the viewer at it — it makes no assumptions about which model it loads:
+The page verifies without Revit too — it serves the built extension folder, stubs `window.AT` the
+way the host injects it, and drives the real button:
 
 ```bash
-cd labs/fragments/viewer
-npm install
-node build-serve.mjs /path/to/YourModel.frag ../out/serve
-node serve-check.mjs ../out/serve ../out/check.png     # headless, prints what the library read back
+cd labs/fragments/extension/ui-src && node check.mjs <extensionDir> shot.png
 ```
 
-Serve it over HTTP; opening the page as a `file://` URL leaves the module worker unable to start and
-the load hangs silently.
+`viewer/` is the same thing for a `.frag` on disk, independent of the extension:
+
+```bash
+cd labs/fragments/viewer && npm install
+node build-serve.mjs /path/to/YourModel.frag ../out/serve
+node serve-check.mjs ../out/serve ../out/check.png
+```
+
+Both serve over HTTP on purpose: on a `file://` page the module worker cannot start and the load
+hangs silently. Inside Revit this is a non-issue — WebView2 serves the extension folder from a real
+`https://` virtual host, which is also why the page can fetch `../model.frag` relatively.
 
 ## Next
 

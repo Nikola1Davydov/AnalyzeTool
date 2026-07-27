@@ -45,6 +45,11 @@
     <None Include="plugin.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Built by ui-src/build.mjs. Node is deliberately NOT a build dependency of the plugin, so
+         this is produced by hand and simply copied if present. -->
+    <None Include="ui\**\*" LinkBase="ui">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!-- Debug builds land straight in the live extensions folder, so a rebuild plus Settings > Reload
@@ -60,10 +65,12 @@
     <ItemGroup>
       <!-- The manifest belongs in the extension ROOT — the catalog scans for it there and nowhere else. -->
       <FragmentsRootFiles Include="plugin.json" />
+      <FragmentsUiFiles Include="ui\**\*" />
       <!-- The assembly and its private dependencies go where the loader looks: <extension>\<year>\. -->
       <FragmentsYearFiles Include="$(TargetDir)AnalyseTool.Fragments.Ext.dll;$(TargetDir)AnalyseTool.Fragments.dll;$(TargetDir)Google.FlatBuffers.dll;$(TargetDir)AnalyseTool.Fragments.Ext.deps.json" />
     </ItemGroup>
     <Copy SourceFiles="@(FragmentsRootFiles)" DestinationFolder="$(FragmentsExtensionDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FragmentsUiFiles)" DestinationFolder="$(FragmentsExtensionDir)\ui\%(RecursiveDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(FragmentsYearFiles)" DestinationFolder="$(FragmentsExtensionDir)\$(FragmentsYear)" SkipUnchangedFiles="true" />
     <Message Importance="high" Text="Deployed the .frag exporter to $(FragmentsExtensionDir)\$(FragmentsYear)" />
   </Target>
