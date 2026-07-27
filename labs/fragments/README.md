@@ -15,10 +15,21 @@ viewer's selection address the very same elements the `CommandQueue` already spe
 | | |
 | --- | --- |
 | Format spec | derived from a reference file and documented |
-| C# writer | complete for shells, materials, instancing, attributes — 25 tests |
-| Validated | our output parses with `@thatopen/fragments@3.4.7`'s own bindings; all cross-indices resolve |
-| Revit mapper | **not started** — this library is deliberately Revit-free |
+| C# writer | complete for shells, materials, instancing, attributes — 35 tests |
+| Validated | a file written by our C# **loads and renders** in `@thatopen/fragments@3.4.7` (headless Chromium, `viewer/`) |
+| IFC guid | implemented and cross-checked against an independent implementation |
+| Revit mapper | written; compiles against Revit 2025 and 2026 — **never executed**, needs Revit |
 | Not yet written | `spatial_structure` (the viewer's model tree), `relations`, `indexes`, circle extrusions (rebar) |
+
+### Why two identities per element
+
+The goal this feeds is comparing a received IFC file against the live Revit model. Both sides can
+become `.frag` — the IFC by That Open's own `IfcImporter`, the Revit model by this writer — and then
+they are the same kind of thing in the same viewer. That only works if the items carry a shared key:
+
+- `localId` = **ElementId**, so a click in the viewer turns back into a command against the model.
+- `guid` = the **IFC guid** Revit's own IFC exporter would assign (`ExportUtils.GetExportId` put
+  through `IfcGuid`), so the element matches its counterpart on the IFC side.
 
 The library targets plain `net8.0` and has no Revit dependency, so it builds and tests anywhere.
 When the format work settles it moves to `src/AnalyseTool.Tools/Geometry/Infrastructure/` and picks
@@ -36,8 +47,11 @@ src/AnalyseTool.Fragments/           the writer (Revit-free)
   FragmentModel.cs                   what callers build: items, shells, materials, samples
   FragmentWriter.cs                  serializer → zlib-compressed FlatBuffers
   Axes.cs                            Revit's Z-up → the format's Y-up
+  IfcGuid.cs                         the 22-character IFC identifier — the IFC↔Revit join key
+src/AnalyseTool.Fragments.Revit/     Revit Document -> FragmentModel (needs Revit to run)
 src/AnalyseTool.Fragments.Cli/       writes a demo .frag with no Revit involved
-tests/                               25 tests locking in the on-disk conventions
+viewer/                              loads a written .frag in That Open's real runtime, headless
+tests/                               35 tests locking in the on-disk conventions
 tools/generate-bindings.sh           regenerates the bindings (needs flatc 25.2.10)
 tools/inspect_frag.py                decodes any .frag and reports how its arrays are used
 tools/frag_to_obj.py                 rebuilds the geometry as OBJ — checks the transform chain
@@ -78,11 +92,23 @@ guessable from the schema.
    Revit's tessellated triangles in as 3-point profiles is always safe; merging coplanar triangles
    into bigger polygons is a later size optimisation.
 
+## Checking the viewer end
+
+```bash
+cd viewer
+npm install
+node build-serve.mjs ../out/demo.frag ../out/serve
+CHROMIUM_PATH=<chromium> node serve-check.mjs ../out/serve ../out/viewer.png
+```
+
+It loads the file with `FragmentsModels`, then prints what the LIBRARY read back — item count,
+categories, localIds, bounding box — and exits non-zero unless the page reaches PASS. `build.mjs`
+produces the same page as one self-contained HTML instead; that form needs a real origin, because a
+module worker created from a blob URL will not start on a `file://` page.
+
 ## Next
 
-1. The Revit mapper: walk elements, tessellate per family symbol so instances share one shell, map
-   materials, feed `ElementId` in as the localId. `Tools/Families/Infrastructure/FamilyMeshService.cs`
-   already does the tessellation and nested-`GeometryInstance` composition this needs.
+1. Run the mapper inside Revit. It compiles but has never executed — every claim about it is a
+   claim about code, not about output.
 2. `spatial_structure` from Revit's Level hierarchy, so the viewer gets a model tree.
-3. Load a written file in a real `@thatopen/components` viewer — the one check that cannot be done
-   headless here, and the one that confirms the Y-up call.
+3. The IFC side: `IfcImporter` on a received IFC, then match the two models by IFC guid.

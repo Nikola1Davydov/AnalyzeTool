@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Revit-facing half of the spike: turns a Revit Document into a FragmentModel.
+    net8.0-windows + the Revit API reference assemblies, which restore on any OS — so this compiles
+    here even though it can only RUN inside Revit.
+
+    When this graduates it moves into src/AnalyseTool.Tools/Geometry/. Note that Tools may only
+    ProjectReference the Sdk, so the writer library travels as SOURCE, not as a project reference;
+    the Google.FlatBuffers PackageReference is fine either way.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AnalyseTool.Fragments.Revit</RootNamespace>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2025</RevitVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../AnalyseTool.Fragments/AnalyseTool.Fragments.csproj" />
+  </ItemGroup>
+
+</Project>
