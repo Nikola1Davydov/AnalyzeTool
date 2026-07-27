@@ -73,7 +73,11 @@ async function main() {
   const workerUrl = window.__FRAG_WORKER_URL__
     ?? URL.createObjectURL(new Blob([window.__FRAG_WORKER__], { type: "text/javascript" }));
 
-  const fragments = new FragmentsModels(workerUrl);
+  // classicWorker: a MODULE worker cannot be created from a blob URL on a file:// page, but a
+  // classic one can — which is what makes the single-file build openable straight off disk.
+  const fragments = new FragmentsModels(workerUrl, {
+    classicWorker: Boolean(window.__FRAG_WORKER_CLASSIC__),
+  });
   log(`@thatopen/fragments ${window.__FRAG_META__.fragmentsVersion} · three ${THREE.REVISION}`, "ok");
 
   const bytes = window.__FRAG_URL__

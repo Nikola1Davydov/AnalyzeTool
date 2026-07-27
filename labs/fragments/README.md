@@ -191,9 +191,29 @@ node build-serve.mjs /path/to/YourModel.frag ../out/serve
 node serve-check.mjs ../out/serve ../out/check.png
 ```
 
-Both serve over HTTP on purpose: on a `file://` page the module worker cannot start and the load
-hangs silently. Inside Revit this is a non-issue — WebView2 serves the extension folder from a real
-`https://` virtual host, which is also why the page can fetch `../model.frag` relatively.
+## A model you can just send someone
+
+`viewer/build-file.mjs` produces ONE .html — model, viewer and worker all inside — that works when
+opened straight off disk. Attach it to a message; the recipient double-clicks it and orbits the
+model. No server, no install, no Revit.
+
+```bash
+cd labs/fragments/viewer
+node build-file.mjs /path/to/YourModel.frag ../out/model.html
+node check.mjs ../out/model.html shot.png          # verified from file://, not assumed
+```
+
+Two things make it work, and neither is obvious:
+
+1. **The worker must be classic, not a module.** A module worker cannot be created from a blob URL
+   on a `file://` page; a classic one can. So their `worker.mjs` is re-bundled as an IIFE and started
+   with `classicWorker: true`, which the library supports explicitly.
+2. **Nothing is inlined as raw source.** Both bundles go in base64 and are decoded at runtime —
+   minified JS contains sequences that close a `<script>` tag, and escaping them exactly is a losing
+   game. Base64 contains no such characters.
+
+The served build (`build-serve.mjs`) keeps the plain module worker, which is what runs inside Revit:
+WebView2 serves the extension folder from a real `https://` virtual host.
 
 ## Next
 
