@@ -1,0 +1,15 @@
+{
+  "name": "fragments-viewer-check",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Self-contained browser check: does a .frag written by our C# writer load and render in That Open's own runtime?",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@thatopen/fragments": "3.4.7",
+    "esbuild": "^0.25.0",
+    "three": "^0.182.0"
+  }
+}

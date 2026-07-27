@@ -457,3 +457,4 @@ __screenshots__/
 # labs/fragments spike: generated bindings and demo output
 /labs/fragments/tools/gen/
 /labs/fragments/out/
+/labs/fragments/viewer/node_modules/

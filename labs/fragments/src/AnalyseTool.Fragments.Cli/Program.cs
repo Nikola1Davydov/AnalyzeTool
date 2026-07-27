@@ -63,6 +63,7 @@ internal static class DemoModel
         slab.Samples.Add(new FragSample(slabShell, 0));
         model.Items.Add(slab);
 
+        // Centred on the slab, which spans ±6 × ±4.
         for (int x = 0; x < 4; x++)
         {
             for (int y = 0; y < 3; y++)
@@ -70,7 +71,7 @@ internal static class DemoModel
                 FragItem column = new(id++, "Structural Columns")
                 {
                     Guid = Guid.NewGuid().ToString(),
-                    Placement = FragTransform.At(1.5 + x * 3.0, 1.5 + y * 2.5, 0),
+                    Placement = FragTransform.At(-4.5 + x * 3.0, -2.5 + y * 2.5, 0),
                 };
                 column.Attributes.Add(new FragAttribute("Name", $"Column {x}-{y}"));
                 column.Attributes.Add(new FragAttribute("Mark", $"C{x}{y}"));
