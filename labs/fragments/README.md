@@ -78,6 +78,39 @@ curl -sSLO https://raw.githubusercontent.com/ThatOpen/engine_components/main/res
 python3 tools/inspect_frag.py school_arq.frag
 ```
 
+## Units
+
+**Geometry is already project-independent.** Revit's internal length unit is decimal feet in every
+project, whatever the display units are set to, so the exporter's single feet→metres factor is
+correct whether the project is in millimetres, metres or feet and inches. A project in mm does not
+produce a model at the wrong scale.
+
+**Parameter values were not.** `Parameter.AsValueString()` formats in the project's display units
+*and* in the Revit UI's language — the same wall thickness reads as `200`, `0.2`, `7 7/8"` or `0,2`
+depending on the machine, and the last one cannot even be parsed as a number. Nothing diffable
+against an IFC file. So values are exported as invariant-culture numbers in SI, with the unit named
+in the attribute type:
+
+```
+["Width","0.2","Length[m]"]        not  ["Width","200 mm","Double"]
+["Area","15.4","Area[m2]"]
+["Rotation","1.5707963267948966","Angle[rad]"]
+["Structural","true","Boolean"]
+["Mass","78.5","mass[internal]"]   a spec with no pinned SI unit — labelled, never silently converted
+```
+
+Type names are written out rather than taken from `LabelUtils`, whose labels are localized: a German
+Revit would otherwise emit `Länge[m]` and the type itself would stop being comparable.
+
+What the project *displays* in is recorded once in the model metadata, for a UI to format with:
+
+```json
+{"storedUnits":"SI (m, m2, m3, rad)","displayUnits":{"length":"millimeters","area":"squareMeters"}}
+```
+
+Still open, and adjacent: `Meshes.coordinates` is left at the origin, so a model placed on shared
+coordinates carries no survey offset yet.
+
 ## The three things that will bite you
 
 All three are documented with evidence in SPEC.md; they are repeated here because none of them is

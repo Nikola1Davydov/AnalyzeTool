@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Autodesk.Revit.DB;
 
 namespace AnalyseTool.Fragments.Revit
@@ -26,7 +27,11 @@ namespace AnalyseTool.Fragments.Revit
     /// </summary>
     public sealed class RevitFragmentExporter
     {
-        /// <summary>Revit works in decimal feet internally; the format stores metres.</summary>
+        /// <summary>
+        /// Revit's internal length unit is decimal feet in EVERY project, whatever the display units
+        /// are set to, so this factor is project-independent and geometry needs no unit lookup.
+        /// Parameter values are a different story — see <see cref="RevitUnits"/>.
+        /// </summary>
         private const double FeetToMetres = 0.3048;
 
         private static readonly int[] FallbackColour = { 154, 166, 178 };
@@ -36,6 +41,9 @@ namespace AnalyseTool.Fragments.Revit
 
         /// <summary>Set for the duration of an export; materials are resolved against it.</summary>
         private Document? _document;
+
+        /// <summary>Formats parameter values into comparable, culture-independent SI numbers.</summary>
+        private RevitUnits? _units;
 
         /// <summary>Material table, keyed by Revit material id (-1 = the fallback grey).</summary>
         private readonly Dictionary<long, int> _materials = new();
@@ -56,10 +64,19 @@ namespace AnalyseTool.Fragments.Revit
             if (document is null) throw new ArgumentNullException(nameof(document));
 
             _document = document;
+            _units = new RevitUnits(document);
             _model.Guid = Guid.NewGuid().ToString();
-            _model.MetadataJson =
-                $"{{\"source\":\"AnalyseTool\",\"revit\":\"{Escape(document.Application.VersionNumber)}\"," +
-                $"\"document\":\"{Escape(document.Title)}\"}}";
+
+            // Values are stored in SI; what the project DISPLAYS is recorded here so a UI can format
+            // with it. Presentation, not identity — see RevitUnits.
+            _model.MetadataJson = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["source"] = "AnalyseTool",
+                ["revit"] = document.Application.VersionNumber,
+                ["document"] = document.Title,
+                ["storedUnits"] = "SI (m, m2, m3, rad)",
+                ["displayUnits"] = _units.DisplayUnits(),
+            });
 
             Options geometryOptions = new()
             {
@@ -171,10 +188,15 @@ namespace AnalyseTool.Fragments.Revit
                 try
                 {
                     if (!parameter.HasValue) continue;
-                    string? value = parameter.AsValueString() ?? parameter.AsString();
-                    if (string.IsNullOrEmpty(value)) continue;
+
+                    // NOT AsValueString(): that formats in the project's display units and the Revit
+                    // UI's language, so the same value reads as "200", "0.2" or "0,2" depending on
+                    // the machine. None of those can be diffed against an IFC file.
+                    (string Value, string Type)? formatted = _units!.Format(parameter);
+                    if (formatted is null) continue;
+
                     item.Attributes.Add(new FragAttribute(
-                        parameter.Definition.Name, value!, parameter.StorageType.ToString()));
+                        parameter.Definition.Name, formatted.Value.Value, formatted.Value.Type));
                 }
                 catch
                 {
@@ -374,9 +396,6 @@ namespace AnalyseTool.Fragments.Revit
             new Vec3(t.Origin.X * FeetToMetres, t.Origin.Y * FeetToMetres, t.Origin.Z * FeetToMetres),
             new Vec3(t.BasisX.X, t.BasisX.Y, t.BasisX.Z),
             new Vec3(t.BasisY.X, t.BasisY.Y, t.BasisY.Z));
-
-        private static string Escape(string value) =>
-            value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
         private readonly record struct SymbolPart(int ShellIndex, int MaterialIndex);
 
