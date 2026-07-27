@@ -135,9 +135,9 @@ CHROMIUM_PATH=<chromium> node serve-check.mjs ../out/serve ../out/viewer.png
 ```
 
 It loads the file with `FragmentsModels`, then prints what the LIBRARY read back — item count,
-categories, localIds, bounding box — and exits non-zero unless the page reaches PASS. `build.mjs`
-produces the same page as one self-contained HTML instead; that form needs a real origin, because a
-module worker created from a blob URL will not start on a `file://` page.
+categories, localIds, bounding box — and exits non-zero unless the page reaches PASS.
+`build-file.mjs` produces the same page as one self-contained HTML that also works from `file://`
+(see below).
 
 ## Running it in Revit
 
