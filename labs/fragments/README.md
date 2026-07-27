@@ -106,6 +106,45 @@ categories, localIds, bounding box — and exits non-zero unless the page reache
 produces the same page as one self-contained HTML instead; that form needs a real origin, because a
 module worker created from a blob URL will not start on a `file://` page.
 
+## Running it in Revit
+
+The mapper ships with a standalone command so it can be tried on a real model without wiring
+anything into the plugin. It opens no transaction and changes nothing.
+
+```powershell
+git fetch && git checkout claude/open-company-toolum-integration-e1auqs
+
+# 2025 or 2026 — pick the Revit you will open
+dotnet build labs/fragments/src/AnalyseTool.Fragments.Revit -p:RevitVersion=2025
+```
+
+The output folder (`bin/Debug/net8.0-windows/`) must contain exactly three DLLs —
+`AnalyseTool.Fragments.Revit.dll`, `AnalyseTool.Fragments.dll` and `Google.FlatBuffers.dll`. No
+Revit API DLLs: those come from Revit itself, and shipping copies would clash.
+
+1. Copy `AnalyseTool.Fragments.Revit.addin` from that folder to
+   `%AppData%\Autodesk\Revit\Addins\2025\`.
+2. Open it and set `<Assembly>` to the full path of `AnalyseTool.Fragments.Revit.dll`.
+3. Start Revit, open a project, then **Add-Ins → External Tools → Export .frag**.
+4. Choose **Active view only** first — it is far quicker, and a wrong result shows up just as well.
+
+The file lands on the desktop and a dialog reports items, unique geometries, placements, triangles,
+tessellation time, serialisation time and file size. **Samples ÷ shells is the number to look at:**
+above 1.0 means geometry is being shared across instances, which is the whole reason for exporting
+from Revit rather than through IFC.
+
+To look at the result, point the viewer at it — it makes no assumptions about which model it loads:
+
+```bash
+cd labs/fragments/viewer
+npm install
+node build-serve.mjs /path/to/YourModel.frag ../out/serve
+node serve-check.mjs ../out/serve ../out/check.png     # headless, prints what the library read back
+```
+
+Or open `../out/serve/index.html` through any local web server and orbit it by hand. It must be
+served over HTTP, not opened as a file — see the note above about module workers.
+
 ## Next
 
 1. Run the mapper inside Revit. It compiles but has never executed — every claim about it is a

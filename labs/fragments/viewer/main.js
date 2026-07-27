@@ -118,25 +118,25 @@ async function main() {
   fact("meshes in scene", meshes);
   fact("triangles drawn", Math.round(triangles));
 
-  // The model was authored as a 12×8 m slab with 3 m columns on top. If the Y-up call in SPEC.md
-  // is right, the tall axis is Y and it measures ~3.3 m; if it were wrong, height would land on Z.
-  const heightIsY = size.y < size.x && size.y < size.z;
-  log(heightIsY
-    ? `Y is the short axis (${size.y.toFixed(2)} m) — the model stands upright, Y-up confirmed`
-    : `Y is NOT the short axis — the Y-up assumption in SPEC.md is wrong`,
-    heightIsY ? "ok" : "bad");
+  // Pass/fail has to hold for ANY file, including a real Revit export — so it asserts only what
+  // must be true of every model: it loaded, it has items, and it produced drawable geometry.
+  const loaded = localIds.length > 0 && meshes > 0 && triangles > 0;
 
-  const idsMatch = localIds.length === 14 && localIds[0] === 1000;
-  log(idsMatch
-    ? "localIds came back as the ElementId-style values we wrote (1000…1013)"
-    : `unexpected localIds: ${localIds.slice(0, 4)}`,
-    idsMatch ? "ok" : "bad");
+  // Informational, not a verdict: on a floor plate Y is the short axis, on a tower it is the long
+  // one. What it is NOT, if the export is right, is a Z-up model lying on its side.
+  log(`extents  x ${size.x.toFixed(1)}  y ${size.y.toFixed(1)}  z ${size.z.toFixed(1)} m ` +
+      `— y is the up axis, so that is the model's height`);
+  log(`localIds ${localIds.slice(0, 4).join(", ")}${localIds.length > 4 ? " …" : ""} ` +
+      `— from Revit these are ElementIds`);
+  if (withGeometry.length && localIds.length) {
+    const share = (withGeometry.length / localIds.length) * 100;
+    log(`${withGeometry.length} of ${localIds.length} items carry geometry (${share.toFixed(0)}%)`);
+  }
 
-  document.getElementById("verdict").textContent =
-    heightIsY && idsMatch && meshes > 0
-      ? "PASS — the file written by C# loads, renders and reads back correctly"
-      : "CHECK THE LOG";
-  document.getElementById("verdict").className = heightIsY && idsMatch && meshes > 0 ? "pass" : "fail";
+  document.getElementById("verdict").textContent = loaded
+    ? "PASS — the file loads, renders and reads back through That Open's runtime"
+    : "FAIL — nothing drawable came out of the file";
+  document.getElementById("verdict").className = loaded ? "pass" : "fail";
 
   // Frame the model.
   const center = new THREE.Vector3();

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Drop this file into %AppData%\Autodesk\Revit\Addins\<year>\ and edit <Assembly> below to the full
+  path of AnalyseTool.Fragments.Revit.dll in the build output. Prototype scaffolding: it adds one
+  command under Add-Ins > External Tools and touches nothing else.
+-->
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Name>Export Fragments</Name>
+    <Text>Export .frag</Text>
+    <Description>Writes the model as a That Open .frag file</Description>
+    <Assembly>C:\FULL\PATH\TO\AnalyseTool.Fragments.Revit.dll</Assembly>
+    <FullClassName>AnalyseTool.Fragments.Revit.ExportFragmentCommand</FullClassName>
+    <AddInId>7a1f6c94-3b2e-4d58-9c1a-2f5e8b0d4a63</AddInId>
+    <VendorId>AnalyseTool</VendorId>
+    <VendorDescription>AnalyseTool</VendorDescription>
+  </AddIn>
+</RevitAddIns>

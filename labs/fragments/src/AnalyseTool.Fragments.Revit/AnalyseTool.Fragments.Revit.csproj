@@ -18,10 +18,20 @@
     <RootNamespace>AnalyseTool.Fragments.Revit</RootNamespace>
     <RevitVersion Condition="'$(RevitVersion)' == ''">2025</RevitVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Revit loads this dll directly, with no deps.json resolution against the NuGet cache, so
+         every dependency has to sit next to it. The Revit API packages exclude themselves from
+         copying (they must come from Revit itself), which is verified in the build output. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copied next to the output so the .addin manifest can point at one folder. -->
+    <None Update="AnalyseTool.Fragments.Revit.addin" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
