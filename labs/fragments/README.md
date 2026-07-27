@@ -62,7 +62,7 @@ tools/frag_to_obj.py                 rebuilds the geometry as OBJ — checks the
 ```bash
 cd labs/fragments
 
-dotnet test                                          # 25 tests, no Revit needed
+dotnet test                                          # 35 tests, no Revit needed
 dotnet run --project src/AnalyseTool.Fragments.Cli -- out/demo.frag
 
 bash tools/generate-bindings.sh                      # once, for the Python tools (needs flatc)
