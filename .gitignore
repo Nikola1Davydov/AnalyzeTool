@@ -453,3 +453,7 @@ __screenshots__/
 # WixSharp-generated sources (BuildMsi emits them on every installer build)
 /src/Installer/wix/
 /.claude/worktrees/
+
+# labs/fragments spike: generated bindings and demo output
+/labs/fragments/tools/gen/
+/labs/fragments/out/
