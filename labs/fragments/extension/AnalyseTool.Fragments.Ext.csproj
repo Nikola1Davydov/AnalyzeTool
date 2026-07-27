@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The .frag exporter as an AnalyseTool EXTENSION rather than a Revit add-in of its own.
+    It rides the same rails third-party extensions do: references the Sdk only, is loaded into the
+    collectible ALC, and shows up as an ordinary command — so it is callable from the WebView UI and
+    from AI agents over MCP, which a standalone IExternalCommand never could be.
+
+    It also stays out of the shipping plugin: Tools may ProjectReference nothing but the Sdk, so
+    putting the writer there today would either break Check-Boundaries.ps1 or make the plugin build
+    depend on this prototype. As an extension it needs neither.
+  -->
+
+  <Import Project="..\..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+  <Import Project="..\..\..\src\AnalyseTool.Sdk\build\AnalyseTool.Sdk.targets" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>true</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AnalyseTool.Fragments.Ext</RootNamespace>
+    <AssemblyName>AnalyseTool.Fragments.Ext</AssemblyName>
+    <!-- The ALC loads this assembly from the extension folder and resolves its private dependencies
+         there too, so they have to be copied next to it rather than left in the NuGet cache. The
+         Revit API packages exclude themselves from runtime assets, so they stay out — verified in
+         the build output. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Private=false: compile against the Sdk, never copy it. The host owns AnalyseTool.Sdk.dll and
+         the ALC hands out its copy, which is what keeps type identity across the boundary. -->
+    <ProjectReference Include="..\..\..\src\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+
+    <!-- The writer, on the other hand, IS carried by the extension: the host knows nothing about it.
+         The ALC resolves private dependencies through AssemblyDependencyResolver, so this and
+         Google.FlatBuffers.dll load from the extension's own folder. -->
+    <ProjectReference Include="..\src\AnalyseTool.Fragments\AnalyseTool.Fragments.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="plugin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Debug builds land straight in the live extensions folder, so a rebuild plus Settings > Reload
+       is the whole edit loop — no Revit restart, no manifest to hand-edit. -->
+  <Target Name="DeployToExtensionsFolder" AfterTargets="Build"
+          Condition="$(Configuration.Contains('Debug')) and '$(LOCALAPPDATA)' != ''">
+    <PropertyGroup>
+      <FragmentsExtensionDir>$(LOCALAPPDATA)\AnalyseTool\extensions\AnalyseTool.Fragments</FragmentsExtensionDir>
+      <FragmentsYear Condition="$(Configuration.Contains('R27'))">2027</FragmentsYear>
+      <FragmentsYear Condition="$(Configuration.Contains('R26'))">2026</FragmentsYear>
+      <FragmentsYear Condition="'$(FragmentsYear)' == ''">2025</FragmentsYear>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- The manifest belongs in the extension ROOT — the catalog scans for it there and nowhere else. -->
+      <FragmentsRootFiles Include="plugin.json" />
+      <!-- The assembly and its private dependencies go where the loader looks: <extension>\<year>\. -->
+      <FragmentsYearFiles Include="$(TargetDir)AnalyseTool.Fragments.Ext.dll;$(TargetDir)AnalyseTool.Fragments.dll;$(TargetDir)Google.FlatBuffers.dll;$(TargetDir)AnalyseTool.Fragments.Ext.deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FragmentsRootFiles)" DestinationFolder="$(FragmentsExtensionDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FragmentsYearFiles)" DestinationFolder="$(FragmentsExtensionDir)\$(FragmentsYear)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="Deployed the .frag exporter to $(FragmentsExtensionDir)\$(FragmentsYear)" />
+  </Target>
+
+</Project>

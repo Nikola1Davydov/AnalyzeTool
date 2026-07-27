@@ -1,0 +1,8 @@
+{
+  "id": "analysetool.fragments",
+  "version": "0.1.0",
+  "description": "Exports the open document as a That Open .frag file, so a Revit model and a received IFC can be compared side by side in one viewer.",
+  "publisher": "AnalyseTool",
+  "website": "https://github.com/Nikola1Davydov/AnalyzeTool",
+  "entryAssembly": "AnalyseTool.Fragments.Ext.dll"
+}

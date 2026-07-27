@@ -48,7 +48,7 @@ src/AnalyseTool.Fragments/           the writer (Revit-free)
   FragmentWriter.cs                  serializer → zlib-compressed FlatBuffers
   Axes.cs                            Revit's Z-up → the format's Y-up
   IfcGuid.cs                         the 22-character IFC identifier — the IFC↔Revit join key
-src/AnalyseTool.Fragments.Revit/     Revit Document -> FragmentModel (needs Revit to run)
+extension/                           the AnalyseTool extension: Revit Document -> .frag
 src/AnalyseTool.Fragments.Cli/       writes a demo .frag with no Revit involved
 viewer/                              loads a written .frag in That Open's real runtime, headless
 tests/                               35 tests locking in the on-disk conventions
@@ -108,30 +108,33 @@ module worker created from a blob URL will not start on a `file://` page.
 
 ## Running it in Revit
 
-The mapper ships with a standalone command so it can be tried on a real model without wiring
-anything into the plugin. It opens no transaction and changes nothing.
+The exporter is an **AnalyseTool extension**, not a Revit add-in of its own — it rides the same
+rails third-party extensions do, so it appears as an ordinary command and is callable from the
+WebView UI (`AT.invoke("analysetool.fragments.Export")`) and from an AI agent over MCP. Read-only:
+no transaction, nothing changes.
+
+It is deliberately NOT a command in `Tools/`: that project may ProjectReference nothing but the Sdk,
+so putting the writer there today would either break `Check-Boundaries.ps1` or make the shipping
+plugin build depend on this prototype.
 
 ```powershell
-git fetch && git checkout claude/open-company-toolum-integration-e1auqs
-
-# 2025 or 2026 — pick the Revit you will open
-dotnet build labs/fragments/src/AnalyseTool.Fragments.Revit -p:RevitVersion=2025
+# R25 / R26 / R27 — Debug deploys straight to the live extensions folder
+dotnet build labs/fragments/extension -c "Debug R25"
 ```
 
-The output folder (`bin/Debug/net8.0-windows/`) must contain exactly three DLLs —
-`AnalyseTool.Fragments.Revit.dll`, `AnalyseTool.Fragments.dll` and `Google.FlatBuffers.dll`. No
-Revit API DLLs: those come from Revit itself, and shipping copies would clash.
+That lands `plugin.json` in `%LOCALAPPDATA%\AnalyseTool\extensions\AnalyseTool.Fragments\` with the
+assemblies under `<year>\`. A brand-new extension needs one Revit restart; after that a rebuild plus
+**Settings → Reload** is the whole loop.
 
-1. Copy `AnalyseTool.Fragments.Revit.addin` from that folder to
-   `%AppData%\Autodesk\Revit\Addins\2025\`.
-2. Open it and set `<Assembly>` to the full path of `AnalyseTool.Fragments.Revit.dll`.
-3. Start Revit, open a project, then **Add-Ins → External Tools → Export .frag**.
-4. Choose **Active view only** first — it is far quicker, and a wrong result shows up just as well.
+Then run **Export** from AnalyseTool with `activeViewOnly: true` — far quicker, and a wrong result
+shows up just as well. The command returns the path plus the numbers that decide what to fix:
 
-The file lands on the desktop and a dialog reports items, unique geometries, placements, triangles,
-tessellation time, serialisation time and file size. **Samples ÷ shells is the number to look at:**
-above 1.0 means geometry is being shared across instances, which is the whole reason for exporting
-from Revit rather than through IFC.
+| field | what it tells you |
+| --- | --- |
+| `items` / `shells` / `samples` | elements, unique geometries, placements |
+| **`reuse`** | samples ÷ shells. **Above 1.0 means family geometry is shared across instances** — the whole reason for exporting from Revit rather than through IFC. At exactly 1.0 the instancing is not working. |
+| `triangles` | tessellation cost; if it is huge, merging coplanar triangles into polygons is the next optimisation |
+| `tessellateMs` / `writeMs` / `bytes` | where the time and the size actually go |
 
 To look at the result, point the viewer at it — it makes no assumptions about which model it loads:
 
@@ -142,8 +145,8 @@ node build-serve.mjs /path/to/YourModel.frag ../out/serve
 node serve-check.mjs ../out/serve ../out/check.png     # headless, prints what the library read back
 ```
 
-Or open `../out/serve/index.html` through any local web server and orbit it by hand. It must be
-served over HTTP, not opened as a file — see the note above about module workers.
+Serve it over HTTP; opening the page as a `file://` URL leaves the module worker unable to start and
+the load hangs silently.
 
 ## Next
 

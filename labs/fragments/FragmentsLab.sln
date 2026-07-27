@@ -13,8 +13,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D60E03D7
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Fragments.Tests", "tests\AnalyseTool.Fragments.Tests\AnalyseTool.Fragments.Tests.csproj", "{B480D94D-B806-4C25-9684-D0D478DF72C3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.Fragments.Revit", "src\AnalyseTool.Fragments.Revit\AnalyseTool.Fragments.Revit.csproj", "{02499941-DBE4-416D-BF4C-70A740B7EECD}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,15 +34,10 @@ Global
 		{B480D94D-B806-4C25-9684-D0D478DF72C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B480D94D-B806-4C25-9684-D0D478DF72C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B480D94D-B806-4C25-9684-D0D478DF72C3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{02499941-DBE4-416D-BF4C-70A740B7EECD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{02499941-DBE4-416D-BF4C-70A740B7EECD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{02499941-DBE4-416D-BF4C-70A740B7EECD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{02499941-DBE4-416D-BF4C-70A740B7EECD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D1A4AC24-C336-4481-9559-6D5B8FDE9ADA} = {D81150F2-5135-4C7A-8ECB-F233F01024E3}
 		{01A8B949-967D-4934-8F2A-74AE4E67239B} = {D81150F2-5135-4C7A-8ECB-F233F01024E3}
 		{B480D94D-B806-4C25-9684-D0D478DF72C3} = {D60E03D7-67F6-4B14-BDE5-27CD6921BF74}
-		{02499941-DBE4-416D-BF4C-70A740B7EECD} = {D81150F2-5135-4C7A-8ECB-F233F01024E3}
 	EndGlobalSection
 EndGlobal
