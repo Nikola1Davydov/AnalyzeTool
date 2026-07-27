@@ -48,10 +48,10 @@ powershell -File src/build/Check-Boundaries.ps1
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
 2. Build chain for R25 (net8) and R27 (net10).
 3. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
-4. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\<year>\` — a live smoke test of the real ALC loading path.
+4. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\Acme.Sample\` (manifest + UI in the root, assembly in `<year>\`) — a live smoke test of the real ALC loading path, in the layout authors are told to use.
 
 ## Docs to keep in sync
 
 - `ONBOARDING.md` — extension author guide (mirrored to the GitHub wiki), also the NuGet README of the Sdk package.
-- `src/LLM.md` — paste-into-AI extension authoring instructions; `CreateExtensionTemplate.cs` embeds a generated copy — keep §4 (project setup) consistent in BOTH places.
+- `src/LLM.md` — paste-into-AI extension authoring instructions. Also the guide `CreateExtensionTemplate` drops into a new extension folder: it is embedded into `AnalyseTool.Core` as a resource (`AnalyseTool.Core.csproj`) and served verbatim, so there is no second copy to keep in step. The csproj/.gitignore templates live next to it in `src/AnalyseTool.Core/Features/Extensions/Templates/`; the Hello.cs starter is a string literal in `CreateExtensionTemplate.cs` (its filename as a resource triggers MSBuild's culture inference — see the `WithCulture` note in `AnalyseTool.Core.csproj`).
 - `CHANGELOG.md` — ships next to the plugin DLL (Settings window displays it).

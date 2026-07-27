@@ -3,15 +3,24 @@ name: CI
 # Thin wrapper: ALL CI logic lives in the Nuke build (src/build/Build.Ci.cs, target `Ci`), so the
 # exact same guardrails run locally via `src\build.cmd Ci`:
 #   1. dependency contract + headless Core/Tools invariant
-#   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
+#   2. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
 #   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
 
+# Every branch, not just main/dev: the Sdk's build files (Extension.props, Sdk.targets) are consumed
+# by extension repositories that check this repo out by BRANCH, so an unverified push there breaks
+# builds outside this repository. TestSdkPackage is the guardrail that catches it — it has to run
+# before the push is visible to anyone, not after someone reports the failure.
 on:
   push:
-    branches: [main, dev]
+    branches: ["**"]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
+
+# This job builds and runs code from every pushed branch; it needs to read the repo and nothing else.
+# Without this block the token inherits the repository default, which may still be write-all.
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -33,6 +42,8 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          # Without this, any .csproj edit means a fully cold restore instead of a near-hit.
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Run CI guardrails (Nuke)
         run: ./src/build.cmd Ci

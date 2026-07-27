@@ -1,6 +1,9 @@
 {
   "id": "acme.sample",
   "version": "1.0.0",
+  "description": "Sample extension demonstrating the AnalyseTool SDK: a command plus a web UI page.",
+  "publisher": "Acme (sample)",
+  "website": "https://github.com/Nikola1Davydov/AnalyzeTool",
   "entryAssembly": "Acme.Sample.dll",
   "ui": {
     "entryHtml": "index.html",

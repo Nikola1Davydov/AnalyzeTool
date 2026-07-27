@@ -53,8 +53,14 @@ sealed partial class Build
             };
 
             Release release = await GitHubTasks.GitHubClient.Repository.Release.Create(gitHubOwner, gitHubName, newRelease);
+            // From here the release object exists on GitHub, so the tag must survive a later failure —
+            // deleting it would leave a published release pointing at nothing (see CleanFailedRelease).
+            _releaseCreated = true;
             await UploadArtifactsAsync(release, artifacts);
         });
+
+    /// <summary>Set once the GitHub release exists; read by CleanFailedRelease.</summary>
+    bool _releaseCreated;
 
     /// <summary>
     ///     Uploads the artifacts to the GitHub release.
@@ -63,11 +69,14 @@ sealed partial class Build
     {
         foreach (string file in artifacts)
         {
+            // Dispose each stream: an undisposed handle keeps output/ locked on Windows, which then
+            // fails the next local build with "file in use" long after the release finished.
+            await using FileStream content = File.OpenRead(file);
             ReleaseAssetUpload releaseAssetUpload = new ReleaseAssetUpload
             {
                 ContentType = "application/x-binary",
                 FileName = Path.GetFileName(file),
-                RawData = File.OpenRead(file)
+                RawData = content
             };
 
             await GitHubTasks.GitHubClient.Repository.Release.UploadAsset(createdRelease, releaseAssetUpload);

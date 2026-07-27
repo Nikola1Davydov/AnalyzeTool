@@ -1,0 +1,4 @@
+# Build byproducts. The compiled extension itself goes to <year>\ (see OutDir in the .csproj),
+# which is part of the extension and must NOT be ignored.
+bin/
+obj/

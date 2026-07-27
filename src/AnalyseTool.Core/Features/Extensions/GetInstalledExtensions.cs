@@ -22,18 +22,35 @@ namespace AnalyseTool.Core.Features.Extensions
             // its own AssemblyVersion silently reports 1.0.0.0.
             string pluginVersion = SharedData.ToolData.PLUGIN_VERSION;
 
-            var extensions = ExtensionCatalog.EnumerateAll(ExtensionSources.ScanDirs(revitVersion))
+            var extensions = ExtensionCatalog.EnumerateAll(revitVersion)
                 .Select(d => new
                 {
                     id = d.Manifest.Id,
                     name = string.IsNullOrWhiteSpace(d.Manifest.Ui?.Button?.Name) ? d.Manifest.Id : d.Manifest.Ui!.Button!.Name,
                     version = d.Manifest.Version,
+                    // Manifest v2 vendor metadata (all optional).
+                    description = d.Manifest.Description,
+                    publisher = d.Manifest.Publisher,
+                    website = SafeLink(d.Manifest.Website),
+                    supportUrl = SafeLink(d.Manifest.SupportUrl),
+                    updateFeed = d.Manifest.UpdateFeed,
+                    enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
-                    // "dll" = prebuilt assembly, "script" = Roslyn-compiled .cs, "js" = UI-only.
-                    kind = d.HasDll ? "dll" : d.HasScript ? "script" : "js",
+                    // "dll" = prebuilt assembly (declared, even if no build for this year),
+                    // "script" = Roslyn-compiled .cs, "js" = UI-only.
+                    kind = d.DeclaresDll ? "dll" : d.HasScript ? "script" : "js",
+                    // False = declared DLL has no build for the running Revit year (never loaded).
+                    compatible = d.IsCompatibleWithHost,
+                    zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",
+                    legacyLayout = d.IsLegacyLayout,
+                    // Which Revit years the extension ships binaries for (current layout only).
+                    binaryYears = d.BinaryYears,
                     compileError = ExtensionDiagnostics.GetError(d.Manifest.Id),
                     directory = d.Directory,
+                    // Extension icon as a data URI — the WebView cannot read extension folders
+                    // directly. Manifest-level icon first, ribbon-button icon as fallback.
+                    icon = LoadIconDataUri(d),
                 })
                 .OrderBy(e => e.name)
                 .ToList();
@@ -43,9 +60,47 @@ namespace AnalyseTool.Core.Features.Extensions
                 hostRevit = revitVersion,
                 hostSdkVersion,
                 pluginVersion,
-                extensionsRoot = versionDir,
+                extensionsRoot = versionDir, // legacy display value, superseded by managedRoot/devRoot
+                managedRoot = ExtensionSources.DefaultManagedRoot,
+                devRoot = ExtensionSources.DefaultDevRoot,
                 extensions,
             });
+        }
+
+        /// <summary>
+        /// Vendor links are free-form manifest text, so only <c>http</c>/<c>https</c> leave this
+        /// command. Anything else — above all <c>javascript:</c>, which would run in the origin that
+        /// hosts <c>AT.invoke</c> and therefore reaches the whole command surface — is dropped here,
+        /// at the single point every consumer reads. The UI validates again before rendering; this is
+        /// the copy that also covers MCP and any future listing consumer.
+        /// </summary>
+        internal static string? SafeLink(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+            return Uri.TryCreate(url.Trim(), UriKind.Absolute, out Uri? parsed)
+                && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+                ? parsed.AbsoluteUri
+                : null;
+        }
+
+        private const long MaxIconBytes = 256 * 1024; // listing thumbnails; anything bigger is skipped
+
+        private static string? LoadIconDataUri(ExtensionDescriptor descriptor)
+        {
+            string? relative = descriptor.Manifest.Icon ?? descriptor.Manifest.Ui?.Button?.Icon;
+            if (string.IsNullOrWhiteSpace(relative)) return null;
+
+            try
+            {
+                string path = System.IO.Path.Combine(descriptor.Directory, relative);
+                System.IO.FileInfo file = new(path);
+                if (!file.Exists || file.Length > MaxIconBytes) return null;
+                return "data:image/png;base64," + Convert.ToBase64String(System.IO.File.ReadAllBytes(path));
+            }
+            catch
+            {
+                return null; // icon is best-effort, never fail the listing
+            }
         }
     }
 }

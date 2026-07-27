@@ -11,16 +11,28 @@ directory and clicks **Reload**.
 
 ---
 
-## 1. The three kinds of extension
+## 1. What to generate
 
-| Kind | Ships | Role | Build needed? |
+| Kind | Ships | Role | Use it |
 | --- | --- | --- | --- |
-| **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | yes (`dotnet build`) |
-| **Script** | a plain `.cs` file | ADDS commands, compiled at runtime by Roslyn | **no** |
-| **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | no |
+| **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | **always — this is the default** |
+| **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | when the extension needs a page |
+| **Script** | a plain `.cs` file, compiled at load by Roslyn | ADDS commands | only when explicitly asked (§5) |
 
-One folder can be C#-only, UI-only, script, or a combination. **The principle:** C#/script
-extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+**The principle:** C# extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+One folder can be C#-only, UI-only, or both.
+
+> **Generate a compiled C# project (a `.dll`), not a script.** Skipping the build does not remove
+> the compiler — it moves it onto the user's machine, at load time, inside Revit, where a syntax
+> error becomes a red banner instead of a build error you can see and fix. Worse, a script has no
+> per-year folders, so it cannot declare which Revit versions it supports: code that is valid on
+> 2025 and invalid on 2027 looks fine until a user on 2027 opens Revit, and the manager cannot even
+> flag it as incompatible. Everything the platform offers for distribution — the package format,
+> `PackExtension`, update feeds — is built around per-year DLLs.
+>
+> Write a script ONLY when the request is explicitly for one (see §5). If a request would be
+> naturally served by a script — "just run this quickly", "no project please" — produce the C#
+> project anyway and say why in one sentence.
 
 ---
 
@@ -176,7 +188,10 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted. Becomes the command prefix and the folder name. Valid chars: letters/digits/`.`/`-`/`_`. |
 | `version` | ✔ | SemVer string. |
-| `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. |
+| `description` / `publisher` / `website` / `supportUrl` | — | Vendor metadata shown in the extension listing. Recommended when publishing. |
+| `icon` | — | Extension-level PNG (relative path) for listings; falls back to `ui.button.icon`. |
+| `updateFeed` | — | Update source: an HTTPS URL returning `{version, downloadUrl}`, or `github:owner/repo` (latest release, zip asset). Only for published extensions. |
+| `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. Resolved in the Revit-year subfolder first (`2025\`), then the folder root. |
 | `ui` | — | **Omit** for a command-only extension (callable from JS/MCP but no button). |
 | `ui.entryHtml` | — | Page to open. Default `index.html`. |
 | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |
@@ -197,29 +212,48 @@ shipped inside packages during restore, so the SDK package cannot add them for y
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 -->
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- The Revit year drives the TFM, the API packages and the output folder. -->
+    <RevitVersion>2025</RevitVersion>
+    <!-- net8.0-windows for Revit 2025/2026, net10.0-windows for Revit 2027 — not a free choice,
+         the Nice3point package for a year targets that year's runtime (else restore fails: NU1202). -->
+    <TargetFramework Condition="'$(RevitVersion)' &lt; '2027'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' &gt;= '2027'">net10.0-windows</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Acme.Doors</RootNamespace>
     <AssemblyName>Acme.Doors</AssemblyName>
+    <!-- Build into <extension>\<year>\ — the layout a package uses, so the folder you develop in is
+         the folder you ship, and builds for several Revit years coexist. -->
+    <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.*">
+    <!-- Exact version, never a range: a pinned package is the reason your build cannot be
+         broken by someone else's release. -->
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.2">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="2025.*">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*">
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
 </Project>
 ```
-Target another Revit year by switching the `Nice3point.Revit.Api.*` version (`2026.*` / `2027.*`) and,
-for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
+Build: `dotnet build -c Release`. Target another Revit year by editing `RevitVersion` — the TFM, the
+API packages and the output folder all follow from it. There is no per-year build configuration and
+none is needed: to build for another year without touching the file, pass the property on the
+command line, where it overrides the one in the csproj:
+
+```
+dotnet build -c Release -p:RevitVersion=2026
+dotnet build -c Release -p:RevitVersion=2027
+```
+
+Each build lands in its own `<year>\` folder, so the years accumulate side by side — run one command
+per year you ship.
 
 > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
 > extension's load context shares the host's copies (type identity), so **do not ship copies of those
@@ -227,7 +261,16 @@ for 2027, the TFM to `net10.0-windows`. Build: `dotnet build -c Release`.
 
 ---
 
-## 5. Script extension (no build at all)
+## 5. Script extension — NOT the default, read §1 first
+
+Scripts exist for the machine-authored path: an agent trying something out over MCP, the
+**Save as command** flow that promotes a working AI snippet into a permanent one, and code
+embedded into the host. They are **not** the way to hand an extension to a user — there is no
+build, so there is no compile error until Revit loads it, and no year folders, so there is no way
+to say which Revit versions it supports.
+
+Generate one only when the request explicitly asks for a script, or when you are the agent running
+the code yourself. For anything a person will install, generate the C# project from §4.
 
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
@@ -270,20 +313,114 @@ const { commands } = await window.AT.invoke("GetCommands");
 ## 7. Deploy & reload
 
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions\<RevitYear>\<id>\
+%LOCALAPPDATA%\AnalyseTool\extensions\<id>\
     plugin.json
-    <YourExt>.dll        (C#)  |  *.cs (script)
+    2025\<YourExt>.dll   (C# — one folder per Revit year)
+    *.cs                 (script)
     index.html           (UI)
     icon.png             (optional)
 ```
-- `<RevitYear>` = `2025`, `2026` or `2027`.
+- The extension folder sits DIRECTLY under a source root — the Revit year is a subfolder INSIDE it,
+  never above it. This is the same layout a published package has, so the folder you develop in is
+  the one you zip, and builds for several Revit years sit side by side.
+- The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
+  single-year extension works without year folders. Scripts and UI are version-independent and
+  always live in the root.
 - Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
+
+### 7.0 Migrating an extension from the OLD layout
+
+If you are asked to update an existing extension, check which layout it uses first. The old one put
+the Revit year **above** the extension; the current one puts it **inside**:
+
+```
+OLD (deprecated, still loads)          NEW
+extensions\2025\acme.doors\            extensions\acme.doors\
+    plugin.json                            plugin.json          <- ONE copy
+    Acme.Doors.dll                         index.html           <- ONE copy
+    index.html                             icon.png
+extensions\2026\acme.doors\                2025\Acme.Doors.dll
+    plugin.json      (duplicate)           2026\Acme.Doors.dll
+    Acme.Doors.dll
+    index.html       (duplicate)
+```
+
+Rules for the conversion — they cover every case:
+
+1. **DLLs** move into a `<year>\` subfolder of the extension, one per Revit version.
+2. **Everything else** (`plugin.json`, `*.cs` scripts, `index.html`, `ui/`, `icon.png`, assets) goes
+   in the extension root, exactly ONCE. The old layout duplicated these per year; they are
+   version-independent, so collapse them to a single copy. If the duplicates differ, the newest wins
+   — say so rather than guessing silently.
+3. **`plugin.json` needs no change.** The year folders are the version declaration. If an old
+   manifest still carries a `targetRevit` field, DELETE it — it is not read.
+4. **The csproj** gets `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>` and the
+   `RevitVersion`-driven TFM/packages from §4, so the build writes into the right subfolder itself.
+   Remove any post-build copy step that targeted `extensions\<year>\<id>\`.
+
+Do NOT delete the old folder as part of the migration — leave that to the user; both layouts load,
+so nothing breaks while both exist.
+
+### 7.1 Publish (optional)
+
+For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole
+publishing pipeline — no extra tooling:
+
+```
+dotnet build -t:PackExtension
+```
+
+builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
+lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
+and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Settings →
+"Install from file…". Script/UI-only extensions need no build: zip the folder itself.
+
+To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
+git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
+notifications for free:
+
+```yaml
+name: Release
+on:
+  push:
+    tags: ["v*"]        # the tag must match "version" in plugin.json
+  workflow_dispatch: {} # or publish the branch as-is; the tag is derived from the manifest
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - id: manifest
+        shell: pwsh
+        run: echo "version=$((Get-Content plugin.json | ConvertFrom-Json).version)" >> $env:GITHUB_OUTPUT
+      # On a tag push the tag is handed to PackExtension, which fails if it disagrees with plugin.json.
+      - run: dotnet build -t:PackExtension -p:AnalyseToolExpectedVersion=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.manifest.outputs.version }}
+          files: artifacts/*.zip
+```
+
+**`plugin.json` owns the version.** It travels inside the package and is what the installed
+extension reports; a git tag exists only in the repository. So bump `version` there, and let the
+tag follow. Publish ONE package per release: re-running a workflow EDITS the existing release
+rather than replacing it, so a second zip just piles up next to the first, and the update feed
+then refuses to guess which one is the package.
 
 ---
 
 ## 8. Rules — ALWAYS / NEVER
 
+- **ALWAYS** generate a compiled C# project (`.dll`). A script (§5) is only for an explicit request
+  or for code you run yourself as an agent — never for an extension a user will install.
 - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
@@ -321,7 +458,9 @@ the user to pick one.
 
 ## 10. Checklist for a generated extension
 
-- [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for script/UI).
+- [ ] A compiled C# project — not a script — unless a script was explicitly requested (§1, §5).
+- [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for UI-only).
+- [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
       for commands that take arguments.

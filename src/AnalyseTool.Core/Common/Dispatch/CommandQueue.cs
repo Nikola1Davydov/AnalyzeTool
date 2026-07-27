@@ -78,10 +78,13 @@ namespace AnalyseTool.Core.Common.Dispatch
         {
             if (request.Gate is not null)
             {
+                // An unknown name has nothing to authorize: it falls through to the dispatcher, which
+                // refuses it by name. Everything that CAN execute resolves a registration here first,
+                // so no command reaches DispatchAsync without passing its transport's gate.
                 CommandRegistration? registration = _dispatcher.GetRegistration(request.Command);
                 if (registration is not null && !await request.Gate(registration).ConfigureAwait(false))
-                    throw new OperationCanceledException(
-                        $"Command '{request.Command}' was refused by the {request.Source} transport gate.");
+                    throw new UnauthorizedAccessException(
+                        $"Command '{request.Command}' is not available over {request.Source}.");
             }
 
             Log.Debug("Command {Command} invoked via {Source}", request.Command, request.Source);

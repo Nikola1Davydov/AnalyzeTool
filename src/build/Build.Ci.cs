@@ -12,8 +12,10 @@ sealed partial class Build
     // CI guardrails live HERE (not in the workflow YAML) so the exact same pipeline runs locally
     // (`src/build.cmd Ci`) and on GitHub — ci.yml is reduced to "checkout, setup .NET, run Ci".
     //   1. dependency contract + headless Core/Tools invariant (Check-Boundaries.ps1)
-    //   2. the full plugin chain compiles for both TFM worlds (R25 = net8, R27 = net10)
+    //   2. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
     //   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+    //   4. the extension template the plugin generates actually builds, and Core's embedded
+    //      template resources are really in the assembly (Build.Ci.Template.cs)
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath SdkNupkgDirectory => CiArtifactsDirectory / "sdk-nupkg";
@@ -32,12 +34,16 @@ sealed partial class Build
                 .AssertZeroExitCode();
         });
 
-    /// <summary>The full plugin chain for both TFM worlds: Debug R25 (net8) and Debug R27 (net10).</summary>
+    /// <summary>
+    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
+    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
+    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
+    /// </summary>
     Target CompileCi => _ => _
         .DependsOn(CheckBoundaries)
         .Executes(() =>
         {
-            foreach (string configuration in new[] { "Debug R25", "Debug R27" })
+            foreach (string configuration in new[] { "Debug R25", "Debug R26", "Debug R27" })
             {
                 DotNetBuild(settings => settings
                     .SetProjectFile(LauncherProject)
@@ -87,10 +93,34 @@ sealed partial class Build
                 .AddProperty("SdkPackageVersion", version)
                 .AddProperty("RestoreConfigFile", configFile)
                 .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages"));
+
+            // The publishing pipeline the nupkg ships (build/AnalyseTool.Sdk.targets): pack the
+            // sample for every Revit year into the distribution zip, exactly like a vendor's CI
+            // would. A broken PackExtension target or bundle layout fails THIS step. The per-year
+            // builds run as child `dotnet build` processes, so the package-mode properties must be
+            // forwarded explicitly via AnalyseToolPackExtraArgs (child processes don't inherit -p).
+            AbsolutePath packOutput = CiArtifactsDirectory / "sample-pack";
+            string packExtraArgs =
+                $"-p:UseSdkPackage=true -p:SdkPackageVersion={version} " +
+                $"-p:RestoreConfigFile={configFile} " +
+                $"-p:RestorePackagesPath={CiArtifactsDirectory / "sample-packages"}";
+            DotNetMSBuild(settings => settings
+                .SetTargetPath(SampleProject)
+                .SetTargets("PackExtension")
+                .AddProperty("UseSdkPackage", "true")
+                .AddProperty("SdkPackageVersion", version)
+                .AddProperty("RestoreConfigFile", configFile)
+                .AddProperty("RestorePackagesPath", CiArtifactsDirectory / "sample-packages")
+                .AddProperty("AnalyseToolPackOutput", packOutput)
+                .AddProperty("AnalyseToolPackExtraArgs", packExtraArgs));
+
+            AbsolutePath zip = packOutput.GlobFiles("acme.sample-*.zip").FirstOrDefault()
+                ?? throw new System.Exception($"PackExtension produced no zip in {packOutput}");
+            Serilog.Log.Information("PackExtension produced {Zip}", zip.Name);
         });
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, TestSdkPackage)
+        .DependsOn(CompileCi, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

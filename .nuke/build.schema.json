@@ -27,6 +27,7 @@
         "BuildClientApp",
         "BuildLauncher",
         "CheckBoundaries",
+        "CheckCoreResources",
         "Ci",
         "Clean",
         "CleanFailedRelease",
@@ -35,7 +36,9 @@
         "CreateInstaller",
         "PackSdk",
         "PublishGitHub",
-        "TestSdkPackage"
+        "TestExtensionTemplate",
+        "TestSdkPackage",
+        "ValidateReleaseVersion"
       ]
     },
     "Verbosity": {

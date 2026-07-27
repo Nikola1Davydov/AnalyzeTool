@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.5] / unreleased
+
+- 🧩 **Extension manager** — Settings now installs, removes, enables/disables and updates extensions instead of only listing them. Two zones are kept apart: **Installed** packages the manager owns, and your own **Dev** folders it never touches. Install from a `.zip` (with a third-party consent prompt), see an update badge when a newer version is published, and read per-extension diagnostics when something fails to load.
+- 📦 **One package for every Revit version** — an extension is now a single zip whose per-year binaries live inside it (`MyExt\2025\MyExt.dll`), with `plugin.json`, scripts, `ui/` and the icon in the root. No more one folder per Revit year: the extension folder sits directly under the extensions root and the year is a subfolder of it. Old `extensions\<year>\<id>\` folders keep loading unchanged.
+- 🚚 **Publishing pipeline for authors** — `dotnet build -t:PackExtension` builds every Revit year and produces the release zip; a `github:owner/repo` feed in `plugin.json` is enough for the manager to offer updates. No server, no marketplace.
+- 🏷️ **Manifest v2** (additive, old manifests keep working) — `description`, `publisher`, `website`, `supportUrl`, `icon` and `updateFeed`; `ui.button.command` lets a ribbon button run a command instead of opening a page.
+- 🛠️ Fixed **"New template → C#"** producing a project that built into `bin\` instead of the extension folder — following the documented `dotnet build` gave an extension the host could not load. The generated project now derives its output folder, its Revit API packages and its target framework from a single `RevitVersion` property, so `dotnet build -p:RevitVersion=2026` retargets it without editing a file.
+- 🔍 An extension that was never built now reads **"Not built"** with instructions, instead of **"Incompatible"** — which sent authors looking for a Revit-version problem that was not there. "Incompatible" is kept for its real case and now names the years the extension does ship.
+- 📖 `ONBOARDING.md` and the paste-into-AI `LLM.md` rewritten for the new layout, including a migration section for extensions built against the old one.
+- 🔒 **Security — the MCP server now enforces which commands an AI may run.** Commands marked as hidden from the AI (plugin management, and the C# code-execution switch) were filtered out of the tool *list* but still executed if called by name — so a connected agent could switch on C# execution and run arbitrary code in Revit. Listing and invoking now share one rule.
+- 🔒 **Security — the MCP bridge requires a token.** It listens on localhost, which keeps the network out but not other programs running under your account; every request now has to carry a per-machine secret. **If you already use the MCP server, re-copy the config snippet from Settings → MCP server** — it gained a `--token` argument, and clients without it are refused.
+- 🔒 **Security — vendor links in `plugin.json` are restricted to `http`/`https`.** A `javascript:` address in an extension's `website`/`supportUrl` ran as script inside the Settings page when clicked, with access to every plugin command. Such links are now dropped, on the host side and in the UI.
+- 🧱 Stability — installing, updating, enabling or removing an extension while another command is running no longer risks "command is not registered" errors or leaked load contexts: the command registry is concurrent and reloads are serialized.
+- 🔌 The MCP bridge survives a failed connection attempt instead of silently ending the session (Settings kept showing "running"), rejects oversized messages, and parses incoming data in one pass.
+- ⏳ The Revit busy indicator no longer polls in a window that was closed, and idles at a much slower cadence; a failed toggle in Settings now reports the error and snaps back instead of showing a state the plugin never accepted.
+
 ## [1.4.4] / 2026-07-23
 
 - ⏳ **Revit busy indicator** — every AnalyseTool window shows a bottom status strip while something runs (command name, source, elapsed time) and warns **proactively** when Revit itself is blocked by an open dialog or edit mode — before you click and wonder why nothing happens. AI agents get the same insight via the new `GetQueueStatus` command (MCP): check it before heavy commands, wait while Revit is busy.

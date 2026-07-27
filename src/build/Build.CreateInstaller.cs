@@ -9,12 +9,12 @@ sealed partial class Build
     ///     Create the .msi installers.
     /// </summary>
     Target CreateInstaller => _ => _
-        .DependsOn(BuildLauncher)
+        .DependsOn(ValidateReleaseVersion, BuildLauncher)
         .Executes(() =>
         {
             const string configuration = "Release";
 
-            Log.Information("Project: {Name}", Solution.Host.AnalyseTool_App.Name);
+            Log.Information("Project: {Name}", Solution.Delivery.Installer.Name);
 
             DotNetBuild(settings => settings
                 .SetProjectFile(Solution.Delivery.Installer)

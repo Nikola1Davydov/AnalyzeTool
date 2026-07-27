@@ -21,11 +21,14 @@ const MIN_VISIBLE_SECONDS = 2; // don't flicker on fast commands
 const POLL_BUSY_MS = 2000;
 // Idle polling keeps the PROACTIVE warning armed: the host detects a blocked Revit via the Idling
 // stamp (RevitDBExplorer technique) within ~a second, but that state only reaches us by asking.
-// GetQueueStatus never touches the Revit thread, so this is cheap even while Revit is blocked.
+// GetQueueStatus never touches the Revit thread, so this is cheap even while Revit is blocked —
+// still, a Revit session runs for hours with several windows open, so the idle cadence is much
+// slower than the busy one. (Both were 2000 ms, which made the busy/idle choice below a no-op.)
 const POLL_IDLE_MS = 2000;
 
 const status = ref<QueueStatus | null>(null);
 let pollTimer: number | null = null;
+let disposed = false;
 
 const busy = computed(() => (status.value?.running.length ?? 0) > 0 || (status.value?.pendingRevitWork ?? 0) > 0);
 const longest = computed(() =>
@@ -49,6 +52,10 @@ function schedule() {
     clearTimeout(pollTimer);
     pollTimer = null;
   }
+  // schedule() also runs at the end of refresh(), i.e. AFTER an await — by which time the window
+  // may already have closed. Without this check the poller resurrected itself past onUnmounted and
+  // then rescheduled forever against a dead transport.
+  if (disposed) return;
   pollTimer = window.setTimeout(refresh, busy.value ? POLL_BUSY_MS : POLL_IDLE_MS);
 }
 
@@ -65,6 +72,7 @@ onMounted(() => {
   void refresh(); // a window may open while a command started elsewhere is already running
 });
 onUnmounted(() => {
+  disposed = true;
   window.removeEventListener("at:QueueChanged", onQueueChanged);
   if (pollTimer !== null) clearTimeout(pollTimer);
 });

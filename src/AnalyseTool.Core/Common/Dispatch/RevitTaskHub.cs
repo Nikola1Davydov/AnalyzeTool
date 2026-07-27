@@ -40,13 +40,19 @@ namespace AnalyseTool.Core.Common.Dispatch
             // RunContinuationsAsynchronously: the awaiting continuation must not run inline on the
             // Revit thread inside Execute (it could re-enter or block the event handler).
             TaskCompletionSource<T> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // Count BEFORE enqueuing: the other way round, Execute could dequeue and decrement the item
+            // before this increment landed, driving _pending to -1. The counter then never hit the
+            // "== 1" reset again and GetQueueStatus measured waitingSeconds from a stale timestamp —
+            // reporting "Revit is busy" at idle, on the very signal agents are told to trust.
+            if (Interlocked.Increment(ref _pending) == 1)
+                Interlocked.Exchange(ref _pendingSinceTicks, DateTime.UtcNow.Ticks);
+
             _queue.Enqueue(app =>
             {
                 try { tcs.SetResult(work(app)); }
                 catch (Exception ex) { tcs.SetException(ex); }
             });
-            if (Interlocked.Increment(ref _pending) == 1)
-                Interlocked.Exchange(ref _pendingSinceTicks, DateTime.UtcNow.Ticks);
             _event.Raise();
             return tcs.Task;
         }

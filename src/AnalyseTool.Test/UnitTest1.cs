@@ -13,16 +13,16 @@ namespace AnalyseTool.Test
         private UIDocument uidoc;
         private Document doc;
 
-        [SetUp]
-        public void SetUp(UIApplication uIApplication)
-        {
-            uiapp = uIApplication;
-            app = uiapp.Application;
-            uidoc = uiapp.ActiveUIDocument;
-            doc = uidoc.Document;
+        //[SetUp]
+        //public void SetUp(UIApplication uIApplication)
+        //{
+        //    uiapp = uIApplication;
+        //    app = uiapp.Application;
+        //    uidoc = uiapp.ActiveUIDocument;
+        //    doc = uidoc.Document;
 
-            Context.Init(uiapp);
-        }
+        //    Context.Init(uiapp);
+        //}
         //[Test]
         //public void RevitDataIsAvailable()
         //{

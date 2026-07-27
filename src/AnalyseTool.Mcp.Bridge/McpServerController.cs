@@ -30,11 +30,25 @@ namespace AnalyseTool.Mcp.Bridge
         {
             if (_bridge != null) return;
 
-            _bridge = new McpBridgeServer(queue);
             _settings = Load();
+            EnsureToken();
+            _bridge = new McpBridgeServer(queue, _settings.Token);
 
             if (_settings.Enabled)
                 TryStart();
+        }
+
+        /// <summary>
+        /// The shared secret every bridge request must carry. Created once and kept in mcp.json, which
+        /// lives under the user's own profile folder — the same trust level as the AI client config that
+        /// will hold a copy of it.
+        /// </summary>
+        private static void EnsureToken()
+        {
+            if (!string.IsNullOrWhiteSpace(_settings.Token)) return;
+
+            _settings.Token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
+            Save(_settings);
         }
 
         /// <summary>Applies a new on/off + port from the Settings page, persists it, and starts/stops live.</summary>
@@ -62,6 +76,10 @@ namespace AnalyseTool.Mcp.Bridge
             wsUrl = $"ws://127.0.0.1:{((_bridge?.IsRunning ?? false) ? _bridge!.Port : _settings.Port)}/",
             serverExePath = ServerExePath,
             serverExeExists = File.Exists(ServerExePath),
+            // For the generated AI-client config snippet. It is a local secret, not a credential the
+            // frontend can leak anywhere: the WebView only renders it back into the snippet the user
+            // copies into their own MCP client config.
+            token = _settings.Token,
             lastError = _lastError,
         };
 
@@ -105,6 +123,9 @@ namespace AnalyseTool.Mcp.Bridge
         {
             public bool Enabled { get; set; }
             public int Port { get; set; } = DefaultPort;
+
+            /// <summary>Shared secret for the bridge; generated on first run (see EnsureToken).</summary>
+            public string Token { get; set; } = string.Empty;
         }
     }
 }

@@ -11,12 +11,17 @@ using System.Text.RegularExpressions;
 // The AI client launches this exe (stdio). It forwards each tool call to the in-Revit bridge over a
 // localhost TCP. Port comes from --port (default shared with the bridge via McpWire).
 int port = ParsePort(args) ?? AnalyseTool.Mcp.McpWire.DefaultPort;
+// The bridge refuses requests without it; Settings generates the config snippet that supplies it.
+string token = ParseOption(args, "--token") ?? string.Empty;
 
 // Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
 // client's MCP server log so it's unambiguous which build is running and which port it targets.
 Console.Error.WriteLine($"[AnalyseTool.Mcp] starting — {BuildStamp()}, bridge port {port}");
+if (token.Length == 0)
+    Console.Error.WriteLine("[AnalyseTool.Mcp] no --token argument: Revit will reject every call. " +
+                            "Copy the configuration snippet from AnalyseTool Settings → MCP server.");
 
-RevitBridgeClient bridge = new RevitBridgeClient(port);
+RevitBridgeClient bridge = new RevitBridgeClient(port, token);
 
 // Maps the (sanitized) MCP tool name back to the real Revit command name. Rebuilt on every list.
 ConcurrentDictionary<string, string> toolToCommand = new ConcurrentDictionary<string, string>();
@@ -90,6 +95,10 @@ builder.Services
     .WithCallToolHandler(async (context, ct) =>
     {
         string toolName = context.Params?.Name ?? string.Empty;
+        // Unmapped names are forwarded as-is on purpose: a client may call a tool it cached from an
+        // earlier session without listing again in this process, and the map only fills on tools/list.
+        // Safe because the in-Revit bridge — not this process — is the access boundary: it gates every
+        // invoke on the command's own registration (see McpBridgeServer.IsAvailableToAi).
         string command = toolToCommand.TryGetValue(toolName, out string? mapped) ? mapped : toolName;
         JsonNode? payload = ArgumentsToPayload(context.Params?.Arguments);
 
@@ -137,6 +146,18 @@ static int? ParsePort(string[] args)
         if (args[i].StartsWith("--port=", StringComparison.Ordinal) &&
             int.TryParse(args[i]["--port=".Length..], out int p2))
             return p2;
+    }
+    return null;
+}
+
+/// <summary>Reads "--name value" or "--name=value" from the command line.</summary>
+static string? ParseOption(string[] args, string name)
+{
+    string inline = name + "=";
+    for (int i = 0; i < args.Length; i++)
+    {
+        if (args[i] == name && i + 1 < args.Length) return args[i + 1];
+        if (args[i].StartsWith(inline, StringComparison.Ordinal)) return args[i][inline.Length..];
     }
     return null;
 }
