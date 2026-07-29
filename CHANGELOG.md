@@ -2,6 +2,8 @@
 
 ## [1.4.5] / unreleased
 
+- 🎮 **Doom, but it's BIM** — new `BuildDoomLevel` command: point it at a WAD file and it rebuilds a classic Doom map (E1M1, MAP01, …) as native Revit geometry — walls from linedefs (solid, steps and lintels), floor slabs (optionally ceilings) from the sector polygons, holes included. Everything lands in ONE transaction, so one Ctrl+Z removes the whole level. Scale, target level and wall/floor types are configurable; defaults follow the common 32-units-per-meter convention.
+
 - 🧩 **Extension manager** — Settings now installs, removes, enables/disables and updates extensions instead of only listing them. Two zones are kept apart: **Installed** packages the manager owns, and your own **Dev** folders it never touches. Install from a `.zip` (with a third-party consent prompt), see an update badge when a newer version is published, and read per-extension diagnostics when something fails to load.
 - 📦 **One package for every Revit version** — an extension is now a single zip whose per-year binaries live inside it (`MyExt\2025\MyExt.dll`), with `plugin.json`, scripts, `ui/` and the icon in the root. No more one folder per Revit year: the extension folder sits directly under the extensions root and the year is a subfolder of it. Old `extensions\<year>\<id>\` folders keep loading unchanged.
 - 🚚 **Publishing pipeline for authors** — `dotnet build -t:PackExtension` builds every Revit year and produces the release zip; a `github:owner/repo` feed in `plugin.json` is enough for the manager to offer updates. No server, no marketplace.
