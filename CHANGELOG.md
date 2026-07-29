@@ -2,6 +2,7 @@
 
 ## [1.4.5] / unreleased
 
+- ⛏️ **Minecraft mode** — an AI connected via MCP can now BUILD in Revit like a Minecraft bot: `McPlaceBlocks` places block cubes at integer cells, `McFillRegion` raises solid or hollow boxes (walls, rooms, platforms) in one call, `McClearRegion` is the pickaxe (it only ever removes blocks the plugin placed — your model is safe), and `McSetPalette` creates/recolors the `MC_*` materials (built-in palette from grass to diamond; unknown block types get a stable auto color). Blocks are instances of one auto-generated cube family with the material as an instance parameter; if no family template is found they fall back to DirectShapes.
 - 🎮 **Doom, but it's BIM** — new `BuildDoomLevel` command: point it at a WAD file and it rebuilds a classic Doom map (E1M1, MAP01, …) as native Revit geometry — walls from linedefs (solid, steps and lintels), floor slabs (optionally ceilings) from the sector polygons, holes included. Everything lands in ONE transaction, so one Ctrl+Z removes the whole level. Scale, target level and wall/floor types are configurable; defaults follow the common 32-units-per-meter convention.
 
 - 🧩 **Extension manager** — Settings now installs, removes, enables/disables and updates extensions instead of only listing them. Two zones are kept apart: **Installed** packages the manager owns, and your own **Dev** folders it never touches. Install from a `.zip` (with a third-party consent prompt), see an update badge when a newer version is published, and read per-extension diagnostics when something fails to load.
