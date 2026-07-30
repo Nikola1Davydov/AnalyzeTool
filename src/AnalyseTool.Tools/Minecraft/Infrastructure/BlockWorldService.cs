@@ -147,6 +147,65 @@ namespace AnalyseTool.Tools.Minecraft
             return doomed.Count;
         }
 
-        private XYZ CellOrigin(BlockPlacement b) => new(b.X * _size, b.Z * _size, b.Y * _size);
+        // ---- Interactive building (one block per click, one transaction per block) ----------------
+
+        /// <summary>Resolves the cube family up front, OUTSIDE any transaction — call once before an
+        /// interactive session, then hand the symbol to <see cref="TryPlaceSingle"/> per click.</summary>
+        public FamilySymbol? PrepareSymbol(UIApplication app) =>
+            BlockFamilyService.EnsureBlockSymbol(app.Application, _doc, _size);
+
+        /// <summary>The cell a picked model point falls into (Minecraft coordinates, y up).</summary>
+        public (int X, int Y, int Z) CellOf(XYZ point) =>
+            (FloorCell(point.X), FloorCell(point.Z), FloorCell(point.Y));
+
+        private int FloorCell(double v) => (int)Math.Floor(v / _size + 1e-6);
+
+        /// <summary>True when an MC-tagged element already sits in the cell — used to stack a clicked
+        /// block on top of an existing one instead of placing it inside.</summary>
+        public bool IsOccupied(int x, int y, int z)
+        {
+            XYZ min = CellOrigin(x, y, z);
+            double e = _size * 0.1;
+            var outline = new Outline(
+                new XYZ(min.X + e, min.Y + e, min.Z + e),
+                new XYZ(min.X + _size - e, min.Y + _size - e, min.Z + _size - e));
+
+            return new FilteredElementCollector(_doc)
+                .WherePasses(new BoundingBoxIntersectsFilter(outline))
+                .Any(el => el.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)?.AsString()
+                    ?.StartsWith(CommentPrefix, StringComparison.Ordinal) == true);
+        }
+
+        /// <summary>Places ONE block in its own transaction — interactive mode, where every click is
+        /// its own undo step (Ctrl+Z removes the last block, just like in the game).</summary>
+        public bool TryPlaceSingle(FamilySymbol? symbol, BlockPlacement block)
+        {
+            try
+            {
+                using Transaction t = new(_doc, $"MC block: {block.Block}");
+                t.Start();
+                SwallowWarningsPreprocessor.Apply(t);
+
+                ElementId materialId = new BlockMaterialService(_doc).EnsureMaterial(block.Block);
+                if (symbol != null && !symbol.IsActive) symbol.Activate();
+
+                Element element = symbol != null
+                    ? PlaceFamilyBlock(symbol, block, materialId)
+                    : PlaceDirectShapeBlock(block, materialId);
+                element.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
+                    ?.Set(CommentPrefix + block.Block);
+
+                t.Commit();
+                return true;
+            }
+            catch (Autodesk.Revit.Exceptions.ApplicationException)
+            {
+                return false;
+            }
+        }
+
+        private XYZ CellOrigin(int x, int y, int z) => new(x * _size, z * _size, y * _size);
+
+        private XYZ CellOrigin(BlockPlacement b) => CellOrigin(b.X, b.Y, b.Z);
     }
 }
