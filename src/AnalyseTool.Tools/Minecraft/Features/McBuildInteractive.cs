@@ -39,8 +39,12 @@ namespace AnalyseTool.Tools.Minecraft
             return ctx.RunInRevitAsync<object?>(app =>
             {
                 UIDocument uidoc = app.ActiveUIDocument;
-                var world = new BlockWorldService(uidoc.Document, req.BlockSizeMeters / 0.3048);
-                FamilySymbol? symbol = world.PrepareSymbol(app);
+                var world = new BlockWorldService(uidoc.Document, req.BlockSizeMeters / 0.3048, req.FamilyName);
+
+                string? familyError = world.ValidateUserFamily();
+                if (familyError != null) return new { ok = false, placed = 0, error = familyError };
+
+                FamilySymbol? symbol = string.IsNullOrWhiteSpace(req.FamilyName) ? world.PrepareSymbol(app) : null;
 
                 int placed = 0;
                 try
@@ -86,6 +90,11 @@ namespace AnalyseTool.Tools.Minecraft
             [JsonProperty("blockSizeMeters")]
             [Description("Edge length of one block in meters. Default 1.")]
             public double BlockSizeMeters { get; set; } = 1.0;
+
+            [JsonProperty("familyName")]
+            [Description("Optional: place instances of THIS loaded cube family (e.g. 'McCube') instead of the " +
+                         "auto-generated one — see McPlaceBlocks.")]
+            public string? FamilyName { get; set; }
         }
     }
 }

@@ -7,12 +7,14 @@ namespace AnalyseTool.Tools.Minecraft
     /// <summary>One block to place: integer cell coordinates in MINECRAFT convention (y is up).</summary>
     internal readonly record struct BlockPlacement(int X, int Y, int Z, string Block);
 
-    /// <summary>What a placement run produced, for the command result.</summary>
+    /// <summary>What a placement run produced, for the command result. A non-null <see cref="Error"/>
+    /// means nothing was placed (e.g. the requested user family does not exist).</summary>
     internal sealed class BlockPlaceResult
     {
         public int Created;
         public int Failed;
         public string Mode = "family";
+        public string? Error;
         public List<string> Warnings { get; } = new();
     }
 
@@ -31,10 +33,33 @@ namespace AnalyseTool.Tools.Minecraft
         private readonly Document _doc;
         private readonly double _size;
 
-        public BlockWorldService(Document doc, double blockSizeFeet)
+        // Optional: place the USER's own cube family instead of the auto-generated MC_Block one.
+        // Each block type becomes a duplicated TYPE of that family (named after the block) with its
+        // material set on the type's material parameter — the natural Revit way to vary material.
+        private readonly string? _userFamilyName;
+        private Family? _userFamily;
+        private readonly Dictionary<string, FamilySymbol> _userSymbols = new(StringComparer.OrdinalIgnoreCase);
+
+        public BlockWorldService(Document doc, double blockSizeFeet, string? userFamilyName = null)
         {
             _doc = doc;
             _size = blockSizeFeet;
+            _userFamilyName = string.IsNullOrWhiteSpace(userFamilyName) ? null : userFamilyName.Trim();
+        }
+
+        /// <summary>Resolves the user family (when one was requested). Returns an error message for
+        /// the caller to surface, or null when placement can proceed. Safe outside a transaction.</summary>
+        public string? ValidateUserFamily()
+        {
+            if (_userFamilyName == null || _userFamily != null) return null;
+
+            _userFamily = new FilteredElementCollector(_doc).OfClass(typeof(Family)).Cast<Family>()
+                .FirstOrDefault(f => f.Name.Equals(_userFamilyName, StringComparison.OrdinalIgnoreCase));
+            if (_userFamily == null)
+                return $"Family '{_userFamilyName}' was not found in this document — load it first.";
+            if (_userFamily.GetFamilySymbolIds().Count == 0)
+                return $"Family '{_userFamilyName}' has no types.";
+            return null;
         }
 
         /// <summary>Runs the whole placement: family lookup/authoring OUTSIDE the transaction (family
@@ -44,12 +69,22 @@ namespace AnalyseTool.Tools.Minecraft
         {
             var result = new BlockPlaceResult();
 
-            FamilySymbol? symbol = BlockFamilyService.EnsureBlockSymbol(app.Application, _doc, _size);
-            if (symbol == null)
+            FamilySymbol? builtIn = null;
+            if (_userFamilyName != null)
             {
-                result.Mode = "directShape";
-                result.Warnings.Add("No Generic Model family template found — blocks are DirectShapes " +
-                                    "(solid geometry, material baked in, no per-instance material parameter).");
+                result.Mode = "userFamily";
+                result.Error = ValidateUserFamily();
+                if (result.Error != null) return result;
+            }
+            else
+            {
+                builtIn = BlockFamilyService.EnsureBlockSymbol(app.Application, _doc, _size);
+                if (builtIn == null)
+                {
+                    result.Mode = "directShape";
+                    result.Warnings.Add("No Generic Model family template found — blocks are DirectShapes " +
+                                        "(solid geometry, material baked in, no per-instance material parameter).");
+                }
             }
 
             using Transaction t = new(_doc, $"Minecraft: place {blocks.Count} blocks");
@@ -57,7 +92,7 @@ namespace AnalyseTool.Tools.Minecraft
             SwallowWarningsPreprocessor.Apply(t);
 
             var materials = new BlockMaterialService(_doc);
-            if (symbol != null && !symbol.IsActive) symbol.Activate();
+            if (builtIn != null && !builtIn.IsActive) builtIn.Activate();
 
             for (int i = 0; i < blocks.Count; i++)
             {
@@ -71,8 +106,9 @@ namespace AnalyseTool.Tools.Minecraft
                 ElementId materialId = materials.EnsureMaterial(block.Block);
                 try
                 {
-                    Element element = symbol != null
-                        ? PlaceFamilyBlock(symbol, block, materialId)
+                    Element element =
+                        _userFamilyName != null ? PlaceUserBlock(block, materialId)
+                        : builtIn != null ? PlaceFamilyBlock(builtIn, block, materialId)
                         : PlaceDirectShapeBlock(block, materialId);
                     element.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
                         ?.Set(CommentPrefix + block.Block);
@@ -89,6 +125,48 @@ namespace AnalyseTool.Tools.Minecraft
             progress?.Invoke(0.98, "Committing…");
             t.Commit();
             return result;
+        }
+
+        /// <summary>Places one block as an instance of the USER's family: the block type becomes a
+        /// duplicated family TYPE (named after the block) whose material parameter carries the block
+        /// material. Insertion at the cell's bottom center — the Generic Model family convention.</summary>
+        private Element PlaceUserBlock(BlockPlacement block, ElementId materialId)
+        {
+            FamilySymbol symbol = GetUserSymbol(block.Block, materialId);
+            XYZ o = CellOrigin(block);
+            XYZ insert = new(o.X + _size / 2, o.Y + _size / 2, o.Z);
+            return _doc.Create.NewFamilyInstance(insert, symbol, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+        }
+
+        /// <summary>Finds or creates (by duplicating the first type) the family type for a block, and
+        /// points its first writable material-typed parameter at the block material. Transaction-only.</summary>
+        private FamilySymbol GetUserSymbol(string block, ElementId materialId)
+        {
+            if (_userSymbols.TryGetValue(block, out FamilySymbol? cached)) return cached;
+
+            FamilySymbol? symbol = _userFamily!.GetFamilySymbolIds()
+                .Select(id => _doc.GetElement(id)).OfType<FamilySymbol>()
+                .FirstOrDefault(s => s.Name.Equals(block, StringComparison.OrdinalIgnoreCase));
+
+            if (symbol == null)
+            {
+                var baseSymbol = (FamilySymbol)_doc.GetElement(_userFamily!.GetFamilySymbolIds().First());
+                symbol = (FamilySymbol)baseSymbol.Duplicate(block);
+            }
+
+            foreach (Parameter p in symbol.Parameters)
+            {
+                if (!p.IsReadOnly && p.StorageType == StorageType.ElementId &&
+                    p.Definition?.GetDataType() == SpecTypeId.Reference.Material)
+                {
+                    p.Set(materialId);
+                    break;
+                }
+            }
+
+            if (!symbol.IsActive) symbol.Activate();
+            _userSymbols[block] = symbol;
+            return symbol;
         }
 
         private Element PlaceFamilyBlock(FamilySymbol symbol, BlockPlacement block, ElementId materialId)
@@ -177,7 +255,9 @@ namespace AnalyseTool.Tools.Minecraft
         }
 
         /// <summary>Places ONE block in its own transaction — interactive mode, where every click is
-        /// its own undo step (Ctrl+Z removes the last block, just like in the game).</summary>
+        /// its own undo step (Ctrl+Z removes the last block, just like in the game). When the service
+        /// was created with a user family, <paramref name="symbol"/> is ignored and the user family is
+        /// used (call <see cref="ValidateUserFamily"/> once beforehand).</summary>
         public bool TryPlaceSingle(FamilySymbol? symbol, BlockPlacement block)
         {
             try
@@ -187,10 +267,11 @@ namespace AnalyseTool.Tools.Minecraft
                 SwallowWarningsPreprocessor.Apply(t);
 
                 ElementId materialId = new BlockMaterialService(_doc).EnsureMaterial(block.Block);
-                if (symbol != null && !symbol.IsActive) symbol.Activate();
+                if (_userFamilyName == null && symbol != null && !symbol.IsActive) symbol.Activate();
 
-                Element element = symbol != null
-                    ? PlaceFamilyBlock(symbol, block, materialId)
+                Element element =
+                    _userFamilyName != null ? PlaceUserBlock(block, materialId)
+                    : symbol != null ? PlaceFamilyBlock(symbol, block, materialId)
                     : PlaceDirectShapeBlock(block, materialId);
                 element.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)
                     ?.Set(CommentPrefix + block.Block);

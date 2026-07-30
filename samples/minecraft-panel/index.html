@@ -5,181 +5,522 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Minecraft</title>
     <style>
-      body {
-        font-family: "Segoe UI", sans-serif;
-        font-size: 13px;
-        margin: 0;
-        padding: 10px 12px;
-        color: #222;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+      html, body { height: 100%; margin: 0; overflow: hidden; background: #000; }
+      body { font-family: "Segoe UI", sans-serif; font-size: 13px; color: #eee; }
+      #game { position: absolute; inset: 0; }
+      canvas { display: block; }
+
+      .hud { position: absolute; pointer-events: none; }
+      #crosshair {
+        left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%);
+        opacity: 0.85;
       }
-      h3 { margin: 0; font-size: 15px; }
-      .section { display: flex; flex-direction: column; gap: 6px; }
-      .label { font-weight: 600; opacity: 0.8; }
-      .palette { display: grid; grid-template-columns: repeat(9, 24px); gap: 4px; }
-      .swatch {
-        width: 24px; height: 24px; padding: 0;
-        border: 1px solid rgba(0, 0, 0, 0.35);
-        border-radius: 4px; cursor: pointer;
+      #crosshair::before, #crosshair::after {
+        content: ""; position: absolute; background: #fff; mix-blend-mode: difference;
       }
-      .swatch.selected { outline: 2px solid #3b82f6; outline-offset: 1px; }
-      .row { display: flex; align-items: center; gap: 8px; }
-      input[type="text"], input[type="number"] {
-        width: 100%; min-width: 0; box-sizing: border-box;
-        padding: 4px 6px; font-size: 12px;
-        border: 1px solid rgba(128, 128, 128, 0.5);
-        border-radius: 4px; background: transparent; color: inherit;
-      }
-      .size { max-width: 70px; }
-      .grid {
-        display: grid; grid-template-columns: 38px 1fr 1fr 1fr;
-        gap: 4px; align-items: center;
-      }
-      .grid > span { opacity: 0.7; text-align: center; }
-      .grid > span.head-row { text-align: left; }
-      button {
-        padding: 6px 10px; font-size: 13px; cursor: pointer;
-        border: 1px solid rgba(128, 128, 128, 0.5);
-        border-radius: 6px; background: transparent; color: inherit;
-      }
-      button.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
-      button.danger { border-color: #c04545; color: #c04545; }
-      button:disabled { opacity: 0.5; cursor: default; }
-      .hint { font-size: 11px; opacity: 0.65; line-height: 1.35; }
-      .check { font-size: 12px; display: flex; gap: 6px; align-items: center; }
+      #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+      #crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+
       #status {
-        display: none; font-size: 12px; padding: 6px 8px; border-radius: 4px;
-        background: rgba(59, 130, 246, 0.12);
+        left: 50%; top: 10px; transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.55); padding: 4px 10px; border-radius: 6px;
+        max-width: 80%; text-align: center; display: none;
       }
-      #status.error { background: rgba(192, 69, 69, 0.15); color: #c04545; }
+      #status.error { color: #ff8f8f; }
+
+      #hotbar {
+        left: 50%; bottom: 10px; transform: translateX(-50%);
+        display: flex; gap: 4px; pointer-events: auto;
+        background: rgba(0, 0, 0, 0.45); padding: 5px; border-radius: 8px;
+      }
+      .slot {
+        width: 40px; height: 40px; border: 2px solid rgba(255, 255, 255, 0.35);
+        border-radius: 6px; cursor: pointer; padding: 0; background-size: cover;
+        image-rendering: pixelated; position: relative;
+      }
+      .slot.selected { border-color: #fff; box-shadow: 0 0 6px rgba(255, 255, 255, 0.7); }
+      .slot span {
+        position: absolute; left: 2px; top: 0; font-size: 10px; color: #fff;
+        text-shadow: 0 1px 2px #000;
+      }
+
+      #settings {
+        right: 10px; top: 10px; pointer-events: auto;
+        background: rgba(0, 0, 0, 0.55); padding: 10px; border-radius: 8px;
+        display: flex; flex-direction: column; gap: 6px; width: 210px;
+      }
+      #settings label { font-size: 11px; opacity: 0.8; }
+      #settings input {
+        width: 100%; box-sizing: border-box; padding: 3px 6px; font-size: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px;
+        background: rgba(255, 255, 255, 0.08); color: #eee;
+      }
+      #settings button {
+        padding: 4px 8px; font-size: 12px; cursor: pointer; color: #eee;
+        border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; background: transparent;
+      }
+
+      #overlay {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 12px;
+        background: rgba(0, 0, 0, 0.6); cursor: pointer; text-align: center;
+      }
+      #overlay h2 { margin: 0; }
+      #overlay .keys { opacity: 0.8; line-height: 1.7; font-size: 13px; }
+      #overlay.hidden, #status.hidden { display: none; }
     </style>
   </head>
   <body>
-    <h3>⛏️ Minecraft</h3>
+    <div id="game"></div>
 
-    <div class="section">
-      <div class="label">Block</div>
-      <div class="palette" id="palette"></div>
-      <div class="row"><input id="custom" type="text" placeholder="…or custom block name" /></div>
-      <div class="row">
-        <span class="label">Block size, m</span>
-        <input id="size" class="size" type="number" value="1" min="0.1" step="0.1" />
-      </div>
+    <div class="hud" id="crosshair"></div>
+    <div class="hud" id="status"></div>
+    <div class="hud" id="hotbar"></div>
+
+    <div class="hud" id="settings">
+      <label>Cube family in Revit (empty = auto MC_Block)</label>
+      <input id="family" type="text" placeholder="e.g. McCube" />
+      <label>Block size, m</label>
+      <input id="size" type="number" value="1" min="0.1" step="0.1" />
+      <button id="resync">⟳ Resync from Revit</button>
     </div>
 
-    <div class="section">
-      <button id="build" class="primary">▶ Build: grass</button>
-      <div class="hint">
-        Click in the model to place blocks, Esc to finish. Works in a floor plan (or a 3D view with
-        a work plane). Ctrl+Z removes the last block.
+    <div id="overlay">
+      <h2>⛏️ Minecraft × Revit</h2>
+      <div class="keys">
+        <b>Click to play</b><br />
+        WASD — move · Shift — sprint · Space — jump · F — fly (Space/C up/down)<br />
+        Left click — break block · Right click — place block · 1–9 — hotbar · Esc — pause<br />
+        Every block you place or break is placed or deleted in the Revit model.
       </div>
+      <div id="loadState">Loading world from Revit…</div>
     </div>
 
-    <div class="section">
-      <div class="label">Region (cells, y is up)</div>
-      <div class="grid" id="region">
-        <span></span><span>x</span><span>y</span><span>z</span>
-        <span class="head-row">from</span>
-        <input id="fx" type="number" value="0" /><input id="fy" type="number" value="0" /><input id="fz" type="number" value="0" />
-        <span class="head-row">to</span>
-        <input id="tx" type="number" value="4" /><input id="ty" type="number" value="3" /><input id="tz" type="number" value="4" />
-      </div>
-      <label class="check"><input id="hollow" type="checkbox" checked /> Hollow (shell only — walls, floor, ceiling)</label>
-      <div class="row">
-        <button id="fill">Fill region</button>
-        <button id="clear" class="danger">Clear region</button>
-      </div>
-    </div>
+    <script type="module">
+      import * as THREE from "./three.module.min.js";
 
-    <div id="status"></div>
-
-    <script>
-      // Display-only colors — the real material colors live in the host's C# palette.
-      const PALETTE = {
-        grass: "#6b8e23", dirt: "#866043", stone: "#7d7d7d", cobblestone: "#646464",
-        bedrock: "#3c3c3c", sand: "#dbcfa3", gravel: "#887e7e", oak_planks: "#a2824e",
-        oak_log: "#665132", leaves: "#3c7828", glass: "#c8e6f0", water: "#3c5ac8",
-        lava: "#e66e14", brick: "#963c32", stone_brick: "#6e6e6e", snow: "#f0f0fa",
-        ice: "#a0bef0", obsidian: "#191228", wool_white: "#ebebeb", wool_red: "#b43232",
-        wool_blue: "#374baa", wool_yellow: "#dcc83c", wool_green: "#50823c",
-        wool_black: "#232323", gold: "#fad75a", iron: "#d7d7d7", diamond: "#78e6dc",
+      // ---------- settings (persisted) ----------------------------------------------------------
+      const settings = {
+        family: localStorage.getItem("mc.family") || "",
+        size: Number(localStorage.getItem("mc.size")) || 1,
       };
+      const familyInput = document.getElementById("family");
+      const sizeInput = document.getElementById("size");
+      familyInput.value = settings.family;
+      sizeInput.value = settings.size;
+      familyInput.addEventListener("change", () => {
+        settings.family = familyInput.value.trim();
+        localStorage.setItem("mc.family", settings.family);
+      });
+      sizeInput.addEventListener("change", () => {
+        settings.size = Number(sizeInput.value) || 1;
+        localStorage.setItem("mc.size", String(settings.size));
+        resync();
+      });
+      const revitPayload = (extra) => ({
+        blockSizeMeters: settings.size,
+        ...(settings.family ? { familyName: settings.family } : {}),
+        ...extra,
+      });
 
-      let selected = "grass";
-      const $ = (id) => document.getElementById(id);
-      const paletteEl = $("palette");
-      const buildBtn = $("build");
-      const statusEl = $("status");
-      const buttons = [buildBtn, $("fill"), $("clear")];
+      // ---------- procedural 16×16 textures -----------------------------------------------------
+      // Better than flat colors, and legally clean (no copyrighted game assets). Drop your own
+      // textures/<block>.png next to index.html to override any of them.
+      function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+      function rng(seed) { let a = seed; return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+      const clamp = (v) => Math.max(0, Math.min(255, v | 0));
 
-      for (const [name, color] of Object.entries(PALETTE)) {
-        const b = document.createElement("button");
-        b.className = "swatch";
-        b.style.background = color;
-        b.title = name;
-        b.addEventListener("click", () => { selected = name; $("custom").value = ""; refresh(); });
-        b.dataset.block = name;
-        paletteEl.appendChild(b);
+      function makeTexture(name) {
+        const c = document.createElement("canvas");
+        c.width = c.height = 16;
+        const g = c.getContext("2d");
+        const img = g.createImageData(16, 16);
+        const r = rng(hash(name));
+        const put = (x, y, [R, G, B, A = 255]) => {
+          const i = (y * 16 + x) * 4;
+          img.data[i] = clamp(R); img.data[i + 1] = clamp(G); img.data[i + 2] = clamp(B); img.data[i + 3] = clamp(A);
+        };
+        const noise = (base, amp, alpha = 255) => {
+          for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+            const n = (r() - 0.5) * 2 * amp;
+            put(x, y, [base[0] + n, base[1] + n, base[2] + n, alpha]);
+          }
+        };
+
+        const painters = {
+          grass: () => noise([106, 156, 44], 18),
+          leaves: () => { noise([48, 110, 35], 20); for (let i = 0; i < 26; i++) put((r() * 16) | 0, (r() * 16) | 0, [25, 60, 20]); },
+          dirt: () => { noise([134, 96, 67], 16); for (let i = 0; i < 14; i++) put((r() * 16) | 0, (r() * 16) | 0, [90, 62, 40]); },
+          stone: () => { noise([127, 127, 127], 12); for (let i = 0; i < 10; i++) put((r() * 16) | 0, (r() * 16) | 0, [100, 100, 100]); },
+          sand: () => noise([219, 207, 163], 12),
+          gravel: () => { noise([132, 126, 122], 22); for (let i = 0; i < 12; i++) put((r() * 16) | 0, (r() * 16) | 0, [88, 82, 80]); },
+          bedrock: () => noise([60, 60, 60], 28),
+          snow: () => noise([242, 245, 250], 6),
+          ice: () => noise([160, 195, 240], 10, 210),
+          obsidian: () => { noise([26, 18, 42], 10); for (let i = 0; i < 8; i++) put((r() * 16) | 0, (r() * 16) | 0, [70, 45, 110]); },
+          water: () => noise([52, 88, 200], 14, 175),
+          lava: () => { noise([205, 85, 15], 30); for (let i = 0; i < 12; i++) put((r() * 16) | 0, (r() * 16) | 0, [255, 200, 60]); },
+          glass: () => {
+            noise([225, 240, 248], 4, 55);
+            for (let i = 0; i < 16; i++) { put(i, 0, [255, 255, 255, 160]); put(i, 15, [255, 255, 255, 160]); put(0, i, [255, 255, 255, 160]); put(15, i, [255, 255, 255, 160]); }
+            for (let i = 2; i < 8; i++) put(i, 9 - i, [255, 255, 255, 140]);
+          },
+          oak_planks: () => {
+            for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+              const board = (y / 4) | 0;
+              const seamY = y % 4 === 3;
+              const seamX = x === (board % 2 ? 3 : 11);
+              const grain = (r() - 0.5) * 20;
+              put(x, y, seamY || seamX ? [96, 74, 44] : [172, 138, 84 + grain]);
+            }
+          },
+          oak_log: () => {
+            for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+              const stripe = x % 4 === 0 || x % 7 === 0;
+              const grain = (r() - 0.5) * 16;
+              put(x, y, stripe ? [74, 57, 36] : [107, 85, 53 + grain]);
+            }
+          },
+          brick: () => {
+            for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+              const row = (y / 4) | 0;
+              const mortarY = y % 4 === 0;
+              const mortarX = (x + (row % 2 ? 4 : 0)) % 8 === 0;
+              put(x, y, mortarY || mortarX ? [188, 180, 172] : [150, 62, 50 + (r() - 0.5) * 18]);
+            }
+          },
+          stone_brick: () => {
+            for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+              const mortar = y % 8 === 0 || (x + ((y / 8) | 0) * 8) % 8 === 0;
+              put(x, y, mortar ? [82, 82, 82] : [118, 118, 118 + (r() - 0.5) * 14]);
+            }
+          },
+          cobblestone: () => {
+            noise([105, 105, 105], 10);
+            for (let i = 0; i < 7; i++) {
+              const cx = (r() * 16) | 0, cy = (r() * 16) | 0, rad = 2 + r() * 2, tone = 85 + r() * 55;
+              for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++)
+                if ((x - cx) ** 2 + (y - cy) ** 2 < rad * rad) put(x, y, [tone, tone, tone]);
+            }
+          },
+          gold: () => { noise([250, 214, 92], 14); for (let i = 0; i < 8; i++) put((r() * 16) | 0, (r() * 16) | 0, [255, 245, 180]); },
+          iron: () => { noise([216, 216, 216], 10); for (let i = 0; i < 8; i++) put((r() * 16) | 0, (r() * 16) | 0, [245, 245, 245]); },
+          diamond: () => { noise([112, 222, 214], 12); for (let i = 0; i < 8; i++) put((r() * 16) | 0, (r() * 16) | 0, [220, 255, 252]); },
+        };
+        const wool = { wool_white: [235, 235, 235], wool_red: [180, 50, 50], wool_blue: [55, 75, 170], wool_yellow: [220, 200, 60], wool_green: [80, 130, 60], wool_black: [40, 40, 40] };
+
+        if (painters[name]) painters[name]();
+        else if (wool[name]) noise(wool[name], 12);
+        else { const h = hash(name); noise([70 + (h & 0xff) % 150, 70 + ((h >> 8) & 0xff) % 150, 70 + ((h >> 16) & 0xff) % 150], 14); }
+
+        g.putImageData(img, 0, 0);
+        const tex = new THREE.CanvasTexture(c);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
       }
 
-      const currentBlock = () => $("custom").value.trim() || selected;
-      const num = (id) => Number($(id).value) || 0;
-
-      function refresh() {
-        buildBtn.textContent = "▶ Build: " + currentBlock();
-        for (const swatch of paletteEl.children)
-          swatch.classList.toggle("selected", swatch.dataset.block === selected && !$("custom").value.trim());
+      const TRANSPARENT = new Set(["glass", "water", "ice"]);
+      const materialCache = new Map();
+      function materialFor(name) {
+        if (materialCache.has(name)) return materialCache.get(name);
+        const mat = new THREE.MeshLambertMaterial({ map: makeTexture(name), transparent: TRANSPARENT.has(name), opacity: 1 });
+        // Optional override: a real texture file shipped next to the page wins over the procedural one.
+        new THREE.TextureLoader().load(`textures/${name}.png`,
+          (t) => { t.magFilter = t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; mat.map = t; mat.needsUpdate = true; },
+          undefined, () => {});
+        materialCache.set(name, mat);
+        return mat;
       }
-      $("custom").addEventListener("input", refresh);
 
+      // ---------- three.js scene ----------------------------------------------------------------
+      const container = document.getElementById("game");
+      const renderer = new THREE.WebGLRenderer({ antialias: false });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(innerWidth, innerHeight);
+      container.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87b5e5);
+      scene.fog = new THREE.Fog(0x87b5e5, 40, 140);
+
+      const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 300);
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x707050, 0.95));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+      sun.position.set(0.5, 1, 0.3);
+      scene.add(sun);
+
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(600, 600),
+        new THREE.MeshLambertMaterial({ color: 0x5d8a3c }));
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.001;
+      scene.add(ground);
+      const grid = new THREE.GridHelper(600, 600, 0x4a7030, 0x4a7030);
+      grid.material.opacity = 0.35;
+      grid.material.transparent = true;
+      scene.add(grid);
+
+      const highlight = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
+        new THREE.LineBasicMaterial({ color: 0x111111 }));
+      highlight.visible = false;
+      scene.add(highlight);
+
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      // ---------- voxel world -------------------------------------------------------------------
+      const world = new Map(); // "x,y,z" -> block name
+      const key = (x, y, z) => `${x},${y},${z}`;
+      const meshes = new Map(); // block name -> InstancedMesh
+      const unitBox = new THREE.BoxGeometry(1, 1, 1);
+      const tmpMatrix = new THREE.Matrix4();
+
+      function rebuildType(name) {
+        const old = meshes.get(name);
+        if (old) { scene.remove(old); old.dispose(); meshes.delete(name); }
+        const cells = [];
+        for (const [k, b] of world) if (b === name) cells.push(k);
+        if (!cells.length) return;
+        const mesh = new THREE.InstancedMesh(unitBox, materialFor(name), cells.length);
+        cells.forEach((k, i) => {
+          const [x, y, z] = k.split(",").map(Number);
+          tmpMatrix.makeTranslation(x + 0.5, y + 0.5, z + 0.5);
+          mesh.setMatrixAt(i, tmpMatrix);
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        scene.add(mesh);
+        meshes.set(name, mesh);
+      }
+      const rebuildAll = () => { const names = new Set([...world.values(), ...meshes.keys()]); names.forEach(rebuildType); };
+      const setBlock = (x, y, z, name) => { world.set(key(x, y, z), name); rebuildType(name); };
+      const delBlock = (x, y, z) => { const n = world.get(key(x, y, z)); if (n) { world.delete(key(x, y, z)); rebuildType(n); } return n; };
+      const solid = (x, y, z) => y < 0 || world.has(key(x, y, z));
+
+      // ---------- player ------------------------------------------------------------------------
+      const player = { pos: new THREE.Vector3(0.5, 3, 4.5), vel: new THREE.Vector3(), yaw: 0, pitch: 0, onGround: false, fly: false };
+      const HALF = 0.3, HEIGHT = 1.8, EYE = 1.62;
+      const keys = {};
+
+      function collides(p) {
+        const x0 = Math.floor(p.x - HALF), x1 = Math.floor(p.x + HALF);
+        const y0 = Math.floor(p.y), y1 = Math.floor(p.y + HEIGHT - 0.001);
+        const z0 = Math.floor(p.z - HALF), z1 = Math.floor(p.z + HALF);
+        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
+          if (solid(x, y, z)) return true;
+        return false;
+      }
+
+      function step(dt) {
+        const sprint = keys["ShiftLeft"] || keys["ShiftRight"];
+        const speed = player.fly ? 12 : sprint ? 7.5 : 4.3;
+        const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+        let fx = 0, fz = 0;
+        if (keys["KeyW"]) { fx -= sin; fz -= cos; }
+        if (keys["KeyS"]) { fx += sin; fz += cos; }
+        if (keys["KeyA"]) { fx -= cos; fz += sin; }
+        if (keys["KeyD"]) { fx += cos; fz -= sin; }
+        const len = Math.hypot(fx, fz) || 1;
+        player.vel.x = (fx / len) * speed;
+        player.vel.z = (fz / len) * speed;
+
+        if (player.fly) {
+          player.vel.y = keys["Space"] ? 8 : keys["KeyC"] ? -8 : 0;
+        } else {
+          player.vel.y -= 24 * dt;
+          if (keys["Space"] && player.onGround) player.vel.y = 8.2;
+        }
+
+        // Per-axis move & resolve — the classic voxel AABB slide.
+        const p = player.pos;
+        p.x += player.vel.x * dt;
+        if (collides(p)) { p.x -= player.vel.x * dt; player.vel.x = 0; }
+        p.y += player.vel.y * dt;
+        player.onGround = false;
+        if (collides(p)) {
+          if (player.vel.y < 0) player.onGround = true;
+          p.y -= player.vel.y * dt;
+          player.vel.y = 0;
+        }
+        p.z += player.vel.z * dt;
+        if (collides(p)) { p.z -= player.vel.z * dt; player.vel.z = 0; }
+      }
+
+      function updateCamera() {
+        camera.position.set(player.pos.x, player.pos.y + EYE, player.pos.z);
+        camera.rotation.order = "YXZ";
+        camera.rotation.y = player.yaw;
+        camera.rotation.x = player.pitch;
+      }
+      updateCamera();
+
+      // ---------- picking (grid DDA) ------------------------------------------------------------
+      function raycast() {
+        const dir = camera.getWorldDirection(new THREE.Vector3());
+        const origin = camera.position.clone();
+        let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
+        const stepX = Math.sign(dir.x), stepY = Math.sign(dir.y), stepZ = Math.sign(dir.z);
+        const tDelta = new THREE.Vector3(Math.abs(1 / dir.x), Math.abs(1 / dir.y), Math.abs(1 / dir.z));
+        let tMaxX = dir.x !== 0 ? Math.abs(((stepX > 0 ? x + 1 : x) - origin.x) / dir.x) : Infinity;
+        let tMaxY = dir.y !== 0 ? Math.abs(((stepY > 0 ? y + 1 : y) - origin.y) / dir.y) : Infinity;
+        let tMaxZ = dir.z !== 0 ? Math.abs(((stepZ > 0 ? z + 1 : z) - origin.z) / dir.z) : Infinity;
+        let face = null, t = 0;
+        for (let i = 0; i < 120 && t < 8; i++) {
+          if (tMaxX < tMaxY && tMaxX < tMaxZ) { x += stepX; t = tMaxX; tMaxX += tDelta.x; face = [-stepX, 0, 0]; }
+          else if (tMaxY < tMaxZ) { y += stepY; t = tMaxY; tMaxY += tDelta.y; face = [0, -stepY, 0]; }
+          else { z += stepZ; t = tMaxZ; tMaxZ += tDelta.z; face = [0, 0, -stepZ]; }
+          if (world.has(key(x, y, z))) return { hit: [x, y, z], face, ground: false };
+          if (y < 0) return dir.y < 0 ? { hit: [x, 0, z], face: [0, 0, 0], ground: true } : null;
+        }
+        return null;
+      }
+
+      // ---------- Revit sync --------------------------------------------------------------------
+      const statusEl = document.getElementById("status");
+      let statusTimer;
       function report(text, isError) {
         statusEl.style.display = "block";
         statusEl.textContent = text;
         statusEl.classList.toggle("error", !!isError);
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => (statusEl.style.display = "none"), isError ? 6000 : 2500);
       }
 
-      async function run(command, payload, describe) {
-        buttons.forEach((b) => (b.disabled = true));
-        report("Working…");
+      let chain = Promise.resolve();
+      const enqueue = (job) => { chain = chain.then(job).catch(() => {}); };
+
+      function syncPlace(x, y, z, block) {
+        enqueue(async () => {
+          try {
+            const res = await window.AT.invoke("McPlaceBlocks", revitPayload({ blocks: [{ x, y, z, block }] }));
+            if (res && res.ok === false) throw new Error(res.error || "place failed");
+          } catch (e) {
+            delBlock(x, y, z);
+            report("Revit: " + (e.message || e), true);
+          }
+        });
+      }
+      function syncBreak(x, y, z, prevBlock) {
+        enqueue(async () => {
+          try {
+            const cell = { x, y, z };
+            const res = await window.AT.invoke("McClearRegion", { from: cell, to: cell, blockSizeMeters: settings.size });
+            if (res && res.ok === false) throw new Error(res.error || "delete failed");
+          } catch (e) {
+            setBlock(x, y, z, prevBlock);
+            report("Revit: " + (e.message || e), true);
+          }
+        });
+      }
+
+      async function resync() {
+        const loadState = document.getElementById("loadState");
         try {
-          const res = await window.AT.invoke(command, payload);
-          if (res && res.ok === false) report(res.error || "Failed.", true);
-          else report(describe(res));
+          const res = await window.AT.invoke("McGetBlocks", { blockSizeMeters: settings.size });
+          world.clear();
+          for (const b of res.blocks || []) world.set(key(b.x, b.y, b.z), b.block);
+          rebuildAll();
+          loadState.textContent = `World loaded: ${world.size} block(s).`;
+          report(`Synced from Revit: ${world.size} block(s).`);
         } catch (e) {
-          report(e && e.message ? e.message : String(e), true);
-        } finally {
-          buttons.forEach((b) => (b.disabled = false));
+          loadState.textContent = "Could not load the world: " + (e.message || e);
         }
       }
+      document.getElementById("resync").addEventListener("click", resync);
 
-      buildBtn.addEventListener("click", () =>
-        run("McBuildInteractive",
-          { block: currentBlock(), blockSizeMeters: num("size") },
-          (r) => `Session finished — ${r.placed} block(s) placed. Click Build to continue.`));
+      // ---------- hotbar ------------------------------------------------------------------------
+      const HOTBAR = ["grass", "dirt", "stone", "oak_planks", "oak_log", "glass", "brick", "wool_red", "diamond"];
+      let selected = 0;
+      const hotbarEl = document.getElementById("hotbar");
+      HOTBAR.forEach((name, i) => {
+        const b = document.createElement("button");
+        b.className = "slot" + (i === 0 ? " selected" : "");
+        b.title = name;
+        b.innerHTML = `<span>${i + 1}</span>`;
+        const tex = makeTexture(name);
+        b.style.backgroundImage = `url(${tex.image.toDataURL()})`;
+        b.addEventListener("click", () => select(i));
+        hotbarEl.appendChild(b);
+      });
+      function select(i) {
+        selected = i;
+        [...hotbarEl.children].forEach((el, j) => el.classList.toggle("selected", j === i));
+      }
 
-      $("fill").addEventListener("click", () =>
-        run("McFillRegion",
-          {
-            from: { x: num("fx"), y: num("fy"), z: num("fz") },
-            to: { x: num("tx"), y: num("ty"), z: num("tz") },
-            block: currentBlock(),
-            hollow: $("hollow").checked,
-            blockSizeMeters: num("size"),
-          },
-          (r) => `Filled: ${r.created} block(s)${r.failed ? `, ${r.failed} failed` : ""}.`));
+      // ---------- input -------------------------------------------------------------------------
+      const overlay = document.getElementById("overlay");
+      const canvas = renderer.domElement;
+      overlay.addEventListener("click", () => canvas.requestPointerLock());
+      document.addEventListener("pointerlockchange", () => {
+        overlay.classList.toggle("hidden", document.pointerLockElement === canvas);
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (document.pointerLockElement !== canvas) return;
+        player.yaw -= e.movementX * 0.0024;
+        player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch - e.movementY * 0.0024));
+      });
+      document.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        if (e.code === "KeyF") { player.fly = !player.fly; player.vel.y = 0; }
+        if (e.code.startsWith("Digit")) { const n = Number(e.code.slice(5)); if (n >= 1 && n <= HOTBAR.length) select(n - 1); }
+      });
+      document.addEventListener("keyup", (e) => (keys[e.code] = false));
+      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-      $("clear").addEventListener("click", () =>
-        run("McClearRegion",
-          {
-            from: { x: num("fx"), y: num("fy"), z: num("fz") },
-            to: { x: num("tx"), y: num("ty"), z: num("tz") },
-            blockSizeMeters: num("size"),
-          },
-          (r) => `Removed ${r.deleted} block(s).`));
+      canvas.addEventListener("mousedown", (e) => {
+        if (document.pointerLockElement !== canvas) return;
+        const target = raycast();
+        if (!target) return;
 
-      refresh();
+        if (e.button === 0 && !target.ground) {
+          // Break: remove locally, then delete the same cell in Revit.
+          const [x, y, z] = target.hit;
+          const prev = delBlock(x, y, z);
+          if (prev) syncBreak(x, y, z, prev);
+        } else if (e.button === 2) {
+          // Place: on the clicked face (or on the ground plane).
+          const [hx, hy, hz] = target.hit;
+          const [fx, fy, fz] = target.face;
+          const x = target.ground ? hx : hx + fx;
+          const y = target.ground ? 0 : hy + fy;
+          const z = target.ground ? hz : hz + fz;
+          if (y < 0 || world.has(key(x, y, z))) return;
+          // Don't place a block inside yourself.
+          const p = player.pos;
+          const overlaps = x < p.x + HALF && x + 1 > p.x - HALF && z < p.z + HALF && z + 1 > p.z - HALF && y < p.y + HEIGHT && y + 1 > p.y;
+          if (overlaps) return;
+          const block = HOTBAR[selected];
+          setBlock(x, y, z, block);
+          syncPlace(x, y, z, block);
+        }
+      });
+
+      // ---------- main loop ---------------------------------------------------------------------
+      let last = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        if (document.pointerLockElement === canvas) step(dt);
+        updateCamera();
+
+        const target = document.pointerLockElement === canvas ? raycast() : null;
+        if (target && !target.ground) {
+          highlight.visible = true;
+          highlight.position.set(target.hit[0] + 0.5, target.hit[1] + 0.5, target.hit[2] + 0.5);
+        } else highlight.visible = false;
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+
+      resync();
     </script>
   </body>
 </html>

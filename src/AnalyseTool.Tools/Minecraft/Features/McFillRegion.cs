@@ -54,13 +54,14 @@ namespace AnalyseTool.Tools.Minecraft
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
-                var world = new BlockWorldService(app.ActiveUIDocument.Document, req.BlockSizeMeters / 0.3048);
+                var world = new BlockWorldService(app.ActiveUIDocument.Document, req.BlockSizeMeters / 0.3048, req.FamilyName);
                 BlockPlaceResult built = world.PlaceBlocks(app, placements,
                     (fraction, message) => Progress?.Report(new ProgressInfo(fraction, message)), ct);
 
                 return new
                 {
-                    ok = true,
+                    ok = built.Error == null,
+                    error = built.Error,
                     created = built.Created,
                     failed = built.Failed,
                     mode = built.Mode,
@@ -92,6 +93,11 @@ namespace AnalyseTool.Tools.Minecraft
             [JsonProperty("blockSizeMeters")]
             [Description("Edge length of one block in meters. Default 1.")]
             public double BlockSizeMeters { get; set; } = 1.0;
+
+            [JsonProperty("familyName")]
+            [Description("Optional: place instances of THIS loaded cube family (e.g. 'McCube') instead of the " +
+                         "auto-generated one — see McPlaceBlocks.")]
+            public string? FamilyName { get; set; }
         }
     }
 }
