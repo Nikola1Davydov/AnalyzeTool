@@ -20,14 +20,6 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
     }
 
-    /// <summary>Ribbon "Minecraft" button — shows the dockable block-building panel.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class MinecraftCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("ShowMinecraftPane", commandData.Application);
-    }
-
     /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand

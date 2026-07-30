@@ -1,0 +1,15 @@
+{
+  "id": "analysetool.minecraft",
+  "version": "1.0.0",
+  "description": "Minecraft-style block building: pick a block, click in the model to place it, fill or clear whole regions. UI-only extension — the Mc* block commands ship with the host.",
+  "publisher": "AnalyseTool",
+  "website": "https://github.com/Nikola1Davydov/AnalyzeTool",
+  "ui": {
+    "entryHtml": "index.html",
+    "dockable": true,
+    "button": {
+      "name": "Minecraft",
+      "tooltip": "Build with blocks — click-to-place Minecraft mode"
+    }
+  }
+}

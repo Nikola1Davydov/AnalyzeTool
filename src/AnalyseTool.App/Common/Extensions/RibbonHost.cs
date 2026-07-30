@@ -26,7 +26,6 @@ namespace AnalyseTool.App.Common.Extensions
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
         private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
-        private const string MinecraftCommandClass = "AnalyseTool.Launcher.RevitCommands.MinecraftCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -98,12 +97,6 @@ namespace AnalyseTool.App.Common.Extensions
                 AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
                     FamilyPaletteCommandClass, "Place a component — dockable family palette",
                     image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (list)
-
-            // Fourth button: the Minecraft block-building panel (dockable, like the palette).
-            RegisterStaticButton("AnalyseToolMinecraft", "Minecraft",
-                AddStaticButton(mainPanel, "AnalyseToolMinecraft", "Minecraft", launcherPath,
-                    MinecraftCommandClass, "Build with blocks — click-to-place Minecraft mode",
-                    image: BuildGlyphIcon(""))); // Segoe MDL2 "Game"
 
             ApplyStaticButtonVisibility();
 
@@ -324,14 +317,6 @@ namespace AnalyseTool.App.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
             DockPaneHost.ShowRoute("#/families-dock");
-        }
-
-        /// <summary>Ribbon "Minecraft" button — shows the dockable block-building panel (#/minecraft-dock).</summary>
-        public static void ShowMinecraftPane(UIApplication uiApp)
-        {
-            AnalyseToolBootstrap.Initialize(uiApp);
-            if (!WebView2Runtime.EnsureOrWarn()) return;
-            DockPaneHost.ShowRoute("#/minecraft-dock");
         }
 
         public static void Reload(UIApplication uiApp)

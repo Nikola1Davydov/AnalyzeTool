@@ -18,11 +18,6 @@ const routes = [
     component: () => import("@/view/Families/FamilyPaletteView.vue"),
     meta: { layout: "bare" },
   },
-  {
-    path: "/minecraft-dock",
-    component: () => import("@/view/Minecraft/MinecraftView.vue"),
-    meta: { layout: "bare" },
-  },
   { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {

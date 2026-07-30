@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minecraft</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        font-size: 13px;
+        margin: 0;
+        padding: 10px 12px;
+        color: #222;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      h3 { margin: 0; font-size: 15px; }
+      .section { display: flex; flex-direction: column; gap: 6px; }
+      .label { font-weight: 600; opacity: 0.8; }
+      .palette { display: grid; grid-template-columns: repeat(9, 24px); gap: 4px; }
+      .swatch {
+        width: 24px; height: 24px; padding: 0;
+        border: 1px solid rgba(0, 0, 0, 0.35);
+        border-radius: 4px; cursor: pointer;
+      }
+      .swatch.selected { outline: 2px solid #3b82f6; outline-offset: 1px; }
+      .row { display: flex; align-items: center; gap: 8px; }
+      input[type="text"], input[type="number"] {
+        width: 100%; min-width: 0; box-sizing: border-box;
+        padding: 4px 6px; font-size: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        border-radius: 4px; background: transparent; color: inherit;
+      }
+      .size { max-width: 70px; }
+      .grid {
+        display: grid; grid-template-columns: 38px 1fr 1fr 1fr;
+        gap: 4px; align-items: center;
+      }
+      .grid > span { opacity: 0.7; text-align: center; }
+      .grid > span.head-row { text-align: left; }
+      button {
+        padding: 6px 10px; font-size: 13px; cursor: pointer;
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        border-radius: 6px; background: transparent; color: inherit;
+      }
+      button.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+      button.danger { border-color: #c04545; color: #c04545; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .hint { font-size: 11px; opacity: 0.65; line-height: 1.35; }
+      .check { font-size: 12px; display: flex; gap: 6px; align-items: center; }
+      #status {
+        display: none; font-size: 12px; padding: 6px 8px; border-radius: 4px;
+        background: rgba(59, 130, 246, 0.12);
+      }
+      #status.error { background: rgba(192, 69, 69, 0.15); color: #c04545; }
+    </style>
+  </head>
+  <body>
+    <h3>⛏️ Minecraft</h3>
+
+    <div class="section">
+      <div class="label">Block</div>
+      <div class="palette" id="palette"></div>
+      <div class="row"><input id="custom" type="text" placeholder="…or custom block name" /></div>
+      <div class="row">
+        <span class="label">Block size, m</span>
+        <input id="size" class="size" type="number" value="1" min="0.1" step="0.1" />
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="build" class="primary">▶ Build: grass</button>
+      <div class="hint">
+        Click in the model to place blocks, Esc to finish. Works in a floor plan (or a 3D view with
+        a work plane). Ctrl+Z removes the last block.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Region (cells, y is up)</div>
+      <div class="grid" id="region">
+        <span></span><span>x</span><span>y</span><span>z</span>
+        <span class="head-row">from</span>
+        <input id="fx" type="number" value="0" /><input id="fy" type="number" value="0" /><input id="fz" type="number" value="0" />
+        <span class="head-row">to</span>
+        <input id="tx" type="number" value="4" /><input id="ty" type="number" value="3" /><input id="tz" type="number" value="4" />
+      </div>
+      <label class="check"><input id="hollow" type="checkbox" checked /> Hollow (shell only — walls, floor, ceiling)</label>
+      <div class="row">
+        <button id="fill">Fill region</button>
+        <button id="clear" class="danger">Clear region</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+      // Display-only colors — the real material colors live in the host's C# palette.
+      const PALETTE = {
+        grass: "#6b8e23", dirt: "#866043", stone: "#7d7d7d", cobblestone: "#646464",
+        bedrock: "#3c3c3c", sand: "#dbcfa3", gravel: "#887e7e", oak_planks: "#a2824e",
+        oak_log: "#665132", leaves: "#3c7828", glass: "#c8e6f0", water: "#3c5ac8",
+        lava: "#e66e14", brick: "#963c32", stone_brick: "#6e6e6e", snow: "#f0f0fa",
+        ice: "#a0bef0", obsidian: "#191228", wool_white: "#ebebeb", wool_red: "#b43232",
+        wool_blue: "#374baa", wool_yellow: "#dcc83c", wool_green: "#50823c",
+        wool_black: "#232323", gold: "#fad75a", iron: "#d7d7d7", diamond: "#78e6dc",
+      };
+
+      let selected = "grass";
+      const $ = (id) => document.getElementById(id);
+      const paletteEl = $("palette");
+      const buildBtn = $("build");
+      const statusEl = $("status");
+      const buttons = [buildBtn, $("fill"), $("clear")];
+
+      for (const [name, color] of Object.entries(PALETTE)) {
+        const b = document.createElement("button");
+        b.className = "swatch";
+        b.style.background = color;
+        b.title = name;
+        b.addEventListener("click", () => { selected = name; $("custom").value = ""; refresh(); });
+        b.dataset.block = name;
+        paletteEl.appendChild(b);
+      }
+
+      const currentBlock = () => $("custom").value.trim() || selected;
+      const num = (id) => Number($(id).value) || 0;
+
+      function refresh() {
+        buildBtn.textContent = "▶ Build: " + currentBlock();
+        for (const swatch of paletteEl.children)
+          swatch.classList.toggle("selected", swatch.dataset.block === selected && !$("custom").value.trim());
+      }
+      $("custom").addEventListener("input", refresh);
+
+      function report(text, isError) {
+        statusEl.style.display = "block";
+        statusEl.textContent = text;
+        statusEl.classList.toggle("error", !!isError);
+      }
+
+      async function run(command, payload, describe) {
+        buttons.forEach((b) => (b.disabled = true));
+        report("Working…");
+        try {
+          const res = await window.AT.invoke(command, payload);
+          if (res && res.ok === false) report(res.error || "Failed.", true);
+          else report(describe(res));
+        } catch (e) {
+          report(e && e.message ? e.message : String(e), true);
+        } finally {
+          buttons.forEach((b) => (b.disabled = false));
+        }
+      }
+
+      buildBtn.addEventListener("click", () =>
+        run("McBuildInteractive",
+          { block: currentBlock(), blockSizeMeters: num("size") },
+          (r) => `Session finished — ${r.placed} block(s) placed. Click Build to continue.`));
+
+      $("fill").addEventListener("click", () =>
+        run("McFillRegion",
+          {
+            from: { x: num("fx"), y: num("fy"), z: num("fz") },
+            to: { x: num("tx"), y: num("ty"), z: num("tz") },
+            block: currentBlock(),
+            hollow: $("hollow").checked,
+            blockSizeMeters: num("size"),
+          },
+          (r) => `Filled: ${r.created} block(s)${r.failed ? `, ${r.failed} failed` : ""}.`));
+
+      $("clear").addEventListener("click", () =>
+        run("McClearRegion",
+          {
+            from: { x: num("fx"), y: num("fy"), z: num("fz") },
+            to: { x: num("tx"), y: num("ty"), z: num("tz") },
+            blockSizeMeters: num("size"),
+          },
+          (r) => `Removed ${r.deleted} block(s).`));
+
+      refresh();
+    </script>
+  </body>
+</html>
