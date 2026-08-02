@@ -15,6 +15,7 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Deletes families and/or family types (by id) from the active document. Deleting a " +
                       "family deletes its instances. Used for both Delete and Purge-unused.",
+        Destructive = true,
         InputType = typeof(DeleteFamilyElements.Request))]
     internal sealed class DeleteFamilyElements : IRevitTask
     {

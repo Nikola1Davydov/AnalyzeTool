@@ -15,6 +15,7 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Deletes the given families, skipping (and counting) any that can't be removed. " +
                       "Used by 'purge unused families'. Returns { deleted, failed }.",
+        Destructive = true,
         InputType = typeof(PurgeFamilies.Request))]
     internal sealed class PurgeFamilies : IRevitTask, IProgressAware
     {

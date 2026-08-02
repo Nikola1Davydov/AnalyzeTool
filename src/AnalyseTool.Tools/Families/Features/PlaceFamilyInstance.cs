@@ -17,7 +17,10 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Starts interactive placement of the given loadable family type (FamilySymbol). " +
-                      "Returns ok=false for a non-loadable/system type.",
+                      "Returns ok=false for a non-loadable/system type. INTERACTIVE: placement blocks on " +
+                      "the user clicking in the model, so this command has no meaning to an unattended " +
+                      "caller (a pipeline, a batch) and must never be dispatched by one.",
+        Destructive = true,
         InputType = typeof(PlaceFamilyInstance.Request))]
     internal sealed class PlaceFamilyInstance : IRevitTask
     {

@@ -13,7 +13,9 @@ namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
-                      "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }.",
+                      "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }. " +
+                      "Returns { ok, written, skipped, warnings: [{ description, elementIds }] } — 'skipped' counts " +
+                      "items whose element or parameter was not found, was read-only, or that the mode filtered out.",
         Destructive = true,
         InputType = typeof(SetDataToParameters.SetDataToParametersDto))]
     internal sealed class SetDataToParameters : IRevitTask
@@ -21,7 +23,8 @@ namespace AnalyseTool.Tools.Actions
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             SetDataToParametersDto? list = ctx.Payload.As<SetDataToParametersDto>();
-            if (list == null) return Task.FromResult<object?>(null);
+            if (list == null)
+                return Task.FromResult<object?>(new { ok = false, written = 0, skipped = 0, error = "Empty payload." });
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
@@ -29,22 +32,32 @@ namespace AnalyseTool.Tools.Actions
 
                 using Transaction transaction = new Transaction(doc, "Set data to parameters");
                 transaction.Start();
+                // Without this a Revit warning raises a MODAL dialog on the Revit thread and the whole
+                // platform waits for a click that, in a batch, nobody is there to give.
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
 
+                int written = 0, skipped = 0;
                 foreach (SetParamItem parameterData in list.Items)
                 {
-                    if (parameterData == null) continue;
-                    SetData(doc, parameterData, list.Mode);
+                    if (parameterData == null) { skipped++; continue; }
+                    if (SetData(doc, parameterData, list.Mode)) written++;
+                    else skipped++;
                 }
 
                 transaction.Commit();
-                return null;
+
+                // Counted and reported rather than silently dropped: an unattended caller has no other
+                // way to learn that 40 of its 500 writes never landed.
+                return new { ok = true, written, skipped, warnings = failures.ToResult() };
             });
         }
 
-        private void SetData(Document doc, SetParamItem parameterData, SetDataMode mode)
+        /// <summary>Returns true when the value was actually written; false when the element or parameter
+        /// was not found, the parameter is read-only, or <paramref name="mode"/> filtered the write out.</summary>
+        private bool SetData(Document doc, SetParamItem parameterData, SetDataMode mode)
         {
             Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
-            if (revitElement == null) return;
+            if (revitElement == null) return false;
 
             Parameter? parameter = null;
 
@@ -76,23 +89,27 @@ namespace AnalyseTool.Tools.Actions
                 }
             }
 
-            if (parameter == null || parameter.IsReadOnly) return;
+            if (parameter == null || parameter.IsReadOnly) return false;
 
-            SetData(parameter, parameterData.Value, mode);
+            return SetData(parameter, parameterData.Value, mode);
         }
 
-        private void SetData(Parameter parameter, string value, SetDataMode mode)
+        /// <summary>Returns false when <paramref name="mode"/> filtered the write out — the caller counts
+        /// that as skipped, not written. These modes are also what makes a node re-runnable: a pipeline
+        /// run is not atomic, so a mutating step must tolerate the state having moved under it.</summary>
+        private bool SetData(Parameter parameter, string value, SetDataMode mode)
         {
             switch (mode)
             {
                 case SetDataMode.Overwrite:
                     break;
                 case SetDataMode.OnlyIfEmpty when parameter.HasValue:
-                    return;
+                    return false;
                 case SetDataMode.SkipIfEqual when parameter.GetParameterValue() == value:
-                    return;
+                    return false;
             }
             parameter.SetParameterValue(value);
+            return true;
         }
 
         internal sealed record SetDataToParametersDto()

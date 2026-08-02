@@ -11,6 +11,7 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Renames a family type (FamilySymbol, by id) in the active document. Returns " +
                       "ok=false with an error message on a duplicate or invalid name.",
+        Destructive = true,
         InputType = typeof(RenameFamilyType.Request))]
     internal sealed class RenameFamilyType : IRevitTask
     {
