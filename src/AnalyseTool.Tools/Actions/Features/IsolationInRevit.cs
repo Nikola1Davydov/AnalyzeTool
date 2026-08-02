@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using System.ComponentModel;
 
@@ -16,23 +17,28 @@ namespace AnalyseTool.Tools.Actions
             List<ElementId> elementsIds = (data?.ElementIds ?? new List<long>())
                 .Select(x => new ElementId(x))
                 .ToList();
-            if (elementsIds.Count == 0) return Task.FromResult<object?>(null);
+            if (elementsIds.Count == 0)
+                return Task.FromResult<object?>(new { ok = true, isolated = 0 });
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
                 Document doc = app.ActiveUIDocument.Document;
                 View view = doc.ActiveView;
-                if (!view.IsModifiable) return null;
+                // Reported rather than returned as a bare null: a caller with nobody watching the screen
+                // cannot tell "nothing to do" apart from "the active view refused the change".
+                if (!view.IsModifiable)
+                    return new { ok = false, isolated = 0, error = "The active view cannot be modified." };
 
                 using Transaction transaction = new Transaction(doc, "Isolate");
                 transaction.Start();
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
 
                 if (view.IsTemporaryHideIsolateActive())
                     view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
 
                 view.IsolateElementsTemporary(elementsIds);
                 transaction.Commit();
-                return null;
+                return new { ok = true, isolated = elementsIds.Count, warnings = failures.ToResult() };
             });
         }
 

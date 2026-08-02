@@ -15,6 +15,7 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Loads the given .rfa files into the current document, skipping any that fail. " +
                       "Returns { loaded, failed }.",
+        Destructive = true,
         InputType = typeof(LoadLibraryFamilies.Request))]
     internal sealed class LoadLibraryFamilies : IRevitTask, IProgressAware
     {

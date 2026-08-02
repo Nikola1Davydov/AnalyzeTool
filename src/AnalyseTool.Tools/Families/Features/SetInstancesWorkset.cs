@@ -14,6 +14,7 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Moves the given elements (by id) to a target workset in the active document. " +
                       "Returns ok=false on a non-workshared project.",
+        Destructive = true,
         InputType = typeof(SetInstancesWorkset.Request))]
     internal sealed class SetInstancesWorkset : IRevitTask
     {

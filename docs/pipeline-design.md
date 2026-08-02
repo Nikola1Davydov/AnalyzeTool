@@ -291,6 +291,69 @@ The invariant is a property of the graph, checked when it is built: **an edge fr
 may not reach a `Destructive` command directly — an approval node must sit between them.**
 "AI never writes to the model without a human" becomes topology, not user discipline.
 
+### Approval is a filter, not a barrier
+
+Stated as a barrier — the run halts until someone clicks — the invariant would kill the point
+of a pipeline: press and forget. So the approval node does not stop the run. Items that pass a
+machine-checkable acceptance predicate flow through and are written; the rest are parked as a
+card in the inbox (#80) and **the run completes**. You come back to 400 renamed families and 12
+questions, not to a pipeline standing still on node 3.
+
+The predicate lives on the node, in the `.atpipe` — versioned, reviewable, travelling with the
+pipeline — and NOT as a "trust the AI" setting. A global toggle is a global answer to a
+per-case question: ticked once in a confident moment, it silently covers every future run.
+
+```json
+{ "id": "n3", "command": "Approval", "params": {
+    "autoAccept": {
+      "valueMatches": "^[A-Z]{2}_[A-Za-z0-9]+_\\d{3}$",
+      "maxItems": 50,
+      "minConfidence": 0.9
+    } } }
+```
+
+The three conditions are NOT of equal strength, and treating them as interchangeable is the
+trap:
+
+| Condition | Checks | Strength |
+| --- | --- | --- |
+| `valueMatches` / allowed value set | the value itself, against a rule | **strong** — verified against reality |
+| `maxItems` | blast radius | medium — bounds damage, not correctness |
+| `minConfidence` | what the model said about itself | **weak** |
+
+An LLM's self-reported confidence is not calibrated, and it is least reliable exactly on the
+atypical cases. It is a tiebreaker, never a sole criterion. A naming standard, by contrast, is
+already a regex — so "the AI proposed a name, it matches the standard, fewer than 50 items" is
+a fully mechanical check that needs no human at all.
+
+Three levels decide whether `autoAccept` is honoured:
+
+1. **`Destructive = true` → auto-accept off by default.** The attribute sets the safe default.
+2. **A node may declare `autoAccept` explicitly** — the opt-in, visible in the file.
+3. **A short list where `autoAccept` is refused even when declared**: the irreversible ones —
+   `DeleteFamilyElements`, `PurgeFamilies`, `PurgeFamilyTypes` — plus `ExecuteRevitCode`, about
+   which nothing can be reasoned. Here the gate is a barrier at any setting, because the cost of
+   a mistake does not scale down with `maxItems`.
+
+Level 3 is an **inverted allowlist**: loosening is permitted only for commands the host knows
+are reversible, so every unknown command — including every third-party one — stays a barrier.
+That covers extensions without adding an SDK property, on the same reasoning that deferred
+`RequiresUser`.
+
+Note the flag this hangs on had to be repaired first: `Destructive` was applied to three
+extension-management commands and to parameter writes, but **not** to `DeleteFamilyElements`,
+`PurgeFamilies`, `PurgeFamilyTypes`, `RenameFamily`, `RenameFamilyType`, `SetInstancesWorkset`
+or `LoadLibraryFamilies` — so the rule would have gated the harmless case and waved the
+irreversible one through. Fixed in #88.
+
+### Earning trust instead of declaring it
+
+A run-level `dryRun` flag: AI nodes execute for real, `Destructive` nodes report what they
+would have done and write nothing. The first run of a new pipeline is dry, you read the diff,
+then you drop the flag. More expensive than a checkbox — every mutating command needs a no-op
+mode — but `SetDataToParameters` already carries `Overwrite`/`OnlyIfEmpty`/`SkipIfEqual`, so a
+fourth mode is a natural fit rather than a new concept.
+
 ### Where the model comes from — and why not over MCP
 
 An AI node calls `AiClientFactory.Create(providerId, model)` and gets an `IChatClient`. That
