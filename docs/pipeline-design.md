@@ -1,205 +1,292 @@
-# Pipelines — design (local engine)
+# Pipelines — design (format + runner; the editor is deferred behind a gate)
 
-Status: agreed direction, pre-implementation. Covers **Step 1** of #70 (local pipeline
-engine, editor, `.atpipe` sharing). Step 2 (cloud / session layer) stays as written in
-#70 and is deliberately not detailed here — it starts only after the pilot gate.
+Status: agreed direction, pre-implementation. Covers **Step 1** of #70. Step 2 (cloud /
+session layer) stays as written in #70.
+
+This document is the result of checking #70 against the code. Two things changed shape in
+the process, and both are load-bearing:
+
+- **Two of the five phases are not pipelines at all.** Write-safety (#88) and declared
+  command outputs (#89) are platform debt that pays off with zero pipelines in existence.
+  They are tracked outside this umbrella.
+- **The node editor moved behind a gate.** It is the only part that adds a new consumer
+  surface, and by this project's own reasoning it may never be needed. See "The gate".
+
+## A pipeline engine is a composer, not a transport
+
+#70 describes the engine as "just another caller, like WebView2 and the MCP bridge". That
+undersells a category difference worth naming, because it is where the "third crutch on the
+same funnel" risk actually lives.
+
+WebView2 and the MCP bridge are **transports**: they translate an external actor's request
+into a call. The engine is a **composer**: it decides what to call, in what order, based on
+what came back. Same funnel, different kind of client.
+
+The test for whether that is a crutch is whether the third client deforms the contract
+under itself. It did not. Every contract extension #70 anticipated for pipelines —
+`Headless`, `SupportsProgress`, `[NodeParam]`, an execution-mode signal, a
+`RequiresUser` flag — turned out on inspection to be already solved, to belong in Core, or
+to be premature (see below). Exactly one property survives, and MCP wants it anyway.
 
 ## What the platform already gives us
 
-The engine is a new CALLER of the existing platform, not a new execution path. What it
-inherits for free:
-
 | Need | Already in the codebase |
 | --- | --- |
-| One entry point | `CommandQueue` (`src/AnalyseTool.Core/Common/Dispatch/CommandQueue.cs`) — `CommandRequest` already carries `CancellationToken`, `IProgress<ProgressInfo>` and a pre-execution `Gate`. The `LocalDispatcher` is genuinely a thin wrapper: it enqueues, like WebView2 and the MCP bridge do. |
-| Node catalogue | `CommandDispatcher.RegisteredCommands` / the `GetCommands` command. The palette is a projection of this — the same catalogue #43 (command palette) needs. |
-| Parameter forms | `RevitCommandAttribute.InputType` → JSON Schema via `AIJsonUtilities`. **46 of 72** registered commands already declare it; the node's parameter form is generated from it. |
-| Cancellation | Flows to `IRevitTask.ExecuteAsync`. The Stop button is nearly free. |
-| Risk flags | `ReadOnly` (39 commands) and `Destructive` (7) are already declared and already gate MCP exposure. |
-| Visibility of a running node | `CommandQueue._running` + `GetQueueStatus` — the busy bar shows the executing node without a line of new UI plumbing. |
+| One entry point | `CommandQueue` — `CommandRequest` already carries `CancellationToken`, `IProgress<ProgressInfo>` and a pre-execution `Gate`. The engine enqueues; nothing in dispatch changes. |
+| Node catalogue | `CommandDispatcher.RegisteredCommands` / `GetCommands`. The palette is a projection — the same catalogue #43 needs. |
+| Parameter forms | `InputType` → JSON Schema via `AIJsonUtilities`; **46 of 72** commands declare it, and field descriptions come from plain `[System.ComponentModel.Description]` (already used in `PurgeFamilies.Request`, `IsolationInRevit.Request`). |
+| Off-Revit-thread execution | Automatic. `CommandDispatcher.DispatchAsync` just awaits `ExecuteAsync` on the caller's thread; `RunInRevitAsync` is the only path to the Revit thread. A command that never calls it never touches it. |
+| Cancellation | Reaches `IRevitTask.ExecuteAsync`. Stop is nearly free. |
+| Risk flags | `ReadOnly` (39) and `Destructive` (7) already declared, already gating MCP exposure. |
+| Busy visibility | `CommandQueue._running` + `GetQueueStatus`, which deliberately never touches the Revit thread and so answers even while Revit is blocked. |
 
 ## The central decision: a node IS a command
 
 #70 splits nodes into *command* nodes and *orchestrator* nodes (Filter, ExportExcel,
-ExportPdf). We do not give the engine two kinds of node. Orchestrator nodes are ordinary
-`[RevitCommand]` implementations that never call `RunInRevitAsync`; they declare
-`Headless = true`, and the dispatcher routes them to a background thread instead of the
-Revit thread.
+ExportPdf). The engine does not get two node kinds. Orchestrator nodes are ordinary
+`[RevitCommand]` implementations that simply never call `RunInRevitAsync`.
 
-What this buys:
+Note what this does **not** need: a `Headless` flag. Routing is already implicit in whether
+a command calls `RunInRevitAsync`, so there is nothing for a dispatcher to decide and no
+flag for an author to get wrong. One node kind, no capability plumbing.
 
-- The engine has ONE node type and one dispatch decision. No second code path to keep
-  in step with the first.
+Consequences:
+
 - Filter / ExportExcel / ExportPdf live in `AnalyseTool.Tools` as normal vertical-slice
-  features, not inside the engine. Core stays the platform, Tools stays the features —
-  the dependency contract in CLAUDE.md is untouched.
-- **Extensions ship nodes for free.** A third-party `[RevitCommand]` is already a node,
-  including a headless one. The "custom nodes ecosystem" that #70's ComfyUI notes call a
-  trump card exists by construction, with no extra SDK surface.
+  features, not inside the engine. Core stays the platform, Tools stays the features.
+- **Extensions ship nodes for free.** Any third-party `[RevitCommand]` is already a node.
+  The "custom nodes ecosystem" from #70's ComfyUI notes exists by construction.
 
-Placement follows from the contract: engine + `.atpipe` schema in `AnalyseTool.Core`
-(headless, no WPF), nodes in `AnalyseTool.Tools` and in extensions, editor in the Vue
-client, `RunPipeline`/`ValidatePipeline` as ordinary commands.
+Placement follows the dependency contract: engine + `.atpipe` schema in `AnalyseTool.Core`,
+nodes in `AnalyseTool.Tools` and in extensions, `RunPipeline` / `ValidatePipeline` as
+ordinary commands.
 
-## The expensive part is outputs, not the engine
+## The SDK delta is one property
 
-Today **no command declares its result type**. `InputType` exists (46 of 72 use it);
-there is no `OutputType`, and commands return anonymous objects — `GetCommands` returns
-`new { commands }`, `SetDataToParameters` returns `null`. `McpBridgeServer` advertises
-`InputSchema` and nothing about the shape coming back.
+```csharp
+[RevitCommand(Description = "…", InputType = typeof(Request), OutputType = typeof(Result))]
+```
 
-So "typed connections between nodes" is not an attribute to add — it is a refactor of the
-Tools commands to declared result types, slice by slice. That is the critical path of the
-whole of Step 1, and it is why it ships FIRST and SEPARATELY (S1 below): declared outputs
-improve the MCP layer immediately — an agent currently infers the response shape from a
-prose description — with no pipeline in sight.
+`OutputType` completes a pair that is currently half-built. Nothing else in the public
+contract moves: `IRevitTask`, `IRevitContext`, `RevitPayload` are untouched. SemVer minor,
+1.1.2 → 1.2.0; `AssemblyVersion` 1.2.0.0, major unchanged, so extensions built against
+1.1.x keep loading.
 
-Corollary from #70's AI-node notes, worth restating because it inverts the usual
-intuition: an **AI node is easier to type than a command**. Its output schema is part of
-the node's configuration (it doubles as the model's response format and its validator),
-so it needs no refactor at all.
+What was considered and rejected, with the reason — recorded so it is not re-proposed:
 
-## Revit thread: a pipeline run interleaves — decided, V1
+| Proposed in #70 | Why not |
+| --- | --- |
+| `Headless` | Routing is already implicit (see above). The flag decides nothing. |
+| `SupportsProgress` | `IProgressAware` is already implemented or not; visible at registration via `typeof`. Duplicating an interface with a flag. |
+| `[NodeParam]` | `InputType` + `[Description]` + generated JSON Schema already serves node forms, MCP tool definitions and validation. Defaults come from property initializers, choices from the enum type. Nothing left to add. |
+| Execution-mode signal (`Interactive` / `Unattended`) | Introduced to let a command decide whether to swallow or collect warnings. Collecting is strictly better in both modes (interactive UI can show "12 warnings" instead of discarding them), so the mode has no consumer. |
+| `RequiresUser` | Exactly three interactive commands exist (`PickFolder`, `BrowseForFolder`, `BrowseForFile`, all in App, all already `HiddenFromMcp`). For now a list in the palette builder, not public contract. Note `HiddenFromMcp` is NOT a substitute — `GetCommands` carries it and is perfectly pipeline-safe. Add the flag when a real third-party case appears. |
 
-`RevitTaskHub.Execute` drains its whole queue in one go (`RevitTaskHub.cs:65`). There is
-no notion of "this pipeline owns the Revit thread until it finishes": between node N and
-node N+1, work raised by a WebView2 window or an MCP agent will run.
+Helper code (a shared failure preprocessor, node base classes) deliberately does **not** ship
+in the SDK, even though it could — the SDK is already Revit-API-coupled (`IRevitContext`
+exposes `UIApplication`; `AnalyseTool.Extension.props` brings `Nice3point.Revit.Api.*`
+compile-only). The reason is versioning: authors pin EXACT versions and floating ranges are
+banned, so every helper fix would become a contract bump an author must migrate to. Helpers
+would need a second package — which is what #75 was rejected for.
 
-**Decision for V1: accept the interleaving and state it in the contract.** A pipeline run
-is not a transaction and is not atomic. The alternative — leasing the hub for the length
-of a run — freezes the UI for the whole of a mutating pipeline and edits the busiest,
-most delicate piece of dispatch code in the repo; that price is not worth paying before a
-single pipeline has ever run.
+## Outputs are the critical path (#89)
 
-What that obliges us to do instead:
+No command declares a result type today. `GetCommands` returns `new { commands }`,
+`SetDataToParameters` returns `null`, and `McpBridgeServer` advertises `InputSchema` only.
+Typed edges therefore mean refactoring the Tools commands slice by slice — the expensive
+part of the whole feature, and the reason it ships first and separately: an MCP agent
+currently infers response shapes from prose.
 
-- A mutating node **re-checks its own preconditions**; it may not assume the state an
-  earlier node observed still holds. The existing idempotency modes are the mechanism —
-  `SetDataToParameters` already ships `Overwrite` / `OnlyIfEmpty` / `SkipIfEqual`.
-- The `.atpipe` contract says this out loud, so nobody designs a chain that depends on
-  atomicity and discovers the truth from a corrupted model.
-- Revisit when a real mutating pipeline exists and we can measure how often it actually
-  bites — not before.
+**Design issue to solve there, not here:** `BuildInputSchema` caps schemas at 4096 chars and
+falls back to `{"type":"object","additionalProperties":true}`. Sensible for a tool listing;
+fatal for typed edges, because output types (lists of elements with parameters) will exceed
+the cap almost always. So the two consumers of one schema must be split — MCP keeps the
+compact form, the graph validator gets the full one — or edges compare a shallow shape
+(type name + top-level fields), which is both cheaper and produces a better error message.
+This is Core work, not contract work.
 
-## Write safety is a hard blocker (S0)
+Corollary from #70's AI-node notes: an **AI node is easier to type than a command** — its
+output schema is node configuration (it doubles as the model's response format and its
+validator), so it needs no refactor.
 
-#70 names this in its header, and the code confirms every part of it:
+## No modal dialogs — two different problems
 
-- `IFailuresPreprocessor` exists **only in the Families slice**
-  (`SwallowWarningsPreprocessor`, 8 call sites). A pipeline chains mutating commands with
-  no human between the nodes: an unhandled Revit failure dialog stalls the run in a place
-  where nobody is watching.
-- No re-entrancy guard on the mutating path.
-- MCP timeouts / logging.
+### Dialogs Revit raises
 
-None of this is pipeline-specific, all of it becomes unavoidable here. S0 ships before
-any node may mutate.
+`IFailuresPreprocessor` is not suppression; it answers the dialog in code and turns its
+content into data. Today it exists only in the Families slice (`SwallowWarningsPreprocessor`,
+8 call sites). The two write sites without it — `SetDataToParameters.cs:30` and
+`IsolationInRevit.cs:27` — are precisely the bulk-write path a pipeline ends with.
+`ExecuteRevitCode` (`Destructive = true`) is uncovered by construction, since the script
+author writes the transaction.
+
+A failure has three reasonable outcomes, not one, so this becomes node data in `.atpipe`:
+
+```
+"onFailure": "continue" | "stopNode" | "stopPipeline"
+```
+
+Default `stopPipeline` for `Destructive` nodes. Note the engine decides this from the node's
+outcome — the command neither knows nor declares it.
+
+`DeleteAllWarnings()` is right for a button and wrong for a batch: 500 silently discarded
+warnings leave no trace. The shared preprocessor **collects and reports**; warnings ride in
+the command's declared result type (which #89 introduces anyway), not in a parallel
+diagnostics channel.
+
+Author discipline cannot cover third-party commands or Roslyn scripts, so the guarantee is
+host-level: a subscription active only during an unattended run
+(`Application.FailuresProcessing`, plus `UIApplication.DialogBoxShowing` for generic task
+dialogs) answers centrally, covering every command including ones we did not write.
+**Unverified:** the exact coverage and ordering of those two events against a per-transaction
+preprocessor needs testing in a live Revit before it is committed to.
+
+### Dialogs we raise
+
+An approval node blocks by definition — but never as a modal window. The difference is who
+is blocked: a modal blocks the Revit thread and therefore the whole platform; a suspended
+run blocks only itself, leaving Revit free and surviving a Revit restart because the state is
+in the `.atpipe`. So approval = pause/resume + a card in the inbox (#80).
+
+This is the same rule CLAUDE.md already states for Core and Tools ("headless — no WPF, no
+dialogs"). The failure path is simply the one route that bypasses it, because Revit raises
+those dialogs from inside our transaction rather than from our code.
+
+## Revit thread: a run interleaves — decided, V1
+
+`RevitTaskHub.Execute` drains its whole queue (`RevitTaskHub.cs:65`), so work raised by a
+WebView2 window or an MCP agent runs between node N and node N+1. **Accepted for V1 and
+stated in the contract.** Leasing the hub would freeze the UI for the length of a mutating
+pipeline and edit the most delicate piece of dispatch in the repo, before a single pipeline
+has ever run.
+
+What that obliges instead: a mutating node **re-checks its own preconditions** and may not
+assume the state an earlier node observed still holds. The existing idempotency modes are the
+mechanism — `SetDataToParameters` already ships `Overwrite` / `OnlyIfEmpty` / `SkipIfEqual`.
+Three commands already make multiple Revit round-trips (`PurgeFamilies`, `PurgeFamilyTypes`,
+`LibraryService`), so the window exists today; a pipeline stretches it from milliseconds to
+minutes, because an AI node may sit in between.
+
+MCP makes this observable but not survivable today: `RevitBridgeClient.InvokeAsync` has **no
+timeout** (list has 8s, connect 3s), so an agent that calls into a blocked Revit hangs until
+its own client gives up. Bounding it belongs to #88.
 
 ## `.atpipe` v1 — the contract
-
-JSON, versioned, ours. Shape:
 
 ```
 {
   "schema": 1,
   "id": "...", "name": "...", "author": "...", "version": "1.0.0",
-  "nodes": [ { "id": "n1", "command": "GetElements", "contract": 2, "params": { ... } } ],
+  "nodes": [ { "id": "n1", "command": "GetElements", "contract": 2,
+               "params": { ... }, "onFailure": "stopPipeline" } ],
   "edges": [ { "from": "n1", "to": "n2" } ],
-  "state":  { ... }        // run state — see below
+  "state":  { ... }
 }
 ```
 
-Three properties designed in from the start, even though V1 is linear and synchronous:
+Reserved from the start even though V1 is linear and synchronous, because retrofitting any of
+them is a migration:
 
-1. **`contract` per node** — a command's payload/result shape is versioned
-   (`CheckNaming@2`), so an old file fails loudly against a newer command instead of
-   silently doing something else.
-2. **`state` for pause/resume** — approval nodes (S4) suspend a run and resume it later,
-   possibly after a Revit restart. Retrofitting suspension into a format that assumed one
-   synchronous pass is a migration; reserving the field now is free.
-3. **Run receipt** — every artifact a pipeline exports (Excel, PDF, report) embeds the
-   `.atpipe` that produced it plus the command contract versions and, for AI nodes, the
-   model. Audit and reproducibility by construction (the ComfyUI lesson from #70).
+1. **`contract` per node** — an old file fails loudly against a newer command instead of
+   quietly doing something else.
+2. **`state`** — approval nodes suspend a run and resume it later, possibly after a Revit
+   restart.
+3. **`onFailure` per node** — see above.
+4. **Run receipt** — every exported artifact embeds the `.atpipe` that produced it, the
+   command contract versions and, for AI nodes, the model. Audit and reproducibility by
+   construction (the ComfyUI lesson from #70).
 
-Node result caching, keyed by (inputs + params) hash, applies to **`ReadOnly` nodes
-only** — this is exactly what the existing flag is for. Mutating nodes are never
-auto-replayed; ComfyUI's nodes are pure functions, ours change a live model.
+Node result caching, keyed by (inputs + params) hash, applies to **`ReadOnly` nodes only** —
+ComfyUI's nodes are pure functions, ours change a live model.
 
-Files: `%LOCALAPPDATA%\AnalyseTool\pipelines\` via `PathProvider`, plus explicit
-export/import. Sharing is a file over Teams or email — no server, same stance as
-extension distribution (#48).
+Files live in `%LOCALAPPDATA%\AnalyseTool\pipelines\` via `PathProvider`, plus explicit
+export/import. Sharing is a file over Teams or email — no server, same stance as #48.
 
-## Engine (S2)
+## Engine (#90)
 
 - `IPipelineEngine`, `INodeDispatcher`, status events
   (Queued → Executing → Completed / Failed / Cancelled).
-- `LocalDispatcher : INodeDispatcher` over `CoreServices.Queue` — the busy bar,
-  `GetQueueStatus` introspection and the confirmation gate come along for free.
-- Linear execution in V1, `CancellationToken` threaded through the whole run.
-- **Revit-free by construction, and tested that way.** Today `AnalyseTool.Test` holds a
-  single `UnitTest1.cs` and references `AnalyseTool.App`, so it drags in Revit — engine
-  unit tests against a fake dispatcher cannot live there. A Revit-free test project is
-  part of S2, not an afterthought.
-- **Headless before the editor:** the milestone of S2 is a `RunPipeline` command that
-  executes a hand-written `.atpipe` from MCP or the console. The engine gets dogfooded
-  while the canvas is still a sketch.
+- `LocalDispatcher : INodeDispatcher` over `CoreServices.Queue` — busy bar, `GetQueueStatus`
+  and the confirmation gate come along for free.
+- Linear execution, `CancellationToken` through the run, `onFailure` applied per node.
+- **Revit-free by construction and tested that way.** `AnalyseTool.Test` today holds a single
+  `UnitTest1.cs` and references `AnalyseTool.App`, so it drags in Revit; engine tests against
+  a fake dispatcher need a Revit-free project. Part of this phase, not an afterthought.
+- Deliverable: `RunPipeline` executes a hand-written `.atpipe` from MCP or the console. No
+  editor involved.
 
-## Editor (S3)
+## The gate: before the editor, not before the cloud
 
-- **Vue Flow, as a new dependency.** The existing `src/view/InfiniteCanvas` is a pan/zoom
-  canvas of cards (`useCanvas`, `useDrag`, `useCanvasPersistence`, `CanvasCard`) with no
-  edges, ports or connection model — reusing it would mean writing a graph library inside
-  a dashboard. Its persistence and viewport composables are still worth reading before we
-  write ours.
-- Palette from the command catalogue, filtered by capability flags — the same catalogue
-  as #43; build it once, both features consume it.
-- Parameter forms generated from `InputSchema` (string → input, bool → toggle, enum →
-  dropdown). This part works today because `InputType` already exists.
-- Validation at BUILD time, not run time: incompatible schemas, missing parameters,
-  commands absent from this installation.
-- Live node status + Stop.
+#70 puts its only gate before Step 2 (cloud), which is too late — the node editor, the most
+expensive and least certain part, is built before anything has to be proven.
 
-## AI nodes and the approval invariant (S4)
+**The gate moves to before #91.** Everything up to and including the runner is justified on
+its own: #88 and #89 fix today's platform, and #90 is a JSON format plus a linear executor
+that gives MCP something it lacks — a way to freeze a successful chain and replay it without
+an LLM.
 
-From the #70 comment, unchanged in substance: AI transformation / AI router / bounded
-agent node; model chosen per node from `AiProviderRegistry`; batching of items is node
-infrastructure, not the pipeline author's problem; provenance ("AI decided, confidence,
-why") rides with each item into the approval card.
+The editor is the only piece that adds a new consumer surface (canvas, palette, ports, graph
+validation, a frontend dependency). Two observations from #70's own comment argue it may
+never be needed:
 
-The invariant is a property of the graph, machine-checked when the graph is built: **an
-edge from an AI node may not reach a `Destructive` command directly — an approval node
-must sit between them**, and the editor inserts one automatically. "AI never writes to the
-model without a human" is then topology, not user discipline.
+- the spaghetti threshold — mass users stayed on simple forms, so pre-baked pipelines are
+  surfaced as ordinary panels: "button on top, graph underneath";
+- "the agent did it in five steps in chat → *save as pipeline*".
+
+If authoring belongs to the agent and consumption is a button, **neither side needs a node
+editor**: a pipeline is a format plus a runner. Build #91 only if `.atpipe` files authored
+that way actually start circulating between people and their authors ask to edit them by
+hand. Until then, nothing is spent on a canvas.
+
+## Editor, if the gate opens (#91)
+
+Vue Flow as a new dependency — `src/view/InfiniteCanvas` is a pan/zoom canvas of cards
+(`useCanvas`, `useDrag`, `useCanvasPersistence`, `CanvasCard`) with no edges, ports or
+connection model; reusing it would mean writing a graph library inside a dashboard. Palette
+from the command catalogue, shared with #43. Parameter forms from `InputSchema` (works
+today). Validation at build time, not run time. Linear graphs only.
+
+## AI nodes (#92)
+
+Three kinds — transformation (output constrained by a schema set in the node config), router
+(semantic branching), bounded agent node (own tool allowlist, step budget, goal). Model per
+node from `AiProviderRegistry`; item batching is node infrastructure; provenance ("AI decided,
+confidence, why") rides with each item into the approval card and into project memory (#80).
+
+The invariant is a property of the graph, checked when it is built: **an edge from an AI node
+may not reach a `Destructive` command directly — an approval node must sit between them.**
+"AI never writes to the model without a human" becomes topology, not user discipline.
 
 ## Microsoft Agent Framework: not in V1
 
-The spike proposed in #70 stays open, but not on the critical path. A linear executor is
-small; MAF is an external dependency inside `AnalyseTool.Core`, which is loaded into an
-ALC inside the Revit process and multi-targets net8/net10. Dependency conflicts there are
-not hypothetical. Since `.atpipe` is our contract either way — MAF would only ever be an
-interpreter of it — adopting it later costs nothing that adopting it now would save. The
-honest moment to re-evaluate is S4, where checkpointing and human-in-the-loop become real
-requirements rather than anticipated ones.
+An external dependency inside `AnalyseTool.Core`, which loads into an ALC in the Revit process
+and multi-targets net8/net10; dependency conflicts there are not hypothetical. `.atpipe` stays
+our contract either way — MAF would only ever be an interpreter of it — so adopting it later
+costs nothing that adopting it now would save. Re-evaluate at #92, where checkpointing and
+human-in-the-loop stop being anticipated and become required.
 
 ## Phases
 
-| | Scope | Ships value alone? |
-| --- | --- | --- |
-| **S0** | Write-safety hardening: global `IFailuresPreprocessor`, re-entrancy guard, MCP timeouts/logging | Yes — fixes today's mutating commands |
-| **S1** | `OutputType` + `[NodeParam]` in the SDK; declared result types per Tools slice | Yes — MCP agents stop guessing response shapes |
-| **S2** | `.atpipe` v1, `PipelineEngine`, `LocalDispatcher`, Revit-free test project, `RunPipeline` | Yes — scriptable pipelines with no UI |
-| **S3** | Vue Flow editor, palette (shared with #43), generated forms, build-time validation | The user-facing feature |
-| **S4** | AI nodes, approval gate, pause/resume | Depends on S2's reserved `state` |
+**Platform debt — do regardless of pipelines:**
 
-S1 is an additive change to the public SDK contract → minor bump of `AnalyseTool.Sdk`
-(currently 1.1.2) and a manual push per `RELEASE_CHECKLIST.md`.
+| | Scope |
+| --- | --- |
+| #88 | Write-safety: collecting failure policy for all slices, host-level backstop for third-party/script transactions, MCP invoke timeout |
+| #89 | `OutputType` + declared result types per slice; split the schema's two consumers |
+
+**Pipelines proper:**
+
+| | Scope |
+| --- | --- |
+| #90 | `.atpipe` v1 + engine + `RunPipeline`, headless, Revit-free tests |
+| — | **GATE**: are agent-authored `.atpipe` files circulating, and is hand-editing asked for? |
+| #91 | Node editor (Vue Flow), palette shared with #43 |
+| #92 | AI nodes, approval invariant, pause/resume |
 
 ## Out of scope (deliberately)
 
-- Branching in V1. Linear is right for reasons beyond effort: #70's ComfyUI notes call the
-  spaghetti threshold the reason mass users stayed on simple forms. Pre-baked pipelines
-  are surfaced as ordinary panels — button on top, graph underneath for whoever wants it.
-- Step 2 (sessions, SignalR, distributed execution) — gated on a pilot, per #70.
-- Scheduled triggers. Change Journal triggers (#80) are the more valuable kind and belong
-  to that feature's timeline, not this one.
+- Branching in V1.
+- Step 2 (sessions, SignalR, distributed execution) — unchanged in #70, still gated on a pilot.
+- Scheduled triggers. Change Journal triggers (#80) are the more valuable kind and belong to
+  that feature's timeline.
 - Licensing/gating of nodes (#72).
