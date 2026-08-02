@@ -120,14 +120,47 @@ content into data. Today it exists only in the Families slice (`SwallowWarningsP
 `ExecuteRevitCode` (`Destructive = true`) is uncovered by construction, since the script
 author writes the transaction.
 
-A failure has three reasonable outcomes, not one, so this becomes node data in `.atpipe`:
+Whether a failed node stops the run is node data in `.atpipe`:
 
 ```
-"onFailure": "continue" | "stopNode" | "stopPipeline"
+"onFailure": "stop" | "continue"      // optional; absent → "stop"
 ```
 
-Default `stopPipeline` for `Destructive` nodes. Note the engine decides this from the node's
-outcome — the command neither knows nor declares it.
+Decided by the engine from the node's outcome — the command neither knows nor declares it.
+Three points of precision, each of which a looser wording got wrong at least once:
+
+- **It applies only when the command THROWS.** A write that lands 488 of 500 has not failed;
+  it returned a result carrying warnings, which is #89's business, not this field's.
+- **The default is `stop` for every node, not just `Destructive` ones.** A default resolved
+  from the command's `Destructive` flag would live in the catalogue rather than the file, so
+  the same `.atpipe` could behave differently on two installations. `continue` is an explicit
+  opt-in, for nodes whose failure genuinely should not invalidate the run (a trailing export,
+  say).
+- **Cancellation is not failure and always wins.** `ct.ThrowIfCancellationRequested()` (see
+  `PurgeFamilies.cs:40`) surfaces as an exception on the same path as a real failure, so a
+  naive `catch (Exception)` consulting `onFailure` would let a `continue` node swallow the
+  user's Stop. `OperationCanceledException` is caught FIRST and unconditionally ends the run:
+
+  ```csharp
+  catch (OperationCanceledException) { run.Status = Cancelled; break; }  // onFailure not consulted
+  catch (Exception ex) { run.Fail(node, ex); if (node.OnFailure == Continue) continue; break; }
+  ```
+
+`stopNode` — stop this node, let the rest of the graph proceed — is deliberately NOT in v1:
+in a linear pipeline it is indistinguishable from `stop`, since the next node would have no
+input. It becomes meaningful only with branching, i.e. not before the editor.
+
+### Stop is not a rollback
+
+Cancellation ends the run; it does not undo it. Stopping between nodes 3 and 4 leaves
+everything nodes 1–3 wrote in the model — their transactions are committed. This is the direct
+consequence of a run not being atomic, and it has two obligations: the UI says **Stop**, never
+"Cancel", and the run receipt records where the run stopped so the user can see what did land.
+
+Cancellation is also cooperative and coarse. `ct` is only observed where a command observes it
+(`PurgeFamilies` checks between chunks of 40), and `RevitTaskHub.EnqueueAsync` takes no token
+at all — work already handed to the Revit thread runs to completion. A run therefore stops at
+the next node boundary, not instantly.
 
 `DeleteAllWarnings()` is right for a button and wrong for a batch: 500 silently discarded
 warnings leave no trace. The shared preprocessor **collects and reports**; warnings ride in
@@ -178,7 +211,7 @@ its own client gives up. Bounding it belongs to #88.
   "schema": 1,
   "id": "...", "name": "...", "author": "...", "version": "1.0.0",
   "nodes": [ { "id": "n1", "command": "GetElements", "contract": 2,
-               "params": { ... }, "onFailure": "stopPipeline" } ],
+               "params": { ... }, "onFailure": "stop" } ],
   "edges": [ { "from": "n1", "to": "n2" } ],
   "state":  { ... }
 }
@@ -208,7 +241,8 @@ export/import. Sharing is a file over Teams or email — no server, same stance 
   (Queued → Executing → Completed / Failed / Cancelled).
 - `LocalDispatcher : INodeDispatcher` over `CoreServices.Queue` — busy bar, `GetQueueStatus`
   and the confirmation gate come along for free.
-- Linear execution, `CancellationToken` through the run, `onFailure` applied per node.
+- Linear execution; `CancellationToken` through the run, caught ahead of `onFailure` so Stop
+  can never be disabled by a node's policy (see "No modal dialogs" above).
 - **Revit-free by construction and tested that way.** `AnalyseTool.Test` today holds a single
   `UnitTest1.cs` and references `AnalyseTool.App`, so it drags in Revit; engine tests against
   a fake dispatcher need a Revit-free project. Part of this phase, not an afterthought.
@@ -256,6 +290,34 @@ confidence, why") rides with each item into the approval card and into project m
 The invariant is a property of the graph, checked when it is built: **an edge from an AI node
 may not reach a `Destructive` command directly — an approval node must sit between them.**
 "AI never writes to the model without a human" becomes topology, not user discipline.
+
+### Where the model comes from — and why not over MCP
+
+An AI node calls `AiClientFactory.Create(providerId, model)` and gets an `IChatClient`. That
+already covers the cloud case: `AiProviderRegistry` holds the built-in local Ollama **plus any
+number of user-added OpenAI-compatible endpoints** (OpenAI, OpenRouter, Groq, Mistral, LM
+Studio, vLLM), with the API key DPAPI-encrypted per Windows user and never handed to the
+frontend. So "AI nodes require a strong local machine" is not true today — the user brings a
+key, picks a cheap model for classification and a strong one for an agent node, per node.
+
+Reusing the existing MCP connection to a chat client instead looks tempting and does not work,
+for a reason of direction rather than effort. **MCP is inverted relative to what a node needs.**
+Over MCP the AI client is the caller and AnalyseTool is the tool provider; an AI node needs to
+BE the caller. The protocol does have a feature for this (sampling — the server asks the client
+for a completion), but our transport cannot express it: `RevitBridgeClient` is connect-per-
+request TCP into the bridge, one request and one response per connection, with no persistent
+socket and no id-correlation, so the bridge has no way to initiate anything toward the client.
+Supporting sampling would mean a bidirectional rewrite of the wire protocol.
+
+Even granted that rewrite, it would be the wrong dependency: the pipeline would only run while
+the user's chat app is open and connected, which defeats the point of a repeatable run started
+from the ribbon, and 25–50 batched calls over a 500-element model would go through that app's
+quota and consent prompts instead of the user's own predictable API billing.
+
+The agent's real role here is the other end: **authoring** pipelines ("five steps in chat →
+save as pipeline") and **invoking** `RunPipeline`. Agent → pipeline → deterministic nodes with
+AI islands is the composition that works; agent-as-the-model-inside-a-node is the one that
+does not.
 
 ## Microsoft Agent Framework: not in V1
 
