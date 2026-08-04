@@ -9,7 +9,8 @@ namespace AnalyseTool.Tools.Elements
     [RevitCommand(
         Description = "Returns the names of all element categories present in the active document. " +
                       $"Use these names with {nameof(GetDataByCategoryName)}.",
-        ReadOnly = true)]
+        ReadOnly = true,
+        OutputType = typeof(List<string>))]
     internal sealed class GetCategoriesInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

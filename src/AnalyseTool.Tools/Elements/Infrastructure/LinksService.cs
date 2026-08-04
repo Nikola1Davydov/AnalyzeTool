@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.Tools.Elements
 {
@@ -24,6 +25,12 @@ namespace AnalyseTool.Tools.Elements
         }
     }
 
-    public sealed record LinkInfo(long Id, string Name);
-    public sealed record LinksResult(List<LinkInfo> RevitLinks, List<LinkInfo> CadLinks);
+    // camelCase spelled out so the published OutputType schema matches what Newtonsoft actually writes.
+    public sealed record LinkInfo(
+        [property: JsonProperty("id")] long Id,
+        [property: JsonProperty("name")] string Name);
+
+    public sealed record LinksResult(
+        [property: JsonProperty("revitLinks")] List<LinkInfo> RevitLinks,
+        [property: JsonProperty("cadLinks")] List<LinkInfo> CadLinks);
 }

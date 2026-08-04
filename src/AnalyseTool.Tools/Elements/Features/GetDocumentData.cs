@@ -6,7 +6,8 @@ namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns summary information about the active Revit document (title, path and related metadata).",
-        ReadOnly = true)]
+        ReadOnly = true,
+        OutputType = typeof(DocumentData))]
     internal sealed class GetDocumentData : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

@@ -14,7 +14,8 @@ namespace AnalyseTool.Tools.Elements
                       $"Call {nameof(GetCategoriesInRevit)} for valid category names and " +
                       $"{nameof(GetCategoryParameters)} to discover parameter names.",
         ReadOnly = true,
-        InputType = typeof(GetElements.Request))]
+        InputType = typeof(GetElements.Request),
+        OutputType = typeof(List<ElementSummary>))]
     internal sealed class GetElements : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

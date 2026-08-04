@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.Tools.Elements
 {
@@ -14,5 +15,10 @@ namespace AnalyseTool.Tools.Elements
                 .ToList();
     }
 
-    public sealed record ImportInfo(long Id, string Name);
+    // camelCase spelled out: the wire is written by Newtonsoft (declared names by default) while the
+    // schema published for OutputType is generated with Web defaults (camelCase). Without the attribute
+    // the two disagree, and a schema that misnames what it describes is worse than none.
+    public sealed record ImportInfo(
+        [property: JsonProperty("id")] long Id,
+        [property: JsonProperty("name")] string Name);
 }
