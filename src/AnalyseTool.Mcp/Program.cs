@@ -26,6 +26,11 @@ RevitBridgeClient bridge = new RevitBridgeClient(port, token);
 // Maps the (sanitized) MCP tool name back to the real Revit command name. Rebuilt on every list.
 ConcurrentDictionary<string, string> toolToCommand = new ConcurrentDictionary<string, string>();
 
+// Tools that advertised an outputSchema. Declaring one is a PROMISE: the protocol expects the call to
+// come back with structuredContent conforming to it, so the two must be decided together — hence one
+// set, written when the tool is listed and read when it is called.
+ConcurrentDictionary<string, byte> toolsWithOutputSchema = new ConcurrentDictionary<string, byte>();
+
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // CRITICAL: stdout is the MCP protocol channel — nothing else may write to it. Drop all logging
@@ -42,6 +47,7 @@ builder.Services
     {
         List<Tool> tools = new List<Tool>();
         toolToCommand.Clear();
+        toolsWithOutputSchema.Clear();
 
         try
         {
@@ -64,7 +70,7 @@ builder.Services
                     bool destructive = entry?[McpWire.Destructive]?.GetValue<bool>() ?? false;
                     JsonNode? schema = entry?[McpWire.InputSchema];
 
-                    tools.Add(new Tool
+                    Tool tool = new Tool
                     {
                         Name = toolName,
                         Description = string.IsNullOrWhiteSpace(description)
@@ -79,7 +85,17 @@ builder.Services
                             ReadOnlyHint = readOnly,
                             DestructiveHint = destructive,
                         },
-                    });
+                    };
+
+                    // Only when the command really declared an object-shaped result. See the helper for
+                    // why an array-returning command is skipped even though it HAS a schema.
+                    if (DeclaresObjectResult(entry?[McpWire.OutputSchema]))
+                    {
+                        tool.OutputSchema = entry![McpWire.OutputSchema]!.Deserialize<JsonElement>();
+                        toolsWithOutputSchema[toolName] = 0;
+                    }
+
+                    tools.Add(tool);
                 }
             }
         }
@@ -106,7 +122,19 @@ builder.Services
         {
             JsonNode? result = await bridge.InvokeAsync(command, payload, ct);
             string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
-            return new CallToolResult { Content = { new TextContentBlock { Text = text } } };
+
+            // The text block stays unconditionally: it is what every client can read, including the ones
+            // that ignore structured output entirely.
+            CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
+
+            // Structured content ONLY where the tool promised a schema at listing time and the answer
+            // really is an object. Promising a schema and then not delivering is the one way to be worse
+            // than saying nothing, and a JSON array — which several of our commands return — cannot be
+            // structuredContent at all.
+            if (toolsWithOutputSchema.ContainsKey(toolName) && result is JsonObject resultObject)
+                callResult.StructuredContent = resultObject.Deserialize<JsonElement>();
+
+            return callResult;
         }
         catch (Exception ex)
         {
@@ -193,3 +221,28 @@ static JsonElement FreeFormObjectSchema()
         ["properties"] = new Dictionary<string, object>(),
         ["additionalProperties"] = true,
     });
+
+/// <summary>
+/// Whether a command's declared result schema can be advertised as a tool's outputSchema.
+///
+/// Three cases are refused, each for its own reason:
+/// <list type="bullet">
+/// <item>a command that declared nothing arrives as the empty object schema
+/// (<c>{"type":"object","properties":{}}</c>) — advertising that would promise structure and describe
+/// none;</item>
+/// <item>the free-form fallback the bridge substitutes for an oversized schema has no properties either,
+/// and promising a shape it does not describe buys nothing;</item>
+/// <item><b>an array-rooted schema</b> — several commands legitimately return a JSON array
+/// (GetElements, GetCategoriesInRevit…), and structuredContent is defined as an OBJECT, so such a tool
+/// cannot honour the promise no matter what. Its shape stays in the description and in the text block.
+/// Making those commands wrap their answer in <c>{ items: [...] }</c> would fix it, at the cost of a
+/// breaking change for the frontend that reads them — a separate decision, not one to smuggle in
+/// here.</item>
+/// </list>
+/// </summary>
+static bool DeclaresObjectResult(JsonNode? schema)
+{
+    if (schema is not JsonObject obj) return false;
+    if (obj["type"]?.GetValue<string>() != "object") return false;
+    return obj["properties"] is JsonObject properties && properties.Count > 0;
+}
