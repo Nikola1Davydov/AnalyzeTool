@@ -26,20 +26,31 @@ A transaction **we do not control**, raising a warning Revit would normally show
 through `ExecuteRevitCode` — that is the point: a Roslyn snippet is the case no helper of ours can
 cover, exactly like a third-party command.
 
-Duplicate `Mark` is the reliable trigger: Revit answers with "Elements have duplicate 'Mark'
-values", severity Warning, so the transaction still commits.
+**Two identical walls in the same place.** Revit answers with "There are identical instances in the
+same place…", severity Warning, so the transaction still commits.
+
+Duplicate `Mark` was tried first and does NOT work: measured on 2026-08-04, a write through
+`Parameter.Set()` reached the preprocessor with zero failure messages, even though doing the same
+edit by hand in the UI raises the dialog. Whatever runs that check is on the UI command path, not
+on the API one — so it is useless as an API-level provocation.
 
 ```csharp
-var walls = new FilteredElementCollector(doc).OfClass(typeof(Wall)).Cast<Wall>().Take(2).ToList();
+var level = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().First();
+var wallType = new FilteredElementCollector(doc).OfClass(typeof(WallType))
+    .Cast<WallType>().First(w => w.Kind == WallKind.Basic);
+var line = Line.CreateBound(new XYZ(0, 0, 0), new XYZ(10, 0, 0));
+
 using (var t = new Transaction(doc, "EXP88 warn-test"))
 {
     t.Start();                                  // deliberately NO failure preprocessor
-    foreach (var w in walls)
-        w.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).Set("EXP88-DUP");
+    Wall.Create(doc, line, wallType.Id, level.Id, 10, 0, false, false);
+    Wall.Create(doc, line, wallType.Id, level.Id, 10, 0, false, false);  // identical -> warning
     t.Commit();
 }
-return walls.Count;
+return "done";
 ```
+
+This leaves two junk walls in the model — undo afterwards, or run it in a scratch file.
 
 Invoke it from the WebView2 devtools console of the plugin window:
 
