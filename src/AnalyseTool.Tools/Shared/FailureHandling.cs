@@ -1,4 +1,5 @@
 using Autodesk.Revit.DB;
+using Serilog;
 
 namespace AnalyseTool.Tools.Shared
 {
@@ -30,7 +31,14 @@ namespace AnalyseTool.Tools.Shared
 
         public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
         {
-            foreach (FailureMessageAccessor failure in failuresAccessor.GetFailureMessages())
+            IList<FailureMessageAccessor> messages = failuresAccessor.GetFailureMessages();
+
+            // The result carries the warnings to the caller; this carries them to whoever is triaging a
+            // log after the fact, which is the only witness an unattended run leaves behind.
+            Log.Debug("Resolved failures in transaction '{Transaction}': {Count} message(s)",
+                failuresAccessor.GetTransactionName(), messages.Count);
+
+            foreach (FailureMessageAccessor failure in messages)
             {
                 // Errors are deliberately not recorded here: they are not resolved, they roll the
                 // transaction back, and the caller learns about them through the thrown exception.
