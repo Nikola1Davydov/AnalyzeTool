@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Deletes families and/or family types (by id) from the active document. Deleting a " +
                       "family deletes its instances. Used for both Delete and Purge-unused.",
         Destructive = true,
-        InputType = typeof(DeleteFamilyElements.Request))]
+        InputType = typeof(DeleteFamilyElements.Request),
+        OutputType = typeof(DeleteResult))]
     internal sealed class DeleteFamilyElements : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -21,7 +21,8 @@ namespace AnalyseTool.Tools.Families
                       "the user clicking in the model, so this command has no meaning to an unattended " +
                       "caller (a pipeline, a batch) and must never be dispatched by one.",
         Destructive = true,
-        InputType = typeof(PlaceFamilyInstance.Request))]
+        InputType = typeof(PlaceFamilyInstance.Request),
+        OutputType = typeof(PlaceInstanceResult))]
     internal sealed class PlaceFamilyInstance : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -34,7 +35,7 @@ namespace AnalyseTool.Tools.Families
                 Document doc = uidoc.Document;
 
                 if (doc.GetElement(new ElementId(req.TypeId)) is not FamilySymbol symbol)
-                    return new { ok = false, error = "This type cannot be placed from the palette (not a loadable family)." };
+                    return new PlaceInstanceResult(false, "This type cannot be placed from the palette (not a loadable family).", Array.Empty<TransactionWarning>());
 
                 // A symbol must be active before it can be placed. Activation is a model change, so it
                 // needs its own transaction (placement itself is handled by Revit, no transaction here).
@@ -59,7 +60,7 @@ namespace AnalyseTool.Tools.Families
                     // User pressed Escape / finished placing — a normal end, not an error.
                 }
 
-                return new { ok = true, error = (string?)null, warnings };
+                return new PlaceInstanceResult(true, null, warnings);
             });
         }
 

@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
                       "family (its first type) OR a specific type/system type. Read-only. Pass a family id " +
                       "or a type (ElementType) id.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyPreview.Request))]
+        InputType = typeof(GetFamilyPreview.Request),
+        OutputType = typeof(FamilyPreviewResult))]
     internal sealed class GetFamilyPreview : IRevitTask
     {
         private const int DefaultSize = 256;
@@ -25,14 +26,14 @@ namespace AnalyseTool.Tools.Families
         {
             Request? req = ctx.Payload.As<Request>();
             if (req is null || req.Id <= 0)
-                return Task.FromResult<object?>(new { id = req?.Id ?? 0, dataUri = (string?)null });
+                return Task.FromResult<object?>(new FamilyPreviewResult(req?.Id ?? 0, null));
 
             int size = req.Size is int s and >= 32 and <= 512 ? s : DefaultSize;
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
                 Document doc = app.ActiveUIDocument.Document;
-                return new { id = req.Id, dataUri = Render(doc, req.Id, size) };
+                return new FamilyPreviewResult(req.Id, Render(doc, req.Id, size));
             });
         }
 

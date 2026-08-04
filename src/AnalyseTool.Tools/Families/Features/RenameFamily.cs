@@ -12,7 +12,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Renames a family (by id) in the active document. Returns ok=false with an error " +
                       "message on a duplicate or invalid name.",
         Destructive = true,
-        InputType = typeof(RenameFamily.Request))]
+        InputType = typeof(RenameFamily.Request),
+        OutputType = typeof(RenameResult))]
     internal sealed class RenameFamily : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

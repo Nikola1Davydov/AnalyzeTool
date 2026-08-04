@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
                       "type, category, level and workset. Read-only. Pass familyId or familyIds, " +
                       "optional typeId and limit.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyInstances.Request))]
+        InputType = typeof(GetFamilyInstances.Request),
+        OutputType = typeof(FamilyInstancesResult))]
     internal sealed class GetFamilyInstances : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

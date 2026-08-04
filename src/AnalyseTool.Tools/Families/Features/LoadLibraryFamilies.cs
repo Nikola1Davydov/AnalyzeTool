@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Loads the given .rfa files into the current document, skipping any that fail. " +
                       "Returns { loaded, failed }.",
         Destructive = true,
-        InputType = typeof(LoadLibraryFamilies.Request))]
+        InputType = typeof(LoadLibraryFamilies.Request),
+        OutputType = typeof(LoadFamiliesResult))]
     internal sealed class LoadLibraryFamilies : IRevitTask, IProgressAware
     {
         public IProgress<ProgressInfo>? Progress { get; set; }
@@ -25,7 +26,7 @@ namespace AnalyseTool.Tools.Families
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
             List<string> paths = req.Paths ?? new List<string>();
-            if (paths.Count == 0) return new { ok = true, loaded = 0, failed = 0 };
+            if (paths.Count == 0) return new LoadFamiliesResult(true, 0, 0, Array.Empty<TransactionWarning>());
 
             LibraryService service = new();
             int loaded = 0, failed = 0;
@@ -45,7 +46,7 @@ namespace AnalyseTool.Tools.Families
                 Progress?.Report(new ProgressInfo((i + 1) / (double)paths.Count, "Loading families…"));
             }
 
-            return new { ok = true, loaded, failed, warnings };
+            return new LoadFamiliesResult(true, loaded, failed, warnings);
         }
 
         public sealed class Request

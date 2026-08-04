@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Lists family types (FamilySymbols) for the given families with category, instance " +
                       "count, the worksets their instances occupy and all type parameters. Read-only.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyTypeRows.Request))]
+        InputType = typeof(GetFamilyTypeRows.Request),
+        OutputType = typeof(TypeRowsResult))]
     internal sealed class GetFamilyTypeRows : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
