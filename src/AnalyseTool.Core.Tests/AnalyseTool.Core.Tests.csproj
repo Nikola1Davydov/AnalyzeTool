@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Revit-FREE test project.
+
+    AnalyseTool.Test cannot host these: it references AnalyseTool.App, so it drags in the host and with
+    it Revit, and a test that needs Revit installed is a test nobody runs in CI. The pipeline engine was
+    designed to be testable without it — it talks to an INodeDispatcher, never to a Document — and this
+    project is what makes that claim mean something.
+
+    It targets the same TFM as Core because it references it, and it pulls the Revit API COMPILE-ONLY
+    (via the shared props, ExcludeAssets=runtime) exactly as every other project does. Nothing under test
+    touches a Revit type, so nothing needs the real assemblies at run time; a test that did would fail
+    loudly here, which is the point.
+  -->
+  <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+  </ItemGroup>
+
+  <!-- CoreServices reads ToolData for the profile folder; Core is built with the same shared items. -->
+  <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+
+</Project>

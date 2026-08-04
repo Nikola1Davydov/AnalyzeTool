@@ -17,3 +17,6 @@ using System.Runtime.CompilerServices;
 // project, nothing else in Core changes.
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
 [assembly: InternalsVisibleTo("AnalyseTool.Mcp.Bridge")]
+// The pipeline engine is internal like the rest of the platform, and its whole value is that it behaves
+// predictably — which is only a claim until something exercises it. Tests, not a transport.
+[assembly: InternalsVisibleTo("AnalyseTool.Core.Tests")]

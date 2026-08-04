@@ -47,6 +47,10 @@
     <PackageVersion Include="Nice3point.TUnit.Revit" Version="2026.0.4" />
     <PackageVersion Include="NUnit" Version="3.13.3" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.10.0" />
+    <!-- The Revit-free project needs its own adapter: AnalyseTool.Test gets one through
+         Nice3point.TUnit.Revit, which exists to run tests INSIDE Revit and is the opposite of the point
+         there. Pinned to the NUnit 3 line to match. -->
+    <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
 
     <!-- Installer -->
     <PackageVersion Include="WixSharp.bin" Version="1.26.0" />
