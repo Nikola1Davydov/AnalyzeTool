@@ -3,8 +3,11 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { VueFlow, Handle, Position } from "@vue-flow/core";
 import Message from "primevue/message";
+import { invoke } from "@/RevitBridge";
 import { usePipelineDoc } from "./usePipelineDoc";
 import NodeInspector from "./NodeInspector.vue";
+import { fieldNames, summarize } from "./schema";
+import type { JsonSchema, NodeOutcome, RunResult } from "./types";
 import "@vue-flow/core/dist/style.css";
 
 // The pipeline editor: palette, canvas, inspector. Its own window, not the dock — a canvas needs
@@ -32,6 +35,36 @@ const {
 const search = ref("");
 const saved = ref<string | null>(null);
 
+// The last preview, keyed by node id. Cleared whenever the graph changes, because stale data shown
+// beside an edited node is worse than none — it reads as "this is what it does now".
+const outcomes = ref<Record<string, NodeOutcome>>({});
+const previewing = ref(false);
+const previewNote = ref<string | null>(null);
+
+/** Declared output schema per node id, so the inspector can offer real paths for a binding. */
+const outputs = computed<Record<string, JsonSchema | null>>(() =>
+  Object.fromEntries(doc.value.nodes.map((n) => [n.id, commandInfo(n.command)?.outputSchema ?? null])),
+);
+
+// Preview runs the READ-ONLY prefix and refuses at the first node that writes, naming it. That is
+// the whole safety story: authoring never touches the model, and "run it for real" stays a
+// deliberate act in the Pipelines pane.
+async function preview() {
+  previewing.value = true;
+  previewNote.value = null;
+  try {
+    const result = await invoke<RunResult>("PreviewPipeline", {
+      pipeline: doc.value,
+      untilNode: selectedId.value ?? "",
+    });
+    outcomes.value = Object.fromEntries(result.nodes.map((n) => [n.nodeId, n]));
+  } catch (e: any) {
+    previewNote.value = e?.message ?? String(e);
+  } finally {
+    previewing.value = false;
+  }
+}
+
 const palette = computed(() => {
   const term = search.value.trim().toLowerCase();
   const all = [...commands.value].sort((a, b) => a.name.localeCompare(b.name));
@@ -57,6 +90,8 @@ const flowNodes = computed(() =>
       node,
       index,
       destructive: commandInfo(node.command)?.destructive ?? false,
+      produces: fieldNames(commandInfo(node.command)?.outputSchema),
+      outcome: outcomes.value[node.id] ?? null,
     },
   })),
 );
@@ -74,6 +109,11 @@ function onNodeDragStop({ node }: any) {
   if (target) target.ui = { x: Math.round(node.position.x), y: Math.round(node.position.y) };
 }
 
+function invalidatePreview() {
+  outcomes.value = {};
+  previewNote.value = null;
+}
+
 function onConnect({ source, target }: any) {
   pipeline.connect(source, target);
   void pipeline.validate();
@@ -89,6 +129,7 @@ function addFromPalette(name: string) {
   const last = doc.value.nodes[doc.value.nodes.length - 1];
   const at = last?.ui ? { x: last.ui.x, y: last.ui.y + 120 } : undefined;
   pipeline.addNode(name, at);
+  invalidatePreview();
   void pipeline.validate();
 }
 
@@ -119,6 +160,15 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
         :value="validation.ok ? 'valid' : `${validation.errors.length} error(s)`"
       />
       <Button label="Check" icon="pi pi-check" text size="small" @click="pipeline.validate()" />
+      <Button
+        label="Preview"
+        icon="pi pi-eye"
+        text
+        size="small"
+        :loading="previewing"
+        :disabled="!doc.nodes.length"
+        @click="preview"
+      />
       <Button
         label="Save"
         icon="pi pi-save"
@@ -175,6 +225,27 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
                 <span class="font-medium">{{ data.node.id }}</span>
               </div>
               <div class="opacity-60">{{ data.node.command }}</div>
+
+              <!-- The fields the next node can bind to. Without this a card is an opaque box and
+                   the only way to learn its shape is to run the pipeline and read the JSON. -->
+              <div v-if="data.produces.length" class="mt-1 flex flex-wrap gap-1">
+                <span
+                  v-for="field in data.produces"
+                  :key="field"
+                  class="rounded bg-surface-100 px-1 font-mono text-[10px] dark:bg-surface-800"
+                >
+                  {{ field }}
+                </span>
+              </div>
+
+              <div
+                v-if="data.outcome"
+                class="mt-1 text-[10px]"
+                :class="data.outcome.state === 'Completed' ? 'opacity-70' : 'text-red-500'"
+              >
+                {{ data.outcome.error ?? summarize(data.outcome.result) }}
+              </div>
+
               <Handle type="source" :position="Position.Bottom" />
             </div>
           </template>
@@ -190,20 +261,32 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           :sources="sourcesFor(selected.id)"
           :index="selectedIndex"
           :count="doc.nodes.length"
+          :outputs="outputs"
+          :outcome="outcomes[selected.id] ?? null"
           @rename="(v) => pipeline.renameNode(selected!.id, v)"
           @move="(d) => pipeline.move(selected!.id, d)"
-          @remove="pipeline.removeNode(selected!.id)"
+          @remove="pipeline.removeNode(selected!.id); invalidatePreview()"
           @changed="pipeline.validate()"
         />
-        <div v-else class="p-3 text-sm opacity-60">
-          Pick a command on the left to add a node, then select it to fill in its payload.
+        <div v-else class="flex flex-col gap-2 p-3 text-sm opacity-70">
+          <p>Pick a command on the left to add a node, then select it to fill in its payload.</p>
+          <p class="text-xs">
+            Start with something that reads — <span class="font-mono">GetFamilies</span>,
+            <span class="font-mono">GetElementsByCategory</span> — then press
+            <strong>Preview</strong>. It runs the read-only nodes for real and shows what each one
+            returned, which is what the next node's binding has to be written against. Preview
+            refuses to run anything that changes the model.
+          </p>
         </div>
       </div>
     </div>
 
     <!-- Validation last, across the full width: errors block a run, warnings do not. -->
-    <div v-if="validation || error || saved" class="max-h-40 overflow-auto border-t p-2">
+    <div v-if="validation || error || saved || previewNote" class="max-h-40 overflow-auto border-t p-2">
       <Message v-if="error" severity="error" size="small" variant="simple">{{ error }}</Message>
+      <Message v-if="previewNote" severity="info" size="small" variant="simple">
+        {{ previewNote }}
+      </Message>
       <Message v-if="saved" severity="success" size="small" variant="simple">
         Saved as “{{ saved }}”. Run it from the Pipelines pane.
       </Message>
