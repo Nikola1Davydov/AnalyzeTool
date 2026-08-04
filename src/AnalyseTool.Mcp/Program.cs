@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
-using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -23,13 +22,15 @@ if (token.Length == 0)
 
 RevitBridgeClient bridge = new RevitBridgeClient(port, token);
 
-// Maps the (sanitized) MCP tool name back to the real Revit command name. Rebuilt on every list.
-ConcurrentDictionary<string, string> toolToCommand = new ConcurrentDictionary<string, string>();
-
-// Tools that advertised an outputSchema. Declaring one is a PROMISE: the protocol expects the call to
-// come back with structuredContent conforming to it, so the two must be decided together — hence one
-// set, written when the tool is listed and read when it is called.
-ConcurrentDictionary<string, byte> toolsWithOutputSchema = new ConcurrentDictionary<string, byte>();
+// What tools/list decided about each (sanitized) tool name, for CallTool to act on: the real Revit
+// command behind it, and whether it advertised an outputSchema — a promise the call then has to keep
+// with structuredContent. One entry, because both facts are decided at the same moment about the same
+// tool; two parallel maps keyed alike would only be a chance to disagree.
+//
+// Replaced WHOLESALE at the end of a listing rather than cleared and refilled, so a call in flight
+// keeps reading the previous complete map instead of one being rebuilt under it. That also means no
+// concurrent collection is needed — publishing is a single reference assignment.
+IReadOnlyDictionary<string, ToolBinding> toolBindings = new Dictionary<string, ToolBinding>();
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -46,8 +47,7 @@ builder.Services
     .WithListToolsHandler(async (context, ct) =>
     {
         List<Tool> tools = new List<Tool>();
-        toolToCommand.Clear();
-        toolsWithOutputSchema.Clear();
+        Dictionary<string, ToolBinding> bindings = new Dictionary<string, ToolBinding>();
 
         try
         {
@@ -62,8 +62,7 @@ builder.Services
                     if (string.IsNullOrEmpty(command)) continue;
                     string source = entry?[McpWire.SourceField]?.GetValue<string>() ?? "core";
 
-                    string toolName = ToToolName(command, toolToCommand);
-                    toolToCommand[toolName] = command;
+                    string toolName = ToToolName(command, bindings);
 
                     string? description = entry?[McpWire.Description]?.GetValue<string>();
                     bool readOnly = entry?[McpWire.ReadOnly]?.GetValue<bool>() ?? false;
@@ -89,12 +88,11 @@ builder.Services
 
                     // Only when the command really declared an object-shaped result. See the helper for
                     // why an array-returning command is skipped even though it HAS a schema.
-                    if (DeclaresObjectResult(entry?[McpWire.OutputSchema]))
-                    {
+                    bool declaresResult = DeclaresObjectResult(entry?[McpWire.OutputSchema]);
+                    if (declaresResult)
                         tool.OutputSchema = entry![McpWire.OutputSchema]!.Deserialize<JsonElement>();
-                        toolsWithOutputSchema[toolName] = 0;
-                    }
 
+                    bindings[toolName] = new ToolBinding(command, declaresResult);
                     tools.Add(tool);
                 }
             }
@@ -106,6 +104,8 @@ builder.Services
             Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {ex.Message}");
         }
 
+        // Published only now: until this assignment, callers still see the previous listing whole.
+        toolBindings = bindings;
         return new ListToolsResult { Tools = tools };
     })
     .WithCallToolHandler(async (context, ct) =>
@@ -115,7 +115,9 @@ builder.Services
         // earlier session without listing again in this process, and the map only fills on tools/list.
         // Safe because the in-Revit bridge — not this process — is the access boundary: it gates every
         // invoke on the command's own registration (see McpBridgeServer.IsAvailableToAi).
-        string command = toolToCommand.TryGetValue(toolName, out string? mapped) ? mapped : toolName;
+        IReadOnlyDictionary<string, ToolBinding> bindings = toolBindings; // one read; the field may be replaced mid-call
+        ToolBinding? binding = bindings.TryGetValue(toolName, out ToolBinding? found) ? found : null;
+        string command = binding?.Command ?? toolName;
         JsonNode? payload = ArgumentsToPayload(context.Params?.Arguments);
 
         try
@@ -131,7 +133,7 @@ builder.Services
             // really is an object. Promising a schema and then not delivering is the one way to be worse
             // than saying nothing, and a JSON array — which several of our commands return — cannot be
             // structuredContent at all.
-            if (toolsWithOutputSchema.ContainsKey(toolName) && result is JsonObject resultObject)
+            if (binding is { HasOutputSchema: true } && result is JsonObject resultObject)
                 callResult.StructuredContent = resultObject.Deserialize<JsonElement>();
 
             return callResult;
@@ -192,7 +194,7 @@ static string? ParseOption(string[] args, string name)
 
 // MCP tool names must match ^[a-zA-Z0-9_-]+$ for most clients; our command names contain dots
 // (e.g. "acme.sample.Hello"). Sanitize and keep a reverse map so CallTool recovers the real command.
-static string ToToolName(string command, ConcurrentDictionary<string, string> existing)
+static string ToToolName(string command, IReadOnlyDictionary<string, ToolBinding> existing)
 {
     string baseName = Regex.Replace(command, "[^a-zA-Z0-9_-]", "_");
     if (baseName.Length > 64) baseName = baseName[..64];
@@ -246,3 +248,7 @@ static bool DeclaresObjectResult(JsonNode? schema)
     if (obj["type"]?.GetValue<string>() != "object") return false;
     return obj["properties"] is JsonObject properties && properties.Count > 0;
 }
+
+/// <summary>What tools/list decided about one tool name: the Revit command it maps back to, and whether
+/// it advertised an outputSchema (so CallTool knows whether structuredContent is owed).</summary>
+internal sealed record ToolBinding(string Command, bool HasOutputSchema);
