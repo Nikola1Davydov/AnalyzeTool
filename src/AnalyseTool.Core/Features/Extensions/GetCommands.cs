@@ -29,7 +29,11 @@ namespace AnalyseTool.Core.Features.Extensions
                     readOnly = c.ReadOnly,
                     destructive = c.Destructive,
                     exposedToMcp = c.ExposeToMcp,
+                    // Both whole, uncapped: this is the introspection callers reason about (the Settings
+                    // table, and the pipeline graph validator that has to compare one command's output
+                    // against the next one's input). The MCP listing gets a compacted copy instead.
                     inputSchema = SafeParse(c.InputSchemaJson),
+                    outputSchema = SafeParse(c.OutputSchemaJson),
                 })
                 .ToList();
 

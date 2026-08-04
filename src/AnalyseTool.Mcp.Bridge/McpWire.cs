@@ -9,7 +9,8 @@ namespace AnalyseTool.Mcp
     /// Shapes:
     ///   request  { id, token, type: "invoke"|"list", command?, payload? }
     ///   response { id, result } | { id, error }
-    ///   list result: { commands: [ { name, source, description, readOnly, destructive, inputSchema } ] }
+    ///   list result: { commands: [ { name, source, description, readOnly, destructive,
+    ///                                inputSchema, outputSchema } ] }
     ///
     /// Every request carries the session token. Binding to 127.0.0.1 keeps the browser and the network
     /// out, but it does not keep out other processes running as the same user — and this bridge drives
@@ -41,5 +42,12 @@ namespace AnalyseTool.Mcp
         public const string ReadOnly = "readOnly";
         public const string Destructive = "destructive";
         public const string InputSchema = "inputSchema";
+
+        /// <summary>Schema of what the command RETURNS, from RevitCommandAttribute.OutputType. An empty
+        /// object schema means the command has not declared one yet (most have not — see #89).
+        /// NOTE for whoever wires this into the MCP tool definition: declaring a tool's outputSchema
+        /// obliges the server to return structuredContent conforming to it, so the two changes go
+        /// together or not at all.</summary>
+        public const string OutputSchema = "outputSchema";
     }
 }
