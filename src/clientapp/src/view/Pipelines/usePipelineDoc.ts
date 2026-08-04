@@ -5,11 +5,11 @@ import type { CommandInfo, PipelineDoc, PipelineNodeDoc, ValidationResult } from
 // The document the editor edits, plus the command catalogue it builds nodes from. Kept out of the
 // view so the canvas file stays about drawing.
 //
-// The rule this module exists to hold: the pipeline runs in FILE ORDER, not in the order edges were
-// drawn. V1 has no branching, so `edges` is lineage the canvas shows and the validator checks, while
-// the array order is what actually executes. A canvas that hid that would let someone arrange a
-// convincing picture whose run bears no relation to it, so order is explicit and editable, and every
-// node carries its position in the list.
+// The rule this module exists to hold: the pipeline runs in FILE ORDER. V1 has no branching, so the
+// array order is the whole schedule, and `edges` is kept as a mirror of it rather than as a second,
+// independently drawn graph — a stored edge that said anything else would be a lie waiting for
+// whoever opens the file. That is why connecting two nodes on the canvas REORDERS them instead of
+// adding a line, and why every node carries its position in the list.
 
 export function usePipelineDoc() {
   const doc = ref<PipelineDoc>(blank());
@@ -79,13 +79,14 @@ export function usePipelineDoc() {
       ui: at ?? { x: 80, y: 80 + doc.value.nodes.length * 110 },
     };
     doc.value.nodes.push(node);
+    syncEdges();
     selectedId.value = node.id;
     return node;
   }
 
   function removeNode(id: string) {
     doc.value.nodes = doc.value.nodes.filter((n) => n.id !== id);
-    doc.value.edges = doc.value.edges.filter((e) => e.from !== id && e.to !== id);
+    syncEdges();
     // Bindings that pointed at it are left ALONE on purpose: silently rewriting them would hide that
     // the pipeline is now broken, and validation says so in a sentence naming the node.
     if (selectedId.value === id) selectedId.value = doc.value.nodes[0]?.id ?? null;
@@ -119,16 +120,48 @@ export function usePipelineDoc() {
     if (from < 0 || to < 0 || to >= doc.value.nodes.length) return;
     const [node] = doc.value.nodes.splice(from, 1);
     doc.value.nodes.splice(to, 0, node);
+    syncEdges();
   }
 
-  function connect(from: string, to: string) {
-    if (from === to) return;
-    if (doc.value.edges.some((e) => e.from === from && e.to === to)) return;
-    doc.value.edges.push({ from, to });
+  /**
+   * Moves `id` to run immediately after `afterId`. This is what dragging a cord from one node to
+   * another means, because the cord is the run order — connecting has to change the order, or the
+   * picture and the run part ways.
+   *
+   * Refuses to move a node ahead of something it reads: a binding may only name a node listed
+   * before it, so allowing the drag would produce a graph that cannot run and blame the author.
+   */
+  function placeAfter(id: string, afterId: string) {
+    if (id === afterId) return;
+
+    const node = doc.value.nodes.find((n) => n.id === id);
+    if (!node) return;
+
+    const target = doc.value.nodes.findIndex((n) => n.id === afterId);
+    if (target < 0) return;
+
+    const sourcesOfMoved = Object.values(node.bind ?? {}).map((r) => r.split(".")[0]);
+    const wouldPrecede = doc.value.nodes
+      .slice(0, target + 1)
+      .filter((n) => n.id !== id)
+      .map((n) => n.id);
+    if (sourcesOfMoved.some((s) => !wouldPrecede.includes(s))) return;
+
+    const from = doc.value.nodes.findIndex((n) => n.id === id);
+    const [moved] = doc.value.nodes.splice(from, 1);
+    const insertAt = doc.value.nodes.findIndex((n) => n.id === afterId) + 1;
+    doc.value.nodes.splice(insertAt, 0, moved);
+
+    // `edges` mirrors the sequence: V1 runs in file order, so a stored edge that says anything else
+    // is a lie waiting to be read by the validator or by whoever opens the file in an editor.
+    syncEdges();
   }
 
-  function disconnect(from: string, to: string) {
-    doc.value.edges = doc.value.edges.filter((e) => !(e.from === from && e.to === to));
+  /** Rewrites `edges` as the consecutive pairs the run actually follows. */
+  function syncEdges() {
+    doc.value.edges = doc.value.nodes
+      .slice(0, -1)
+      .map((node, index) => ({ from: node.id, to: doc.value.nodes[index + 1].id }));
   }
 
   /** Validated INLINE, so an unsaved draft is checked without writing it to disk first. */
@@ -174,8 +207,7 @@ export function usePipelineDoc() {
     removeNode,
     renameNode,
     move,
-    connect,
-    disconnect,
+    placeAfter,
     validate,
     save,
   };

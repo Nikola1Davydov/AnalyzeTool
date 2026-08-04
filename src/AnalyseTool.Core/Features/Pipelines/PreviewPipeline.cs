@@ -28,8 +28,10 @@ namespace AnalyseTool.Core.Features.Pipelines
         ReadOnly = true,
         InputType = typeof(PreviewPipeline.Request),
         OutputType = typeof(PipelineRunResult))]
-    internal sealed class PreviewPipeline : IRevitTask
+    internal sealed class PreviewPipeline : IRevitTask, IProgressAware
     {
+        public IProgress<ProgressInfo>? Progress { get; set; }
+
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
@@ -72,8 +74,19 @@ namespace AnalyseTool.Core.Features.Pipelines
                     prefix.Any(n => n.Id == e.From) && prefix.Any(n => n.Id == e.To)).ToList(),
             };
 
-            PipelineEngine engine = new(new CommandQueueDispatcher(CoreServices.Queue, progress: null));
-            return await engine.RunAsync(previewDoc, progress: null, ct).ConfigureAwait(false);
+            // Reported the same way a real run is, so the editor lights nodes up as they go. The
+            // fraction is what a UI reads: finished nodes over total, which makes fraction × total the
+            // index of the node currently running.
+            int total = Math.Max(prefix.Count, 1);
+            int done = 0;
+            Progress<NodeProgress> nodeProgress = new(p =>
+            {
+                if (p.State is NodeState.Completed or NodeState.Failed or NodeState.Skipped) done++;
+                Progress?.Report(new ProgressInfo(done / (double)total, $"{p.NodeId}: {p.Command}"));
+            });
+
+            PipelineEngine engine = new(new CommandQueueDispatcher(CoreServices.Queue, Progress));
+            return await engine.RunAsync(previewDoc, nodeProgress, ct).ConfigureAwait(false);
         }
 
         /// <summary>Nodes up to and including <paramref name="untilNode"/>; the whole list when it is

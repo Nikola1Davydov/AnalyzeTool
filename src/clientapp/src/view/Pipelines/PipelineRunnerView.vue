@@ -29,6 +29,12 @@ const progressFraction = ref(0);
 const progressMessage = ref("");
 const confirming = ref(false);
 
+// The nodes of the selected pipeline and which one is executing, so a run is watchable instead of
+// being a bar that moves and a result that appears at the end. The index comes from the progress
+// FRACTION — finished nodes over total — so it needs no parsing of the message text.
+const plan = ref<{ id: string; command: string }[]>([]);
+const runningIndex = ref(-1);
+
 const canRun = computed(() => !!selected.value && !running.value && validation.value?.ok !== false);
 
 async function loadNames() {
@@ -51,8 +57,16 @@ async function select(name: string) {
   result.value = null;
   failure.value = null;
   validation.value = null;
+  plan.value = [];
   try {
     validation.value = await invoke<ValidationResult>("ValidatePipeline", { name });
+    // The node list is fetched so the run can be followed step by step. A failure here is not worth
+    // reporting: it only costs the live list, and validation above has already spoken.
+    const doc = await invoke<{ pipeline: { nodes: { id: string; command: string }[] } }>(
+      "GetPipeline",
+      { name },
+    ).catch(() => null);
+    plan.value = doc?.pipeline?.nodes?.map((n) => ({ id: n.id, command: n.command })) ?? [];
   } catch (e: any) {
     failure.value = e?.message ?? String(e);
   }
@@ -75,6 +89,7 @@ async function run() {
   failure.value = null;
   progressFraction.value = 0;
   progressMessage.value = "";
+  runningIndex.value = 0;
 
   try {
     result.value = await invoke<RunResult>(
@@ -84,6 +99,8 @@ async function run() {
         onProgress: (p) => {
           progressFraction.value = Math.round((p.fraction ?? 0) * 100);
           progressMessage.value = p.message ?? "";
+          const total = plan.value.length || 1;
+          runningIndex.value = Math.min(Math.round((p.fraction ?? 0) * total), total - 1);
         },
       },
     );
@@ -93,6 +110,7 @@ async function run() {
     failure.value = e?.message ?? String(e);
   } finally {
     running.value = false;
+    runningIndex.value = -1;
   }
 }
 
@@ -188,9 +206,33 @@ onMounted(loadNames);
       >{{ w }}</Message
     >
 
-    <div v-if="running" class="flex flex-col gap-1">
+    <div v-if="running" class="flex min-h-0 flex-col gap-1">
       <ProgressBar :value="progressFraction" style="height: 0.5rem" />
       <span class="text-xs opacity-70">{{ progressMessage }}</span>
+
+      <!-- Which step is running, and which are done. A bar alone answers "how far", never "what". -->
+      <div class="flex min-h-0 flex-col gap-1 overflow-auto">
+        <div
+          v-for="(step, index) in plan"
+          :key="step.id"
+          class="flex items-center gap-2 rounded px-2 py-1 text-xs"
+          :class="index === runningIndex ? 'bg-primary-50 dark:bg-primary-900/30' : ''"
+        >
+          <i
+            v-if="index < runningIndex"
+            class="pi pi-check-circle text-green-500"
+            style="font-size: 0.75rem"
+          />
+          <i
+            v-else-if="index === runningIndex"
+            class="pi pi-spin pi-spinner text-primary-500"
+            style="font-size: 0.75rem"
+          />
+          <i v-else class="pi pi-circle opacity-30" style="font-size: 0.75rem" />
+          <span class="font-medium">{{ step.id }}</span>
+          <span class="opacity-60">{{ step.command }}</span>
+        </div>
+      </div>
     </div>
 
     <Message v-if="failure" severity="error" size="small" variant="simple">{{ failure }}</Message>

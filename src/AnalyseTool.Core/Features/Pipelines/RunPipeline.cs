@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Pipelines;
 using AnalyseTool.Sdk;
 using Serilog;
@@ -55,6 +55,11 @@ namespace AnalyseTool.Core.Features.Pipelines
 
             // Node progress is reported as run progress, so the caller's existing progress bar shows which
             // step is running without knowing anything about pipelines.
+            //
+            // The FRACTION is the contract, not the message text. `done` counts finished nodes, so
+            // fraction × total is exactly the index of the node now running — which is how a UI
+            // highlights it without parsing a sentence. The message stays human wording for the busy bar,
+            // and nothing should read a node id back out of it.
             int total = Math.Max(doc.Nodes.Count, 1);
             int done = 0;
             Progress<NodeProgress> nodeProgress = new(p =>

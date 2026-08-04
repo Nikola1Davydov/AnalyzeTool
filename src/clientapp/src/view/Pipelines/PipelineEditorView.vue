@@ -41,6 +41,12 @@ const outcomes = ref<Record<string, NodeOutcome>>({});
 const previewing = ref(false);
 const previewNote = ref<string | null>(null);
 
+// Which node is executing right now, or -1. Derived from the progress FRACTION rather than parsed
+// out of the message: the fraction is finished-nodes over total, so fraction × total is exactly the
+// index of the node that started and has not finished. No string handling, no ambiguity.
+const runningIndex = ref(-1);
+const progressText = ref("");
+
 /** Declared output schema per node id, so the inspector can offer real paths for a binding. */
 const outputs = computed<Record<string, JsonSchema | null>>(() =>
   Object.fromEntries(doc.value.nodes.map((n) => [n.id, commandInfo(n.command)?.outputSchema ?? null])),
@@ -52,16 +58,27 @@ const outputs = computed<Record<string, JsonSchema | null>>(() =>
 async function preview() {
   previewing.value = true;
   previewNote.value = null;
+  outcomes.value = {};
+  runningIndex.value = 0;
+  progressText.value = "";
   try {
-    const result = await invoke<RunResult>("PreviewPipeline", {
-      pipeline: doc.value,
-      untilNode: selectedId.value ?? "",
-    });
+    const result = await invoke<RunResult>(
+      "PreviewPipeline",
+      { pipeline: doc.value, untilNode: selectedId.value ?? "" },
+      {
+        onProgress: (p) => {
+          const total = doc.value.nodes.length || 1;
+          runningIndex.value = Math.min(Math.round((p.fraction ?? 0) * total), total - 1);
+          progressText.value = p.message ?? "";
+        },
+      },
+    );
     outcomes.value = Object.fromEntries(result.nodes.map((n) => [n.nodeId, n]));
   } catch (e: any) {
     previewNote.value = e?.message ?? String(e);
   } finally {
     previewing.value = false;
+    runningIndex.value = -1;
   }
 }
 
@@ -92,17 +109,53 @@ const flowNodes = computed(() =>
       destructive: commandInfo(node.command)?.destructive ?? false,
       produces: fieldNames(commandInfo(node.command)?.outputSchema),
       outcome: outcomes.value[node.id] ?? null,
+      running: previewing.value && runningIndex.value === index,
     },
   })),
 );
 
-const flowEdges = computed(() =>
-  doc.value.edges.map((edge) => ({
-    id: `${edge.from}->${edge.to}`,
-    source: edge.from,
-    target: edge.to,
-  })),
-);
+// Two kinds of line, because there are two different truths and conflating them is what made the
+// first canvas unreadable.
+//
+//  • The SEQUENCE cord — thick, solid, node i to node i+1, derived from the array order. This is
+//    what actually runs, in the order it runs, so it is drawn whether or not anyone wired anything.
+//    It was missing entirely before: a canvas of unconnected boxes cannot show where a run begins.
+//  • DATA wires — thin and dashed, one per binding, labelled with the payload property they fill.
+//    These say where a value comes from, which is a different question from what runs next.
+const flowEdges = computed(() => {
+  const nodes = doc.value.nodes;
+  const running = runningIndex.value;
+
+  const sequence = nodes.slice(0, -1).map((node, index) => ({
+    id: `seq:${node.id}->${nodes[index + 1].id}`,
+    source: node.id,
+    target: nodes[index + 1].id,
+    // Animated only for the leg being executed, so "where is it now" is answerable at a glance
+    // instead of the whole graph shimmering.
+    animated: running === index + 1,
+    style: { strokeWidth: 2.5 },
+    markerEnd: "arrowclosed" as const,
+  }));
+
+  const wires = nodes.flatMap((node) =>
+    Object.entries(node.bind ?? {})
+      .map(([property, reference]) => {
+        const source = reference.split(".")[0];
+        if (!nodes.some((n) => n.id === source)) return null; // dangling: validation names it
+        return {
+          id: `bind:${source}->${node.id}:${property}`,
+          source,
+          target: node.id,
+          label: property,
+          style: { strokeDasharray: "4 3", strokeWidth: 1 },
+          labelStyle: { fontSize: "10px" },
+        };
+      })
+      .filter(Boolean),
+  );
+
+  return [...sequence, ...wires] as any[];
+});
 
 function onNodeDragStop({ node }: any) {
   const target = doc.value.nodes.find((n) => n.id === node.id);
@@ -114,13 +167,12 @@ function invalidatePreview() {
   previewNote.value = null;
 }
 
+// Dragging a connection means "run this one right after that one". The cord IS the order, so
+// connecting has to change the order — a canvas where the line you drew and the sequence that runs
+// are two different things is exactly the trap this editor is meant to avoid.
 function onConnect({ source, target }: any) {
-  pipeline.connect(source, target);
-  void pipeline.validate();
-}
-
-function onEdgesDelete(edges: any[]) {
-  for (const edge of edges) pipeline.disconnect(edge.source, edge.target);
+  pipeline.placeAfter(target, source);
+  invalidatePreview();
   void pipeline.validate();
 }
 
@@ -131,6 +183,12 @@ function addFromPalette(name: string) {
   pipeline.addNode(name, at);
   invalidatePreview();
   void pipeline.validate();
+}
+
+function outcomeBorder(outcome: NodeOutcome | null): string {
+  if (outcome?.state === "Completed") return "border-green-400";
+  if (outcome?.state === "Failed") return "border-red-400";
+  return "border-surface-300";
 }
 
 async function save() {
@@ -179,6 +237,15 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
       />
     </div>
 
+    <div v-if="previewing" class="flex items-center gap-2 border-b px-2 py-1">
+      <ProgressBar
+        :value="Math.round(((runningIndex + 1) / (doc.nodes.length || 1)) * 100)"
+        style="height: 0.4rem"
+        class="grow"
+      />
+      <span class="text-xs opacity-70">{{ progressText }}</span>
+    </div>
+
     <div class="flex min-h-0 grow">
       <!-- Palette: the live command catalogue, so an installed extension's commands are here too. -->
       <div class="flex w-64 shrink-0 flex-col gap-2 border-r p-2">
@@ -207,13 +274,16 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           @node-drag-stop="onNodeDragStop"
           @node-click="({ node }) => (selectedId = node.id)"
           @connect="onConnect"
-          @edges-delete="onEdgesDelete"
         >
           <template #node-command="{ data }">
             <div
-              class="min-w-40 rounded border-2 bg-white px-3 py-2 text-xs shadow dark:bg-surface-900"
+              class="min-w-44 rounded border-2 bg-white px-3 py-2 text-xs shadow dark:bg-surface-900"
               :class="[
-                data.node.id === selectedId ? 'border-primary-500' : 'border-surface-300',
+                data.running
+                  ? 'border-primary-500 ring-2 ring-primary-400'
+                  : data.node.id === selectedId
+                    ? 'border-primary-500'
+                    : outcomeBorder(data.outcome),
                 data.destructive ? 'ring-1 ring-red-400' : '',
               ]"
             >
@@ -223,6 +293,16 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
                   {{ data.index + 1 }}
                 </span>
                 <span class="font-medium">{{ data.node.id }}</span>
+                <span class="grow" />
+                <i v-if="data.running" class="pi pi-spin pi-spinner text-primary-500" />
+                <i
+                  v-else-if="data.outcome?.state === 'Completed'"
+                  class="pi pi-check-circle text-green-500"
+                />
+                <i
+                  v-else-if="data.outcome?.state === 'Failed'"
+                  class="pi pi-times-circle text-red-500"
+                />
               </div>
               <div class="opacity-60">{{ data.node.command }}</div>
 
