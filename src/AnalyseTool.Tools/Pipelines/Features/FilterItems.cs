@@ -20,7 +20,11 @@ namespace AnalyseTool.Tools.Pipelines
         Description = "Keeps the items of a list that match the given field conditions. " +
                       "Payload: { items: [...], where: [{ field, op, value }], match: \"all\" | \"any\" }. " +
                       "Ops: equals, notEquals, contains, exists, notExists, greaterThan, lessThan. " +
-                      "'field' may be a dotted path. Returns { items, kept, dropped }.",
+                      "'field' may be a dotted path. Returns { items, kept, dropped }. " +
+                      "EXAMPLE — unused family types: " +
+                      "{ \"where\": [ { \"field\": \"instanceCount\", \"op\": \"equals\", \"value\": 0 } ] }. " +
+                      "WITHOUT conditions it passes EVERYTHING through, which is refused before a " +
+                      "model-changing node: filtering nothing and then purging means purging everything.",
         ReadOnly = true,
         InputType = typeof(FilterItems.Request),
         OutputType = typeof(FilterResult))]

@@ -48,6 +48,16 @@ namespace AnalyseTool.Core.Features.Pipelines
             List<string> errors = new();
             List<string> warnings = new();
 
+            // The id keys the run receipt and names the run in every log line. An empty one is not fatal,
+            // but "pipeline '' finished" helps nobody afterwards.
+            if (string.IsNullOrWhiteSpace(doc.Id))
+                warnings.Add("The pipeline has no id; runs and exported artifacts will not be traceable to it.");
+
+            Dictionary<string, PipelineNode> byId = doc.Nodes
+                .Where(n => !string.IsNullOrWhiteSpace(n.Id))
+                .GroupBy(n => n.Id, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
             HashSet<string> seen = new(StringComparer.Ordinal);
             foreach (PipelineNode node in doc.Nodes)
             {
@@ -66,6 +76,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                 }
 
                 ValidateBindings(node, seen, reg, errors, warnings);
+                ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
             }
 
             foreach (PipelineEdge edge in doc.Edges)
@@ -102,6 +113,46 @@ namespace AnalyseTool.Core.Features.Pipelines
                 if (declared.Count > 0 && !declared.Contains(binding.Key))
                     warnings.Add($"Node '{node.Id}' binds '{binding.Key}', which '{node.Command}' does not declare. " +
                                  "It will be sent and probably ignored.");
+            }
+        }
+
+        /// <summary>
+        /// Refuses a destructive node fed by a Filter that filters nothing.
+        ///
+        /// <para>A Filter with no conditions passes its whole input through, deliberately, so a
+        /// half-built pipeline still runs end to end. That is right while everything downstream only
+        /// reads — and wrong the moment a purge or a delete is next, because "keep everything" then means
+        /// "destroy everything". The first pipeline an AI wrote unprompted was exactly this shape: read
+        /// 187 family types, filter with no conditions, purge — and it only spared the model because a
+        /// malformed binding failed first.</para>
+        ///
+        /// <para>An error rather than a warning, since warnings do not stop a run and this one has to.
+        /// The fix an author needs is one line: give the Filter its condition.</para>
+        /// </summary>
+        private static void ValidateUnfilteredDestructiveInput(
+            PipelineNode node, IReadOnlyDictionary<string, PipelineNode> byId, CommandRegistration reg,
+            List<string> errors, List<string> warnings)
+        {
+            if (node.Bind is null) return;
+
+            foreach (KeyValuePair<string, string> binding in node.Bind)
+            {
+                string sourceId = binding.Value.Split('.')[0];
+                if (!byId.TryGetValue(sourceId, out PipelineNode? source)) continue;
+                if (!string.Equals(source.Command, "Filter", StringComparison.OrdinalIgnoreCase)) continue;
+                if (source.Params?["where"] is JArray { Count: > 0 }) continue;
+
+                string message =
+                    $"Node '{source.Id}' is a Filter with no conditions, so it passes its entire input " +
+                    $"through to '{node.Id}' ({node.Command}).";
+
+                if (reg.Destructive)
+                    errors.Add(message + " That command CHANGES the model — as written, this pipeline " +
+                               "would act on everything the previous node returned. Give the Filter a " +
+                               "condition, or remove it and bind directly if acting on everything is " +
+                               "really the intent.");
+                else
+                    warnings.Add(message + " Harmless here, but the Filter is doing nothing.");
             }
         }
 

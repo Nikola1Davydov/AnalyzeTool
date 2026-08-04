@@ -123,6 +123,40 @@ namespace AnalyseTool.Core.Tests
         }
 
         [Test]
+        public async Task Empty_brackets_are_accepted_as_a_wildcard()
+        {
+            // An AI asked to write a binding produced "items[].typeId" on its first attempt. The brackets
+            // cannot mean anything else, and raw JSONPath answers them with "Array index expected."
+            FakeDispatcher dispatcher = new((command, _) => command == "A"
+                ? new { items = new[] { new { typeId = 23 }, new { typeId = 24 } } }
+                : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["typeIds"] = "n1.items[].typeId" };
+
+            await new PipelineEngine(dispatcher).RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(dispatcher.Calls[1].Payload["typeIds"]!.ToObject<int[]>(), Is.EqualTo(new[] { 23, 24 }));
+        }
+
+        [Test]
+        public async Task A_malformed_path_names_the_binding_rather_than_the_parser()
+        {
+            FakeDispatcher dispatcher = new((command, _) => command == "A" ? new { items = new[] { 1 } } : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["x"] = "n1.items[??" };
+
+            PipelineRunResult result = await new PipelineEngine(dispatcher)
+                .RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(result.State, Is.EqualTo(RunState.Failed));
+            Assert.That(result.Nodes[1].Error, Does.Contain("n1.items[??"),
+                "the message has to name the binding — a bare parser error leaves an author guessing " +
+                "which of a dozen it came from");
+        }
+
+        [Test]
         public async Task An_unresolvable_binding_fails_the_node_instead_of_binding_null()
         {
             // Passing null into a mutating command is the failure worth being loud about.

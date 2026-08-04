@@ -146,36 +146,51 @@ namespace AnalyseTool.Core.Common.Pipelines
             JToken token = source is null ? JValue.CreateNull() : JToken.FromObject(source);
             if (dot < 0) return token;
 
-            string path = reference[(dot + 1)..];
+            // "items[]" normalised to "items[*]". An agent asked to write a binding produced the empty
+            // brackets on its first attempt, and they cannot mean anything else — while raw JSONPath
+            // answers them with "Array index expected.", which names neither the binding nor the node.
+            string path = reference[(dot + 1)..].Replace("[]", "[*]");
 
-            // A wildcard path asks for ALL the matches, not the first one. Without this a pipeline can
-            // filter a list and then only ever act on item [0] — which is what the first real run of a
-            // filter-then-isolate pipeline ran into. Matches that are themselves arrays are spliced, so
-            // "items[*].failingElements" over rows holding id arrays yields ONE flat id list, which is
-            // the shape the command downstream actually takes.
-            if (path.Contains('*') || path.Contains("..") || path.Contains("[?"))
+            try
             {
-                JArray collected = new();
-                foreach (JToken match in token.SelectTokens(path))
+                // A wildcard path asks for ALL the matches, not the first one. Without this a pipeline can
+                // filter a list and then only ever act on item [0] — which is what the first real run of a
+                // filter-then-isolate pipeline ran into. Matches that are themselves arrays are spliced, so
+                // "items[*].failingElements" over rows holding id arrays yields ONE flat id list, which is
+                // the shape the command downstream actually takes.
+                if (path.Contains('*') || path.Contains("..") || path.Contains("[?"))
                 {
-                    if (match is JArray inner)
-                        foreach (JToken value in inner) collected.Add(value);
-                    else
-                        collected.Add(match);
+                    JArray collected = new();
+                    foreach (JToken match in token.SelectTokens(path))
+                    {
+                        if (match is JArray inner)
+                            foreach (JToken value in inner) collected.Add(value);
+                        else
+                            collected.Add(match);
+                    }
+
+                    // An empty collection is still a failure: a wildcard that matches nothing means the
+                    // shape is not what the author assumed, and passing an empty list into a mutating
+                    // command would report a cheerful "0 written" instead.
+                    return collected.Count > 0
+                        ? collected
+                        : throw new InvalidOperationException(
+                            $"Binding '{reference}' matched nothing in the result of node '{nodeId}'.");
                 }
 
-                // An empty collection is still a failure: a wildcard that matches nothing means the shape
-                // is not what the author assumed, and passing an empty list into a mutating command would
-                // report a cheerful "0 written" instead.
-                return collected.Count > 0
-                    ? collected
-                    : throw new InvalidOperationException(
-                        $"Binding '{reference}' matched nothing in the result of node '{nodeId}'.");
+                return token.SelectToken(path)
+                       ?? throw new InvalidOperationException(
+                           $"Binding '{reference}' found no '{path}' in the result of node '{nodeId}'.");
             }
-
-            return token.SelectToken(path)
-                   ?? throw new InvalidOperationException(
-                       $"Binding '{reference}' found no '{path}' in the result of node '{nodeId}'.");
+            catch (JsonException ex)
+            {
+                // A malformed path otherwise surfaces as a bare parser message with no idea which of a
+                // dozen bindings produced it. Whoever wrote the pipeline — increasingly an AI correcting
+                // its own file — needs the node and the expression, not the parser's opinion.
+                throw new InvalidOperationException(
+                    $"Binding '{reference}' on node reading '{nodeId}' is not a valid path: {ex.Message} " +
+                    "Use \"node.field\", or \"node.items[*].field\" to collect every match.", ex);
+            }
         }
     }
 }
