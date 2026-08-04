@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common;
+﻿using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Pipelines;
 using Newtonsoft.Json;
 using System.IO;
@@ -90,6 +90,10 @@ namespace AnalyseTool.Core.Features.Pipelines
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
+
+        /// <summary>Where a name or path resolves to on disk. Public because reading a pipeline back for
+        /// the editor must open the SAME file the runner would.</summary>
+        public static string ResolvePath(string nameOrPath) => Resolve(nameOrPath);
 
         private static string Resolve(string nameOrPath)
         {

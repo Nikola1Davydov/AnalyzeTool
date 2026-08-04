@@ -18,6 +18,7 @@ const routes = [
     component: () => import("@/view/Families/FamilyPaletteView.vue"),
     meta: { layout: "bare" },
   },
+  { path: "/pipelines", component: () => import("@/view/Pipelines/PipelineEditorView.vue"), meta: { layout: "bare" } },
   {
     path: "/pipelines-dock",
     component: () => import("@/view/Pipelines/PipelineRunnerView.vue"),

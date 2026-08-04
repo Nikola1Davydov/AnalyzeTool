@@ -410,13 +410,46 @@ unit the user actually chose.
 **The editor is a separate window**, like Family Manager. A canvas is unusable in a pane, and the
 two surfaces share nothing but the command catalogue.
 
-## Editor, if the gate opens (#91)
+## Editor (#91) — the gate opened
 
-Vue Flow as a new dependency — `src/view/InfiniteCanvas` is a pan/zoom canvas of cards
-(`useCanvas`, `useDrag`, `useCanvasPersistence`, `CanvasCard`) with no edges, ports or
-connection model; reusing it would mean writing a graph library inside a dashboard. Palette
-from the command catalogue, shared with #43. Parameter forms from `InputSchema` (works
-today). Validation at build time, not run time. Linear graphs only.
+The gate's condition was that authors ask to edit `.atpipe` files by hand. The repo's author
+asked, so it was built; the condition is not re-litigated here.
+
+Vue Flow (MIT) as a new dependency — `src/view/InfiniteCanvas` is a pan/zoom canvas of cards
+(`useCanvas`, `useDrag`, `useCanvasPersistence`, `CanvasCard`) with no edges, ports or connection
+model, so reusing it would mean writing a graph library inside a dashboard. It lands in the
+editor's own lazy chunk, which is why the dock pane's bundle is unaffected.
+
+Palette from the live command catalogue (`GetCommands`), so an installed extension's commands are
+in it without the editor knowing anything about extensions. Parameter forms from the declared
+`inputSchema` — a command that declares its input gets a form for free, which is #89 paying for
+itself a second time. Validation is inline (`ValidatePipeline` with the draft document), so a
+pipeline is checked before it is ever written to disk.
+
+Three decisions worth keeping:
+
+- **Run order is visible and editable.** V1 executes nodes in FILE ORDER; `edges` is lineage the
+  validator checks, not a scheduler. So every card carries its run number and the inspector can
+  move a node earlier or later. A canvas that hid this would let someone arrange a convincing
+  picture whose run bore no relation to it — worse than no canvas.
+- **The document is the single source of truth.** Vue Flow's nodes and edges are computed from
+  it, never kept beside it. Two models of one graph is how an editor starts saving something
+  other than what it shows.
+- **A field is a literal or a wire, never both.** A binding wins over a literal of the same name,
+  so offering both at once would misrepresent what actually runs.
+
+Node positions live in the node's own `ui` key, declared on `PipelineNode` so it does not read as
+an unrecognised key. A sidecar layout file would be separated from the pipeline the first time
+someone mails one; the runner ignores `ui`, and a pipeline written by hand or by an agent simply
+has none.
+
+Renaming a node rewrites the bindings and edges that referenced it — otherwise a rename silently
+unwires the graph. Deleting one does **not** rewrite the bindings that pointed at it: that would
+hide the breakage, and validation names it in a sentence instead.
+
+The editor opens from the runner ("Edit" / "New"), not from its own ribbon button — that is where
+a person already is when they want to change a pipeline. A WebView cannot open a WPF window, so
+the panel asks the host through `OpenPipelineEditor`, the same reason `PickFolder` exists.
 
 ## AI nodes (#92)
 

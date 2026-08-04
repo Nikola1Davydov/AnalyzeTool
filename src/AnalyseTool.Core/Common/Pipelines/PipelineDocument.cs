@@ -62,6 +62,15 @@ namespace AnalyseTool.Core.Common.Pipelines
         public NodeFailureAction OnFailure { get; set; } = NodeFailureAction.Stop;
 
         /// <summary>
+        /// Where the editor drew this node. Declared rather than left to <see cref="Unknown"/> so it does
+        /// not read as a mistake — a canvas has to remember its layout, and the alternative is a sidecar
+        /// file that gets separated from the pipeline the first time someone mails one. The runner ignores
+        /// it completely; a pipeline written by hand or by an agent simply has none.
+        /// </summary>
+        [JsonProperty("ui", NullValueHandling = NullValueHandling.Ignore)]
+        public Newtonsoft.Json.Linq.JObject? Ui { get; set; }
+
+        /// <summary>
         /// Keys the deserializer did not recognise, kept rather than dropped.
         ///
         /// <para>Silently discarding them is how a pipeline ends up doing nothing while looking correct:

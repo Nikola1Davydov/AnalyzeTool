@@ -17,6 +17,54 @@ export interface ValidationResult {
   destructiveNodes: string[];
 }
 
+/** A command as the catalogue reports it — both schemas whole, which is what the editor's forms need. */
+export interface CommandInfo {
+  name: string;
+  source: string;
+  description: string | null;
+  readOnly: boolean;
+  destructive: boolean;
+  exposedToMcp: boolean;
+  inputSchema: JsonSchema | null;
+  outputSchema: JsonSchema | null;
+}
+
+export interface JsonSchema {
+  type?: string | string[];
+  description?: string;
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  enum?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface PipelineNodeDoc {
+  id: string;
+  command: string;
+  contract?: number;
+  params?: Record<string, unknown>;
+  /** Payload property → "<nodeId>" or "<nodeId>.<path>". Wins over a literal of the same name. */
+  bind?: Record<string, string>;
+  onFailure?: "Stop" | "Continue";
+  /** Canvas position. The runner ignores it; a hand-written pipeline simply has none. */
+  ui?: { x: number; y: number };
+}
+
+export interface PipelineEdgeDoc {
+  from: string;
+  to: string;
+}
+
+export interface PipelineDoc {
+  schema: number;
+  id: string;
+  name: string;
+  author?: string | null;
+  version: string;
+  nodes: PipelineNodeDoc[];
+  edges: PipelineEdgeDoc[];
+}
+
 export interface NodeOutcome {
   nodeId: string;
   command: string;

@@ -96,6 +96,16 @@ async function run() {
   }
 }
 
+// Editing happens in a window the host opens for us — a WebView cannot open one itself. With no
+// selection this opens a blank editor, which is also how a new pipeline starts.
+async function edit() {
+  try {
+    await invoke("OpenPipelineEditor", { name: selected.value ?? "" });
+  } catch (e: any) {
+    failure.value = e?.message ?? String(e);
+  }
+}
+
 function stateSeverity(state: string): string {
   if (state === "Completed") return "success";
   if (state === "Failed") return "danger";
@@ -127,6 +137,14 @@ onMounted(loadNames);
         @click="loadNames"
       />
       <span class="grow" />
+      <Button
+        :label="selected ? 'Edit' : 'New'"
+        :icon="selected ? 'pi pi-pencil' : 'pi pi-plus'"
+        text
+        size="small"
+        :disabled="running"
+        @click="edit"
+      />
       <Button
         label="Run"
         icon="pi pi-play"
