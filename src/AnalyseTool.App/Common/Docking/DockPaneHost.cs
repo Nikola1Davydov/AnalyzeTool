@@ -48,6 +48,10 @@ namespace AnalyseTool.App.Common.Docking
                 app.Idling += OnIdling;
                 _idlingHooked = true;
 
+                // TEMPORARY — instrumentation for issue #88. Piggy-backs on this hook point because
+                // OnStartup is the valid API context. Remove together with ExperimentalFailureProbe.
+                ExperimentalFailureProbe.Attach(app);
+
                 Log.Information("Registered AnalyseTool dockable pane");
             }
             catch (Exception ex)
