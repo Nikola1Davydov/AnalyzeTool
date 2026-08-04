@@ -38,14 +38,16 @@ namespace AnalyseTool.Tools.Families
 
                 // A symbol must be active before it can be placed. Activation is a model change, so it
                 // needs its own transaction (placement itself is handled by Revit, no transaction here).
+                IReadOnlyList<TransactionWarning> warnings = Array.Empty<TransactionWarning>();
                 if (!symbol.IsActive)
                 {
                     using Transaction t = new(doc, "Family Manager: activate type");
                     t.Start();
-                    SwallowWarningsPreprocessor.Apply(t);
+                    CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                     symbol.Activate();
                     doc.Regenerate();
                     t.Commit();
+                    warnings = failures.Warnings;
                 }
 
                 try
@@ -57,7 +59,7 @@ namespace AnalyseTool.Tools.Families
                     // User pressed Escape / finished placing — a normal end, not an error.
                 }
 
-                return new { ok = true, error = (string?)null };
+                return new { ok = true, error = (string?)null, warnings };
             });
         }
 

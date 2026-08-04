@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.DB;
+﻿using AnalyseTool.Tools.Shared;
+using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.IO;
@@ -102,27 +103,32 @@ namespace AnalyseTool.Tools.Families
         private static bool IsCompatible(string? version, int currentYear) =>
             currentYear == 0 || version is null || !int.TryParse(version, out int y) || y <= currentYear;
 
-        /// <summary>Loads one family file into the document. Returns false if it couldn't be loaded (e.g. a
-        /// family of that name already exists, or the file is invalid). Own transaction + warning swallow.</summary>
-        public bool LoadOne(Document doc, string path)
+        /// <summary>Loads one family file into the document. Ok is false when it couldn't be loaded (e.g. a
+        /// family of that name already exists, or the file is invalid). Own transaction; warnings are
+        /// resolved without a dialog and returned rather than discarded — loading a library folder is a
+        /// long unattended batch, which is precisely where a swallowed warning is never seen again.</summary>
+        public LoadOneResult LoadOne(Document doc, string path)
         {
-            if (!File.Exists(path)) return false;
+            if (!File.Exists(path)) return new LoadOneResult(false);
 
             try
             {
                 using Transaction t = new(doc, "Family Manager: load family");
                 t.Start();
-                SwallowWarningsPreprocessor.Apply(t);
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 bool ok = doc.LoadFamily(path, out Family _);
                 t.Commit();
-                return ok;
+                return new LoadOneResult(ok, failures.Warnings);
             }
             catch
             {
-                return false;
+                return new LoadOneResult(false);
             }
         }
     }
+
+    /// <summary>Outcome of loading a single family file (see <see cref="LibraryService.LoadOne"/>).</summary>
+    public sealed record LoadOneResult(bool Ok, IReadOnlyList<TransactionWarning>? Warnings = null);
 
     public sealed record LibraryFamily(
         [property: JsonProperty("path")] string Path,

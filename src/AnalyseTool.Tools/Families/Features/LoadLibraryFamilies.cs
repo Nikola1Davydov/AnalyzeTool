@@ -29,6 +29,7 @@ namespace AnalyseTool.Tools.Families
 
             LibraryService service = new();
             int loaded = 0, failed = 0;
+            List<TransactionWarning> warnings = new();
 
             for (int i = 0; i < paths.Count; i++)
             {
@@ -37,13 +38,14 @@ namespace AnalyseTool.Tools.Families
 
                 // One family per round-trip: control returns to the UI thread between files so the
                 // progress bar animates (loading is slow, so the round-trip overhead is negligible).
-                bool ok = await ctx.RunInRevitAsync(app => service.LoadOne(app.ActiveUIDocument.Document, path));
-                if (ok) loaded++; else failed++;
+                LoadOneResult result = await ctx.RunInRevitAsync(app => service.LoadOne(app.ActiveUIDocument.Document, path));
+                if (result.Ok) loaded++; else failed++;
+                if (result.Warnings is { Count: > 0 }) warnings.AddRange(result.Warnings);
 
                 Progress?.Report(new ProgressInfo((i + 1) / (double)paths.Count, "Loading families…"));
             }
 
-            return new { ok = true, loaded, failed };
+            return new { ok = true, loaded, failed, warnings };
         }
 
         public sealed class Request

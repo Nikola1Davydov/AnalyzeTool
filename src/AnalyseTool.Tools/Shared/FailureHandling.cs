@@ -1,23 +1,28 @@
 using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 using Serilog;
 
 namespace AnalyseTool.Tools.Shared
 {
-    /// <summary>One Revit warning that a write transaction resolved on its own.</summary>
+    /// <summary>One Revit warning that a write transaction resolved on its own. Public because it rides
+    /// in the public result records of the Families slice.</summary>
     /// <param name="Description">Revit's own description text, as the user would have read it in the dialog.</param>
     /// <param name="ElementIds">The elements Revit blamed; empty when the warning is document-wide.</param>
-    internal sealed record TransactionWarning(string Description, IReadOnlyList<long> ElementIds);
+    public sealed record TransactionWarning(
+        [property: JsonProperty("description")] string Description,
+        [property: JsonProperty("elementIds")] IReadOnlyList<long> ElementIds);
 
     /// <summary>
-    /// Failure preprocessor for write transactions. Like the Families-slice
-    /// <c>SwallowWarningsPreprocessor</c> it deletes warnings, so Revit never raises a MODAL dialog —
-    /// one of those blocks the Revit thread inside <c>RevitTaskHub.Execute</c>, which is the single
-    /// path to the model for EVERY transport, so a dialog nobody is watching freezes the whole tool.
+    /// THE failure preprocessor for write transactions — every transaction in Tools attaches this one.
+    /// It deletes warnings, so Revit never raises a MODAL dialog: one of those blocks the Revit thread
+    /// inside <c>RevitTaskHub.Execute</c>, which is the single path to the model for EVERY transport, so
+    /// a dialog nobody is watching freezes the whole tool.
     ///
-    /// The difference: it RECORDS the warnings before deleting them. Swallowing silently is fine for a
-    /// button a human is watching (they saw what they clicked); in an unattended batch it discards the
-    /// only evidence that anything went sideways. The caller reports <see cref="Warnings"/> in its
-    /// result, so 500 resolved warnings leave 500 traces instead of none.
+    /// It RECORDS them before deleting. That is the difference from the swallowing handler this replaced
+    /// (Families' <c>SwallowWarningsPreprocessor</c>, removed): discarding silently is defensible for a
+    /// button a human is watching — they saw what they clicked — and in an unattended batch it throws
+    /// away the only evidence that anything went sideways. Callers surface <see cref="Warnings"/> in
+    /// their result, so 500 resolved warnings leave 500 traces instead of none.
     ///
     /// Errors are left untouched, so a genuinely invalid edit still rolls the transaction back.
     /// </summary>
@@ -70,10 +75,5 @@ namespace AnalyseTool.Tools.Shared
 
             return preprocessor;
         }
-
-        /// <summary>Shapes the collected warnings for a command result (anonymous objects keep the JSON
-        /// small and stable while commands still return untyped results — see #89).</summary>
-        public object[] ToResult() =>
-            _warnings.Select(w => (object)new { description = w.Description, elementIds = w.ElementIds }).ToArray();
     }
 }

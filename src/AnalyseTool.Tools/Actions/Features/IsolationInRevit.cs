@@ -38,7 +38,7 @@ namespace AnalyseTool.Tools.Actions
 
                 view.IsolateElementsTemporary(elementsIds);
                 transaction.Commit();
-                return new { ok = true, isolated = elementsIds.Count, warnings = failures.ToResult() };
+                return new { ok = true, isolated = elementsIds.Count, warnings = failures.Warnings };
             });
         }
 
