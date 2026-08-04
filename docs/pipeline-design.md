@@ -167,12 +167,24 @@ warnings leave no trace. The shared preprocessor **collects and reports**; warni
 the command's declared result type (which #89 introduces anyway), not in a parallel
 diagnostics channel.
 
-Author discipline cannot cover third-party commands or Roslyn scripts, so the guarantee is
+Author discipline cannot cover third-party commands or Roslyn scripts, so the guarantee wants to be
 host-level: a subscription active only during an unattended run
-(`Application.FailuresProcessing`, plus `UIApplication.DialogBoxShowing` for generic task
-dialogs) answers centrally, covering every command including ones we did not write.
-**Unverified:** the exact coverage and ordering of those two events against a per-transaction
-preprocessor needs testing in a live Revit before it is committed to.
+(`ControlledApplication.FailuresProcessing`, plus `UIControlledApplication.DialogBoxShowing` for
+generic task dialogs) answering centrally, covering every command including ones we did not write.
+
+Measured in a live Revit (2026-08-04, instrumentation since reverted):
+
+- **The per-transaction preprocessor runs FIRST.** With one attached, the application-level
+  `FailuresProcessing` sees an already-cleared accessor (`count=0`). This is what a backstop
+  wants — it would not compete with per-transaction handlers, it would pick up only what nobody
+  resolved.
+- **`FailuresProcessing` is a routine event.** It fires on commits that raised nothing at all,
+  on the Revit thread, every time. So anything hung there must be nearly free, and its message
+  count says nothing on its own. The same is true of `PreprocessFailures`, which Revit also calls
+  on every commit — hence the `messages.Count > 0` guard on the log line in `FailureHandling.cs`.
+- **Still open:** the handler has only ever been observed downstream of a preprocessor. Whether it
+  sees `count > 0` for a transaction with NO preprocessor — the one case a backstop exists for —
+  is unanswered. Until it is, the backstop is a proposal, not a plan (#88).
 
 ### Dialogs we raise
 
