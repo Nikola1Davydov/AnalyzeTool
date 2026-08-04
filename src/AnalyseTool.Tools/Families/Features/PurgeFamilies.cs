@@ -44,7 +44,7 @@ namespace AnalyseTool.Tools.Families
                 List<long> chunk = plan.GetRange(i, Math.Min(ChunkSize, plan.Count - i));
 
                 ChunkResult res = await ctx.RunInRevitAsync(app =>
-                    service.PurgeChunk(app.ActiveUIDocument.Document, chunk));
+                    service.PurgeChunk(app.ActiveUIDocument.Document, chunk, "family", "families"));
 
                 deleted += res.Deleted;
                 failed += res.Failed;

@@ -101,7 +101,8 @@ namespace AnalyseTool.Tools.Families
         /// transactions.) Chunking exists so the caller can yield the Revit/UI thread between chunks and
         /// report live progress; the trade-off is one undo entry per chunk. Returns per-chunk counts.
         /// </summary>
-        public ChunkResult PurgeChunk(Document doc, IList<long> chunkIds)
+        public ChunkResult PurgeChunk(
+            Document doc, IList<long> chunkIds, string what = "type", string whatPlural = "types")
         {
             List<ElementId> ids = chunkIds.Select(id => new ElementId(id)).ToList();
             int deleted = 0, failed = 0;
@@ -109,14 +110,19 @@ namespace AnalyseTool.Tools.Families
             // a purge of hundreds of types would otherwise report only whatever the last one raised.
             List<TransactionWarning> warnings = new();
 
-            using TransactionGroup group = new(doc, "Family Manager: purge unused types");
+            using TransactionGroup group = new(doc, $"Family Manager: purge unused {whatPlural}");
             group.Start();
 
             foreach (ElementId id in ids)
             {
                 if (doc.GetElement(id) is null) continue; // already removed by a previous cascade
 
-                using Transaction t = new(doc, "Purge type");
+                // Named after what is actually being deleted. Both purge commands share this method, and
+                // the name reaches two places that matter: Revit's undo stack, and the log line the
+                // failure preprocessor writes. A run that purges types and then families produced 300+
+                // warnings all labelled "Purge type", so which of the two destructive nodes raised them
+                // could not be told apart afterwards.
+                using Transaction t = new(doc, $"Purge {what}");
                 t.Start();
                 CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 try

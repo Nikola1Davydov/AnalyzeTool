@@ -120,6 +120,20 @@ content into data. Today it exists only in the Families slice (`SwallowWarningsP
 `ExecuteRevitCode` (`Destructive = true`) is uncovered by construction, since the script
 author writes the transaction.
 
+**Verified under load** (2026-08-04): a purge pipeline deleted unused family types and then
+unused families across ~15 chunked transactions and collected **roughly 340 warnings**, with
+**no modal dialog at any point** and the run reporting `Completed`. That is the claim this
+whole section rests on, and until this run it had only been tested against a single warning.
+An unattended destructive batch is exactly the case where one modal would have frozen the Revit
+thread and, with it, every other transport.
+
+The same run exposed a smaller thing worth fixing on sight: both purge commands share
+`PurgeChunk`, whose transaction was hardcoded to `"Purge type"`. So all 340 warnings — the
+family ones included — were logged under the type wording, and Revit's undo stack labelled the
+family deletions the same way. The name now follows what is actually being deleted. A shared
+write helper naming its own transaction is a small bug in one command and an ambiguous audit
+trail in a pipeline, where two destructive nodes run minutes apart.
+
 Whether a failed node stops the run is node data in `.atpipe`:
 
 ```
