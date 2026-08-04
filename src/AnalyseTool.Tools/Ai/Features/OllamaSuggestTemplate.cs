@@ -19,16 +19,17 @@ namespace AnalyseTool.Tools.Ai
                       "Returns { template, abbreviations: [{ full, abbr }], error }.",
         ReadOnly = true,
         InputType = typeof(OllamaSuggestTemplate.Request),
-        HiddenFromMcp = true)]
+        HiddenFromMcp = true,
+        OutputType = typeof(AiTemplateSuggestionResult))]
     internal sealed class OllamaSuggestTemplate : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request? req = ctx.Payload.As<Request>();
             if (req is null || string.IsNullOrWhiteSpace(req.Model))
-                return new { template = (string?)null, abbreviations = Array.Empty<object>(), error = "No AI model selected." };
+                return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "No AI model selected.");
             if (string.IsNullOrWhiteSpace(req.Example))
-                return new { template = (string?)null, abbreviations = Array.Empty<object>(), error = "No example name given." };
+                return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "No example name given.");
 
             try
             {
@@ -38,25 +39,23 @@ namespace AnalyseTool.Tools.Ai
                     req.Category ?? string.Empty, req.Parameters ?? new Dictionary<string, string>());
 
                 if (result is null || string.IsNullOrWhiteSpace(result.Template))
-                    return new { template = (string?)null, abbreviations = Array.Empty<object>(), error = "The model returned no usable template." };
+                    return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "The model returned no usable template.");
 
-                return new
-                {
-                    template = result.Template.Trim(),
-                    abbreviations = (result.Abbreviations ?? [])
+                return new AiTemplateSuggestionResult(
+                    result.Template.Trim(),
+                    (result.Abbreviations ?? [])
                         .Where(a => !string.IsNullOrWhiteSpace(a.Full) && !string.IsNullOrWhiteSpace(a.Abbr))
-                        .Select(a => new { full = a.Full.Trim(), abbr = a.Abbr.Trim() })
+                        .Select(a => new AiAbbreviationSuggestion(a.Full.Trim(), a.Abbr.Trim()))
                         .ToArray(),
-                    error = (string?)null
-                };
+                    null);
             }
             catch (OperationCanceledException)
             {
-                return new { template = (string?)null, abbreviations = Array.Empty<object>(), error = "AI timeout: the model did not answer in time." };
+                return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "AI timeout: the model did not answer in time.");
             }
             catch (Exception ex)
             {
-                return new { template = (string?)null, abbreviations = Array.Empty<object>(), error = ex.Message };
+                return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), ex.Message);
             }
         }
 
