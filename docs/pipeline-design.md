@@ -222,8 +222,15 @@ its own client gives up. Bounding it belongs to #88.
 {
   "schema": 1,
   "id": "...", "name": "...", "author": "...", "version": "1.0.0",
-  "nodes": [ { "id": "n1", "command": "GetElements", "contract": 2,
-               "params": { ... }, "onFailure": "stop" } ],
+  "nodes": [
+    { "id": "n1", "command": "GetWarningsInRevit", "contract": 1 },
+    { "id": "n2", "command": "Filter",
+      "params": { "where": [ { "field": "warningDescription", "op": "contains", "value": "overlap" } ] },
+      "bind":   { "items": "n1" } },
+    { "id": "n3", "command": "IsolationInRevit",
+      "bind":   { "elementIds": "n2.items[*].failingElements" },
+      "onFailure": "stop" }
+  ],
   "edges": [ { "from": "n1", "to": "n2" } ],
   "state":  { ... }
 }
@@ -241,8 +248,31 @@ them is a migration:
    command contract versions and, for AI nodes, the model. Audit and reproducibility by
    construction (the ComfyUI lesson from #70).
 
-Node result caching, keyed by (inputs + params) hash, applies to **`ReadOnly` nodes only** —
-ComfyUI's nodes are pure functions, ours change a live model.
+### `bind` — how data reaches a node
+
+`params` carries the literal payload; `bind` maps a payload property to `"<nodeId>"` or
+`"<nodeId>.<path>"`, and wins over a literal of the same name (a leftover literal must not
+survive connecting the node). Explicit rather than merging an upstream result by name: commands
+take specific shapes, collisions between unrelated nodes would be silent, and the graph validator
+can check an explicit binding against the two declared schemas (#89) while it cannot check a
+convention. An unresolvable binding fails the node instead of binding null — a pipeline quietly
+passing null into a mutating command is the failure worth being loud about.
+
+A **wildcard** path (`items[*].failingElements`) collects every match, splicing matches that are
+themselves arrays into one flat list. Without it a binding reaches only item `[0]`, so a pipeline
+that filters a list could act on just its first row — which is precisely what the first real run
+of a filter-then-isolate pipeline hit.
+
+### No result cache, and why
+
+The plan called for caching `ReadOnly` node results by an (inputs + params) hash. It was written
+and dropped. In a linear V1 each node runs once, so repeating a read with an identical payload
+inside one run essentially never happens; the value lives entirely in the cross-run case — edit
+the last node, re-run, skip the expensive read — which cannot be done safely without a change
+signal to invalidate on. A remembered `GetElements` replayed into a mutating pipeline an hour
+later writes against element ids that may be gone, and it looks like a Revit bug rather than a
+stale cache. Revisit with the change journal (#80); it will want to be persistent and keyed on
+model state anyway, not a dictionary in the dispatcher.
 
 Files live in `%LOCALAPPDATA%\AnalyseTool\pipelines\` via `PathProvider`, plus explicit
 export/import. Sharing is a file over Teams or email — no server, same stance as #48.
@@ -255,11 +285,28 @@ export/import. Sharing is a file over Teams or email — no server, same stance 
   and the confirmation gate come along for free.
 - Linear execution; `CancellationToken` through the run, caught ahead of `onFailure` so Stop
   can never be disabled by a node's policy (see "No modal dialogs" above).
-- **Revit-free by construction and tested that way.** `AnalyseTool.Test` today holds a single
-  `UnitTest1.cs` and references `AnalyseTool.App`, so it drags in Revit; engine tests against
-  a fake dispatcher need a Revit-free project. Part of this phase, not an afterthought.
-- Deliverable: `RunPipeline` executes a hand-written `.atpipe` from MCP or the console. No
-  editor involved.
+- **Revit-free by construction and tested that way** — `AnalyseTool.Core.Tests`, which references
+  Core and nothing of the host. (`AnalyseTool.Test` could not host these: it references
+  `AnalyseTool.App` and so drags in Revit, and it currently fails at discovery because its
+  in-Revit harness cannot inject.)
+- Commands: `RunPipeline`, `ValidatePipeline`, `SavePipeline`, `ListPipelines`. `Filter` is the
+  first orchestrator node — an ordinary `[RevitCommand]` in Tools that never calls
+  `RunInRevitAsync`, which is the whole reason no capability flag was needed.
+
+**Verified live** (2026-08-04): read warnings → filter → isolate, saved by `SavePipeline` and run
+by name, completed with four elements isolated. No editor involved, which was the claim.
+
+### Who may run, and who may only propose
+
+`SavePipeline` is exposed to MCP; `RunPipeline` is **not**. The asymmetry is the design: saving
+executes nothing and leaves a file a human can read, so an agent may propose a pipeline while only
+a person starts one — the same division the approval gate makes inside a run.
+
+`RunPipeline` stays hidden for a concrete reason, not caution: the bridge decides per COMMAND what
+an agent may invoke, and nodes dispatch under `RunPipeline`'s own identity, so an agent able to
+call it with an inline document would reach commands it is refused directly. Exposing it means
+carrying the caller's policy into every node (`CommandRequest.Gate` is the hook) — work, not a
+flag flip.
 
 ## The gate: before the editor, not before the cloud
 
@@ -283,6 +330,11 @@ If authoring belongs to the agent and consumption is a button, **neither side ne
 editor**: a pipeline is a format plus a runner. Build #91 only if `.atpipe` files authored
 that way actually start circulating between people and their authors ask to edit them by
 hand. Until then, nothing is spent on a canvas.
+
+The gate is now **reachable**, which it was not while nothing could write a `.atpipe`: with
+`SavePipeline`, an agent can author one, a person can run it, and the file can travel. A gate
+whose condition nobody can meet is not a gate, it is a shelf — and until that command existed,
+the question the editor decision hangs on could not have been answered either way.
 
 ## Editor, if the gate opens (#91)
 
