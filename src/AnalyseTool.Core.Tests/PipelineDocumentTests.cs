@@ -70,6 +70,23 @@ namespace AnalyseTool.Core.Tests
         }
 
         [Test]
+        public void Re_indenting_for_the_file_keeps_keys_the_document_model_does_not_declare()
+        {
+            // Saving used to write SerializeObject(doc), and six nodes reached disk with "params": null
+            // after an agent had written their conditions one level too high. The file no longer held the
+            // mistake, so nothing downstream could name it — the save has to keep the author's own JSON.
+            const string authored = """
+                { "schema": 1, "nodes": [ { "id": "a", "command": "Filter", "where": [ { "field": "n" } ] } ] }
+                """;
+
+            string written = PipelineStore.Indent(authored);
+
+            Assert.That(written, Does.Contain("where"));
+            Assert.That(PipelineStore.Parse(written, "the test").Nodes[0].Unknown!.Keys,
+                Is.EqualTo(new[] { "where" }), "and it still reads back as the same mistake");
+        }
+
+        [Test]
         public void A_document_sent_as_a_json_string_parses_like_one_sent_as_an_object()
         {
             // The "pipeline" property is declared as object, so both arrive — and agents send both.

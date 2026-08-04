@@ -35,7 +35,25 @@ namespace AnalyseTool.Core.Features.Pipelines
         /// send an object; both reach the same parser one line later.</para>
         /// </summary>
         public static PipelineDocument ParseInline(object value, string origin) =>
-            Parse(value as string ?? value.ToString() ?? string.Empty, origin);
+            Parse(ToJsonText(value), origin);
+
+        /// <summary>The JSON exactly as it arrived. Whoever WRITES a file must keep this rather than
+        /// re-serializing the parsed document — see <see cref="Indent"/>.</summary>
+        public static string ToJsonText(object value) =>
+            value as string ?? value.ToString() ?? string.Empty;
+
+        /// <summary>
+        /// Re-indents JSON without going through <see cref="PipelineDocument"/>, so a file stays readable
+        /// while keeping every key.
+        ///
+        /// <para>Saving used to write <c>SerializeObject(doc)</c>, which quietly erased everything the
+        /// model does not declare. An agent's conditions written one level too high did not merely fail to
+        /// take effect — they stopped existing, so the file on disk no longer contained the mistake, and
+        /// nothing downstream could name it. A pipeline this plugin writes has to be the author's file,
+        /// not our idea of it.</para>
+        /// </summary>
+        public static string Indent(string json) =>
+            Newtonsoft.Json.Linq.JToken.Parse(json).ToString(Formatting.Indented);
 
         public static PipelineDocument Parse(string json, string origin)
         {

@@ -270,7 +270,15 @@ and purged the result. Its conditions never took effect: they were written as a 
 node** rather than inside `params`, the deserializer dropped them, and the Filter passed all 187
 types through to `PurgeFamilyTypes`. Only an unrelated typo in a binding stopped it.
 
-Three separate defects had to line up, and each one is worth naming because each is a rule:
+Four separate defects had to line up, and each one is worth naming because each is a rule:
+
+0. **A save writes the author's bytes, not our model of them.** `SavePipeline` wrote
+   `SerializeObject(doc)`, so every key `PipelineDocument` does not declare was erased on the way to
+   disk. The conditions did not merely fail to take effect — they stopped existing, and the file
+   left for review was a lossy reconstruction that no longer contained the mistake. This is what
+   made the other three undiagnosable: the evidence was destroyed by the act of saving it. Parse to
+   *check*; write the original text, re-indented.
+
 
 1. **Free-form properties must not be declared as Newtonsoft types.** `JToken`, `JObject` and
    `JArray` all enumerate as `JToken`, so a reflection-based schema generator reads them as "an

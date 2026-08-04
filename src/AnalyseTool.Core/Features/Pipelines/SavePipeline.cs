@@ -41,8 +41,10 @@ namespace AnalyseTool.Core.Features.Pipelines
             string name = SafeName(req.Name);
 
             // Parsed before it is written: a file that cannot be read back is not a work in progress, it
-            // is litter that fails later and further from the cause.
-            PipelineDocument doc = PipelineStore.ParseInline(req.Pipeline, "the pipeline being saved");
+            // is litter that fails later and further from the cause. Parsed to CHECK, though — what gets
+            // written is the author's own JSON, see below.
+            string json = PipelineStore.ToJsonText(req.Pipeline);
+            PipelineDocument doc = PipelineStore.Parse(json, "the pipeline being saved");
 
             // Validation problems do NOT block the save. An author (human or agent) building a pipeline
             // step by step passes through invalid states by definition, and a save that refuses them is a
@@ -53,7 +55,12 @@ namespace AnalyseTool.Core.Features.Pipelines
             string path = Path.Combine(PathProvider.PipelinesRoot, name + PipelineStore.Extension);
             bool replaced = File.Exists(path);
 
-            File.WriteAllText(path, JsonConvert.SerializeObject(doc, Formatting.Indented));
+            // The AUTHOR'S json, re-indented — never SerializeObject(doc). Writing the parsed document back
+            // out silently erased every key PipelineDocument does not declare, which is how six nodes
+            // reached disk with "params": null after an agent had written their conditions one level too
+            // high: the file no longer contained the mistake, so nothing could report it. A save must be
+            // able to store a wrong pipeline exactly as wrong as it was written.
+            File.WriteAllText(path, PipelineStore.Indent(json));
 
             Log.Information("Pipeline '{Name}' saved to {Path} ({Action}), {Errors} error(s), {Warnings} warning(s)",
                 name, path, replaced ? "replaced" : "created", validation.Errors.Count, validation.Warnings.Count);

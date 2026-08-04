@@ -181,11 +181,16 @@ namespace AnalyseTool.Core.Features.Pipelines
                 string sourceId = binding.Value.Split('.')[0];
                 if (!byId.TryGetValue(sourceId, out PipelineNode? source)) continue;
                 if (!string.Equals(source.Command, "Filter", StringComparison.OrdinalIgnoreCase)) continue;
-                if (source.Params?["where"] is JArray { Count: > 0 }) continue;
+
+                // Case-insensitively, because the deserializer that feeds the RUNNING node is: Newtonsoft
+                // matches "Where" to `Where` without comment. Reading this key more strictly than the
+                // command does would refuse a pipeline that actually works.
+                if (source.Params?.GetValue("where", StringComparison.OrdinalIgnoreCase) is JArray { Count: > 0 })
+                    continue;
 
                 string message =
                     $"Node '{source.Id}' is a Filter with no conditions, so it passes its entire input " +
-                    $"through to '{node.Id}' ({node.Command}).";
+                    $"through to '{node.Id}' ({node.Command}). {Carries(source)}";
 
                 if (reg.Destructive)
                     errors.Add(message + " That command CHANGES the model — as written, this pipeline " +
@@ -195,6 +200,27 @@ namespace AnalyseTool.Core.Features.Pipelines
                 else
                     warnings.Add(message + " Harmless here, but the Filter is doing nothing.");
             }
+        }
+
+        /// <summary>
+        /// What a node actually carries, appended to any finding about it.
+        ///
+        /// <para>Diagnosing the first agent-authored pipeline took several rounds purely because "a Filter
+        /// with no conditions" does not distinguish a node whose <c>params</c> are empty from one whose
+        /// conditions are under a name nothing reads — and answering that meant going and finding the
+        /// file. The message can say it instead.</para>
+        /// </summary>
+        private static string Carries(PipelineNode node)
+        {
+            List<string> keys = node.Params?.Properties().Select(p => p.Name).ToList() ?? new List<string>();
+            string carried = keys.Count > 0
+                ? $"Its params carry: {string.Join(", ", keys)}."
+                : "It has no params at all.";
+
+            if (node.Unknown is { Count: > 0 })
+                carried += $" Keys ignored on this node: {string.Join(", ", node.Unknown.Keys)}.";
+
+            return carried;
         }
 
         /// <summary>Top-level property names of the command's declared input schema; empty when it declares
