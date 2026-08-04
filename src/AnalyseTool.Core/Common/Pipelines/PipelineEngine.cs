@@ -147,6 +147,32 @@ namespace AnalyseTool.Core.Common.Pipelines
             if (dot < 0) return token;
 
             string path = reference[(dot + 1)..];
+
+            // A wildcard path asks for ALL the matches, not the first one. Without this a pipeline can
+            // filter a list and then only ever act on item [0] — which is what the first real run of a
+            // filter-then-isolate pipeline ran into. Matches that are themselves arrays are spliced, so
+            // "items[*].failingElements" over rows holding id arrays yields ONE flat id list, which is
+            // the shape the command downstream actually takes.
+            if (path.Contains('*') || path.Contains("..") || path.Contains("[?"))
+            {
+                JArray collected = new();
+                foreach (JToken match in token.SelectTokens(path))
+                {
+                    if (match is JArray inner)
+                        foreach (JToken value in inner) collected.Add(value);
+                    else
+                        collected.Add(match);
+                }
+
+                // An empty collection is still a failure: a wildcard that matches nothing means the shape
+                // is not what the author assumed, and passing an empty list into a mutating command would
+                // report a cheerful "0 written" instead.
+                return collected.Count > 0
+                    ? collected
+                    : throw new InvalidOperationException(
+                        $"Binding '{reference}' matched nothing in the result of node '{nodeId}'.");
+            }
+
             return token.SelectToken(path)
                    ?? throw new InvalidOperationException(
                        $"Binding '{reference}' found no '{path}' in the result of node '{nodeId}'.");

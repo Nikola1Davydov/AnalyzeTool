@@ -79,6 +79,50 @@ namespace AnalyseTool.Core.Tests
         }
 
         [Test]
+        public async Task A_wildcard_binding_collects_every_match_and_splices_arrays()
+        {
+            // The case the first real run hit: filter a list, then act on ALL of it. Without wildcards a
+            // binding can only ever reach item [0], which silently acts on one row out of many.
+            FakeDispatcher dispatcher = new((command, _) => command == "A"
+                ? new
+                {
+                    items = new[]
+                    {
+                        new { failingElements = new[] { 2825, 2991 } },
+                        new { failingElements = new[] { 2849, 3020 } },
+                    },
+                }
+                : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].failingElements" };
+
+            await new PipelineEngine(dispatcher).RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(dispatcher.Calls[1].Payload["elementIds"]!.ToObject<int[]>(),
+                Is.EqualTo(new[] { 2825, 2991, 2849, 3020 }),
+                "the two id arrays must arrive as one flat list, not as a list of lists");
+        }
+
+        [Test]
+        public async Task A_wildcard_that_matches_nothing_fails_instead_of_binding_an_empty_list()
+        {
+            // An empty list would let a mutating command report a cheerful "0 written" while the pipeline
+            // was in fact built on a shape that does not exist.
+            FakeDispatcher dispatcher = new((command, _) => command == "A" ? new { items = Array.Empty<object>() } : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].failingElements" };
+
+            PipelineRunResult result = await new PipelineEngine(dispatcher)
+                .RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(result.State, Is.EqualTo(RunState.Failed));
+            Assert.That(result.Nodes[1].Error, Does.Contain("matched nothing"));
+            Assert.That(dispatcher.Calls, Has.Count.EqualTo(1));
+        }
+
+        [Test]
         public async Task An_unresolvable_binding_fails_the_node_instead_of_binding_null()
         {
             // Passing null into a mutating command is the failure worth being loud about.
