@@ -14,7 +14,11 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Lists family types (FamilySymbols) for the given families with category, instance " +
-                      "count, the worksets their instances occupy and all type parameters. Read-only.",
+                      "count, the worksets their instances occupy and all type parameters. Read-only. " +
+                      "'familyIds' is REQUIRED for loadable families: empty means NO loadable family is " +
+                      "listed, not all of them — the result is then system types only, every row with " +
+                      "isSystem: true. Get the ids from GetFamilies first (in a pipeline: " +
+                      "\"bind\": { \"familyIds\": \"<node>.families[*].id\" }).",
         ReadOnly = true,
         InputType = typeof(GetFamilyTypeRows.Request),
         OutputType = typeof(TypeRowsResult))]
@@ -31,7 +35,8 @@ namespace AnalyseTool.Tools.Families
 
         public sealed class Request
         {
-            [Description("Family ids whose types to list.")]
+            [Description("Family ids whose types to list. Empty lists NO loadable family — not all of " +
+                         "them. Take the ids from GetFamilies.")]
             public List<long>? FamilyIds { get; set; }
         }
     }
