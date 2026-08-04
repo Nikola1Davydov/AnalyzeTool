@@ -26,37 +26,59 @@ A transaction **we do not control**, raising a warning Revit would normally show
 through `ExecuteRevitCode` — that is the point: a Roslyn snippet is the case no helper of ours can
 cover, exactly like a third-party command.
 
-**Two identical walls in the same place.** Revit answers with "There are identical instances in the
-same place…", severity Warning, so the transaction still commits.
+**Duplicate `Mark` on two elements.** Revit answers with "Elements have duplicate 'Mark' values",
+severity Warning, so the transaction still commits. Confirmed through the API on 2026-08-04:
+`SetDataToParameters` reached its preprocessor with 1 message.
 
-Duplicate `Mark` was tried first and does NOT work: measured on 2026-08-04, a write through
-`Parameter.Set()` reached the preprocessor with zero failure messages, even though doing the same
-edit by hand in the UI raises the dialog. Whatever runs that check is on the UI command path, not
-on the API one — so it is useless as an API-level provocation.
+Take the ids from a category the model actually has, and read the `Mark` parameter id from
+`GetCategoryParameters` rather than hardcoding a `BuiltInParameter` number. If a run produces zero
+messages, the write did not land — check `written`/`skipped` before blaming the provocation. (That
+happened once here and was briefly mis-recorded as "the API cannot raise this warning". It can.)
 
 ```csharp
-var level = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().First();
-var wallType = new FilteredElementCollector(doc).OfClass(typeof(WallType))
-    .Cast<WallType>().First(w => w.Kind == WallKind.Basic);
-var line = Line.CreateBound(new XYZ(0, 0, 0), new XYZ(10, 0, 0));
+var elems = new FilteredElementCollector(doc)
+    .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
+    .Take(2).ToList();
 
 using (var t = new Transaction(doc, "EXP88 warn-test"))
 {
     t.Start();                                  // deliberately NO failure preprocessor
-    Wall.Create(doc, line, wallType.Id, level.Id, 10, 0, false, false);
-    Wall.Create(doc, line, wallType.Id, level.Id, 10, 0, false, false);  // identical -> warning
+    foreach (var e in elems)
+        e.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).Set("EXP88-DUP");
     t.Commit();
 }
-return "done";
+return elems.Count;
 ```
 
-This leaves two junk walls in the model — undo afterwards, or run it in a scratch file.
+Undo afterwards so the marks are not left behind.
+
+If for some reason that raises nothing in your model, the fallback is two identical walls in the
+same place (`Wall.Create` twice with the same line, type and level) — "There are identical instances
+in the same place". That one leaves junk geometry, so undo it too.
 
 Invoke it from the WebView2 devtools console of the plugin window:
 
 ```js
 await AT.invoke("ExecuteRevitCode", { code: "<the snippet above>" })
 ```
+
+## Measured so far (2026-08-04)
+
+- **The preprocessor from `b8f2156` works.** A duplicate-Mark write through `SetDataToParameters`
+  logged `Resolved failures in transaction 'Set data to parameters': 1 message(s)` and **no modal
+  appeared**.
+- **Ordering: the per-transaction preprocessor runs FIRST.** The application-level
+  `FailuresProcessing` then saw `count=0` — an accessor already cleared. Good news for the backstop:
+  it would not compete with per-transaction handlers, it picks up only what nobody resolved, which
+  is exactly the role it is wanted for.
+- **`FailuresProcessing` is a ROUTINE event** — it fires on commits that raised nothing at all, with
+  `count=0`. So its count means nothing on its own, and anything hung on it runs on the Revit thread
+  (`thread=1`) on every single transaction and must be nearly free.
+- `PreprocessFailures` is likewise called on every commit, warnings or not.
+
+Still open: the application-level handler has only ever been observed DOWNSTREAM of a preprocessor.
+Whether it sees `count > 0` for a transaction with no preprocessor at all — the case the backstop
+exists for — is what Q1 below still has to answer.
 
 ## Q1 — what does an application-level handler see?
 
