@@ -1,4 +1,5 @@
 ﻿using AnalyseTool.Sdk;
+using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
@@ -7,8 +8,10 @@ namespace AnalyseTool.Tools.Families
     /// <summary>
     /// Model-write operations behind Family Control's actions: delete (families/types — also the Purge
     /// path), rename and workset reassignment. Every operation runs in its own transaction with a
-    /// warning-swallowing failure handler (see <see cref="SwallowWarningsPreprocessor"/>) so a Revit
-    /// warning never pops a modal dialog on the Revit thread.
+    /// <see cref="CollectingFailuresPreprocessor"/>, so a Revit warning never pops a modal dialog on the
+    /// Revit thread — and, unlike the swallowing handler this slice used before, the warnings it resolved
+    /// come back in the result instead of vanishing. These are the commands a batch runs unattended;
+    /// silently discarded warnings there leave no witness at all.
     /// </summary>
     public sealed class FamilyActionsService
     {
@@ -31,10 +34,10 @@ namespace AnalyseTool.Tools.Families
             {
                 using Transaction t = new(doc, "Family Manager: delete");
                 t.Start();
-                SwallowWarningsPreprocessor.Apply(t);
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 ICollection<ElementId> deleted = doc.Delete(ids);
                 t.Commit();
-                return new DeleteResult(true, ids.Count, deleted?.Count ?? 0, null);
+                return new DeleteResult(true, ids.Count, deleted?.Count ?? 0, null, failures.Warnings);
             }
             catch (Exception ex)
             {
@@ -102,6 +105,9 @@ namespace AnalyseTool.Tools.Families
         {
             List<ElementId> ids = chunkIds.Select(id => new ElementId(id)).ToList();
             int deleted = 0, failed = 0;
+            // One preprocessor per transaction, so the warnings are gathered across the whole chunk —
+            // a purge of hundreds of types would otherwise report only whatever the last one raised.
+            List<TransactionWarning> warnings = new();
 
             using TransactionGroup group = new(doc, "Family Manager: purge unused types");
             group.Start();
@@ -112,7 +118,7 @@ namespace AnalyseTool.Tools.Families
 
                 using Transaction t = new(doc, "Purge type");
                 t.Start();
-                SwallowWarningsPreprocessor.Apply(t);
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 try
                 {
                     doc.Delete(id);
@@ -122,13 +128,14 @@ namespace AnalyseTool.Tools.Families
                 {
                     if (t.GetStatus() == TransactionStatus.Started) t.RollBack();
                 }
+                warnings.AddRange(failures.Warnings);
             }
 
             group.Assimilate();
 
             deleted = ids.Count(eid => doc.GetElement(eid) is null);
             failed = ids.Count - deleted;
-            return new ChunkResult(deleted, failed);
+            return new ChunkResult(deleted, failed, warnings);
         }
 
         /// <summary>Renames a family. Fails (ok=false) on a duplicate or invalid name rather than throwing.</summary>
@@ -153,10 +160,10 @@ namespace AnalyseTool.Tools.Families
             {
                 using Transaction t = new(doc, "Family Manager: rename");
                 t.Start();
-                SwallowWarningsPreprocessor.Apply(t);
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 element.Name = newName.Trim();
                 t.Commit();
-                return new RenameResult(true, element.Name, null);
+                return new RenameResult(true, element.Name, null, failures.Warnings);
             }
             catch (Exception ex)
             {
@@ -195,14 +202,14 @@ namespace AnalyseTool.Tools.Families
                 int updated = 0;
                 using Transaction t = new(doc, "Family Manager: set workset");
                 t.Start();
-                SwallowWarningsPreprocessor.Apply(t);
+                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(t);
                 foreach (ElementId id in ids)
                 {
                     Parameter? p = doc.GetElement(id)?.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM);
                     if (p is { IsReadOnly: false } && p.Set(worksetId)) updated++;
                 }
                 t.Commit();
-                return new WorksetAssignResult(true, updated, null);
+                return new WorksetAssignResult(true, updated, null, failures.Warnings);
             }
             catch (Exception ex)
             {
@@ -211,22 +218,30 @@ namespace AnalyseTool.Tools.Families
         }
     }
 
+    // Warnings is last and defaulted on purpose: the early-return paths (nothing to do, validation
+    // failed) never opened a transaction and have nothing to report, and a default keeps them — and
+    // any other existing caller — compiling unchanged.
+
     public sealed record DeleteResult(
         [property: JsonProperty("ok")] bool Ok,
         [property: JsonProperty("requested")] int Requested,
         [property: JsonProperty("deleted")] int Deleted,
-        [property: JsonProperty("error")] string? Error);
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning>? Warnings = null);
 
-    /// <summary>Per-chunk purge counts (see <see cref="FamilyActionsService.PurgeChunk"/>).</summary>
-    public sealed record ChunkResult(int Deleted, int Failed);
+    /// <summary>Per-chunk purge counts and the warnings resolved across the chunk
+    /// (see <see cref="FamilyActionsService.PurgeChunk"/>).</summary>
+    public sealed record ChunkResult(int Deleted, int Failed, IReadOnlyList<TransactionWarning>? Warnings = null);
 
     public sealed record RenameResult(
         [property: JsonProperty("ok")] bool Ok,
         [property: JsonProperty("name")] string? Name,
-        [property: JsonProperty("error")] string? Error);
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning>? Warnings = null);
 
     public sealed record WorksetAssignResult(
         [property: JsonProperty("ok")] bool Ok,
         [property: JsonProperty("updated")] int Updated,
-        [property: JsonProperty("error")] string? Error);
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning>? Warnings = null);
 }

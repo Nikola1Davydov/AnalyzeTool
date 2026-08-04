@@ -48,7 +48,7 @@ namespace AnalyseTool.Tools.Actions
 
                 // Counted and reported rather than silently dropped: an unattended caller has no other
                 // way to learn that 40 of its 500 writes never landed.
-                return new { ok = true, written, skipped, warnings = failures.ToResult() };
+                return new { ok = true, written, skipped, warnings = failures.Warnings };
             });
         }
 
