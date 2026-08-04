@@ -38,7 +38,12 @@
     <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
   </ItemGroup>
 
-  <!-- CoreServices reads ToolData for the profile folder; Core is built with the same shared items. -->
-  <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
+  <!--
+    SharedData is deliberately NOT imported. It compiles ToolData into whatever project imports it, and
+    Core grants this assembly InternalsVisibleTo — so this project would see two internal ToolData types,
+    its own and Core's, and any use of one would be CS0433 (the ambiguity CLAUDE.md warns about, which
+    the other test project avoids only because Core does not open its internals to it). Nothing here
+    needs ToolData; the engine takes a dispatcher, not a profile folder.
+  -->
 
 </Project>
