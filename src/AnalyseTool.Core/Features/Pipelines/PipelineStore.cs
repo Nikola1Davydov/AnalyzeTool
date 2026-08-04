@@ -24,6 +24,19 @@ namespace AnalyseTool.Core.Features.Pipelines
             return Parse(File.ReadAllText(path), path);
         }
 
+        /// <summary>
+        /// Parses a document handed over inline, as the <c>pipeline</c> property of a payload.
+        ///
+        /// <para>The property is declared as <see cref="object"/> rather than as a Newtonsoft
+        /// <c>JObject</c>, because a declared JObject publishes a JSON Schema that refers to itself —
+        /// JObject enumerates as JTokens, so the generator reads it as an array of arrays of itself. That
+        /// schema tells an agent nothing true about the shape it should send. The cost is that this has to
+        /// accept whatever arrived, including the JSON-as-a-string that agents send about as often as they
+        /// send an object; both reach the same parser one line later.</para>
+        /// </summary>
+        public static PipelineDocument ParseInline(object value, string origin) =>
+            Parse(value as string ?? value.ToString() ?? string.Empty, origin);
+
         public static PipelineDocument Parse(string json, string origin)
         {
             PipelineDocument? doc;

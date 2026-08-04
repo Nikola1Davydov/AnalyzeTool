@@ -2,7 +2,6 @@ using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Pipelines;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Serilog;
 using System.ComponentModel;
 using System.IO;
@@ -43,7 +42,7 @@ namespace AnalyseTool.Core.Features.Pipelines
 
             // Parsed before it is written: a file that cannot be read back is not a work in progress, it
             // is litter that fails later and further from the cause.
-            PipelineDocument doc = PipelineStore.Parse(req.Pipeline.ToString(), "the pipeline being saved");
+            PipelineDocument doc = PipelineStore.ParseInline(req.Pipeline, "the pipeline being saved");
 
             // Validation problems do NOT block the save. An author (human or agent) building a pipeline
             // step by step passes through invalid states by definition, and a save that refuses them is a
@@ -90,7 +89,7 @@ namespace AnalyseTool.Core.Features.Pipelines
             public string? Name { get; set; }
 
             [Description("The pipeline document.")]
-            public JObject? Pipeline { get; set; }
+            public object? Pipeline { get; set; }
         }
     }
 

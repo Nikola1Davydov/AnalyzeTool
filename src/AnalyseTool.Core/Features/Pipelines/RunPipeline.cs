@@ -1,7 +1,6 @@
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Pipelines;
 using AnalyseTool.Sdk;
-using Newtonsoft.Json.Linq;
 using Serilog;
 using System.ComponentModel;
 
@@ -40,7 +39,7 @@ namespace AnalyseTool.Core.Features.Pipelines
             Request req = ctx.Payload.As<Request>() ?? new Request();
 
             PipelineDocument doc = req.Pipeline is not null
-                ? PipelineStore.Parse(req.Pipeline.ToString(), "the inline pipeline")
+                ? PipelineStore.ParseInline(req.Pipeline, "the inline pipeline")
                 : PipelineStore.Load(req.Name ?? string.Empty);
 
             PipelineValidationResult validation = ValidatePipeline.Validate(doc);
@@ -79,7 +78,7 @@ namespace AnalyseTool.Core.Features.Pipelines
             public string? Name { get; set; }
 
             [Description("The pipeline document inline, instead of a saved one.")]
-            public JObject? Pipeline { get; set; }
+            public object? Pipeline { get; set; }
         }
     }
 

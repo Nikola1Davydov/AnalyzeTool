@@ -263,6 +263,38 @@ themselves arrays into one flat list. Without it a binding reaches only item `[0
 that filters a list could act on just its first row — which is precisely what the first real run
 of a filter-then-isolate pipeline hit.
 
+### A schema that lied, and the silence that hid it
+
+The first pipeline an agent wrote unprompted read 187 family types, ran them through a `Filter`,
+and purged the result. Its conditions never took effect: they were written as a key **on the
+node** rather than inside `params`, the deserializer dropped them, and the Filter passed all 187
+types through to `PurgeFamilyTypes`. Only an unrelated typo in a binding stopped it.
+
+Three separate defects had to line up, and each one is worth naming because each is a rule:
+
+1. **Free-form properties must not be declared as Newtonsoft types.** `JToken`, `JObject` and
+   `JArray` all enumerate as `JToken`, so a reflection-based schema generator reads them as "an
+   array of JToken" — of "an array of JToken" — and publishes a `$ref` pointing at itself with
+   `type: ["array", "null"]`. `Filter` therefore advertised a `value` that *cannot be a scalar*:
+   `{ "op": "equals", "value": 0 }` was rejected by the wire, and `[0]` passed but matched
+   nothing. The agent could not express a condition against the contract we had published. Declare
+   `object` instead — it publishes the permissive schema we actually mean, and Newtonsoft still
+   hands back `JObject`/`JValue` at run time. This hit five commands, input and output alike.
+2. **Unknown keys must survive deserialization.** A dropped key cannot be reported by anything
+   downstream, because by the time the validator or the run looks, the author's mistake no longer
+   exists. `PipelineNode` and `PipelineDocument` now collect them with `[JsonExtensionData]`, and
+   validation warns — naming the key, and saying "move it into `params`" when the command declares
+   it as a payload property. Collected rather than refused, so a file written against a later
+   build still loads; only `schema` refuses outright.
+3. **The graph validator is where knowledge about danger lives.** A `Filter` with no conditions
+   passing everything through is correct behaviour for a half-built pipeline and catastrophic in
+   front of a purge; the node cannot see what it feeds, and the validator can. That check is an
+   error, not a warning, because warnings do not stop a run.
+
+The pattern behind all three: a pipeline is increasingly authored by something that reads only the
+schema and the description. Every place where the published contract disagrees with the real one
+becomes a file that looks right and does something else.
+
 ### No result cache, and why
 
 The plan called for caching `ReadOnly` node results by an (inputs + params) hash. It was written

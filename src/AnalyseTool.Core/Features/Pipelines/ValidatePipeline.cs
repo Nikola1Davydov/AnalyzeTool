@@ -31,7 +31,7 @@ namespace AnalyseTool.Core.Features.Pipelines
             try
             {
                 doc = req.Pipeline is not null
-                    ? PipelineStore.Parse(req.Pipeline.ToString(), "the inline pipeline")
+                    ? PipelineStore.ParseInline(req.Pipeline, "the inline pipeline")
                     : PipelineStore.Load(req.Name ?? string.Empty);
             }
             catch (Exception ex)
@@ -52,6 +52,9 @@ namespace AnalyseTool.Core.Features.Pipelines
             // but "pipeline '' finished" helps nobody afterwards.
             if (string.IsNullOrWhiteSpace(doc.Id))
                 warnings.Add("The pipeline has no id; runs and exported artifacts will not be traceable to it.");
+
+            foreach (string key in doc.Unknown?.Keys ?? Enumerable.Empty<string>())
+                warnings.Add($"The pipeline has an unrecognised top-level key '{key}', which is ignored.");
 
             Dictionary<string, PipelineNode> byId = doc.Nodes
                 .Where(n => !string.IsNullOrWhiteSpace(n.Id))
@@ -75,6 +78,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                     continue;
                 }
 
+                ValidateNodeShape(node, reg, warnings);
                 ValidateBindings(node, seen, reg, errors, warnings);
                 ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
             }
@@ -86,6 +90,43 @@ namespace AnalyseTool.Core.Features.Pipelines
             }
 
             return new PipelineValidationResult(errors.Count == 0, errors, warnings);
+        }
+
+        /// <summary>
+        /// Checks what the node CARRIES, as opposed to what it is wired to.
+        ///
+        /// <para>Both halves come from the same real failure. An agent wrote its Filter conditions as a
+        /// key on the node instead of inside <c>params</c>; the deserializer dropped it, the Filter passed
+        /// its whole input through, and the only thing standing between that and a purge of 187 family
+        /// types was an unrelated typo in a binding. Nothing anywhere could say what had gone wrong,
+        /// because the mistake had already been thrown away.</para>
+        ///
+        /// <para>Warnings rather than errors: a key we do not recognise may be an annotation from an
+        /// editor we have not written yet, and a param we cannot vouch for may simply belong to a command
+        /// that declares no input type. Refusing to run on either would make the check something authors
+        /// switch off. The pair still turns "it silently did nothing" into one line naming the key.</para>
+        /// </summary>
+        private static void ValidateNodeShape(PipelineNode node, CommandRegistration reg, List<string> warnings)
+        {
+            HashSet<string> declared = InputProperties(reg);
+
+            foreach (string key in node.Unknown?.Keys ?? Enumerable.Empty<string>())
+            {
+                // The likely case is worth its own sentence: the key IS a payload property, one level too
+                // high. That is a one-line fix an author can act on without reading the format docs.
+                string hint = declared.Contains(key)
+                    ? $" '{node.Command}' takes '{key}' as a payload property — move it into \"params\"."
+                    : string.Empty;
+
+                warnings.Add($"Node '{node.Id}' has an unrecognised key '{key}', which is ignored.{hint}");
+            }
+
+            if (node.Params is null || declared.Count == 0) return;
+
+            foreach (JProperty param in node.Params.Properties())
+                if (!declared.Contains(param.Name))
+                    warnings.Add($"Node '{node.Id}' passes '{param.Name}', which '{node.Command}' does not " +
+                                 "declare. It will be sent and ignored.");
         }
 
         private static void ValidateBindings(
@@ -175,7 +216,7 @@ namespace AnalyseTool.Core.Features.Pipelines
             public string? Name { get; set; }
 
             [Description("The pipeline document inline, instead of a saved one.")]
-            public JObject? Pipeline { get; set; }
+            public object? Pipeline { get; set; }
         }
     }
 

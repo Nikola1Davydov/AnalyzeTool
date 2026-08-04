@@ -23,6 +23,9 @@ namespace AnalyseTool.Tools.Pipelines
                       "'field' may be a dotted path. Returns { items, kept, dropped }. " +
                       "EXAMPLE — unused family types: " +
                       "{ \"where\": [ { \"field\": \"instanceCount\", \"op\": \"equals\", \"value\": 0 } ] }. " +
+                      "IN A PIPELINE the conditions go in the node's \"params\", NOT on the node itself: " +
+                      "{ \"id\": \"unused\", \"command\": \"Filter\", \"params\": { \"where\": [...] }, " +
+                      "\"bind\": { \"items\": \"listTypes.items\" } }. " +
                       "WITHOUT conditions it passes EVERYTHING through, which is refused before a " +
                       "model-changing node: filtering nothing and then purging means purging everything.",
         ReadOnly = true,
@@ -33,20 +36,27 @@ namespace AnalyseTool.Tools.Pipelines
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
-            JArray items = req.Items ?? new JArray();
+            JArray items = req.Items is { Count: > 0 } ? JArray.FromObject(req.Items) : new JArray();
 
             if (req.Where is not { Count: > 0 })
                 // No conditions is not an error and not "keep nothing": a node whose rules were not filled
                 // in yet should pass its input through, so a half-built pipeline still runs end to end.
-                return Task.FromResult<object?>(new FilterResult(items, items.Count, 0));
+                // What makes that safe is the graph validator, which refuses this shape in front of a
+                // command that changes the model — the node itself cannot see what it feeds.
+                return Task.FromResult<object?>(new FilterResult(Rows(items), items.Count, 0));
 
             bool matchAll = !string.Equals(req.Match, "any", StringComparison.OrdinalIgnoreCase);
 
-            JArray kept = new(items.Where(item =>
-                matchAll ? req.Where.All(c => Matches(item, c)) : req.Where.Any(c => Matches(item, c))));
+            List<JToken> kept = items.Where(item =>
+                matchAll ? req.Where.All(c => Matches(item, c)) : req.Where.Any(c => Matches(item, c))).ToList();
 
-            return Task.FromResult<object?>(new FilterResult(kept, kept.Count, items.Count - kept.Count));
+            return Task.FromResult<object?>(
+                new FilterResult(Rows(kept), kept.Count, items.Count - kept.Count));
         }
+
+        /// <summary>Hands the rows back as plain objects, for the same reason the request takes them that
+        /// way — a declared <c>JArray</c> publishes a schema that refers to itself.</summary>
+        private static IReadOnlyList<object> Rows(IEnumerable<JToken> items) => items.Cast<object>().ToList();
 
         private static bool Matches(JToken item, Condition condition)
         {
@@ -88,10 +98,20 @@ namespace AnalyseTool.Tools.Pipelines
             return string.Compare(left, right, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Both free-form members are declared as <see cref="object"/>, NOT as Newtonsoft
+        /// <c>JArray</c>/<c>JToken</c>. Those implement <c>IEnumerable&lt;JToken&gt;</c>, so the schema
+        /// generator reads them as "an array of JToken" — of "an array of JToken" — and publishes a
+        /// <c>$ref</c> pointing at itself with <c>type: ["array","null"]</c>. The result forbids a scalar
+        /// <c>value</c> outright: an agent could not write <c>{ "op": "equals", "value": 0 }</c> against
+        /// the contract we had published, which is exactly how the first agent-authored pipeline came out
+        /// with its conditions in the wrong place. <c>object</c> publishes the permissive schema we
+        /// actually mean, and Newtonsoft still hands back JObject/JValue at run time.
+        /// </summary>
         internal sealed class Request
         {
             [Description("The list to filter. Usually bound from a previous node.")]
-            public JArray? Items { get; set; }
+            public List<object>? Items { get; set; }
 
             [Description("Conditions to apply. Empty keeps everything.")]
             public List<Condition>? Where { get; set; }
@@ -108,8 +128,8 @@ namespace AnalyseTool.Tools.Pipelines
             [Description("equals, notEquals, contains, exists, notExists, greaterThan, lessThan.")]
             public string? Op { get; set; }
 
-            [Description("Value to compare against. Ignored by exists / notExists.")]
-            public JToken? Value { get; set; }
+            [Description("Value to compare against, e.g. 0 or \"Wall\". Ignored by exists / notExists.")]
+            public object? Value { get; set; }
         }
     }
 
@@ -125,7 +145,7 @@ namespace AnalyseTool.Tools.Pipelines
     /// did, and in an unattended run nobody is watching to notice the difference.</para>
     /// </summary>
     internal sealed record FilterResult(
-        [property: JsonProperty("items")] JArray Items,
+        [property: JsonProperty("items")] IReadOnlyList<object> Items,
         [property: JsonProperty("kept")] int Kept,
         [property: JsonProperty("dropped")] int Dropped);
 }

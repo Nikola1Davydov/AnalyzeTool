@@ -60,6 +60,20 @@ namespace AnalyseTool.Core.Common.Pipelines
         [JsonProperty("onFailure")]
         [JsonConverter(typeof(StringEnumConverter))]
         public NodeFailureAction OnFailure { get; set; } = NodeFailureAction.Stop;
+
+        /// <summary>
+        /// Keys the deserializer did not recognise, kept rather than dropped.
+        ///
+        /// <para>Silently discarding them is how a pipeline ends up doing nothing while looking correct:
+        /// an author who writes the conditions as <c>node.where</c> instead of <c>node.params.where</c>
+        /// gets a Filter with no conditions, and neither the run nor the validator can say why, because by
+        /// the time either looks the key no longer exists. This is what lets the validator name it.</para>
+        ///
+        /// <para>Collected instead of refused so a file written against a later build still loads —
+        /// unknown keys are a warning, and only <see cref="PipelineDocument.Schema"/> refuses.</para>
+        /// </summary>
+        [JsonExtensionData]
+        public IDictionary<string, Newtonsoft.Json.Linq.JToken>? Unknown { get; set; }
     }
 
     /// <summary>A connection. V1 executes nodes in file order and uses edges only for validation and for
@@ -110,5 +124,9 @@ namespace AnalyseTool.Core.Common.Pipelines
         /// </summary>
         [JsonProperty("state")]
         public Newtonsoft.Json.Linq.JObject? State { get; set; }
+
+        /// <summary>Unrecognised top-level keys — see <see cref="PipelineNode.Unknown"/>.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, Newtonsoft.Json.Linq.JToken>? Unknown { get; set; }
     }
 }
