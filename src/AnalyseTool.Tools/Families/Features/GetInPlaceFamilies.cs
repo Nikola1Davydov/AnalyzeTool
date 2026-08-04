@@ -9,7 +9,8 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Returns the in-place family instances in the document (id, name, category). " +
                       "In-place families are modelled in the project rather than loaded from a .rfa.",
-        ReadOnly = true)]
+        ReadOnly = true,
+        OutputType = typeof(List<FamilyInstanceInfo>))]
     internal sealed class GetInPlaceFamilies : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

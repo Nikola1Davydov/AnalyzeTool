@@ -15,7 +15,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Moves the given elements (by id) to a target workset in the active document. " +
                       "Returns ok=false on a non-workshared project.",
         Destructive = true,
-        InputType = typeof(SetInstancesWorkset.Request))]
+        InputType = typeof(SetInstancesWorkset.Request),
+        OutputType = typeof(WorksetAssignResult))]
     internal sealed class SetInstancesWorkset : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

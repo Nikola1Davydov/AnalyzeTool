@@ -15,7 +15,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Returns the types of one family (by family id from GetFamilies), each with its " +
                       "placed-instance count and its non-empty type parameters. Read-only.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyTypes.Request))]
+        InputType = typeof(GetFamilyTypes.Request),
+        OutputType = typeof(FamilyTypesResult))]
     internal sealed class GetFamilyTypes : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -18,7 +18,8 @@ namespace AnalyseTool.Tools.Families
                       "viewer, tessellated from a placed instance. Read-only; { available:false } if the " +
                       "family has no placed instance. Pass the family id from GetFamilies.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyMesh.Request))]
+        InputType = typeof(GetFamilyMesh.Request),
+        OutputType = typeof(FamilyMesh))]
     internal sealed class GetFamilyMesh : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

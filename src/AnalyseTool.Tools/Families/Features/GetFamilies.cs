@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
                       "placed-instance count, plus an in-place flag. Read-only. Filter with " +
                       "categoryContains / nameContains; cap the result with limit.",
         ReadOnly = true,
-        InputType = typeof(GetFamilies.Request))]
+        InputType = typeof(GetFamilies.Request),
+        OutputType = typeof(FamilyInventory))]
     internal sealed class GetFamilies : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

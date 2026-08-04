@@ -17,7 +17,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Deletes the given family types, skipping (and counting) any that can't be removed. " +
                       "Used by 'purge unused types'. Returns { deleted, failed }.",
         Destructive = true,
-        InputType = typeof(PurgeFamilyTypes.Request))]
+        InputType = typeof(PurgeFamilyTypes.Request),
+        OutputType = typeof(PurgeResult))]
     internal sealed class PurgeFamilyTypes : IRevitTask, IProgressAware
     {
         // Types deleted per Revit round-trip. Smaller = smoother progress but more undo entries; larger =
@@ -38,7 +39,7 @@ namespace AnalyseTool.Tools.Families
                 service.PlanPurgeTypes(app.ActiveUIDocument.Document, req.TypeIds));
 
             List<TransactionWarning> warnings = new();
-            if (plan.Count == 0) return new { ok = true, deleted = 0, failed = 0, warnings };
+            if (plan.Count == 0) return new PurgeResult(true, 0, 0, warnings);
 
             int deleted = 0, failed = 0, done = 0;
             for (int i = 0; i < plan.Count; i += ChunkSize)
@@ -56,7 +57,7 @@ namespace AnalyseTool.Tools.Families
                 Progress?.Report(new ProgressInfo(done / (double)plan.Count, "Deleting unused types…"));
             }
 
-            return new { ok = true, deleted, failed, warnings };
+            return new PurgeResult(true, deleted, failed, warnings);
         }
 
         public sealed class Request
