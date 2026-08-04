@@ -18,29 +18,30 @@ namespace AnalyseTool.Tools.Ai
                       "Payload: { model, prompt, currentName, context }. Returns { name, error }.",
         ReadOnly = true,
         InputType = typeof(OllamaSuggestName.Request),
-        HiddenFromMcp = true)]
+        HiddenFromMcp = true,
+        OutputType = typeof(AiNameSuggestionResult))]
     internal sealed class OllamaSuggestName : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request? req = ctx.Payload.As<Request>();
             if (req is null || string.IsNullOrWhiteSpace(req.Model))
-                return new { name = (string?)null, error = "No AI model selected." };
+                return new AiNameSuggestionResult(null, "No AI model selected.");
 
             try
             {
                 AiAnalysisService ai = new AiAnalysisService(req.Provider, req.Model);
                 string name = await ai.SuggestNameAsync(
                     req.CurrentName ?? string.Empty, req.Context ?? string.Empty, req.Prompt ?? string.Empty);
-                return new { name, error = (string?)null };
+                return new AiNameSuggestionResult(name, null);
             }
             catch (OperationCanceledException)
             {
-                return new { name = (string?)null, error = "AI timeout: the model did not answer in time." };
+                return new AiNameSuggestionResult(null, "AI timeout: the model did not answer in time.");
             }
             catch (Exception ex)
             {
-                return new { name = (string?)null, error = ex.Message };
+                return new AiNameSuggestionResult(null, ex.Message);
             }
         }
 

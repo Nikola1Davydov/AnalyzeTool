@@ -8,7 +8,8 @@ namespace AnalyseTool.Tools.Actions
     [RevitCommand(
         Description = "Temporarily isolates the given elements (by id) in the active view " +
                       "(reversible temporary hide/isolate). Pass an empty list to do nothing.",
-        InputType = typeof(IsolationInRevit.Request))]
+        InputType = typeof(IsolationInRevit.Request),
+        OutputType = typeof(IsolationResult))]
     internal sealed class IsolationInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -18,7 +19,7 @@ namespace AnalyseTool.Tools.Actions
                 .Select(x => new ElementId(x))
                 .ToList();
             if (elementsIds.Count == 0)
-                return Task.FromResult<object?>(new { ok = true, isolated = 0 });
+                return Task.FromResult<object?>(new IsolationResult(true, 0, null, Array.Empty<TransactionWarning>()));
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
@@ -27,7 +28,7 @@ namespace AnalyseTool.Tools.Actions
                 // Reported rather than returned as a bare null: a caller with nobody watching the screen
                 // cannot tell "nothing to do" apart from "the active view refused the change".
                 if (!view.IsModifiable)
-                    return new { ok = false, isolated = 0, error = "The active view cannot be modified." };
+                    return new IsolationResult(false, 0, "The active view cannot be modified.", Array.Empty<TransactionWarning>());
 
                 using Transaction transaction = new Transaction(doc, "Isolate");
                 transaction.Start();
@@ -38,7 +39,7 @@ namespace AnalyseTool.Tools.Actions
 
                 view.IsolateElementsTemporary(elementsIds);
                 transaction.Commit();
-                return new { ok = true, isolated = elementsIds.Count, warnings = failures.Warnings };
+                return new IsolationResult(true, elementsIds.Count, null, failures.Warnings);
             });
         }
 

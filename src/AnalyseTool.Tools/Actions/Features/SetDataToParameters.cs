@@ -17,14 +17,15 @@ namespace AnalyseTool.Tools.Actions
                       "Returns { ok, written, skipped, warnings: [{ description, elementIds }] } — 'skipped' counts " +
                       "items whose element or parameter was not found, was read-only, or that the mode filtered out.",
         Destructive = true,
-        InputType = typeof(SetDataToParameters.SetDataToParametersDto))]
+        InputType = typeof(SetDataToParameters.SetDataToParametersDto),
+        OutputType = typeof(SetDataResult))]
     internal sealed class SetDataToParameters : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             SetDataToParametersDto? list = ctx.Payload.As<SetDataToParametersDto>();
             if (list == null)
-                return Task.FromResult<object?>(new { ok = false, written = 0, skipped = 0, error = "Empty payload." });
+                return Task.FromResult<object?>(new SetDataResult(false, 0, 0, "Empty payload.", Array.Empty<TransactionWarning>()));
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
@@ -48,7 +49,7 @@ namespace AnalyseTool.Tools.Actions
 
                 // Counted and reported rather than silently dropped: an unattended caller has no other
                 // way to learn that 40 of its 500 writes never landed.
-                return new { ok = true, written, skipped, warnings = failures.Warnings };
+                return new SetDataResult(true, written, skipped, null, failures.Warnings);
             });
         }
 

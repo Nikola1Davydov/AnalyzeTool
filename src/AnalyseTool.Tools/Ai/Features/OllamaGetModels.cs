@@ -8,7 +8,8 @@ namespace AnalyseTool.Tools.Ai
         Description = "Returns { running, models } for the local Ollama service (model names for the AI " +
                       "features). running=false means Ollama is unreachable. Does not touch the Revit model.",
         ReadOnly = true,
-        HiddenFromMcp = true)]
+        HiddenFromMcp = true,
+        OutputType = typeof(AiModelsResult))]
     internal sealed class OllamaGetModels : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -24,12 +25,12 @@ namespace AnalyseTool.Tools.Ai
                     .ToList();
 
                 // running with whatever models are installed (the list may be empty).
-                return new { running = true, models };
+                return new AiModelsResult(true, models, null);
             }
             catch
             {
                 // Ollama not reachable — distinct from "running with zero models".
-                return new { running = false, models = (List<string>?)null };
+                return new AiModelsResult(false, null, null);
             }
         }
     }
