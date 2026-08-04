@@ -49,6 +49,17 @@ namespace AnalyseTool.Sdk
         public Type? InputType { get; set; }
 
         /// <summary>
+        /// Optional CLR type describing the command's JSON RESULT — the counterpart of
+        /// <see cref="InputType"/>, which has existed alone until now. The host generates a JSON Schema
+        /// from it so a caller knows what comes back instead of inferring it from the description, and so
+        /// two commands can be checked for compatibility before they are chained.
+        /// <para>Declare the type you actually return: if <c>ExecuteAsync</c> returns an anonymous object,
+        /// promote it to a named type first — that refactor IS the work, the attribute is the easy half.
+        /// Leave null for commands that return nothing meaningful.</para>
+        /// </summary>
+        public Type? OutputType { get; set; }
+
+        /// <summary>
         /// When true, the command is NOT advertised as an MCP tool (it stays callable from JS and the
         /// dispatcher). Use for plugin-management or UI-only commands an AI shouldn't see/use.
         /// Default: the command IS exposed to MCP.

@@ -181,7 +181,11 @@ namespace AnalyseTool.Mcp.Bridge
                             [McpWire.Description] = c.Description,
                             [McpWire.ReadOnly] = c.ReadOnly,
                             [McpWire.Destructive] = c.Destructive,
-                            [McpWire.InputSchema] = JToken.Parse(c.InputSchemaJson),
+                            // Compacted HERE, not at registration: a listing carries every command and is
+                            // re-fetched on every reconnect, so a huge nested DTO costs on each one. The
+                            // stored schema stays whole for callers that reason about it.
+                            [McpWire.InputSchema] = JToken.Parse(SchemaListing.Compact(c.InputSchemaJson)),
+                            [McpWire.OutputSchema] = JToken.Parse(SchemaListing.Compact(c.OutputSchemaJson)),
                         }));
                     return Ok(id, new JObject { [McpWire.Commands] = commands });
                 }
