@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.Tools.Elements
 {
@@ -33,7 +34,18 @@ namespace AnalyseTool.Tools.Elements
         }
     }
 
-    public sealed record ViewInfo(long Id, string Name, bool IsOnSheet);
-    public sealed record SheetInfo(long Id, string Number, string Name);
-    public sealed record ViewsAndSheetsResult(List<ViewInfo> Views, List<SheetInfo> Sheets);
+    // camelCase spelled out so the published OutputType schema matches what Newtonsoft actually writes.
+    public sealed record ViewInfo(
+        [property: JsonProperty("id")] long Id,
+        [property: JsonProperty("name")] string Name,
+        [property: JsonProperty("isOnSheet")] bool IsOnSheet);
+
+    public sealed record SheetInfo(
+        [property: JsonProperty("id")] long Id,
+        [property: JsonProperty("number")] string Number,
+        [property: JsonProperty("name")] string Name);
+
+    public sealed record ViewsAndSheetsResult(
+        [property: JsonProperty("views")] List<ViewInfo> Views,
+        [property: JsonProperty("sheets")] List<SheetInfo> Sheets);
 }

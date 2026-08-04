@@ -9,7 +9,8 @@ namespace AnalyseTool.Tools.Elements
     [RevitCommand(
         Description = "Returns imported (non-linked) CAD instances in the document (id, name). " +
                       "Imported CAD is often a model-hygiene concern.",
-        ReadOnly = true)]
+        ReadOnly = true,
+        OutputType = typeof(List<ImportInfo>))]
     internal sealed class GetCadImports : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

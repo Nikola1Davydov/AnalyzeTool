@@ -12,6 +12,7 @@ namespace AnalyseTool.Tools.Elements
                       $"each with its parameters. Call {nameof(GetCategoriesInRevit)} first to get valid category names.",
         ReadOnly = true,
         InputType = typeof(GetDataByCategoryName.Request),
+        OutputType = typeof(List<DataElement>),
         HiddenFromMcp = true)] // heavy UI-shaped payload (every parameter); AI uses GetElements/GetCategoryParameters instead
     internal sealed class GetDataByCategoryName : IRevitTask
     {
