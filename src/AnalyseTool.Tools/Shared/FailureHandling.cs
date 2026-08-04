@@ -33,10 +33,14 @@ namespace AnalyseTool.Tools.Shared
         {
             IList<FailureMessageAccessor> messages = failuresAccessor.GetFailureMessages();
 
+            // Only when something actually happened: Revit calls the preprocessor on EVERY commit,
+            // including the overwhelming majority that raise nothing, so an unconditional line here
+            // would bury the log in "0 message(s)" and make the interesting case harder to find.
             // The result carries the warnings to the caller; this carries them to whoever is triaging a
             // log after the fact, which is the only witness an unattended run leaves behind.
-            Log.Debug("Resolved failures in transaction '{Transaction}': {Count} message(s)",
-                failuresAccessor.GetTransactionName(), messages.Count);
+            if (messages.Count > 0)
+                Log.Debug("Resolved failures in transaction '{Transaction}': {Count} message(s)",
+                    failuresAccessor.GetTransactionName(), messages.Count);
 
             foreach (FailureMessageAccessor failure in messages)
             {
