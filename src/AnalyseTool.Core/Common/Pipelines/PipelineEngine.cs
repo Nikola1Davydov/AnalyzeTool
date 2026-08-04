@@ -1,8 +1,15 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
 namespace AnalyseTool.Core.Common.Pipelines
 {
+    // The enums serialize as STRINGS: these cross to a UI, to a log and to an agent, and "2" tells none
+    // of them anything. Property names are spelled out for the same reason they are everywhere else —
+    // Newtonsoft writes declared names, while a published schema is generated in camelCase.
+
+    [JsonConverter(typeof(StringEnumConverter))]
     internal enum NodeState { Queued, Executing, Completed, Failed, Skipped }
 
     /// <summary>Progress for one node, raised as the run moves. Carries the error text rather than the
@@ -10,8 +17,14 @@ namespace AnalyseTool.Core.Common.Pipelines
     internal sealed record NodeProgress(string NodeId, string Command, NodeState State, string? Error = null);
 
     /// <summary>One node's outcome, in file order.</summary>
-    internal sealed record NodeOutcome(string NodeId, string Command, NodeState State, object? Result, string? Error);
+    internal sealed record NodeOutcome(
+        [property: JsonProperty("nodeId")] string NodeId,
+        [property: JsonProperty("command")] string Command,
+        [property: JsonProperty("state")] NodeState State,
+        [property: JsonProperty("result")] object? Result,
+        [property: JsonProperty("error")] string? Error);
 
+    [JsonConverter(typeof(StringEnumConverter))]
     internal enum RunState { Completed, Failed, Cancelled }
 
     /// <summary>
@@ -19,13 +32,14 @@ namespace AnalyseTool.Core.Common.Pipelines
     /// question "what produced this?" has an answer that does not depend on anyone having taken notes.
     /// </summary>
     internal sealed record PipelineRunResult(
-        string PipelineId,
-        RunState State,
-        IReadOnlyList<NodeOutcome> Nodes)
+        [property: JsonProperty("pipelineId")] string PipelineId,
+        [property: JsonProperty("state")] RunState State,
+        [property: JsonProperty("nodes")] IReadOnlyList<NodeOutcome> Nodes)
     {
-        /// <summary>The node the run stopped on, or null when it ran to the end. A cancelled run reports
-        /// this too: Stop ends the run but does not undo it, so which node was reached is exactly what
-        /// tells the user how much of the model was already written.</summary>
+        /// <summary>The node the run stopped on, or null when it ran to the end. Worth its own field
+        /// rather than leaving the caller to scan the list: Stop ends a run but does not undo it, so how
+        /// far it got is exactly what says how much of the model was already written.</summary>
+        [JsonProperty("stoppedAt")]
         public string? StoppedAt => Nodes.FirstOrDefault(n => n.State is NodeState.Failed)?.NodeId;
     }
 

@@ -23,6 +23,11 @@ namespace AnalyseTool.Core.Common
         /// hand-managed extensions.</summary>
         public static string ExtensionsDistRoot => Path.Combine(ProfilePath, "extensions-dist");
 
+        /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\pipelines — saved <c>.atpipe</c> files. A pipeline is a
+        /// plain file on purpose: sharing one is sending it, with no server and no account, the same
+        /// stance extension distribution takes.</summary>
+        public static string PipelinesRoot => Path.Combine(ProfilePath, "pipelines");
+
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\cache\scripts\&lt;id&gt; — compiled bytes of a script extension,
         /// keyed by a source hash so unchanged scripts skip recompilation across Revit sessions.</summary>
         public static string ScriptCacheDir(string extensionId) =>
