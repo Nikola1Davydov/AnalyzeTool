@@ -390,6 +390,26 @@ The gate is now **reachable**, which it was not while nothing could write a `.at
 whose condition nobody can meet is not a gate, it is a shelf — and until that command existed,
 the question the editor decision hangs on could not have been answered either way.
 
+## Two surfaces, and why they are not one
+
+Running and building want opposite shapes, so they get different homes.
+
+**The runner is docked** (`#/pipelines-dock`, ribbon "Pipelines"). It sits beside the model while
+a run reports node by node, which is precisely what a pane docked next to the Project Browser is
+for. It is a list, a Run button, live progress and the run receipt — every line of it an
+`AT.invoke` of a command that already existed, with no pipeline logic of its own.
+
+It also closes a hole the platform had left open. `RunPipeline` is `HiddenFromMcp` so that an
+agent may propose a pipeline and only a person starts one — but the pre-execution `Gate` on
+`CommandRequest` is set **only** by the MCP bridge, so nothing asked the person anything. A Run
+button without a confirmation would have quietly undone that decision. So `ValidatePipeline` now
+also returns `destructiveNodes`, and the panel confirms **once per run**, naming them. Once, not
+per node: a prompt on every write turns into something people click through, and the run is the
+unit the user actually chose.
+
+**The editor is a separate window**, like Family Manager. A canvas is unusable in a pane, and the
+two surfaces share nothing but the command catalogue.
+
 ## Editor, if the gate opens (#91)
 
 Vue Flow as a new dependency — `src/view/InfiniteCanvas` is a pan/zoom canvas of cards

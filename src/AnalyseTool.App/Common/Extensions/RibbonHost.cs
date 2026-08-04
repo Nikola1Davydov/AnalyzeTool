@@ -26,6 +26,7 @@ namespace AnalyseTool.App.Common.Extensions
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
         private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
+        private const string PipelinesCommandClass = "AnalyseTool.Launcher.RevitCommands.PipelinesCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -97,6 +98,14 @@ namespace AnalyseTool.App.Common.Extensions
                 AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
                     FamilyPaletteCommandClass, "Place a component — dockable family palette",
                     image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (list)
+
+            // Fourth button: the dockable pipeline runner. The RUNNER is docked (it sits beside the
+            // model while a run reports node by node); the editor is a separate window, because the two
+            // have opposite shapes and a canvas is unusable in a pane.
+            RegisterStaticButton("AnalyseToolPipelines", "Pipelines",
+                AddStaticButton(mainPanel, "AnalyseToolPipelines", "Pipelines", launcherPath,
+                    PipelinesCommandClass, "Run a saved pipeline — dockable runner",
+                    image: BuildGlyphIcon("\uE9F5"))); // Segoe MDL2 "Flow"
 
             ApplyStaticButtonVisibility();
 
@@ -317,6 +326,15 @@ namespace AnalyseTool.App.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
             DockPaneHost.ShowRoute("#/families-dock");
+        }
+
+        /// <summary>Ribbon "Pipelines" button — shows the dockable pipeline runner (#/pipelines-dock).
+        /// Same pattern as the family palette: initialize the host, then route the shared pane.</summary>
+        public static void ShowPipelines(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            DockPaneHost.ShowRoute("#/pipelines-dock");
         }
 
         public static void Reload(UIApplication uiApp)

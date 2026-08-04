@@ -17,7 +17,8 @@ namespace AnalyseTool.Core.Features.Pipelines
         Description = "Validates a pipeline without running it: unknown commands, duplicate or dangling " +
                       "node ids, bindings that cannot resolve, and payload properties the target command " +
                       "does not declare. Payload: { name } for a saved pipeline, or { pipeline } inline. " +
-                      "Returns { ok, errors: [], warnings: [] }.",
+                      "Returns { ok, errors: [], warnings: [], destructiveNodes: [] } — the last being " +
+                      "the nodes that CHANGE the model, so a caller can confirm before running.",
         ReadOnly = true,
         InputType = typeof(ValidatePipeline.Request),
         OutputType = typeof(PipelineValidationResult))]
@@ -37,7 +38,8 @@ namespace AnalyseTool.Core.Features.Pipelines
             catch (Exception ex)
             {
                 return Task.FromResult<object?>(
-                    new PipelineValidationResult(false, new[] { ex.Message }, Array.Empty<string>()));
+                    new PipelineValidationResult(
+                        false, new[] { ex.Message }, Array.Empty<string>(), Array.Empty<string>()));
             }
 
             return Task.FromResult<object?>(Validate(doc));
@@ -47,6 +49,7 @@ namespace AnalyseTool.Core.Features.Pipelines
         {
             List<string> errors = new();
             List<string> warnings = new();
+            List<string> destructive = new();
 
             // The id keys the run receipt and names the run in every log line. An empty one is not fatal,
             // but "pipeline '' finished" helps nobody afterwards.
@@ -78,6 +81,11 @@ namespace AnalyseTool.Core.Features.Pipelines
                     continue;
                 }
 
+                // Collected here rather than derived by the caller: the flag lives on the registration,
+                // which is a platform detail, and a UI asking "are you sure?" must not have to fetch the
+                // whole command catalogue to find out what a run is about to change.
+                if (reg.Destructive) destructive.Add($"{node.Id} ({node.Command})");
+
                 ValidateNodeShape(node, reg, warnings);
                 ValidateBindings(node, seen, reg, errors, warnings);
                 ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
@@ -89,7 +97,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                 if (!seen.Contains(edge.To)) errors.Add($"Edge to unknown node '{edge.To}'.");
             }
 
-            return new PipelineValidationResult(errors.Count == 0, errors, warnings);
+            return new PipelineValidationResult(errors.Count == 0, errors, warnings, destructive);
         }
 
         /// <summary>
@@ -252,5 +260,9 @@ namespace AnalyseTool.Core.Features.Pipelines
     internal sealed record PipelineValidationResult(
         [property: JsonProperty("ok")] bool Ok,
         [property: JsonProperty("errors")] IReadOnlyList<string> Errors,
-        [property: JsonProperty("warnings")] IReadOnlyList<string> Warnings);
+        [property: JsonProperty("warnings")] IReadOnlyList<string> Warnings,
+        /// <summary>Nodes whose command is <c>Destructive</c>, as "id (Command)". Not a problem — the
+        /// answer to "what is this run about to change?", which is what a confirmation has to show.
+        /// Empty for a read-only pipeline, which is exactly when no confirmation is warranted.</summary>
+        [property: JsonProperty("destructiveNodes")] IReadOnlyList<string> DestructiveNodes);
 }

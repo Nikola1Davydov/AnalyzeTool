@@ -1,4 +1,4 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
@@ -18,6 +18,14 @@ namespace AnalyseTool.Launcher.RevitCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
             => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
+    }
+
+    /// <summary>Ribbon "Pipelines" button — shows the dockable pipeline runner.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class PipelinesCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("ShowPipelines", commandData.Application);
     }
 
     /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>

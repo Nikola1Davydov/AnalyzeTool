@@ -18,6 +18,11 @@ const routes = [
     component: () => import("@/view/Families/FamilyPaletteView.vue"),
     meta: { layout: "bare" },
   },
+  {
+    path: "/pipelines-dock",
+    component: () => import("@/view/Pipelines/PipelineRunnerView.vue"),
+    meta: { layout: "bare" },
+  },
   { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
