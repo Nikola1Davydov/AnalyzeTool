@@ -1,4 +1,5 @@
 using Autodesk.Revit.UI;
+using Serilog;
 using System.Collections.Concurrent;
 
 namespace AnalyseTool.Core.Common.Dispatch
@@ -20,6 +21,13 @@ namespace AnalyseTool.Core.Common.Dispatch
         private int _pending;                 // work items enqueued but not yet executed
         private long _pendingSinceTicks;      // UTC ticks since the queue became non-empty / last item ran
         private bool _executing;              // a work item is running RIGHT NOW (Revit thread is ours)
+
+        // TEMPORARY — instrumentation for issue #88. The whole design here assumes Execute is never
+        // re-entered; a modal dialog raised inside a work item runs a nested message pump, and whether
+        // Revit can raise the ExternalEvent again from inside it is exactly the open question. Counting
+        // only — no behaviour change, deliberately: a guard put in before the answer would be a lock in
+        // the hottest path of dispatch, defending against something that may not happen.
+        private int _depth;
 
         /// <summary>The session's single hub, for status introspection (GetQueueStatus). Never used
         /// for dispatching — commands still receive the hub through their context.</summary>
@@ -59,6 +67,17 @@ namespace AnalyseTool.Core.Common.Dispatch
 
         public void Execute(UIApplication app)
         {
+            // TEMPORARY — issue #88. depth > 1 means Revit re-entered us while a work item was still on
+            // the stack (almost certainly through a modal dialog's nested message pump). If that line
+            // never appears in a session that DID sit on a modal, the guard is unnecessary and we can
+            // say so with evidence. Note the second symptom to watch for if it does fire: the inner
+            // call's finally clears _executing while the outer item is still running, so GetQueueStatus
+            // would start reporting "waitingForUser" during our own work.
+            int depth = Interlocked.Increment(ref _depth);
+            if (depth > 1)
+                Log.Warning("EXP88: RevitTaskHub.Execute RE-ENTERED, depth={Depth}, thread={Thread}, pending={Pending}",
+                    depth, Environment.CurrentManagedThreadId, Volatile.Read(ref _pending));
+
             Volatile.Write(ref _executing, true);
             try
             {
@@ -75,6 +94,7 @@ namespace AnalyseTool.Core.Common.Dispatch
             finally
             {
                 Volatile.Write(ref _executing, false);
+                Interlocked.Decrement(ref _depth); // TEMPORARY — issue #88
             }
         }
 
