@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { VueFlow, Handle, Position } from "@vue-flow/core";
 import Message from "primevue/message";
@@ -183,8 +183,27 @@ function onConnect({ source, target }: any) {
 // Delete on the canvas has to reach the document. A node that disappears from the drawing while the
 // run still contains it is the editor lying about what it will do — the one thing a canvas over a
 // file format must never do.
-function onNodesDelete(nodes: any[]) {
-  for (const node of nodes) pipeline.removeNode(node.id);
+//
+// Handled here rather than through Vue Flow's own delete key, which removes from ITS store: nodes
+// are computed from the document, so that removal was rebuilt on the next render and only ever
+// looked like it worked. This does exactly what the inspector's bin does, on the same selection.
+function onKeyDown(event: KeyboardEvent) {
+  if (event.key !== "Delete") return;
+
+  // Not while typing. A payload value is edited in a text box a few pixels from the canvas, and a
+  // Delete there means "delete a character".
+  const target = event.target as HTMLElement | null;
+  const tag = target?.tagName?.toLowerCase();
+  if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
+
+  if (!selectedId.value) return;
+  event.preventDefault();
+  removeSelected();
+}
+
+function removeSelected() {
+  if (!selectedId.value) return;
+  pipeline.removeNode(selectedId.value);
   invalidatePreview();
   void pipeline.validate();
 }
@@ -221,11 +240,14 @@ async function save() {
 }
 
 onMounted(async () => {
+  window.addEventListener("keydown", onKeyDown);
   await pipeline.loadCommands();
   const name = route.query.name;
   if (typeof name === "string" && name) await pipeline.load(name);
   else await pipeline.validate();
 });
+
+onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
 watch(() => doc.value.nodes.length, () => void pipeline.validate());
 </script>
@@ -297,9 +319,8 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           fit-view-on-init
           @node-drag-stop="onNodeDragStop"
           @node-click="({ node }) => (selectedId = node.id)"
-          :delete-key-code="['Delete', 'Backspace']"
+          :delete-key-code="null"
           @connect="onConnect"
-          @nodes-delete="onNodesDelete"
           @edges-delete="onEdgesDelete"
         >
           <template #node-command="{ data }">
@@ -371,7 +392,7 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           :outputs="outputs"
           :outcome="outcomes[selected.id] ?? null"
           @move="(d) => pipeline.move(selected!.id, d)"
-          @remove="pipeline.removeNode(selected!.id); invalidatePreview()"
+          @remove="removeSelected"
           @changed="pipeline.validate()"
         />
         <div v-else class="flex flex-col gap-2 p-3 text-sm opacity-70">
