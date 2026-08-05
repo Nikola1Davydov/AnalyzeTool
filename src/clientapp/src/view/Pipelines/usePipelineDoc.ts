@@ -126,6 +126,15 @@ export function usePipelineDoc() {
     if (selectedId.value === id) selectedId.value = doc.value.nodes[0]?.id ?? null;
   }
 
+  /** Drops one binding, leaving the node in place — deleting a data wire says "stop feeding this
+   *  field", not "remove the node it fed". */
+  function removeBinding(nodeId: string, property: string) {
+    const node = doc.value.nodes.find((n) => n.id === nodeId);
+    if (!node?.bind) return;
+    delete node.bind[property];
+    if (!Object.keys(node.bind).length) delete node.bind;
+  }
+
   function move(id: string, delta: number) {
     const from = doc.value.nodes.findIndex((n) => n.id === id);
     const to = from + delta;
@@ -217,6 +226,7 @@ export function usePipelineDoc() {
     load,
     addNode,
     removeNode,
+    removeBinding,
     move,
     placeAfter,
     findSource,

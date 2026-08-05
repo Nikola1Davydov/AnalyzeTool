@@ -135,6 +135,9 @@ const flowEdges = computed(() => {
     animated: running === index + 1,
     style: { strokeWidth: 2.5 },
     markerEnd: "arrowclosed" as const,
+    // The order is intrinsic to the node list; there is no such thing as deleting it, so the cord
+    // does not offer to be deleted rather than vanishing and coming back on the next render.
+    deletable: false,
   }));
 
   const wires = nodes.flatMap((node) =>
@@ -149,6 +152,7 @@ const flowEdges = computed(() => {
           label: property,
           style: { strokeDasharray: "4 3", strokeWidth: 1 },
           labelStyle: { fontSize: "10px" },
+          data: { nodeId: node.id, property },
         };
       })
       .filter(Boolean),
@@ -172,6 +176,26 @@ function invalidatePreview() {
 // are two different things is exactly the trap this editor is meant to avoid.
 function onConnect({ source, target }: any) {
   pipeline.placeAfter(target, source);
+  invalidatePreview();
+  void pipeline.validate();
+}
+
+// Delete on the canvas has to reach the document. A node that disappears from the drawing while the
+// run still contains it is the editor lying about what it will do — the one thing a canvas over a
+// file format must never do.
+function onNodesDelete(nodes: any[]) {
+  for (const node of nodes) pipeline.removeNode(node.id);
+  invalidatePreview();
+  void pipeline.validate();
+}
+
+/** Deleting a data wire drops that binding. The sequence cord is not deletable, so anything arriving
+ *  here carries the node and property it fed. */
+function onEdgesDelete(edges: any[]) {
+  for (const edge of edges) {
+    if (!edge?.data?.property) continue;
+    pipeline.removeBinding(edge.data.nodeId, edge.data.property);
+  }
   invalidatePreview();
   void pipeline.validate();
 }
@@ -273,7 +297,10 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           fit-view-on-init
           @node-drag-stop="onNodeDragStop"
           @node-click="({ node }) => (selectedId = node.id)"
+          :delete-key-code="['Delete', 'Backspace']"
           @connect="onConnect"
+          @nodes-delete="onNodesDelete"
+          @edges-delete="onEdgesDelete"
         >
           <template #node-command="{ data }">
             <div
