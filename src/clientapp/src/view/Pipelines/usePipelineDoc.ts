@@ -70,8 +70,20 @@ export function usePipelineDoc() {
   const commandInfo = (name: string) =>
     commands.value.find((c) => c.name.toLowerCase() === name.toLowerCase()) ?? null;
 
+  /**
+   * A fresh pipeline id.
+   *
+   * It keys the run receipt and names the run in every log line, and nothing about its value is a
+   * decision — so it is minted rather than left as an empty box the author is warned about after
+   * building a whole pipeline. The field stays editable for anyone who wants a readable one.
+   */
+  function newId(): string {
+    const uuid = globalThis.crypto?.randomUUID?.();
+    return uuid ? uuid.slice(0, 8) : Math.random().toString(36).slice(2, 10);
+  }
+
   function blank(): PipelineDoc {
-    return { schema: 1, id: "", name: "", version: "1.0.0", nodes: [], edges: [] };
+    return { schema: 1, id: newId(), name: "", version: "1.0.0", nodes: [], edges: [] };
   }
 
   async function loadCommands() {
@@ -92,6 +104,9 @@ export function usePipelineDoc() {
       doc.value = { ...blank(), ...result.pipeline };
       doc.value.nodes ??= [];
       doc.value.edges ??= [];
+      // An older file written without one gets an id here, and keeps it on the next Save. Warning
+      // about a missing key the editor can supply itself is not a useful thing to tell an author.
+      if (!doc.value.id) doc.value.id = newId();
       if (!doc.value.name) doc.value.name = result.name;
       selectedId.value = doc.value.nodes[0]?.id ?? null;
       await validate();

@@ -105,21 +105,61 @@ namespace AnalyseTool.Core.Tests
         }
 
         [Test]
-        public async Task A_wildcard_that_matches_nothing_fails_instead_of_binding_an_empty_list()
+        public async Task A_wildcard_over_an_empty_list_binds_an_empty_list()
         {
-            // An empty list would let a mutating command report a cheerful "0 written" while the pipeline
-            // was in fact built on a shape that does not exist.
+            // Finding nothing to do is an ANSWER, not a broken pipeline. "Purge unused families" run a
+            // second time filters down to no rows, and reporting that as a failed run was wrong: the
+            // path is right, the model simply has nothing left to purge.
             FakeDispatcher dispatcher = new((command, _) => command == "A" ? new { items = Array.Empty<object>() } : null);
 
             PipelineNode consumer = Node("n2", "B");
-            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].failingElements" };
+            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].id" };
+
+            PipelineRunResult result = await new PipelineEngine(dispatcher)
+                .RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(result.State, Is.EqualTo(RunState.Completed));
+            Assert.That(dispatcher.Calls[1].Payload["elementIds"]!.ToObject<int[]>(), Is.Empty);
+        }
+
+        [Test]
+        public async Task A_wildcard_naming_a_field_the_rows_do_not_have_fails_and_says_what_they_have()
+        {
+            // The other half of the same question. Here the rows ARE there and the field is not, which
+            // means the pipeline was built on a shape that does not exist — and the old message said
+            // only "matched nothing", leaving the author to guess which step of the path was wrong.
+            FakeDispatcher dispatcher = new((command, _) => command == "A"
+                ? new { items = new[] { new { typeId = 23 }, new { typeId = 24 } } }
+                : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].id" };
 
             PipelineRunResult result = await new PipelineEngine(dispatcher)
                 .RunAsync(Pipeline(Node("n1", "A"), consumer));
 
             Assert.That(result.State, Is.EqualTo(RunState.Failed));
-            Assert.That(result.Nodes[1].Error, Does.Contain("matched nothing"));
+            Assert.That(result.Nodes[1].Error, Does.Contain("no 'id'"));
+            Assert.That(result.Nodes[1].Error, Does.Contain("typeId"));
             Assert.That(dispatcher.Calls, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public async Task A_wildcard_over_a_list_that_is_not_there_fails()
+        {
+            // And the third case: not an empty list but no list at all, which no amount of running the
+            // pipeline again will produce.
+            FakeDispatcher dispatcher = new((command, _) => command == "A" ? new { count = 0 } : null);
+
+            PipelineNode consumer = Node("n2", "B");
+            consumer.Bind = new Dictionary<string, string> { ["elementIds"] = "n1.items[*].id" };
+
+            PipelineRunResult result = await new PipelineEngine(dispatcher)
+                .RunAsync(Pipeline(Node("n1", "A"), consumer));
+
+            Assert.That(result.State, Is.EqualTo(RunState.Failed));
+            Assert.That(result.Nodes[1].Error, Does.Contain("no 'items'"));
+            Assert.That(result.Nodes[1].Error, Does.Contain("count"));
         }
 
         [Test]

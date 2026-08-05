@@ -277,6 +277,26 @@ themselves arrays into one flat list. Without it a binding reaches only item `[0
 that filters a list could act on just its first row — which is precisely what the first real run
 of a filter-then-isolate pipeline hit.
 
+**Nothing collected is two different answers, and conflating them was wrong in both directions.**
+A wildcard that matched nothing used to fail, on the reasoning that an empty list would let a
+mutating command report a cheerful "0 written" over a shape that does not exist. That reasoning
+holds only for a wrong shape. Run "purge unused families" a second time and the filter keeps no
+rows — the path is right, the model simply has nothing left to purge, and *finding nothing to do
+is the answer*, not a broken pipeline. Both purge nodes reported `Failed` on a model that was
+already clean.
+
+So the path is walked one step at a time when the collection comes back empty:
+
+* a wildcard over a list that **exists and is empty** → an empty list, and the run continues;
+* a step naming something that **is not in what precedes it** → a failure that names the step and
+  lists the keys that *are* there (`found no 'id' … what is there: typeId, name`), because
+  "matched nothing" never said which of the path's three parts was the wrong one.
+
+Passing an empty list into a purge is safe by construction: `PlanPurge*` intersects the requested
+ids with what the document actually holds, so an empty request plans nothing. That property is
+what makes the relaxation defensible — it is not a general licence to bind empty lists into
+mutating commands.
+
 ### A schema that lied, and the silence that hid it
 
 The first pipeline an agent wrote unprompted read 187 family types, ran them through a `Filter`,
@@ -313,7 +333,15 @@ Four separate defects had to line up, and each one is worth naming because each 
    front of a purge; the node cannot see what it feeds, and the validator can. That check is an
    error, not a warning, because warnings do not stop a run.
 
-The pattern behind all three: a pipeline is increasingly authored by something that reads only the
+4. **A read command must not answer for something that is not there.** `GetFamilyTypes` returned a
+   well-formed `{ familyId, name: "", category: "", types: [] }` when the id resolved to no family
+   — indistinguishable, downstream, from a family that genuinely has no types. In a pipeline that
+   difference is the whole story: a purge reading those types deleted nothing and reported success,
+   while the real cause was that a purge one step earlier had deleted the families being asked
+   about. It throws now, and says so in that many words. An empty result is a claim about the
+   model; make it only when it is true.
+
+The pattern behind all four: a pipeline is increasingly authored by something that reads only the
 schema and the description. Every place where the published contract disagrees with the real one
 becomes a file that looks right and does something else.
 

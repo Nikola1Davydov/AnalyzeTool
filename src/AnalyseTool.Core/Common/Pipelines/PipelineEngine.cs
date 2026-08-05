@@ -169,13 +169,12 @@ namespace AnalyseTool.Core.Common.Pipelines
                             collected.Add(match);
                     }
 
-                    // An empty collection is still a failure: a wildcard that matches nothing means the
-                    // shape is not what the author assumed, and passing an empty list into a mutating
-                    // command would report a cheerful "0 written" instead.
-                    return collected.Count > 0
-                        ? collected
-                        : throw new InvalidOperationException(
-                            $"Binding '{reference}' matched nothing in the result of node '{nodeId}'.");
+                    // Nothing collected has two entirely different causes, and treating them alike was
+                    // wrong in both directions: a path naming a field that does not exist has to fail,
+                    // while a filter that kept no rows has simply found nothing to do. The second is the
+                    // ordinary outcome of a purge pipeline run twice, and it was being reported as a
+                    // broken pipeline. Diagnose() tells them apart by walking the path.
+                    return collected.Count > 0 ? collected : Diagnose(token, path, reference, nodeId);
                 }
 
                 return token.SelectToken(path)
@@ -191,6 +190,82 @@ namespace AnalyseTool.Core.Common.Pipelines
                     $"Binding '{reference}' on node reading '{nodeId}' is not a valid path: {ex.Message} " +
                     "Use \"node.field\", or \"node.items[*].field\" to collect every match.", ex);
             }
+        }
+
+        /// <summary>
+        /// Why a wildcard collected nothing: an empty list, or a shape that is not there.
+        ///
+        /// Both used to fail, which made "purge unused families" report a broken pipeline on the second
+        /// run — the first run had left nothing unused, the filter kept no rows, and finding nothing to
+        /// purge is the correct answer, not an error. Failing them alike also cost the diagnosis in the
+        /// other direction: "matched nothing" never said WHICH part of the path was missing.
+        ///
+        /// So the path is walked one step at a time. A wildcard over a list that exists and is empty is
+        /// an empty result; a name that is not in what precedes it is a wrong shape, and the message
+        /// names the step and the keys that ARE there.
+        /// </summary>
+        private static JArray Diagnose(JToken token, string path, string reference, string nodeId)
+        {
+            // "items[*].id" walked as items → [*] → id, so the array and the wildcard over it are two
+            // separate questions. Recursive descent does not decompose this way, so it keeps the blunt
+            // answer rather than a guess at which of the levels it searched was the intended one.
+            if (path.Contains(".."))
+                throw new InvalidOperationException(
+                    $"Binding '{reference}' matched nothing in the result of node '{nodeId}'.");
+
+            List<string> steps = new();
+            foreach (string segment in path.Split('.'))
+            {
+                int bracket = segment.IndexOf('[');
+                if (bracket < 0) { steps.Add(segment); continue; }
+                if (bracket > 0) steps.Add(segment[..bracket]);
+                steps.Add(segment[bracket..]);
+            }
+
+            string prefix = string.Empty;
+            List<JToken> current = new() { token };
+
+            foreach (string step in steps)
+            {
+                string next = step.StartsWith('[')
+                    ? prefix + step
+                    : prefix.Length == 0 ? step : $"{prefix}.{step}";
+
+                List<JToken> matches = token.SelectTokens(next).ToList();
+                if (matches.Count > 0)
+                {
+                    prefix = next;
+                    current = matches;
+                    continue;
+                }
+
+                // A wildcard over lists that are all genuinely empty: nothing to do, not a wrong shape.
+                if (step.StartsWith('[') && current.All(t => t is JArray { Count: 0 }))
+                    return new JArray();
+
+                throw new InvalidOperationException(
+                    $"Binding '{reference}' found no '{step}' in the result of node '{nodeId}'" +
+                    Available(current) +
+                    " A binding names a field of what the node returns; check the node's declared output.");
+            }
+
+            // Every step matched, yet nothing was collected — the matches were themselves empty arrays
+            // and splicing them left nothing. Empty, for the same reason as above.
+            return new JArray();
+        }
+
+        /// <summary>The keys actually present, so a wrong field name is corrected from the message.</summary>
+        private static string Available(IReadOnlyList<JToken> tokens)
+        {
+            string[] keys = tokens
+                .Select(t => t is JArray { Count: > 0 } array ? array[0] : t)
+                .OfType<JObject>()
+                .SelectMany(o => o.Properties().Select(p => p.Name))
+                .Distinct(StringComparer.Ordinal)
+                .Take(12)
+                .ToArray();
+
+            return keys.Length == 0 ? "." : $"; what is there: {string.Join(", ", keys)}.";
         }
     }
 }

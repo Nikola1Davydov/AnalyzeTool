@@ -73,8 +73,15 @@ namespace AnalyseTool.Tools.Families
         /// </summary>
         public FamilyTypesResult GetFamilyTypes(Document doc, long familyId)
         {
+            // Said out loud rather than answered with an empty result. A well-formed { types: [] } for a
+            // family that is not there reads exactly like a family with no types, and in a pipeline that
+            // difference is everything: a purge placed after this one deleted nothing and reported
+            // success, when the real story was that the id had been deleted a step earlier.
             if (doc.GetElement(new ElementId(familyId)) is not Family family)
-                return new FamilyTypesResult(familyId, string.Empty, string.Empty, new List<FamilyTypeInfo>());
+                throw new InvalidOperationException(
+                    $"There is no family with id {familyId} in this document. It may have been deleted " +
+                    "earlier in the same run — a purge before this one removes the very families whose " +
+                    "types are being asked for. Take the id from a node that runs after the deletion.");
 
             Dictionary<long, int> counts = new();
             foreach (FamilyInstance fi in new FilteredElementCollector(doc)
