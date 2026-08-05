@@ -636,6 +636,34 @@ our contract either way — MAF would only ever be an interpreter of it — so a
 costs nothing that adopting it now would save. Re-evaluate at #92, where checkpointing and
 human-in-the-loop stop being anticipated and become required.
 
+## How you know a pipeline is right
+
+Three different questions hide inside "does it work", and they need three different answers.
+
+**1. Does the command do what it says?** Unit tests. `Filter` decides which rows reach a purge and
+had none — the only way to check it was to run a pipeline against a real model and read the JSON
+that came back. Its core is now a pure function of its request (`FilterItems.Apply`), separated
+from `ExecuteAsync` so a test never has to fake a Revit context, and the cases that can silently
+go wrong are pinned: a numeric `0`, a typo'd operator keeping nothing rather than everything,
+`all` as the default match, a missing field failing every operator but `notExists`, numbers
+comparing as numbers so `10 > 9`, and `kept + dropped` always accounting for the input.
+
+Worth recording how this was found: **CI never ran the tests at all.** It compiled three Revit
+years and verified the Sdk package, and never invoked `dotnet test` — so the engine's binding
+rules, the part everything else rests on, were unchecked the whole time. A guardrail nobody runs
+is not a guardrail.
+
+**2. Does MY pipeline do what I meant, on THIS model?** `PreviewPipeline` — the read-only closure
+of a node, with the real result beside each one. Honest as far as it goes, and it stops at
+eyeballing: for 400 rows "did it keep the right ones" is not answerable by reading JSON. What is
+missing is not more preview but a **report sink** — the thing that turns a read-only QA run into
+something a person receives. The ~340 warnings a purge collected are the same gap seen from the
+other side: data nobody reads.
+
+**3. Does it still do that next month?** Nothing answers this today. A saved expected result,
+diffed against a fresh preview, is the shape — and it is worth building only once a pipeline
+exists that someone runs on a schedule.
+
 ## Phases
 
 **Platform debt — do regardless of pipelines:**

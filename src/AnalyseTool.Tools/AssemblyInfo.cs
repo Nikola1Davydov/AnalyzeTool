@@ -14,3 +14,7 @@ using System.Runtime.CompilerServices;
 // The host bootstrap registers this assembly's commands (typeof(...).Assembly) and a few host
 // features still touch internal models; keep internal so extensions can't bind.
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
+
+// The Revit-free unit tests. Commands are internal, and the ones worth testing — Filter above all,
+// which decides what a purge deletes — are pure functions of their request.
+[assembly: InternalsVisibleTo("AnalyseTool.Tools.Tests")]

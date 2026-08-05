@@ -24,6 +24,14 @@ sealed partial class Build
     AbsolutePath SdkProject => RootDirectory / "src" / "AnalyseTool.Sdk" / "AnalyseTool.Sdk.csproj";
     AbsolutePath SampleProject => RootDirectory / "samples" / "Acme.Sample" / "Acme.Sample.csproj";
 
+    /// <summary>The Revit-FREE test projects. Both run anywhere, which is what makes them CI material —
+    /// AnalyseTool.Test cannot be here because it references the host and drags Revit in with it.</summary>
+    AbsolutePath[] TestProjects =>
+    [
+        RootDirectory / "src" / "AnalyseTool.Core.Tests" / "AnalyseTool.Core.Tests.csproj",
+        RootDirectory / "src" / "AnalyseTool.Tools.Tests" / "AnalyseTool.Tools.Tests.csproj",
+    ];
+
     /// <summary>Dependency contract + headless invariant — same script devs run locally.</summary>
     Target CheckBoundaries => _ => _
         .Executes(() =>
@@ -48,6 +56,30 @@ sealed partial class Build
                 DotNetBuild(settings => settings
                     .SetProjectFile(LauncherProject)
                     .SetConfiguration(configuration)
+                    .SetVerbosity(DotNetVerbosity.minimal));
+            }
+        });
+
+    /// <summary>
+    /// The unit tests.
+    ///
+    /// <para>They existed for months and nothing ran them: CI compiled every Revit year and verified the
+    /// Sdk package, and never once invoked `dotnet test`. A guardrail nobody runs is not a guardrail, and
+    /// the engine's binding rules — the part a pipeline's correctness rests on — were exactly what it was
+    /// not checking.</para>
+    ///
+    /// <para>One TFM is enough here, unlike CompileCi: these projects pull the Revit API compile-only and
+    /// touch no Revit type, so there is no per-year behaviour to cover.</para>
+    /// </summary>
+    Target RunTests => _ => _
+        .DependsOn(CheckBoundaries)
+        .Executes(() =>
+        {
+            foreach (AbsolutePath project in TestProjects)
+            {
+                DotNetTest(settings => settings
+                    .SetProjectFile(project)
+                    .SetConfiguration("Debug R25")
                     .SetVerbosity(DotNetVerbosity.minimal));
             }
         });
@@ -121,6 +153,6 @@ sealed partial class Build
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
+        .DependsOn(CompileCi, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests for the Revit-FREE parts of AnalyseTool.Tools.
+
+    Most commands in Tools reach into a Document and cannot be tested without Revit. A few do not, and
+    those few are the ones a pipeline's correctness rests on: Filter decides which rows reach a purge,
+    and until now the only way to know it was right was to run a pipeline and read the JSON afterwards.
+
+    Deliberately does NOT reference AnalyseTool.Core. Both Core and Tools compile SharedData's ToolData
+    into themselves as an internal type, and both would be visible here — any use of it would then be
+    CS0433, the ambiguity CLAUDE.md warns about. Referencing exactly one of them removes the question.
+
+    Like the Core test project it pulls the Revit API compile-only via the shared props. Nothing under
+    test touches a Revit type; a test that did would fail loudly here, which is the point.
+  -->
+  <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

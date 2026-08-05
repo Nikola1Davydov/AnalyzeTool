@@ -33,9 +33,20 @@ namespace AnalyseTool.Tools.Pipelines
         OutputType = typeof(FilterResult))]
     internal sealed class FilterItems : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            Task.FromResult<object?>(Apply(ctx.Payload.As<Request>() ?? new Request()));
+
+        /// <summary>
+        /// The whole of what this command does, as a function of its request.
+        ///
+        /// <para>Separated from <see cref="ExecuteAsync"/> so it can be tested at all. Nothing here goes
+        /// near Revit — this command never calls <c>RunInRevitAsync</c> — but reaching it through the
+        /// interface would drag <c>UIApplication</c> into every fake context, and a test that needs Revit
+        /// installed is a test nobody runs. Filter decides what a purge deletes; "you can read the JSON
+        /// afterwards" is not a way to know it is right.</para>
+        /// </summary>
+        internal static FilterResult Apply(Request req)
         {
-            Request req = ctx.Payload.As<Request>() ?? new Request();
             JArray items = req.Items is { Count: > 0 } ? JArray.FromObject(req.Items) : new JArray();
 
             if (req.Where is not { Count: > 0 })
@@ -43,15 +54,14 @@ namespace AnalyseTool.Tools.Pipelines
                 // in yet should pass its input through, so a half-built pipeline still runs end to end.
                 // What makes that safe is the graph validator, which refuses this shape in front of a
                 // command that changes the model — the node itself cannot see what it feeds.
-                return Task.FromResult<object?>(new FilterResult(Rows(items), items.Count, 0));
+                return new FilterResult(Rows(items), items.Count, 0);
 
             bool matchAll = !string.Equals(req.Match, "any", StringComparison.OrdinalIgnoreCase);
 
             List<JToken> kept = items.Where(item =>
                 matchAll ? req.Where.All(c => Matches(item, c)) : req.Where.Any(c => Matches(item, c))).ToList();
 
-            return Task.FromResult<object?>(
-                new FilterResult(Rows(kept), kept.Count, items.Count - kept.Count));
+            return new FilterResult(Rows(kept), kept.Count, items.Count - kept.Count);
         }
 
         /// <summary>Hands the rows back as plain objects, for the same reason the request takes them that
