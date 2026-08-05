@@ -40,6 +40,9 @@ export function bindablePaths(
   const wantsRows =
     targetIsArray && (!target?.items?.type || target.items.type === "object" || !!target.items?.properties);
   const wantsValues = targetIsArray && !wantsRows;
+  // What ONE value going into the target has to be. `familyIds: integer[]` wants integers, so a
+  // column of names or of booleans is not an answer to it however tidily it lines up.
+  const wanted = wantsValues ? plainType(target?.items) : plainType(target);
 
   const paths: string[] = [];
   for (const [key, field] of Object.entries(properties)) {
@@ -53,8 +56,8 @@ export function bindablePaths(
     } else if (wantsValues) {
       // A list of values. A scalar property is a single value, not a list, so it is NOT offered —
       // that is exactly the `kept` mistake. An array of the same kind of scalar is.
-      if (fieldIsArray && !field.items?.properties) paths.push(key);
-    } else if (!fieldIsArray) {
+      if (fieldIsArray && !field.items?.properties && fits(field.items, wanted)) paths.push(key);
+    } else if (!fieldIsArray && fits(field, wanted)) {
       paths.push(key); // a single value wants single values
     }
 
@@ -62,13 +65,39 @@ export function bindablePaths(
 
     const item = field.items;
     if (!item?.properties) continue;
-    for (const inner of Object.keys(item.properties)) paths.push(`${key}[*].${inner}`);
+    for (const inner of Object.keys(item.properties))
+      if (fits(item.properties[inner], wanted)) paths.push(`${key}[*].${inner}`);
   }
   return paths;
 }
 
 function isArrayType(schema: JsonSchema | null | undefined): boolean {
   return schema?.type === "array" || (Array.isArray(schema?.type) && schema!.type.includes("array"));
+}
+
+/** The declared type, with the "or null" half dropped — that is a nullability, not a second type. */
+function plainType(schema: JsonSchema | null | undefined): string | undefined {
+  const type = Array.isArray(schema?.type) ? schema!.type.find((t) => t !== "null") : schema?.type;
+  return type ?? undefined;
+}
+
+/**
+ * Whether a value of this shape can go where `wanted` is expected.
+ *
+ * Narrow enough to remove offers that are certainly wrong, and no wider: unknown on either side
+ * fits, because a declared schema is a claim and the absence of one is not. Without this the path
+ * list for `familyIds: integer[]` offered every column of the upstream rows — names, uniqueIds,
+ * booleans — and picking one produced a conversion error at run time, from a list the editor itself
+ * had proposed.
+ */
+function fits(schema: JsonSchema | null | undefined, wanted?: string): boolean {
+  if (!wanted) return true;
+  const type = plainType(schema);
+  if (!type || type === wanted) return true;
+  // JSON Schema splits whole numbers out of "number"; nothing taking one refuses the other.
+  return (
+    (type === "integer" && wanted === "number") || (type === "number" && wanted === "integer")
+  );
 }
 
 /**
