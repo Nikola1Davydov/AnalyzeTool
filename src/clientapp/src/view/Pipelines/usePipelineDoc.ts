@@ -79,24 +79,43 @@ export function usePipelineDoc() {
       onFailure: "Stop",
       ui: at ?? { x: 80, y: 80 + doc.value.nodes.length * 110 },
     };
-    // Wired to the node before it where the shapes leave no real choice, so a fresh Filter arrives
-    // already reading the list it is meant to filter instead of sitting there doing nothing.
-    const previous = doc.value.nodes[doc.value.nodes.length - 1];
-    if (previous) {
-      const inputs = commandInfo(command)?.inputSchema?.properties ?? {};
-      const sourceSchema = commandInfo(previous.command)?.outputSchema ?? null;
-      for (const [key, schema] of Object.entries(inputs)) {
-        const path = suggestBinding(schema, sourceSchema, key);
-        if (!path) continue;
-        node.bind = { ...(node.bind ?? {}), [key]: `${previous.id}.${path}` };
-        break; // one wire, the obvious one — the rest is the author's call
-      }
+    // Wired automatically where the shapes leave no real choice, so a fresh Filter arrives already
+    // reading the list it is meant to filter instead of sitting there doing nothing.
+    const inputs = commandInfo(command)?.inputSchema?.properties ?? {};
+    for (const [key, schema] of Object.entries(inputs)) {
+      const found = findSource(schema, key, doc.value.nodes.length);
+      if (!found) continue;
+      node.bind = { ...(node.bind ?? {}), [key]: `${found.nodeId}.${found.path}` };
+      break; // one wire, the obvious one — the rest is the author's call
     }
 
     doc.value.nodes.push(node);
     syncEdges();
     selectedId.value = node.id;
     return node;
+  }
+
+  /**
+   * The nearest earlier node whose output fits this input, searched BACKWARDS from the one just
+   * before `beforeIndex`.
+   *
+   * Nearest rather than merely previous, because the immediately preceding node often has nothing
+   * to give: a purge returns `{deleted, failed}`, so a Filter placed after one has to reach past it
+   * to the list it is actually meant to narrow. Backwards, because the closest fitting node is
+   * nearly always the intended one — and when it is not, the author changes the source, which is
+   * why that choice stays available at all.
+   */
+  function findSource(target: any, targetName: string, beforeIndex: number) {
+    for (let i = Math.min(beforeIndex, doc.value.nodes.length) - 1; i >= 0; i--) {
+      const candidate = doc.value.nodes[i];
+      const path = suggestBinding(
+        target,
+        commandInfo(candidate.command)?.outputSchema ?? null,
+        targetName,
+      );
+      if (path) return { nodeId: candidate.id, path };
+    }
+    return null;
   }
 
   function removeNode(id: string) {
@@ -223,6 +242,7 @@ export function usePipelineDoc() {
     renameNode,
     move,
     placeAfter,
+    findSource,
     validate,
     save,
   };

@@ -86,16 +86,19 @@ function setMode(key: string, mode: string) {
     return;
   }
   if (isBound(key)) return;
+  if (!props.sources.length) return;
 
-  const source = props.sources[props.sources.length - 1];
-  if (!source) return;
+  // The nearest earlier node whose shape fits, falling back to the immediately preceding one so the
+  // switch always does something and the author can correct the path.
+  const schema = props.info?.inputSchema?.properties?.[key] ?? null;
+  for (let i = props.sources.length - 1; i >= 0; i--) {
+    const candidate = props.sources[i];
+    const path = suggestBinding(schema, props.outputs[candidate.id] ?? null, key);
+    if (path) return setBinding(key, candidate.id, path);
+  }
 
-  const suggested = suggestBinding(
-    props.info?.inputSchema?.properties?.[key] ?? null,
-    props.outputs[source.id] ?? null,
-    key,
-  );
-  setBinding(key, source.id, suggested ?? pathsOf(source.id)[0] ?? "");
+  const nearest = props.sources[props.sources.length - 1];
+  setBinding(key, nearest.id, pathsOf(nearest.id)[0] ?? "");
 }
 
 function setParam(key: string, raw: string) {
@@ -244,7 +247,16 @@ const resultJson = computed(() =>
       </div>
 
       <div v-if="isBound(field.key)" class="flex gap-1">
+        <!-- With one earlier node there is nothing to choose, so the picker is a control that only
+             costs a glance. It appears the moment a second node makes it a real question. -->
+        <span
+          v-if="sources.length < 2"
+          class="flex w-1/2 items-center rounded bg-surface-100 px-2 font-mono text-xs dark:bg-surface-800"
+        >
+          {{ bindingOf(field.key).source }}
+        </span>
         <Select
+          v-else
           :model-value="bindingOf(field.key).source"
           :options="sources.map((s) => s.id)"
           size="small"
