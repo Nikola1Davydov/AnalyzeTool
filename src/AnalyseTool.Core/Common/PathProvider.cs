@@ -28,6 +28,11 @@ namespace AnalyseTool.Core.Common
         /// stance extension distribution takes.</summary>
         public static string PipelinesRoot => Path.Combine(ProfilePath, "pipelines");
 
+        /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\reports — what a pipeline run leaves behind for a person to
+        /// read. Beside the pipelines rather than inside them: a pipeline is authored once and its
+        /// reports accumulate, and the runner lists <c>pipelines</c> by globbing it.</summary>
+        public static string ReportsRoot => Path.Combine(ProfilePath, "reports");
+
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\cache\scripts\&lt;id&gt; — compiled bytes of a script extension,
         /// keyed by a source hash so unchanged scripts skip recompilation across Revit sessions.</summary>
         public static string ScriptCacheDir(string extensionId) =>

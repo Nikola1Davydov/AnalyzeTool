@@ -655,10 +655,26 @@ is not a guardrail.
 
 **2. Does MY pipeline do what I meant, on THIS model?** `PreviewPipeline` — the read-only closure
 of a node, with the real result beside each one. Honest as far as it goes, and it stops at
-eyeballing: for 400 rows "did it keep the right ones" is not answerable by reading JSON. What is
-missing is not more preview but a **report sink** — the thing that turns a read-only QA run into
-something a person receives. The ~340 warnings a purge collected are the same gap seen from the
-other side: data nobody reads.
+eyeballing: for 400 rows "did it keep the right ones" is not answerable by reading JSON.
+
+So `WriteReport`: rows in, CSV out, path returned and shown in the runner. It takes ANY list of
+objects, which is what lets one node serve both ends of the gap — bind a Filter's `items` to
+report what a check found, or a purge's `warnings` to report what a write ran into, the ~340 that
+were being collected and read by nobody.
+
+Three decisions in it are not obvious:
+
+- **Nothing overwrites.** The name carries a timestamp. A report is evidence — last month's is
+  what this month's is compared against — and silently replacing it is the same class of mistake
+  as a save that re-serialises the author's file.
+- **CSV, and the separator is a parameter.** There is no correct default: Excel splits on the
+  Windows list separator, a comma on an English machine and a semicolon on a German or Russian
+  one, so the same file is a table on one desk and a single column on the next. The `sep=` first
+  line settles it for Excel either way, and the BOM keeps Cyrillic and umlauts from arriving as
+  mojibake.
+- **Rendering is a pure function** (`WriteReport.Render`), tested. Everything that quietly ruins a
+  report lives there: a family name containing the separator shifts every column after it by one,
+  and a misaligned report is worse than one that failed to appear.
 
 **3. Does it still do that next month?** Nothing answers this today. A saved expected result,
 diffed against a fresh preview, is the shape — and it is worth building only once a pipeline

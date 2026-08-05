@@ -131,6 +131,13 @@ function stateSeverity(state: string): string {
   return "info";
 }
 
+/** Where a node left a file, when it left one. A report whose path is only in the JSON is a report
+ *  nobody finds — which is the gap the report node exists to close, so it must not reopen here. */
+function nodeFile(node: NodeOutcome): string | null {
+  const path = (node.result as any)?.path;
+  return typeof path === "string" && path ? path : null;
+}
+
 /** Warnings a node's command returned, when it returned any — the shape every write command shares. */
 function nodeWarnings(node: NodeOutcome): string[] {
   const raw = (node.result as any)?.warnings;
@@ -254,6 +261,9 @@ onMounted(loadNames);
           <span class="text-xs opacity-60">{{ node.command }}</span>
         </div>
         <div v-if="node.error" class="mt-1 text-xs text-red-500">{{ node.error }}</div>
+        <div v-if="nodeFile(node)" class="mt-1 break-all font-mono text-[10px] opacity-70">
+          {{ nodeFile(node) }}
+        </div>
         <div v-if="nodeWarnings(node).length" class="mt-1 text-xs opacity-70">
           {{ nodeWarnings(node).length }} warning(s) resolved
         </div>
