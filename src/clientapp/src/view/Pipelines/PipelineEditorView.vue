@@ -6,7 +6,7 @@ import Message from "primevue/message";
 import { invoke } from "@/RevitBridge";
 import { usePipelineDoc } from "./usePipelineDoc";
 import NodeInspector from "./NodeInspector.vue";
-import { fieldNames, summarize } from "./schema";
+import { summarize, typeLabel } from "./schema";
 import type { JsonSchema, NodeOutcome, RunResult } from "./types";
 import "@vue-flow/core/dist/style.css";
 
@@ -115,6 +115,34 @@ const selectedIndex = computed(() =>
   doc.value.nodes.findIndex((n) => n.id === selectedId.value),
 );
 
+// What a node TAKES and what it HANDS ON, as ports on the card itself.
+//
+// The first canvas listed a node's output fields as a row of chips and drew every data wire to the
+// box rather than to the field it filled, so the graph could not be read: which value went where
+// was only visible by selecting each node in turn and looking at the inspector. Both halves are
+// declared — #89 — and a declared shape that nothing draws is a shape nobody sees.
+//
+// Outputs come from effectiveOutput, not from the raw schema, so a Filter shows the rows it is
+// actually handing on instead of an untyped `items`.
+function portsOf(node: any) {
+  const inputs = Object.entries(commandInfo(node.command)?.inputSchema?.properties ?? {}).map(
+    ([key, schema]) => ({ key, type: typeLabel(schema as JsonSchema), bound: !!node.bind?.[key] }),
+  );
+  const outputs = Object.entries(pipeline.effectiveOutput(node.id)?.properties ?? {}).map(
+    ([key, schema]) => ({ key, type: typeLabel(schema as JsonSchema) }),
+  );
+  return { inputs, outputs };
+}
+
+/** A colour per kind of value, so a wire's two ends can be compared without reading them. */
+function dotClass(type: string): string {
+  if (type.endsWith("[]")) return "bg-emerald-500";
+  if (type === "integer" || type === "number") return "bg-sky-500";
+  if (type === "string") return "bg-amber-500";
+  if (type === "boolean") return "bg-violet-500";
+  return "bg-surface-400";
+}
+
 // Vue Flow's model, derived from the document rather than kept alongside it: two sources of truth
 // for the same graph is how an editor starts saving something other than what it shows.
 const flowNodes = computed(() =>
@@ -126,7 +154,7 @@ const flowNodes = computed(() =>
       node,
       index,
       destructive: commandInfo(node.command)?.destructive ?? false,
-      produces: fieldNames(commandInfo(node.command)?.outputSchema),
+      ...portsOf(node),
       outcome: outcomes.value[node.id] ?? null,
       running: previewing.value && runningIndex.value === index,
     },
@@ -149,6 +177,10 @@ const flowEdges = computed(() => {
     id: `seq:${node.id}->${nodes[index + 1].id}`,
     source: node.id,
     target: nodes[index + 1].id,
+    // Its own pair of handles, top and bottom, kept apart from the data ports: the sequence is the
+    // run order and a data wire is where a value comes from, and one gesture must not mean both.
+    sourceHandle: "seq-out",
+    targetHandle: "seq-in",
     // Animated only for the leg being executed, so "where is it now" is answerable at a glance
     // instead of the whole graph shimmering.
     animated: running === index + 1,
@@ -164,11 +196,18 @@ const flowEdges = computed(() => {
       .map(([property, reference]) => {
         const source = reference.split(".")[0];
         if (!nodes.some((n) => n.id === source)) return null; // dangling: validation names it
+        // The wire lands on the PORT it fills, at both ends: the output property it reads and the
+        // payload property it feeds. `families[*].id` leaves the `families` port; the rest of the
+        // path is the label, because that part is a choice the author made and not a port.
+        const path = reference.slice(source.length + 1);
+        const outKey = path.split(/[.[]/)[0];
         return {
           id: `bind:${source}->${node.id}:${property}`,
           source,
           target: node.id,
-          label: property,
+          sourceHandle: outKey ? `out:${outKey}` : "seq-out",
+          targetHandle: `in:${property}`,
+          label: path.slice(outKey.length) || undefined,
           style: { strokeDasharray: "4 3", strokeWidth: 1 },
           labelStyle: { fontSize: "10px" },
           data: { nodeId: node.id, property },
@@ -190,11 +229,24 @@ function invalidatePreview() {
   previewNote.value = null;
 }
 
-// Dragging a connection means "run this one right after that one". The cord IS the order, so
-// connecting has to change the order — a canvas where the line you drew and the sequence that runs
-// are two different things is exactly the trap this editor is meant to avoid.
-function onConnect({ source, target }: any) {
-  pipeline.placeAfter(target, source);
+// Two gestures, because there are two different truths on this canvas.
+//
+// Port to port is a DATA binding: "fill this field from that value". Card to card, on the sequence
+// handles, is ORDER: "run this one right after that one" — and because the cord IS the order,
+// connecting there has to reorder the file. A canvas where the line you drew and the sequence that
+// runs are two different things is exactly the trap this editor exists to avoid.
+function onConnect({ source, target, sourceHandle, targetHandle }: any) {
+  if (sourceHandle?.startsWith("out:") && targetHandle?.startsWith("in:")) {
+    const refusal = pipeline.connect(
+      target,
+      targetHandle.slice("in:".length),
+      source,
+      sourceHandle.slice("out:".length),
+    );
+    if (refusal) error.value = refusal;
+  } else {
+    pipeline.placeAfter(target, source);
+  }
   invalidatePreview();
   void pipeline.validate();
 }
@@ -373,7 +425,7 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
                 data.destructive ? 'ring-1 ring-red-400' : '',
               ]"
             >
-              <Handle type="target" :position="Position.Top" />
+              <Handle id="seq-in" type="target" :position="Position.Top" />
               <div class="flex items-center gap-1">
                 <span class="rounded bg-surface-200 px-1 dark:bg-surface-700">
                   {{ data.index + 1 }}
@@ -392,16 +444,48 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
               </div>
               <div class="opacity-60">{{ data.node.command }}</div>
 
-              <!-- The fields the next node can bind to. Without this a card is an opaque box and
-                   the only way to learn its shape is to run the pipeline and read the JSON. -->
-              <div v-if="data.produces.length" class="mt-1 flex flex-wrap gap-1">
-                <span
-                  v-for="field in data.produces"
-                  :key="field"
-                  class="rounded bg-surface-100 px-1 font-mono text-[10px] dark:bg-surface-800"
-                >
-                  {{ field }}
-                </span>
+              <!-- What goes in, on the left; what comes out, on the right. Both are declared, and a
+                   declared shape nothing draws is a shape nobody sees: the previous card listed the
+                   outputs as chips and landed every wire on the box, so which value fed which field
+                   could only be found by selecting each node and reading the inspector. -->
+              <div class="mt-2 flex gap-4">
+                <div class="flex flex-col gap-0.5">
+                  <div
+                    v-for="port in data.inputs"
+                    :key="'in-' + port.key"
+                    class="relative flex items-center gap-1 pr-1"
+                  >
+                    <Handle
+                      :id="`in:${port.key}`"
+                      type="target"
+                      :position="Position.Left"
+                      :style="{ left: '-16px', top: '50%' }"
+                    />
+                    <span class="h-2 w-2 shrink-0 rounded-full" :class="dotClass(port.type)" />
+                    <span class="font-mono text-[10px]" :class="port.bound ? '' : 'opacity-50'">
+                      {{ port.key }}
+                    </span>
+                    <span class="text-[9px] opacity-40">{{ port.type }}</span>
+                  </div>
+                </div>
+
+                <div class="ml-auto flex flex-col items-end gap-0.5">
+                  <div
+                    v-for="port in data.outputs"
+                    :key="'out-' + port.key"
+                    class="relative flex items-center gap-1 pl-1"
+                  >
+                    <span class="text-[9px] opacity-40">{{ port.type }}</span>
+                    <span class="font-mono text-[10px]">{{ port.key }}</span>
+                    <span class="h-2 w-2 shrink-0 rounded-full" :class="dotClass(port.type)" />
+                    <Handle
+                      :id="`out:${port.key}`"
+                      type="source"
+                      :position="Position.Right"
+                      :style="{ right: '-16px', top: '50%' }"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div
@@ -412,7 +496,7 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
                 {{ data.outcome.error ?? summarize(data.outcome.result) }}
               </div>
 
-              <Handle type="source" :position="Position.Bottom" />
+              <Handle id="seq-out" type="source" :position="Position.Bottom" />
             </div>
           </template>
         </VueFlow>

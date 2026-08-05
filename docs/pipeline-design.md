@@ -474,6 +474,26 @@ Three decisions worth keeping:
 - **A field is a literal or a wire, never both.** A binding wins over a literal of the same name,
   so offering both at once would misrepresent what actually runs.
 
+### Ports, and the one thing not copied from a node editor
+
+Inputs on the left, outputs on the right, each with its declared type and a colour for its kind.
+The first canvas listed a node's outputs as a row of chips and landed every data wire on the box
+rather than on the field it filled, so the graph could not be read: which value went where was
+only visible by selecting each node in turn. Both halves are declared (#89), and a declared shape
+that nothing draws is a shape nobody sees. Outputs are drawn from `effectiveOutput`, so a Filter
+shows the rows it hands on rather than an untyped `items`.
+
+Dragging port to port writes a binding, and the PATH inside the array — `families[*].id` rather
+than the whole envelope — is worked out from the two declared shapes by the same narrowing the
+inspector's path list uses. The port names only say "this array into that field"; the rest would
+otherwise be something an author has to know to type.
+
+What is deliberately **not** copied from Unity-style editors is execution flow. There the white
+wires *are* the schedule and dragging one reroutes the run. Here the run is file order, so the
+sequence cord keeps its own pair of handles at the top and bottom of the card, drawn but not
+drawable-into: connecting there REORDERS the file. One gesture must not mean both, or the canvas
+starts describing a run that does not happen — which is the failure this editor exists to avoid.
+
 ### Node ids are read far more often than they are written
 
 A node id is not decoration: it is what a binding names (`filter2.items[*].id`) and what the run

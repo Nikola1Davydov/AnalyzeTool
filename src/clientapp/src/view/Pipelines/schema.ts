@@ -4,11 +4,6 @@ import type { JsonSchema } from "./types";
 // "what does this node take, and what does it hand on", which is the question an author cannot
 // answer from a command name and was the first thing the editor got wrong.
 
-/** Top-level property names of a schema, in declaration order. Empty when nothing is declared. */
-export function fieldNames(schema: JsonSchema | null | undefined): string[] {
-  return schema?.properties ? Object.keys(schema.properties) : [];
-}
-
 export function typeLabel(schema: JsonSchema | null | undefined): string {
   if (!schema) return "any";
   const t = Array.isArray(schema.type) ? schema.type.find((x) => x !== "null") : schema.type;

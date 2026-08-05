@@ -1,6 +1,6 @@
 import { ref, computed } from "vue";
 import { invoke } from "@/RevitBridge";
-import { suggestBinding } from "./schema";
+import { bindablePaths, suggestBinding } from "./schema";
 import type { CommandInfo, PipelineDoc, PipelineNodeDoc, ValidationResult } from "./types";
 
 // The document the editor edits, plus the command catalogue it builds nodes from. Kept out of the
@@ -249,6 +249,37 @@ export function usePipelineDoc() {
     if (selectedId.value === id) selectedId.value = doc.value.nodes[0]?.id ?? null;
   }
 
+  /**
+   * Wires one output of `sourceId` into one input of `nodeId` — what dragging between two data
+   * ports means.
+   *
+   * The port names only get us as far as "this array into that field"; the PATH inside the array is
+   * worked out from the two declared shapes, by the same narrowing the inspector's path list uses.
+   * So dropping `families` onto `familyIds` writes `families[*].id` rather than the whole envelope,
+   * which is the binding an author would otherwise have to know to type.
+   *
+   * Returns the reason it refused, or null.
+   */
+  function connect(nodeId: string, property: string, sourceId: string, sourceKey: string): string | null {
+    const node = doc.value.nodes.find((n) => n.id === nodeId);
+    if (!node) return null;
+
+    // Order is execution, so a binding may only read something listed earlier. Refused rather than
+    // silently reordering: the drag said "read this", not "move me".
+    const at = doc.value.nodes.findIndex((n) => n.id === nodeId);
+    const sourceAt = doc.value.nodes.findIndex((n) => n.id === sourceId);
+    if (sourceAt < 0 || sourceAt >= at)
+      return `'${sourceId}' runs after '${nodeId}', so '${nodeId}' cannot read it. Move it earlier first.`;
+
+    const target = commandInfo(node.command)?.inputSchema?.properties?.[property] ?? null;
+    const path = bindablePaths(effectiveOutput(sourceId), target).find(
+      (p) => p === sourceKey || p.startsWith(`${sourceKey}[`) || p.startsWith(`${sourceKey}.`),
+    );
+
+    node.bind = { ...(node.bind ?? {}), [property]: `${sourceId}.${path ?? sourceKey}` };
+    return null;
+  }
+
   /** Drops one binding, leaving the node in place — deleting a data wire says "stop feeding this
    *  field", not "remove the node it fed". */
   function removeBinding(nodeId: string, property: string) {
@@ -350,6 +381,7 @@ export function usePipelineDoc() {
     addNode,
     renameNode,
     removeNode,
+    connect,
     removeBinding,
     move,
     placeAfter,
