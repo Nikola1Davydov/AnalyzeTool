@@ -25,13 +25,27 @@ export function typeLabel(schema: JsonSchema | null | undefined): string {
  * possible and not offered: two levels of nesting is where a dropdown stops helping, and the path
  * box next to it takes anything.
  */
-export function bindablePaths(schema: JsonSchema | null | undefined): string[] {
+export function bindablePaths(
+  schema: JsonSchema | null | undefined,
+  target?: JsonSchema | null,
+): string[] {
   const properties = schema?.properties;
   if (!properties) return [];
 
+  // What the TARGET takes decides which paths are worth offering, and offering the rest is how a
+  // wrong wire gets made: a Filter bound to `families[*].isInPlace` receives 286 bare booleans, has
+  // no field on them to compare, and drops everything while looking correctly connected.
+  //
+  //  • target items are untyped or objects → it wants ROWS, so only whole arrays are offered;
+  //  • target items are a scalar type      → it wants a list of values, so leaf paths are offered.
+  const wantsRows = !target?.items?.type || target.items.type === "object" || !!target.items?.properties;
+
   const paths: string[] = [];
   for (const [key, field] of Object.entries(properties)) {
-    paths.push(key);
+    const isArray = field.type === "array" || (Array.isArray(field.type) && field.type.includes("array"));
+    if (!target || !isArray || wantsRows) paths.push(key);
+    if (wantsRows && target) continue;
+
     const item = field.items;
     if (!item?.properties) continue;
     for (const inner of Object.keys(item.properties)) paths.push(`${key}[*].${inner}`);

@@ -51,9 +51,13 @@ const produces = computed(() => {
   return Object.entries(properties).map(([key, schema]) => ({ key, type: typeLabel(schema) }));
 });
 
-/** Paths a given source node offers, so a binding is picked rather than spelled from memory. */
-function pathsOf(nodeId: string): string[] {
-  return bindablePaths(props.outputs[nodeId] ?? null);
+/** Paths a given source node offers FOR THIS FIELD — narrowed by what the field takes, so a list of
+ *  rows is never offered a column of bare values to read instead. */
+function pathsOf(nodeId: string, key?: string): string[] {
+  return bindablePaths(
+    props.outputs[nodeId] ?? null,
+    key ? (props.info?.inputSchema?.properties?.[key] ?? null) : null,
+  );
 }
 
 function isBound(key: string): boolean {
@@ -97,7 +101,7 @@ function setMode(key: string, mode: string) {
   }
 
   const nearest = props.sources[props.sources.length - 1];
-  setBinding(key, nearest.id, pathsOf(nearest.id)[0] ?? "");
+  setBinding(key, nearest.id, pathsOf(nearest.id, key)[0] ?? "");
 }
 
 function setParam(key: string, raw: string) {
@@ -261,7 +265,7 @@ const resultJson = computed(() =>
         />
         <AutoComplete
           :model-value="bindingOf(field.key).path"
-          :suggestions="pathsOf(bindingOf(field.key).source)"
+          :suggestions="pathsOf(bindingOf(field.key).source, field.key)"
           dropdown
           size="small"
           class="w-1/2"
