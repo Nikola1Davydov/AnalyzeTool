@@ -466,6 +466,25 @@ Three decisions worth keeping:
 - **A field is a literal or a wire, never both.** A binding wins over a literal of the same name,
   so offering both at once would misrepresent what actually runs.
 
+### Node ids are read far more often than they are written
+
+A node id is not decoration: it is what a binding names (`filter2.items[*].id`) and what the run
+receipt reports. Generating it from the command covers most nodes — `purgeFamilies` says what it
+is — and fails exactly where it matters most. A `Filter` has no shape of its own, so `filter` and
+`filter2` describe nothing, and the purge pipeline has two of them: one over families, one over
+family types. Picking the wrong one deletes 286 families instead of two.
+
+So a node that hands its input through unchanged is named after **where its data came from**, with
+the source's leading verb dropped: `filterFamilies`, `filterFamilyTypeRows`. "Hands its input
+through" is not a hard-coded list of commands — it is a declared output array whose items are
+undeclared, the same signal `effectiveOutput` already uses to resolve pass-through rows.
+
+A generated name is still a guess, so ids are editable again. The reason they were made read-only
+stands and is answered rather than overruled: renaming used to leave bindings pointing at a node
+that no longer existed, silently, until the run failed. A rename now moves every reference with
+it, which is possible precisely because all of them live in the one document, and it refuses a
+duplicate, an empty name, or a name containing the dot that separates a node from its path.
+
 Node positions live in the node's own `ui` key, declared on `PipelineNode` so it does not read as
 an unrecognised key. A sidecar layout file would be separated from the pipeline the first time
 someone mails one; the runner ignores `ui`, and a pipeline written by hand or by an agent simply

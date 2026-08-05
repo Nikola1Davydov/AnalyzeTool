@@ -39,6 +39,21 @@ export function usePipelineDoc() {
    * So a node with one untyped array out and one array wired in is understood as handing on the
    * rows it was given, and the item schema is borrowed from wherever they came from.
    */
+  const isArray = (s: any) =>
+    s?.type === "array" || (Array.isArray(s?.type) && s.type.includes("array"));
+
+  /** The output property a command hands its input through unchanged, if it has one — an array whose
+   *  items are undeclared, because nothing CAN be declared about rows that came from elsewhere. */
+  function passThroughOf(command: string): [string, any] | null {
+    const properties = commandInfo(command)?.outputSchema?.properties;
+    if (!properties) return null;
+    return (
+      Object.entries(properties).find(
+        ([, s]: any) => isArray(s) && !s.items?.properties && !s.items?.type,
+      ) ?? null
+    );
+  }
+
   function effectiveOutput(nodeId: string): any {
     const node = doc.value.nodes.find((n) => n.id === nodeId);
     if (!node) return null;
@@ -46,12 +61,7 @@ export function usePipelineDoc() {
     const own = commandInfo(node.command)?.outputSchema ?? null;
     if (!own?.properties || !node.bind) return own;
 
-    const isArray = (s: any) =>
-      s?.type === "array" || (Array.isArray(s?.type) && s.type.includes("array"));
-
-    const passThrough = Object.entries(own.properties).find(
-      ([, s]: any) => isArray(s) && !s.items?.properties && !s.items?.type,
-    );
+    const passThrough = passThroughOf(node.command);
     if (!passThrough) return own;
 
     for (const reference of Object.values(node.bind)) {
@@ -117,31 +127,56 @@ export function usePipelineDoc() {
     }
   }
 
-  /** A unique id from the command name — "Filter", "Filter2", … so a fresh node is usable at once. */
-  function nextId(command: string): string {
+  /**
+   * The id a new node gets.
+   *
+   * Usually the command name is the whole answer: `purgeFamilies` says what the node is. The
+   * exception is a node that hands its input through unchanged — a Filter has no shape of its own,
+   * so `filter` and `filter2` name nothing, and those are precisely the ids an author reads in a
+   * binding (`filter2.items[*].id`) while deciding whether it is the right list. A pass-through
+   * node is therefore named after WHERE ITS DATA CAME FROM: `filterFamilies`, `filterFamilyTypeRows`.
+   *
+   * The leading verb of the source is dropped — `getFamilies` contributes "Families", not
+   * "GetFamilies" — since the reading is the source's business, not this node's.
+   */
+  function nextId(command: string, bind?: Record<string, string>): string {
     const base = command.replace(/[^A-Za-z0-9]/g, "") || "node";
-    const stem = base.charAt(0).toLowerCase() + base.slice(1);
+    let stem = base.charAt(0).toLowerCase() + base.slice(1);
+
+    const sourceId = bind && Object.values(bind)[0]?.split(".")[0];
+    if (sourceId && passThroughOf(command)) {
+      const subject = sourceId.replace(/^(get|list|read|find)/i, "");
+      // Skipped when the source is itself named after this one ("filter" over "filterFamilies"),
+      // where appending it would only stutter; the number then does the distinguishing.
+      if (subject && !sourceId.toLowerCase().startsWith(stem.toLowerCase()))
+        stem += subject.charAt(0).toUpperCase() + subject.slice(1);
+    }
+
     if (!doc.value.nodes.some((n) => n.id === stem)) return stem;
     for (let i = 2; ; i++) if (!doc.value.nodes.some((n) => n.id === stem + i)) return stem + i;
   }
 
   function addNode(command: string, at?: { x: number; y: number }) {
+    // Wired automatically where the shapes leave no real choice, so a fresh Filter arrives already
+    // reading the list it is meant to filter instead of sitting there doing nothing. Worked out
+    // BEFORE the id, because for a pass-through node the wire is what the id is made of.
+    let bind: Record<string, string> | undefined;
+    const inputs = commandInfo(command)?.inputSchema?.properties ?? {};
+    for (const [key, schema] of Object.entries(inputs)) {
+      const found = findSource(schema, key, doc.value.nodes.length);
+      if (!found) continue;
+      bind = { [key]: `${found.nodeId}.${found.path}` };
+      break; // one wire, the obvious one — the rest is the author's call
+    }
+
     const node: PipelineNodeDoc = {
-      id: nextId(command),
+      id: nextId(command, bind),
       command,
       contract: 1,
       onFailure: "Stop",
       ui: at ?? { x: 80, y: 80 + doc.value.nodes.length * 110 },
     };
-    // Wired automatically where the shapes leave no real choice, so a fresh Filter arrives already
-    // reading the list it is meant to filter instead of sitting there doing nothing.
-    const inputs = commandInfo(command)?.inputSchema?.properties ?? {};
-    for (const [key, schema] of Object.entries(inputs)) {
-      const found = findSource(schema, key, doc.value.nodes.length);
-      if (!found) continue;
-      node.bind = { ...(node.bind ?? {}), [key]: `${found.nodeId}.${found.path}` };
-      break; // one wire, the obvious one — the rest is the author's call
-    }
+    if (bind) node.bind = bind;
 
     doc.value.nodes.push(node);
     syncEdges();
@@ -165,6 +200,44 @@ export function usePipelineDoc() {
       const path = suggestBinding(target, effectiveOutput(candidate.id), targetName);
       if (path) return { nodeId: candidate.id, path };
     }
+    return null;
+  }
+
+  /**
+   * Renames a node AND every binding that reads it.
+   *
+   * A bare id field was removed once, and rightly: rewriting an id left the bindings pointing at a
+   * node that no longer existed, and the editor said nothing until the run failed. The fix is not to
+   * forbid renaming — a generated name is a guess, and `filter2` in a purge pipeline is worth
+   * correcting — it is to make the rename carry its references with it, which is possible precisely
+   * because every reference lives in this one document.
+   *
+   * Returns the reason it refused, or null when it went through.
+   */
+  function renameNode(id: string, next: string): string | null {
+    const name = next.trim();
+    if (name === id) return null;
+    if (!name) return "A node needs an id.";
+    // The dot separates the node from the path inside its result, so it cannot appear in either.
+    if (name.includes(".")) return "A node id cannot contain a dot.";
+    if (doc.value.nodes.some((n) => n.id === name)) return `There is already a node called '${name}'.`;
+
+    const node = doc.value.nodes.find((n) => n.id === id);
+    if (!node) return null;
+    node.id = name;
+
+    for (const other of doc.value.nodes) {
+      if (!other.bind) continue;
+      for (const [key, reference] of Object.entries(other.bind)) {
+        const dot = reference.indexOf(".");
+        const sourceId = dot < 0 ? reference : reference.slice(0, dot);
+        if (sourceId !== id) continue;
+        other.bind[key] = dot < 0 ? name : name + reference.slice(dot);
+      }
+    }
+
+    syncEdges();
+    if (selectedId.value === id) selectedId.value = name;
     return null;
   }
 
@@ -275,6 +348,7 @@ export function usePipelineDoc() {
     loadCommands,
     load,
     addNode,
+    renameNode,
     removeNode,
     removeBinding,
     move,
