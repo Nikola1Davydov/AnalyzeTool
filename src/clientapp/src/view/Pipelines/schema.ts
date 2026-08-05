@@ -32,25 +32,43 @@ export function bindablePaths(
   const properties = schema?.properties;
   if (!properties) return [];
 
-  // What the TARGET takes decides which paths are worth offering, and offering the rest is how a
-  // wrong wire gets made: a Filter bound to `families[*].isInPlace` receives 286 bare booleans, has
-  // no field on them to compare, and drops everything while looking correctly connected.
-  //
-  //  • target items are untyped or objects → it wants ROWS, so only whole arrays are offered;
-  //  • target items are a scalar type      → it wants a list of values, so leaf paths are offered.
-  const wantsRows = !target?.items?.type || target.items.type === "object" || !!target.items?.properties;
+  // What the TARGET takes decides what is worth offering, and offering the rest is how a wrong wire
+  // gets made. Two of them have already happened: a Filter bound to `families[*].isInPlace` got 286
+  // bare booleans and dropped everything, and a purge bound to `kept` got the NUMBER 2 where a list
+  // of ids belonged. Both were one click away because the list offered every path regardless.
+  const targetIsArray = isArrayType(target);
+  const wantsRows =
+    targetIsArray && (!target?.items?.type || target.items.type === "object" || !!target.items?.properties);
+  const wantsValues = targetIsArray && !wantsRows;
 
   const paths: string[] = [];
   for (const [key, field] of Object.entries(properties)) {
-    const isArray = field.type === "array" || (Array.isArray(field.type) && field.type.includes("array"));
-    if (!target || !isArray || wantsRows) paths.push(key);
-    if (wantsRows && target) continue;
+    const fieldIsArray = isArrayType(field);
+
+    if (!target) {
+      paths.push(key);
+    } else if (wantsRows) {
+      if (fieldIsArray) paths.push(key); // a list of rows, not a count and not a single row
+      continue;
+    } else if (wantsValues) {
+      // A list of values. A scalar property is a single value, not a list, so it is NOT offered —
+      // that is exactly the `kept` mistake. An array of the same kind of scalar is.
+      if (fieldIsArray && !field.items?.properties) paths.push(key);
+    } else if (!fieldIsArray) {
+      paths.push(key); // a single value wants single values
+    }
+
+    if (!wantsValues && target) continue;
 
     const item = field.items;
     if (!item?.properties) continue;
     for (const inner of Object.keys(item.properties)) paths.push(`${key}[*].${inner}`);
   }
   return paths;
+}
+
+function isArrayType(schema: JsonSchema | null | undefined): boolean {
+  return schema?.type === "array" || (Array.isArray(schema?.type) && schema!.type.includes("array"));
 }
 
 /**
