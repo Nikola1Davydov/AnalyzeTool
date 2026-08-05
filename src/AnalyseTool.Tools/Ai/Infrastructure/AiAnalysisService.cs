@@ -137,6 +137,22 @@ namespace AnalyseTool.Tools.Ai
         public record NameSuggestion(long Id, string Name);
 
         /// <summary>
+        /// A general structured call: system rules, user content, JSON response, raw text back.
+        ///
+        /// <para>The methods above each own a fixed shape — a rename, a template, an analysis. A pipeline
+        /// node cannot: its rows are whatever the previous node produced and its output fields are node
+        /// configuration. So the prompt belongs to the caller and this owns only the plumbing that is the
+        /// same either way — provider, timeout, streaming, and the error translation.</para>
+        /// </summary>
+        /// <remarks>No cancellation token: <see cref="BuildAnswer"/> already bounds a call by the
+        /// provider's timeout, and accepting one here would promise a mid-call abort this does not do.
+        /// A caller cancels between calls — for a batching node, between batches.</remarks>
+        public Task<string> CompleteJsonAsync(string system, string user) =>
+            BuildAnswer(
+                new List<ChatMessage> { new(ChatRole.System, system), new(ChatRole.User, user) },
+                new ChatOptions { ResponseFormat = ChatResponseFormat.Json });
+
+        /// <summary>
         /// Reverse-engineers a naming TEMPLATE from one example name plus a sample element's real data.
         /// The AI authors the rule (an editable artifact previewed live in the builder); applying it
         /// stays deterministic. Returns the template plus any abbreviation-dictionary entries the

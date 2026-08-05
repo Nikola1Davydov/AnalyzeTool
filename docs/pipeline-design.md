@@ -533,6 +533,59 @@ Three kinds — transformation (output constrained by a schema set in the node c
 node from `AiProviderRegistry`; item batching is node infrastructure; provenance ("AI decided,
 confidence, why") rides with each item into the approval card and into project memory (#80).
 
+### Why this is the centre and not a phase
+
+The deterministic case was argued for and then given up: a check you can specify is better served
+by a **command with a dialog**. It is discoverable, it ships and versions with the plugin, it is
+testable — and people trust it, which is not a small thing. Everything the pipeline layer was
+supposed to buy for parameter QA, a button buys more cheaply.
+
+What a dialog cannot hold is a step whose output has to be inspected, narrowed, approved and
+recorded before it reaches the model. That is a sequence with checkpoints, and that is what a
+pipeline is. So AI is not one of the things pipelines do; it is the reason they exist.
+
+Two consequences, both of which reverse an earlier reading of this document:
+
+- **The editor gets more important, not less.** What a person needs to see is exactly what the AI
+  proposed and what stands between it and the model. A pipeline with an AI node and no per-node
+  view is the black box nobody trusts. Ports, preview and the result beside each node were the
+  right investment for a reason not given at the time.
+- **The deterministic parts still have to be trustworthy**, or the AI part is unauditable. "The AI
+  proposed, a Filter narrowed, an Approval gated" is worth nothing if the Filter is untested. The
+  tests and the topology checks are the substrate this stands on, not a detour from it.
+
+One case survives on the deterministic side and is worth keeping in view: rules that change per
+office, per client, per project — a naming standard, a required parameter set. Shipping a plugin
+release for each is not viable, and *rules as data* wins there. Note it needs no editor: an agent
+authors that file.
+
+### `AiTransform` — the prompt between two nodes
+
+Rows in, the same rows with the model's answers merged in, rows out. Three decisions carry the
+risk, and all three are the same lesson this codebase learned the hard way — *a result that looks
+complete is worse than one that fails*:
+
+- **Answers match by index, never by position.** Every row is sent with an index the model must
+  echo. Trusting order means one dropped row silently shifts every answer onto the wrong element,
+  and the output still has the right shape, the right field count and a plausible value in every
+  cell. No count and no reader catches that.
+- **A row with no answer comes back unchanged, saying so** (`ai.answered: false`) rather than
+  disappearing. A half-answered row — the new name arrived, the reason did not — counts as
+  unanswered and names what is missing, because acting on it is acting on something the contract
+  did not deliver. `Filter` on `ai.answered` is how a pipeline acts only on what was answered.
+- **Only declared fields are taken.** `produce` is the output contract; a model that invents a key
+  cannot add a column nobody asked for, and one that answers for a row that does not exist is
+  ignored rather than inventing an element.
+
+`fields` limits what the model is shown, and that is not only about tokens: a row from
+`GetFamilyTypeRows` carries every type parameter, and sending all of them to answer a question
+about names buries the question and pays for the burial.
+
+A failed batch does not throw away the batches that succeeded — its rows stay unanswered, visible
+in the counts and filterable. Every batch failing does throw, on the same rule as a read command
+that finds none of what it was asked about: "0 answered" would read like a model with nothing to
+say.
+
 The invariant is a property of the graph, checked when it is built: **an edge from an AI node
 may not reach a `Destructive` command directly — an approval node must sit between them.**
 "AI never writes to the model without a human" becomes topology, not user discipline.
