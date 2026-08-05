@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Features.Pipelines;
 using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 
 namespace AnalyseTool.Core.Tests
 {
