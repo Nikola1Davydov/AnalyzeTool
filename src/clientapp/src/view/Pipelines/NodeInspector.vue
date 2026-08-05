@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import Message from "primevue/message";
 import FilterConditions from "./FilterConditions.vue";
-import { bindablePaths, typeLabel } from "./schema";
+import { bindablePaths, suggestBinding, typeLabel } from "./schema";
 import type { CommandInfo, JsonSchema, NodeOutcome, PipelineNodeDoc } from "./types";
 
 // Everything about ONE node. Parameter fields come from the command's declared input schema, so a
@@ -77,12 +77,25 @@ function setBinding(key: string, source: string | null, path?: string) {
 
 // A field is either typed in or wired to an earlier node — never both, since a binding wins over a
 // literal of the same name and offering both would misrepresent what actually runs.
-function toggleBinding(key: string) {
-  if (isBound(key)) setBinding(key, null);
-  else {
-    const source = props.sources[props.sources.length - 1];
-    if (source) setBinding(key, source.id, pathsOf(source.id)[0] ?? "");
+//
+//  "Type a value"      — a literal that is the same on every run (a name, a number, a flag).
+//  "Take from a node"  — filled at run time from what an earlier node returned.
+function setMode(key: string, mode: string) {
+  if (mode === "value") {
+    setBinding(key, null);
+    return;
   }
+  if (isBound(key)) return;
+
+  const source = props.sources[props.sources.length - 1];
+  if (!source) return;
+
+  const suggested = suggestBinding(
+    props.info?.inputSchema?.properties?.[key] ?? null,
+    props.outputs[source.id] ?? null,
+    key,
+  );
+  setBinding(key, source.id, suggested ?? pathsOf(source.id)[0] ?? "");
 }
 
 function setParam(key: string, raw: string) {
@@ -213,12 +226,20 @@ const resultJson = computed(() =>
         <label class="text-xs font-medium">{{ field.key }}</label>
         <span class="text-xs opacity-50">{{ typeLabel(field.schema) }}</span>
         <span class="grow" />
-        <Button
-          :label="isBound(field.key) ? 'Value' : 'From node'"
-          text
+        <!-- Both states visible, the current one selected. The old single button showed the ACTION
+             and read as the STATE, which is not a distinction anyone should have to work out. -->
+        <SelectButton
+          :model-value="isBound(field.key) ? 'wire' : 'value'"
+          :options="[
+            { label: 'Type a value', value: 'value' },
+            { label: 'Take from a node', value: 'wire' },
+          ]"
+          option-label="label"
+          option-value="value"
           size="small"
+          :allow-empty="false"
           :disabled="!sources.length && !isBound(field.key)"
-          @click="toggleBinding(field.key)"
+          @update:model-value="(v) => setMode(field.key, String(v))"
         />
       </div>
 
@@ -251,6 +272,18 @@ const resultJson = computed(() =>
         size="small"
         @update:model-value="(v) => setParam(field.key, String(v ?? ''))"
       />
+    </div>
+
+    <div v-if="isFilter" class="rounded border p-2 text-xs">
+      <span v-if="upstream.source">
+        Filtering the rows of
+        <span class="font-mono">{{ upstream.source }}.{{ upstream.path || "(whole result)" }}</span>
+        — one condition is applied to each row.
+      </span>
+      <span v-else class="text-amber-600">
+        Not reading anything yet. Set <span class="font-mono">items</span> above to
+        “Take from a node”, and the field names below will fill in from that node's rows.
+      </span>
     </div>
 
     <FilterConditions

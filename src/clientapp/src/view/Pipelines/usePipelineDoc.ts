@@ -1,5 +1,6 @@
 import { ref, computed } from "vue";
 import { invoke } from "@/RevitBridge";
+import { suggestBinding } from "./schema";
 import type { CommandInfo, PipelineDoc, PipelineNodeDoc, ValidationResult } from "./types";
 
 // The document the editor edits, plus the command catalogue it builds nodes from. Kept out of the
@@ -78,6 +79,20 @@ export function usePipelineDoc() {
       onFailure: "Stop",
       ui: at ?? { x: 80, y: 80 + doc.value.nodes.length * 110 },
     };
+    // Wired to the node before it where the shapes leave no real choice, so a fresh Filter arrives
+    // already reading the list it is meant to filter instead of sitting there doing nothing.
+    const previous = doc.value.nodes[doc.value.nodes.length - 1];
+    if (previous) {
+      const inputs = commandInfo(command)?.inputSchema?.properties ?? {};
+      const sourceSchema = commandInfo(previous.command)?.outputSchema ?? null;
+      for (const [key, schema] of Object.entries(inputs)) {
+        const path = suggestBinding(schema, sourceSchema, key);
+        if (!path) continue;
+        node.bind = { ...(node.bind ?? {}), [key]: `${previous.id}.${path}` };
+        break; // one wire, the obvious one — the rest is the author's call
+      }
+    }
+
     doc.value.nodes.push(node);
     syncEdges();
     selectedId.value = node.id;

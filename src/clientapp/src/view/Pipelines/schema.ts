@@ -72,3 +72,48 @@ export function summarize(value: unknown): string {
   }
   return String(value);
 }
+
+/**
+ * A binding this node probably wants from the one before it, or null when it is not obvious.
+ *
+ * Wiring a node by hand is where authoring goes wrong: the first agent to try bound a whole
+ * envelope where a list of ids was wanted, and the first person to open the editor could not tell
+ * what to connect at all. Both are the same gap — the shapes are declared, and nothing was reading
+ * them. So the obvious case is done automatically and shown as an ordinary binding the author can
+ * change; anything ambiguous is left alone rather than guessed at.
+ *
+ * Two shapes cover nearly everything a pipeline does:
+ *  • the target takes a list of ROWS  → bind the source's single array property;
+ *  • the target takes a list of IDS   → bind `rows[*].id`, matching the field by name.
+ */
+export function suggestBinding(
+  target: JsonSchema | null | undefined,
+  source: JsonSchema | null | undefined,
+  targetName: string,
+): string | null {
+  const properties = source?.properties;
+  if (!properties || !target) return null;
+
+  const isArray = (s: JsonSchema | undefined) =>
+    s?.type === "array" || (Array.isArray(s?.type) && s!.type.includes("array"));
+  if (!isArray(target)) return null;
+
+  const arrays = Object.entries(properties).filter(([, s]) => isArray(s));
+  if (arrays.length !== 1) return null; // two candidate lists is a choice, not a default
+  const [arrayName, arraySchema] = arrays[0];
+
+  const wantsRows = !target.items?.type || target.items.type === "object" || !!target.items?.properties;
+  if (wantsRows) return arrayName;
+
+  // A list of ids. Match by name — "typeIds" wants `typeId` — and fall back to a plain `id`, which
+  // is what a row of things generally calls itself.
+  const inner = arraySchema.items?.properties;
+  if (!inner) return null;
+
+  const singular = targetName.replace(/s$/i, "").toLowerCase();
+  const byName = Object.keys(inner).find((k) => k.toLowerCase() === singular);
+  const byId = Object.keys(inner).find((k) => k.toLowerCase() === "id");
+  const field = byName ?? byId;
+
+  return field ? `${arrayName}[*].${field}` : null;
+}
