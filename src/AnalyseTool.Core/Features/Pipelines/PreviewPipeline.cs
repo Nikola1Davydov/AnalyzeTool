@@ -17,14 +17,22 @@ namespace AnalyseTool.Core.Features.Pipelines
     ///
     /// <para><b>It refuses to run anything that is not <c>ReadOnly</c>.</b> Not "skips" — refuses, naming
     /// the node: a preview that quietly stopped early would look like a node returning nothing, which is
-    /// exactly the confusion this exists to remove. Previewing up to the node before the first write is
-    /// always available, and that is where all the interesting shapes are anyway.</para>
+    /// exactly the confusion this exists to remove.</para>
+    ///
+    /// <para>With <c>untilNode</c> it runs that node's DEPENDENCY CLOSURE — the node plus everything it
+    /// transitively binds from — rather than every node before it. The difference matters as soon as a
+    /// pipeline writes: a read placed after a purge has nothing to do with it beyond running later, and
+    /// a prefix-based preview would refuse for a reason that has nothing to do with the node asked
+    /// about. What such a preview shows is the model AS IT IS NOW, not as it will be once the write in
+    /// front of it has run — which is the honest answer to "what shape does this return".</para>
     /// </summary>
     [RevitCommand(
         Description = "Runs a pipeline's READ-ONLY prefix and returns each node's actual result, so " +
                       "bindings can be written against real data. Payload: { pipeline } inline or " +
-                      "{ name }, plus { untilNode } to stop after that node (default: the whole " +
-                      "pipeline). Refuses, naming the node, if any node in the prefix changes the model.",
+                      "{ name }, plus { untilNode } to preview ONE node — it and everything it reads " +
+                      "from, so a read that merely sits after a write can still be checked. Without " +
+                      "untilNode the whole pipeline is previewed. Refuses, naming the node, if what it " +
+                      "would have to run changes the model.",
         ReadOnly = true,
         InputType = typeof(PreviewPipeline.Request),
         OutputType = typeof(PipelineRunResult))]
@@ -40,7 +48,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                 ? PipelineStore.ParseInline(req.Pipeline, "the inline pipeline")
                 : PipelineStore.Load(req.Name ?? string.Empty);
 
-            List<PipelineNode> prefix = Prefix(doc, req.UntilNode);
+            List<PipelineNode> prefix = Selection(doc, req.UntilNode);
 
             foreach (PipelineNode node in prefix)
             {
@@ -57,8 +65,9 @@ namespace AnalyseTool.Core.Features.Pipelines
                 if (!reg.ReadOnly)
                     throw new InvalidOperationException(
                         $"Preview stops at node '{node.Id}': '{node.Command}' is not read-only, and a " +
-                        "preview never writes to the model. Preview up to the node before it, or run the " +
-                        "pipeline for real from the Pipelines pane.");
+                        "preview never writes to the model. Select a node that does not read from it — a " +
+                        "preview runs only what the selected node depends on — or run the pipeline for " +
+                        "real from the Pipelines pane.");
             }
 
             // A prefix is a pipeline. Running it through the same engine means the preview resolves
@@ -89,10 +98,15 @@ namespace AnalyseTool.Core.Features.Pipelines
             return await engine.RunAsync(previewDoc, nodeProgress, ct).ConfigureAwait(false);
         }
 
-        /// <summary>Nodes up to and including <paramref name="untilNode"/>; the whole list when it is
-        /// empty, and an error when it names a node this pipeline does not have — silently previewing
-        /// everything instead would run more than the caller asked for.</summary>
-        private static List<PipelineNode> Prefix(PipelineDocument doc, string? untilNode)
+        /// <summary>
+        /// What a preview has to run: the whole pipeline when no node is named, otherwise that node and
+        /// everything it transitively reads from, in file order.
+        ///
+        /// <para>Only what it READS. Running the prefix instead would drag in every unrelated node that
+        /// happens to sit earlier, and refuse the moment one of them writes — a read placed after a purge
+        /// would become uncheckable for a reason that has nothing to do with it.</para>
+        /// </summary>
+        private static List<PipelineNode> Selection(PipelineDocument doc, string? untilNode)
         {
             if (string.IsNullOrWhiteSpace(untilNode)) return doc.Nodes.ToList();
 
@@ -100,7 +114,24 @@ namespace AnalyseTool.Core.Features.Pipelines
             if (index < 0)
                 throw new InvalidOperationException($"This pipeline has no node '{untilNode}'.");
 
-            return doc.Nodes.Take(index + 1).ToList();
+            HashSet<string> needed = new(StringComparer.Ordinal);
+            Walk(doc.Nodes[index]);
+
+            void Walk(PipelineNode node)
+            {
+                if (!needed.Add(node.Id)) return; // also what keeps a cycle in a hand-written file finite
+                foreach (string reference in node.Bind?.Values ?? Enumerable.Empty<string>())
+                {
+                    string sourceId = reference.Split('.')[0];
+                    PipelineNode? source = doc.Nodes.FirstOrDefault(n =>
+                        string.Equals(n.Id, sourceId, StringComparison.Ordinal));
+                    if (source is not null) Walk(source);
+                }
+            }
+
+            // File order is preserved: the engine resolves a binding against what has already run, so
+            // the sources have to come first exactly as they do in a real run.
+            return doc.Nodes.Take(index + 1).Where(n => needed.Contains(n.Id)).ToList();
         }
 
         internal sealed class Request

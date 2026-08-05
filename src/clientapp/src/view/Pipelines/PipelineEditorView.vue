@@ -52,9 +52,13 @@ const outputs = computed<Record<string, JsonSchema | null>>(() =>
   Object.fromEntries(doc.value.nodes.map((n) => [n.id, pipeline.effectiveOutput(n.id)])),
 );
 
-// Preview runs the READ-ONLY prefix and refuses at the first node that writes, naming it. That is
-// the whole safety story: authoring never touches the model, and "run it for real" stays a
-// deliberate act in the Pipelines pane.
+// Preview runs the selected node and everything it READS FROM — not everything before it. A read
+// placed after a purge has nothing to do with that purge beyond running later, and previewing by
+// position would make it uncheckable for a reason that is not about it. What comes back is the model
+// as it is now, which is the honest answer to "what shape does this node return".
+//
+// It still refuses at anything that writes, naming it. Authoring never touches the model; running
+// for real stays a deliberate act in the Pipelines pane.
 async function preview() {
   previewing.value = true;
   previewNote.value = null;
@@ -280,12 +284,17 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
       />
       <Button label="Check" icon="pi pi-check" text size="small" @click="pipeline.validate()" />
       <Button
-        label="Preview"
+        :label="selectedId ? `Preview ${selectedId}` : 'Preview'"
         icon="pi pi-eye"
         text
         size="small"
         :loading="previewing"
         :disabled="!doc.nodes.length"
+        v-tooltip.bottom="
+          selectedId
+            ? 'Runs this node and whatever it reads from, against the model as it is now.'
+            : 'Select a node to preview just that one. Otherwise the whole pipeline is previewed, as far as its first model-changing node.'
+        "
         @click="preview"
       />
       <Button
