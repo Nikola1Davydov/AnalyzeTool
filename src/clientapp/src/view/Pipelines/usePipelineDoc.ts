@@ -126,28 +126,6 @@ export function usePipelineDoc() {
     if (selectedId.value === id) selectedId.value = doc.value.nodes[0]?.id ?? null;
   }
 
-  /** Renaming has to carry the references, or a rename silently unwires the graph. */
-  function renameNode(oldId: string, newId: string) {
-    const node = doc.value.nodes.find((n) => n.id === oldId);
-    if (!node || !newId || oldId === newId) return;
-    if (doc.value.nodes.some((n) => n.id === newId)) return;
-
-    node.id = newId;
-    for (const other of doc.value.nodes) {
-      if (!other.bind) continue;
-      for (const [key, ref_] of Object.entries(other.bind)) {
-        const dot = ref_.indexOf(".");
-        const source = dot < 0 ? ref_ : ref_.slice(0, dot);
-        if (source === oldId) other.bind[key] = newId + (dot < 0 ? "" : ref_.slice(dot));
-      }
-    }
-    for (const edge of doc.value.edges) {
-      if (edge.from === oldId) edge.from = newId;
-      if (edge.to === oldId) edge.to = newId;
-    }
-    if (selectedId.value === oldId) selectedId.value = newId;
-  }
-
   function move(id: string, delta: number) {
     const from = doc.value.nodes.findIndex((n) => n.id === id);
     const to = from + delta;
@@ -239,7 +217,6 @@ export function usePipelineDoc() {
     load,
     addNode,
     removeNode,
-    renameNode,
     move,
     placeAfter,
     findSource,

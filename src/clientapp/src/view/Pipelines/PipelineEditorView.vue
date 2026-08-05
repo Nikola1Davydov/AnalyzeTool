@@ -343,7 +343,6 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
           :count="doc.nodes.length"
           :outputs="outputs"
           :outcome="outcomes[selected.id] ?? null"
-          @rename="(v) => pipeline.renameNode(selected!.id, v)"
           @move="(d) => pipeline.move(selected!.id, d)"
           @remove="pipeline.removeNode(selected!.id); invalidatePreview()"
           @changed="pipeline.validate()"

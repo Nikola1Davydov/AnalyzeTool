@@ -28,7 +28,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "rename", value: string): void;
   (e: "move", delta: number): void;
   (e: "remove"): void;
   (e: "changed"): void;
@@ -191,14 +190,11 @@ const resultJson = computed(() =>
     </Message>
     <p v-if="info?.description" class="text-xs opacity-70">{{ info.description }}</p>
 
-    <div class="flex flex-col gap-1">
-      <label class="text-xs opacity-70">Node id</label>
-      <InputText
-        :model-value="node.id"
-        size="small"
-        @update:model-value="(v) => emit('rename', String(v ?? ''))"
-      />
-      <span class="text-xs opacity-50">Bindings from other nodes follow a rename.</span>
+    <!-- Shown, not editable. The id is what bindings reference and what the run receipt names, and
+         it is generated from the command — there is nothing here for an author to decide. -->
+    <div class="flex items-center gap-2 text-xs">
+      <span class="opacity-70">id</span>
+      <span class="font-mono">{{ node.id }}</span>
     </div>
 
     <!-- What this node hands on. The single most useful thing when writing the NEXT node. -->
