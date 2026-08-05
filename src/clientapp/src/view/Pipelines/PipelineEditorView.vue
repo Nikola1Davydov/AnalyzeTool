@@ -49,7 +49,7 @@ const progressText = ref("");
 
 /** Declared output schema per node id, so the inspector can offer real paths for a binding. */
 const outputs = computed<Record<string, JsonSchema | null>>(() =>
-  Object.fromEntries(doc.value.nodes.map((n) => [n.id, commandInfo(n.command)?.outputSchema ?? null])),
+  Object.fromEntries(doc.value.nodes.map((n) => [n.id, pipeline.effectiveOutput(n.id)])),
 );
 
 // Preview runs the READ-ONLY prefix and refuses at the first node that writes, naming it. That is

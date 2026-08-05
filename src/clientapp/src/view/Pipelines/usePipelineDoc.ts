@@ -28,6 +28,45 @@ export function usePipelineDoc() {
     return index <= 0 ? [] : doc.value.nodes.slice(0, index);
   };
 
+  /**
+   * A node's output schema with pass-through rows resolved.
+   *
+   * A Filter's output IS its input, so it declares `items` as an untyped array — nothing can be
+   * said about the rows in advance. Left at that, every shape-based suggestion stops dead at the
+   * first Filter and reaches PAST it to the raw source. In front of a purge that is the difference
+   * between deleting the two unused families and deleting all 286.
+   *
+   * So a node with one untyped array out and one array wired in is understood as handing on the
+   * rows it was given, and the item schema is borrowed from wherever they came from.
+   */
+  function effectiveOutput(nodeId: string): any {
+    const node = doc.value.nodes.find((n) => n.id === nodeId);
+    if (!node) return null;
+
+    const own = commandInfo(node.command)?.outputSchema ?? null;
+    if (!own?.properties || !node.bind) return own;
+
+    const isArray = (s: any) =>
+      s?.type === "array" || (Array.isArray(s?.type) && s.type.includes("array"));
+
+    const passThrough = Object.entries(own.properties).find(
+      ([, s]: any) => isArray(s) && !s.items?.properties && !s.items?.type,
+    );
+    if (!passThrough) return own;
+
+    for (const reference of Object.values(node.bind)) {
+      const [sourceId, ...rest] = reference.split(".");
+      const sourceSchema = effectiveOutput(sourceId);
+      const arrayName = rest.join(".").split("[")[0];
+      const rows = sourceSchema?.properties?.[arrayName];
+      if (!isArray(rows) || !rows.items) continue;
+
+      const [key, schema] = passThrough;
+      return { ...own, properties: { ...own.properties, [key]: { ...(schema as any), items: rows.items } } };
+    }
+    return own;
+  }
+
   const commandInfo = (name: string) =>
     commands.value.find((c) => c.name.toLowerCase() === name.toLowerCase()) ?? null;
 
@@ -108,11 +147,7 @@ export function usePipelineDoc() {
   function findSource(target: any, targetName: string, beforeIndex: number) {
     for (let i = Math.min(beforeIndex, doc.value.nodes.length) - 1; i >= 0; i--) {
       const candidate = doc.value.nodes[i];
-      const path = suggestBinding(
-        target,
-        commandInfo(candidate.command)?.outputSchema ?? null,
-        targetName,
-      );
+      const path = suggestBinding(target, effectiveOutput(candidate.id), targetName);
       if (path) return { nodeId: candidate.id, path };
     }
     return null;
@@ -230,6 +265,7 @@ export function usePipelineDoc() {
     move,
     placeAfter,
     findSource,
+    effectiveOutput,
     validate,
     save,
   };

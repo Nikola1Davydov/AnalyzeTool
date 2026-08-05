@@ -89,6 +89,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                 ValidateNodeShape(node, reg, warnings);
                 ValidateBindings(node, seen, reg, errors, warnings);
                 ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
+                ValidateFilterBypass(node, doc, reg, errors);
             }
 
             foreach (PipelineEdge edge in doc.Edges)
@@ -229,6 +230,51 @@ namespace AnalyseTool.Core.Features.Pipelines
                 carried += $" Keys ignored on this node: {string.Join(", ", node.Unknown.Keys)}.";
 
             return carried;
+        }
+
+        /// <summary>
+        /// Refuses a destructive node that reads AROUND a filter.
+        ///
+        /// <para>The shape: a pipeline reads a list, filters it down to the few rows that matter, and
+        /// then hands the model-changing node the ORIGINAL list. Everything looks right — the filter
+        /// runs, reports what it kept, and the canvas draws a tidy chain — and the run deletes all 286
+        /// families instead of the 2 that were unused. The filter's only role becomes to make the
+        /// pipeline look careful.</para>
+        ///
+        /// <para>It is a mistake nobody makes deliberately, which is why it is an error and not a
+        /// warning: an author who really means "act on everything" has no reason to have put a Filter
+        /// there at all, and deleting it says so unambiguously.</para>
+        /// </summary>
+        private static void ValidateFilterBypass(
+            PipelineNode node, PipelineDocument doc, CommandRegistration reg, List<string> errors)
+        {
+            if (!reg.Destructive || node.Bind is null) return;
+
+            int position = doc.Nodes.FindIndex(n => ReferenceEquals(n, node));
+
+            foreach (string sourceId in node.Bind.Values.Select(v => v.Split('.')[0]).Distinct(StringComparer.Ordinal))
+            {
+                int sourceAt = doc.Nodes.FindIndex(n => string.Equals(n.Id, sourceId, StringComparison.Ordinal));
+                if (sourceAt < 0) continue;
+
+                // A Filter sitting between the two, fed by the same node this one reads directly.
+                PipelineNode? bypassed = doc.Nodes
+                    .Skip(sourceAt + 1)
+                    .Take(Math.Max(position - sourceAt - 1, 0))
+                    .FirstOrDefault(n =>
+                        string.Equals(n.Command, "Filter", StringComparison.OrdinalIgnoreCase) &&
+                        n.Bind is not null &&
+                        n.Bind.Values.Any(v => string.Equals(v.Split('.')[0], sourceId, StringComparison.Ordinal)));
+
+                if (bypassed is null) continue;
+
+                errors.Add(
+                    $"Node '{node.Id}' ({node.Command}) reads from '{sourceId}' directly, but '{bypassed.Id}' " +
+                    $"filters '{sourceId}' in between. As written this acts on everything '{sourceId}' " +
+                    $"returned, not on what '{bypassed.Id}' kept — and that command CHANGES the model. " +
+                    $"Bind it to '{bypassed.Id}' instead, or remove the filter if acting on everything is " +
+                    "really the intent.");
+            }
         }
 
         /// <summary>Top-level property names of the command's declared input schema; empty when it declares
