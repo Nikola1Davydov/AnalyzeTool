@@ -82,15 +82,30 @@ async function preview() {
   }
 }
 
-const palette = computed(() => {
-  const term = search.value.trim().toLowerCase();
-  const all = [...commands.value].sort((a, b) => a.name.localeCompare(b.name));
-  if (!term) return all;
-  return all.filter(
-    (c) =>
-      c.name.toLowerCase().includes(term) || (c.description ?? "").toLowerCase().includes(term),
-  );
-});
+// Commands that belong to the PIPELINE rather than to the model. They are what a graph is built out
+// of — Filter is in nearly every pipeline worth writing — and they do not deserve to be hunted for
+// in an alphabetical list between GetWorksets and PlaceFamilyInstance.
+//
+// A list here rather than a flag on the attribute: this is an editing convenience, and the SDK does
+// not need an opinion about it. It grows when #92 adds AI nodes.
+const PINNED = ["Filter"];
+
+const matches = (c: { name: string; description: string | null }, term: string) =>
+  !term ||
+  c.name.toLowerCase().includes(term) ||
+  (c.description ?? "").toLowerCase().includes(term);
+
+const term = computed(() => search.value.trim().toLowerCase());
+
+const pinned = computed(() =>
+  commands.value.filter((c) => PINNED.includes(c.name) && matches(c, term.value)),
+);
+
+const palette = computed(() =>
+  [...commands.value]
+    .filter((c) => !PINNED.includes(c.name) && matches(c, term.value))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+);
 
 const selectedIndex = computed(() =>
   doc.value.nodes.findIndex((n) => n.id === selectedId.value),
@@ -297,6 +312,20 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
       <div class="flex w-64 shrink-0 flex-col gap-2 border-r p-2">
         <InputText v-model="search" placeholder="Search commands" size="small" />
         <div class="flex min-h-0 grow flex-col gap-1 overflow-auto">
+          <button
+            v-for="command in pinned"
+            :key="command.name"
+            class="rounded border border-primary-300 bg-primary-50 p-2 text-left text-xs hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40"
+            @click="addFromPalette(command.name)"
+          >
+            <div class="flex items-center gap-1">
+              <i class="pi pi-filter text-primary-500" style="font-size: 0.7rem" />
+              <span class="font-medium">{{ command.name }}</span>
+            </div>
+            <div class="line-clamp-2 opacity-60">{{ command.description }}</div>
+          </button>
+          <div v-if="pinned.length && palette.length" class="my-1 border-t opacity-40" />
+
           <button
             v-for="command in palette"
             :key="command.name"
