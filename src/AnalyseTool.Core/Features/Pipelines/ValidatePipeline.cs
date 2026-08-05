@@ -90,6 +90,7 @@ namespace AnalyseTool.Core.Features.Pipelines
                 ValidateBindings(node, seen, reg, errors, warnings);
                 ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
                 ValidateFilterBypass(node, doc, reg, errors);
+                ValidateStaleAfterWrite(node, doc, errors);
             }
 
             foreach (PipelineEdge edge in doc.Edges)
@@ -276,6 +277,65 @@ namespace AnalyseTool.Core.Features.Pipelines
                     "really the intent.");
             }
         }
+
+        /// <summary>
+        /// Element ids read across a node that already deleted them.
+        ///
+        /// <para>The sibling of <see cref="ValidateFilterBypass"/>, and the same mistake seen from the
+        /// other side. There the danger was reading a list that had not been narrowed yet; here it is
+        /// reading a list that has since been INVALIDATED. A pipeline that filters families, purges
+        /// them, and then asks a later node for the types of those same families is asking about
+        /// elements that no longer exist — the ids it holds were captured before the delete.</para>
+        ///
+        /// <para>It happened twice in a row while authoring one purge pipeline, and the second time it
+        /// took Revit down with an AccessViolation rather than an error anyone could read. A node
+        /// cannot see this: it knows its own binding and nothing about what ran in between. The
+        /// validator holds the whole file, which is the only place the question can be asked.</para>
+        ///
+        /// <para>Only list-shaped reads count. A scalar taken from the same source — a count, a flag —
+        /// does not go stale the way a list of element ids does, and refusing those would make the
+        /// check something authors route around.</para>
+        /// </summary>
+        private static void ValidateStaleAfterWrite(
+            PipelineNode node, PipelineDocument doc, List<string> errors)
+        {
+            if (node.Bind is null) return;
+
+            int position = doc.Nodes.FindIndex(n => ReferenceEquals(n, node));
+
+            foreach (KeyValuePair<string, string> binding in node.Bind)
+            {
+                string sourceId = binding.Value.Split('.')[0];
+                if (!binding.Value.Contains('[')) continue; // a scalar, not a list of ids
+
+                int sourceAt = doc.Nodes.FindIndex(n => string.Equals(n.Id, sourceId, StringComparison.Ordinal));
+                if (sourceAt < 0) continue;
+
+                // A node between the source and this one that CHANGES the model and was fed by that
+                // same source — so what it changed is exactly what this binding still points at.
+                PipelineNode? writer = doc.Nodes
+                    .Skip(sourceAt + 1)
+                    .Take(Math.Max(position - sourceAt - 1, 0))
+                    .FirstOrDefault(n =>
+                        IsDestructive(n) &&
+                        n.Bind is not null &&
+                        n.Bind.Values.Any(v => string.Equals(v.Split('.')[0], sourceId, StringComparison.Ordinal)));
+
+                if (writer is null) continue;
+
+                errors.Add(
+                    $"Node '{node.Id}' binds '{binding.Key}' to '{binding.Value}', but '{writer.Id}' " +
+                    $"({writer.Command}) changes the model using the same '{sourceId}' in between. Those " +
+                    $"ids no longer refer to anything by the time '{node.Id}' runs. Read the model again " +
+                    $"after '{writer.Id}' — add a node that lists what is there NOW and bind to that — or " +
+                    $"move '{node.Id}' before '{writer.Id}'.");
+            }
+        }
+
+        private static bool IsDestructive(PipelineNode node) =>
+            CoreServices.Queue.RegisteredCommands
+                .FirstOrDefault(c => string.Equals(c.Name, node.Command, StringComparison.OrdinalIgnoreCase))
+                ?.Destructive == true;
 
         /// <summary>Top-level property names of the command's declared input schema; empty when it declares
         /// none, or when the schema degraded to a free-form object.</summary>

@@ -304,6 +304,15 @@ namespace AnalyseTool.Tools.Families
 
             List<TypeRow> rows = new();
 
+            // Asked about families and not one of them exists: said out loud rather than answered with
+            // the system types alone, which reads downstream like a model with no loadable families.
+            // In a pipeline the cause is nearly always a purge one step earlier holding the same ids.
+            if (ids.Count > 0 && !ids.Any(id => doc.GetElement(new ElementId(id)) is Family))
+                throw new InvalidOperationException(
+                    $"None of the {ids.Count} requested family ids exists in this document. They may have " +
+                    "been deleted earlier in the same run — read the families again after the deletion " +
+                    "and bind to that node instead.");
+
             // Loadable / in-place families.
             foreach (long familyId in ids)
             {

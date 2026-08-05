@@ -333,6 +333,14 @@ Four separate defects had to line up, and each one is worth naming because each 
    front of a purge; the node cannot see what it feeds, and the validator can. That check is an
    error, not a warning, because warnings do not stop a run.
 
+   Its sibling is the same mistake from the other side: not a list that has not been narrowed yet,
+   but a list that has since been **invalidated**. Filter families → purge them → ask a later node
+   for the types of those same families, and the ids it holds were captured before the delete. A
+   node cannot see this either — it knows its own binding and nothing about what ran in between —
+   and the second time it happened it took Revit down with an `AccessViolationException` rather
+   than any error a person could read. Only list-shaped reads count; a count taken from the same
+   source does not go stale the way a list of element ids does.
+
 4. **A read command must not answer for something that is not there.** `GetFamilyTypes` returned a
    well-formed `{ familyId, name: "", category: "", types: [] }` when the id resolved to no family
    — indistinguishable, downstream, from a family that genuinely has no types. In a pipeline that
