@@ -1,4 +1,5 @@
 using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Pipelines;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 
@@ -29,6 +30,10 @@ namespace AnalyseTool.Core.Features.Extensions
                     readOnly = c.ReadOnly,
                     destructive = c.Destructive,
                     exposedToMcp = c.ExposeToMcp,
+                    // What part this command plays in a pipeline — read / narrow / ai / gate / write /
+                    // report / other. Decided by PipelineSafety, which is also what the graph validator
+                    // asks; the palette renders the answer instead of working it out a second time.
+                    role = PipelineSafety.RoleOf(c.Name, c.ReadOnly, c.Destructive),
                     // Both whole, uncapped: this is the introspection callers reason about (the Settings
                     // table, and the pipeline graph validator that has to compare one command's output
                     // against the next one's input). The MCP listing gets a compacted copy instead.

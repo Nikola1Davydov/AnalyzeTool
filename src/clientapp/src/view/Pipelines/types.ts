@@ -25,6 +25,9 @@ export interface CommandInfo {
   readOnly: boolean;
   destructive: boolean;
   exposedToMcp: boolean;
+  /** What part this command plays in a pipeline, decided by the host (PipelineSafety.RoleOf) rather
+   *  than worked out here — the same answer the graph validator uses. Older builds omit it. */
+  role?: "read" | "narrow" | "ai" | "gate" | "write" | "report" | "other";
   inputSchema: JsonSchema | null;
   outputSchema: JsonSchema | null;
 }
