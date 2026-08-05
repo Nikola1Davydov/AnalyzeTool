@@ -91,6 +91,8 @@ namespace AnalyseTool.Core.Features.Pipelines
                 ValidateUnfilteredDestructiveInput(node, byId, reg, errors, warnings);
                 ValidateFilterBypass(node, doc, reg, errors);
                 ValidateStaleAfterWrite(node, doc, errors);
+                ValidateApprovalBetweenAiAndWrite(node, doc, reg, errors);
+                ValidateAutoAcceptIsAllowed(node, doc, errors);
             }
 
             foreach (PipelineEdge edge in doc.Edges)
@@ -329,6 +331,101 @@ namespace AnalyseTool.Core.Features.Pipelines
                     $"ids no longer refer to anything by the time '{node.Id}' runs. Read the model again " +
                     $"after '{writer.Id}' — add a node that lists what is there NOW and bind to that — or " +
                     $"move '{node.Id}' before '{writer.Id}'.");
+            }
+        }
+
+        /// <summary>
+        /// **"AI never writes to the model without a human" as topology, not as user discipline.**
+        ///
+        /// <para>An edge from an AI node may not reach a <c>Destructive</c> command without an
+        /// <c>Approval</c> on the way. Stated as a rule people follow, it holds until the afternoon
+        /// someone is in a hurry; stated as a property of the graph, it is checked before every run and
+        /// cannot be forgotten.</para>
+        ///
+        /// <para>The walk goes BACKWARDS from the write and stops at an approval, because everything
+        /// upstream of a gate has been through the gate — that is what the gate is. It follows bindings
+        /// rather than file order: a node that merely runs earlier feeds nothing.</para>
+        /// </summary>
+        private static void ValidateApprovalBetweenAiAndWrite(
+            PipelineNode node, PipelineDocument doc, CommandRegistration reg, List<string> errors)
+        {
+            if (!reg.Destructive) return;
+
+            List<string> proposals = UngatedAiSources(node, doc);
+            if (proposals.Count == 0) return;
+
+            errors.Add(
+                $"Node '{node.Id}' ({node.Command}) changes the model with data that comes from " +
+                $"{string.Join(", ", proposals.Select(p => $"'{p}'"))} — a model's proposal, not a reading " +
+                "of the document — and nothing checks it on the way. Put an Approval node between them: " +
+                "what matches its autoAccept rule is written, the rest is parked with a reason and the " +
+                "run still finishes.");
+        }
+
+        /// <summary>
+        /// <c>autoAccept</c> is refused in front of a command whose effect cannot be undone.
+        ///
+        /// <para>Level 3 of the gate, and the reason it is a list of REVERSIBLE commands rather than of
+        /// dangerous ones: everything nobody thought of — every third-party command — then keeps the
+        /// strict behaviour instead of being waved through. Here the cost of a wrong automatic decision
+        /// does not scale down with <c>maxItems</c>, so bounding the blast radius is not an answer.</para>
+        /// </summary>
+        private static void ValidateAutoAcceptIsAllowed(
+            PipelineNode node, PipelineDocument doc, List<string> errors)
+        {
+            if (!PipelineSafety.IsApproval(node.Command)) return;
+            if (node.Params?["autoAccept"] is not JObject) return;
+
+            int position = doc.Nodes.FindIndex(n => ReferenceEquals(n, node));
+
+            foreach (PipelineNode later in doc.Nodes.Skip(position + 1))
+            {
+                bool readsThis = later.Bind?.Values.Any(v =>
+                    string.Equals(v.Split('.')[0], node.Id, StringComparison.Ordinal)) == true;
+
+                if (!readsThis) continue;
+
+                CommandRegistration? reg = CoreServices.Queue.RegisteredCommands
+                    .FirstOrDefault(c => string.Equals(c.Name, later.Command, StringComparison.OrdinalIgnoreCase));
+
+                if (reg?.Destructive != true) continue;
+                if (!PipelineSafety.IsIrreversible(later.Command)) continue;
+
+                errors.Add(
+                    $"Node '{node.Id}' declares 'autoAccept', but it feeds '{later.Id}' ({later.Command}), " +
+                    "whose effect cannot be undone by running something else. There the gate is a barrier " +
+                    "at any setting: the cost of a wrong automatic decision does not get smaller with " +
+                    "'maxItems'. Remove 'autoAccept' so every row is parked for a person, or send the " +
+                    "accepted rows somewhere reversible.");
+            }
+        }
+
+        /// <summary>AI nodes this one transitively reads from with no approval in between, in file order.</summary>
+        private static List<string> UngatedAiSources(PipelineNode node, PipelineDocument doc)
+        {
+            HashSet<string> visited = new(StringComparer.Ordinal);
+            List<string> found = new();
+
+            Walk(node);
+            return found;
+
+            void Walk(PipelineNode current)
+            {
+                foreach (string sourceId in (current.Bind?.Values ?? Enumerable.Empty<string>())
+                         .Select(v => v.Split('.')[0]).Distinct(StringComparer.Ordinal))
+                {
+                    if (!visited.Add(sourceId)) continue; // also what keeps a hand-written cycle finite
+
+                    PipelineNode? source = doc.Nodes
+                        .FirstOrDefault(n => string.Equals(n.Id, sourceId, StringComparison.Ordinal));
+                    if (source is null) continue;
+
+                    // The gate. Everything above it has been through it, so the walk stops here.
+                    if (PipelineSafety.IsApproval(source.Command)) continue;
+
+                    if (PipelineSafety.IsAi(source.Command)) found.Add(source.Id);
+                    else Walk(source);
+                }
             }
         }
 

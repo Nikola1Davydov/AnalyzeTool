@@ -639,6 +639,36 @@ are reversible, so every unknown command — including every third-party one —
 That covers extensions without adding an SDK property, on the same reasoning that deferred
 `RequiresUser`.
 
+### Built: the gate and the invariant
+
+`Approval` is an ordinary node, like `Filter`. It splits rows into `accepted` and `parked`, both
+carrying `approval.why`, and **the run continues either way** — bind a write to `accepted` and
+`ExportToCsv` to `parked`. Two behaviours are worth stating because neither is the obvious one:
+
+- **No `autoAccept` parks everything.** A gate whose rules were not filled in must not be a gate
+  that is open.
+- **Exceeding `maxItems` parks everything, not the excess.** More rows changed than the pipeline
+  expected, so the situation is not the one the author had in mind. Letting an arbitrary first 50
+  through would bound the damage and hide that — the "cheerful 0 written" failure in another hat.
+
+`minConfidence` on its own is **refused at configuration time**, and a broken regex is refused
+rather than silently matching nothing (which would park everything and look like a cautious gate
+working, while being a rule that never ran).
+
+The invariant lives in `ValidatePipeline` beside the other two topology checks: an edge from an AI
+node may not reach a `Destructive` command without an `Approval` on the way. The walk goes
+backwards from the write and **stops at an approval** — everything upstream of a gate has been
+through the gate — and follows bindings rather than file order, since a node that merely runs
+earlier feeds nothing.
+
+**How the host knows which node is an AI**, without a contract property: a list in
+`PipelineSafety`, on the precedent this document set for `RequiresUser`. Neither question a list
+answers is one an author answers about their own command — "is this an AI?" is answered by
+whoever ships the AI nodes, and "is this deletion recoverable?" is a judgement about the cost of
+being wrong, where an author who believes their command is safe is exactly whose opinion should
+not be load-bearing. Note the reversible list is the inverted one, so a third-party command is
+strict by default rather than waved through.
+
 Note the flag this hangs on had to be repaired first: `Destructive` was applied to three
 extension-management commands and to parameter writes, but **not** to `DeleteFamilyElements`,
 `PurgeFamilies`, `PurgeFamilyTypes`, `RenameFamily`, `RenameFamilyType`, `SetInstancesWorkset`

@@ -92,7 +92,7 @@ async function preview() {
 //
 // A list here rather than a flag on the attribute: this is an editing convenience, and the SDK does
 // not need an opinion about it. It grows when #92 adds AI nodes.
-const PINNED = ["Filter"];
+const PINNED = ["Filter", "AiTransform", "Approval", "ExportToCsv"];
 
 const matches = (c: { name: string; description: string | null }, term: string) =>
   !term ||
