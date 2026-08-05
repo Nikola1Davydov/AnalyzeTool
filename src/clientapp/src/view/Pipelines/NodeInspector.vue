@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import Message from "primevue/message";
 import FilterConditions from "./FilterConditions.vue";
 import { bindablePaths, suggestBinding, typeLabel } from "./schema";
@@ -25,9 +25,6 @@ const props = defineProps<{
   outputs: Record<string, JsonSchema | null>;
   /** What the last preview produced for this node, when one has run. */
   outcome: NodeOutcome | null;
-  /** Renames the node, moving every binding that reads it. Returns the reason it refused, or null.
-   *  A callback rather than an event because the answer has to come back on the same keystroke. */
-  renamer: (next: string) => string | null;
 }>();
 
 const emit = defineEmits<{
@@ -37,13 +34,6 @@ const emit = defineEmits<{
 }>();
 
 const isFilter = computed(() => props.node.command.toLowerCase() === "filter");
-
-const renameError = ref<string | null>(null);
-
-function rename(next: string) {
-  renameError.value = props.renamer(next);
-  if (!renameError.value) emit("changed");
-}
 
 /** Declared payload properties, or an empty list when the command declares no input type. */
 const fields = computed<{ key: string; schema: JsonSchema }[]>(() => {
@@ -204,26 +194,12 @@ const resultJson = computed(() =>
     </Message>
     <p v-if="info?.description" class="text-xs opacity-70">{{ info.description }}</p>
 
-    <!-- The id is what bindings reference and what the run receipt names. It is generated, and the
-         generated one is a guess: two Filters come out as `filter` and `filter2`, which say nothing
-         in the one place they are read most — a binding. So it can be corrected, and the rename
-         carries every reference with it rather than leaving them pointing at a node that is gone. -->
-    <div class="flex flex-col gap-1">
-      <div class="flex items-center gap-2 text-xs">
-        <label class="opacity-70">id</label>
-        <span class="opacity-50">bindings that read this node follow the new name</span>
-      </div>
-      <InputText
-        :model-value="node.id"
-        size="small"
-        class="font-mono"
-        :invalid="!!renameError"
-        @blur="(e: any) => rename(e.target.value)"
-        @keyup.enter="(e: any) => (e.target as HTMLInputElement).blur()"
-      />
-      <Message v-if="renameError" severity="error" size="small" variant="simple">
-        {{ renameError }}
-      </Message>
+    <!-- Shown, not editable. The id is what bindings reference and what the run receipt names, and
+         it is generated from the command and from what feeds the node — there is nothing here for
+         an author to decide. -->
+    <div class="flex items-center gap-2 text-xs">
+      <span class="opacity-70">id</span>
+      <span class="font-mono">{{ node.id }}</span>
     </div>
 
     <!-- What this node hands on. The single most useful thing when writing the NEXT node. -->

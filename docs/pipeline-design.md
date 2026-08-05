@@ -479,11 +479,10 @@ the source's leading verb dropped: `filterFamilies`, `filterFamilyTypeRows`. "Ha
 through" is not a hard-coded list of commands — it is a declared output array whose items are
 undeclared, the same signal `effectiveOutput` already uses to resolve pass-through rows.
 
-A generated name is still a guess, so ids are editable again. The reason they were made read-only
-stands and is answered rather than overruled: renaming used to leave bindings pointing at a node
-that no longer existed, silently, until the run failed. A rename now moves every reference with
-it, which is possible precisely because all of them live in the one document, and it refuses a
-duplicate, an empty name, or a name containing the dot that separates a node from its path.
+The id stays **generated and read-only**. It is a reference key, not a caption: everything that
+reads it — a binding, the validator, the run receipt — reads it as an identity, and an editable
+one buys a naming preference at the cost of a class of silent breakage. If a generated name is
+unclear, the fix belongs in the rule above, where it fixes every pipeline rather than one.
 
 Node positions live in the node's own `ui` key, declared on `PipelineNode` so it does not read as
 an unrecognised key. A sidecar layout file would be separated from the pipeline the first time

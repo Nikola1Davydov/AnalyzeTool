@@ -203,44 +203,6 @@ export function usePipelineDoc() {
     return null;
   }
 
-  /**
-   * Renames a node AND every binding that reads it.
-   *
-   * A bare id field was removed once, and rightly: rewriting an id left the bindings pointing at a
-   * node that no longer existed, and the editor said nothing until the run failed. The fix is not to
-   * forbid renaming — a generated name is a guess, and `filter2` in a purge pipeline is worth
-   * correcting — it is to make the rename carry its references with it, which is possible precisely
-   * because every reference lives in this one document.
-   *
-   * Returns the reason it refused, or null when it went through.
-   */
-  function renameNode(id: string, next: string): string | null {
-    const name = next.trim();
-    if (name === id) return null;
-    if (!name) return "A node needs an id.";
-    // The dot separates the node from the path inside its result, so it cannot appear in either.
-    if (name.includes(".")) return "A node id cannot contain a dot.";
-    if (doc.value.nodes.some((n) => n.id === name)) return `There is already a node called '${name}'.`;
-
-    const node = doc.value.nodes.find((n) => n.id === id);
-    if (!node) return null;
-    node.id = name;
-
-    for (const other of doc.value.nodes) {
-      if (!other.bind) continue;
-      for (const [key, reference] of Object.entries(other.bind)) {
-        const dot = reference.indexOf(".");
-        const sourceId = dot < 0 ? reference : reference.slice(0, dot);
-        if (sourceId !== id) continue;
-        other.bind[key] = dot < 0 ? name : name + reference.slice(dot);
-      }
-    }
-
-    syncEdges();
-    if (selectedId.value === id) selectedId.value = name;
-    return null;
-  }
-
   function removeNode(id: string) {
     doc.value.nodes = doc.value.nodes.filter((n) => n.id !== id);
     syncEdges();
@@ -348,7 +310,6 @@ export function usePipelineDoc() {
     loadCommands,
     load,
     addNode,
-    renameNode,
     removeNode,
     removeBinding,
     move,
