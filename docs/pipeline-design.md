@@ -657,7 +657,7 @@ is not a guardrail.
 of a node, with the real result beside each one. Honest as far as it goes, and it stops at
 eyeballing: for 400 rows "did it keep the right ones" is not answerable by reading JSON.
 
-So `WriteReport`: rows in, CSV out, path returned and shown in the runner. It takes ANY list of
+So `ExportToCsv`: rows in, CSV out, path returned and shown in the runner. It takes ANY list of
 objects, which is what lets one node serve both ends of the gap — bind a Filter's `items` to
 report what a check found, or a purge's `warnings` to report what a write ran into, the ~340 that
 were being collected and read by nobody.
@@ -672,7 +672,7 @@ Three decisions in it are not obvious:
   one, so the same file is a table on one desk and a single column on the next. The `sep=` first
   line settles it for Excel either way, and the BOM keeps Cyrillic and umlauts from arriving as
   mojibake.
-- **Rendering is a pure function** (`WriteReport.Render`), tested. Everything that quietly ruins a
+- **Rendering is a pure function** (`ExportToCsv.Render`), tested. Everything that quietly ruins a
   report lives there: a family name containing the separator shifts every column after it by one,
   and a misaligned report is worse than one that failed to appear.
 

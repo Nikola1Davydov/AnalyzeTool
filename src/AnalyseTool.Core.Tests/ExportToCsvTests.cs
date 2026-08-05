@@ -11,7 +11,7 @@ namespace AnalyseTool.Core.Tests
     /// misaligned is worse than one that failed to appear.
     /// </summary>
     [TestFixture]
-    public sealed class WriteReportTests
+    public sealed class ExportToCsvTests
     {
         private static JArray Rows(params object[] rows) => JArray.FromObject(rows);
 
@@ -24,7 +24,7 @@ namespace AnalyseTool.Core.Tests
             // Union, not the first row's keys: rows from two sources need not agree, and a field only
             // some of them carry is exactly what a check is looking for. Dropping it would make the
             // report agree with whichever row happened to be first.
-            List<string> columns = WriteReport.Columns(
+            List<string> columns = ExportToCsv.Columns(
                 Rows(new { id = 1, name = "a" }, new { id = 2, mark = "K-01" }), null);
 
             Assert.That(columns, Is.EqualTo(new[] { "id", "name", "mark" }));
@@ -33,7 +33,7 @@ namespace AnalyseTool.Core.Tests
         [Test]
         public void Requested_columns_are_honoured_in_the_order_given()
         {
-            List<string> columns = WriteReport.Columns(
+            List<string> columns = ExportToCsv.Columns(
                 Rows(new { id = 1, name = "a" }), new List<string> { "name", "id" });
 
             Assert.That(columns, Is.EqualTo(new[] { "name", "id" }));
@@ -44,8 +44,8 @@ namespace AnalyseTool.Core.Tests
         {
             // Binding `items[*].id` hands this node a list of numbers, not of rows. One column named
             // "value" rather than a file with a header and no data.
-            List<string> columns = WriteReport.Columns(Rows(1, 2, 3), null);
-            string csv = WriteReport.Render(Rows(1, 2, 3), columns, ";", null);
+            List<string> columns = ExportToCsv.Columns(Rows(1, 2, 3), null);
+            string csv = ExportToCsv.Render(Rows(1, 2, 3), columns, ";", null);
 
             Assert.That(columns, Is.EqualTo(new[] { "value" }));
             Assert.That(Lines(csv), Is.EqualTo(new[] { "sep=;", "value", "1", "2", "3" }));
@@ -56,13 +56,13 @@ namespace AnalyseTool.Core.Tests
         {
             // "Fenster, doppelt" is an ordinary Revit family name. Unquoted it becomes two cells and
             // every column after it in that row is wrong.
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { name = "Fenster, doppelt", mark = "K-01" }), new[] { "name", "mark" }, ";", null);
 
             Assert.That(Lines(csv)[2], Is.EqualTo("\"Fenster, doppelt\";K-01"),
                 "the comma is inside the value, and the separator here is a semicolon");
 
-            string comma = WriteReport.Render(
+            string comma = ExportToCsv.Render(
                 Rows(new { name = "Fenster, doppelt" }), new[] { "name" }, ",", null);
 
             Assert.That(Lines(comma)[2], Is.EqualTo("\"Fenster, doppelt\""));
@@ -71,7 +71,7 @@ namespace AnalyseTool.Core.Tests
         [Test]
         public void Quotes_and_newlines_survive()
         {
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { note = "he said \"no\"\nthen left" }), new[] { "note" }, ";", null);
 
             Assert.That(csv, Does.Contain("\"he said \"\"no\"\"\nthen left\""));
@@ -82,7 +82,7 @@ namespace AnalyseTool.Core.Tests
         {
             // The row count and the column count have to stay rectangular, or every following row reads
             // as shifted in whatever opens the file.
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { id = 1 }), new[] { "id", "mark" }, ";", null);
 
             Assert.That(Lines(csv)[2], Is.EqualTo("1;"));
@@ -93,7 +93,7 @@ namespace AnalyseTool.Core.Tests
         {
             // A purge's warnings carry `elementIds: [123, 456]`. An empty cell there would drop the only
             // part of the warning anyone can act on.
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { description = "w", elementIds = new[] { 123, 456 } }),
                 new[] { "description", "elementIds" },
                 ";",
@@ -107,7 +107,7 @@ namespace AnalyseTool.Core.Tests
         {
             // On a German or Russian machine the current culture writes 1,5 — which is the separator on
             // that same machine, so the number would split itself across two columns.
-            string csv = WriteReport.Render(Rows(new { area = 1.5 }), new[] { "area" }, ";", null);
+            string csv = ExportToCsv.Render(Rows(new { area = 1.5 }), new[] { "area" }, ";", null);
 
             Assert.That(Lines(csv)[2], Is.EqualTo("1.5"));
         }
@@ -115,7 +115,7 @@ namespace AnalyseTool.Core.Tests
         [Test]
         public void A_dotted_column_reaches_into_the_row()
         {
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { name = "a", parameters = new { mark = "K-01" } }),
                 new[] { "name", "parameters.mark" },
                 ";",
@@ -127,7 +127,7 @@ namespace AnalyseTool.Core.Tests
         [Test]
         public void The_sep_line_comes_first_and_a_title_sits_above_the_columns()
         {
-            string csv = WriteReport.Render(
+            string csv = ExportToCsv.Render(
                 Rows(new { id = 1 }), new[] { "id" }, ";", "Types without a Mark");
 
             Assert.That(Lines(csv), Is.EqualTo(new[] { "sep=;", "Types without a Mark", "id", "1" }));
@@ -138,7 +138,7 @@ namespace AnalyseTool.Core.Tests
         {
             // "Nothing failed the check" is a result worth having on paper, and an empty file cannot be
             // told apart from a run that never happened.
-            string csv = WriteReport.Render(new JArray(), new[] { "id", "mark" }, ";", "Clean");
+            string csv = ExportToCsv.Render(new JArray(), new[] { "id", "mark" }, ";", "Clean");
 
             Assert.That(Lines(csv), Is.EqualTo(new[] { "sep=;", "Clean", "id;mark" }));
         }

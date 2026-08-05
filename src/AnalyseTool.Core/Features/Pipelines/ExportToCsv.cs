@@ -11,7 +11,11 @@ using System.Text;
 namespace AnalyseTool.Core.Features.Pipelines
 {
     /// <summary>
-    /// The sink. Writes a list of rows to a CSV file a person can open.
+    /// The sink. Exports a list of rows to a CSV file a person can open.
+    ///
+    /// <para>Named for the FILE it produces, not for the role it plays. "Report" describes what an author
+    /// wants; the palette has to answer what the node does, and the difference between a node that writes
+    /// a CSV and one that composes a document is exactly what an author is choosing between.</para>
     ///
     /// <para>Without one, a read-only pipeline has nowhere to put its answer. Every checking routine ends
     /// the same way — "which elements are missing a Mark", "which types are unused" — and the result went
@@ -33,7 +37,7 @@ namespace AnalyseTool.Core.Features.Pipelines
     /// The <c>sep=</c> first line settles it for Excel regardless of locale.</para>
     /// </summary>
     [RevitCommand(
-        Description = "Writes rows to a CSV report in the AnalyseTool reports folder and returns its path. " +
+        Description = "Exports rows to a CSV file in the AnalyseTool reports folder and returns its path. " +
                       "Payload: { items: [...], name, title, columns: [\"a\",\"b\"], separator }. " +
                       "Takes any list of objects — bind a Filter's 'items' to report what a check found, " +
                       "or a purge's 'warnings' to report what a write ran into. Columns default to every " +
@@ -41,9 +45,9 @@ namespace AnalyseTool.Core.Features.Pipelines
                       "The file name carries a timestamp and never overwrites an earlier report. " +
                       "Reads and writes NOTHING in the Revit model. Returns { path, rows, columns }.",
         ReadOnly = true,
-        InputType = typeof(WriteReport.Request),
-        OutputType = typeof(ReportResult))]
-    internal sealed class WriteReport : IRevitTask
+        InputType = typeof(ExportToCsv.Request),
+        OutputType = typeof(CsvExportResult))]
+    internal sealed class ExportToCsv : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
@@ -65,8 +69,8 @@ namespace AnalyseTool.Core.Features.Pipelines
                 Render(rows, columns, separator, req.Title),
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
-            Log.Information("Report written: {Path} ({Rows} row(s))", path, rows.Count);
-            return Task.FromResult<object?>(new ReportResult(path, rows.Count, columns));
+            Log.Information("CSV written: {Path} ({Rows} row(s))", path, rows.Count);
+            return Task.FromResult<object?>(new CsvExportResult(path, rows.Count, columns));
         }
 
         /// <summary>
@@ -176,7 +180,7 @@ namespace AnalyseTool.Core.Features.Pipelines
         }
     }
 
-    internal sealed record ReportResult(
+    internal sealed record CsvExportResult(
         [property: JsonProperty("path")] string Path,
         [property: JsonProperty("rows")] int Rows,
         [property: JsonProperty("columns")] IReadOnlyList<string> Columns);
