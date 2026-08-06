@@ -24,12 +24,22 @@ sealed partial class Build
     AbsolutePath SdkProject => RootDirectory / "src" / "AnalyseTool.Sdk" / "AnalyseTool.Sdk.csproj";
     AbsolutePath SampleProject => RootDirectory / "samples" / "Acme.Sample" / "Acme.Sample.csproj";
 
-    /// <summary>The Revit-FREE test projects. Both run anywhere, which is what makes them CI material —
-    /// AnalyseTool.Test cannot be here because it references the host and drags Revit in with it.</summary>
-    AbsolutePath[] TestProjects =>
+    /// <summary>
+    /// The Revit-FREE test projects, each with the configuration it is built under.
+    ///
+    /// <para>They run anywhere, which is what makes them CI material — AnalyseTool.Test cannot be here
+    /// because it references the host and drags Revit in with it.</para>
+    ///
+    /// <para>The configuration differs and cannot be shared: the plugin's test projects import
+    /// AnalyseTool.Extension.props and therefore only know "Debug R25"/"R26"/"R27", while IdsSharp is an
+    /// independent library outside that world and knows plain Debug. Forcing one on the other is the
+    /// kind of coupling that makes the library harder to move out later.</para>
+    /// </summary>
+    (AbsolutePath Project, string Configuration)[] TestProjects =>
     [
-        RootDirectory / "src" / "AnalyseTool.Core.Tests" / "AnalyseTool.Core.Tests.csproj",
-        RootDirectory / "src" / "AnalyseTool.Tools.Tests" / "AnalyseTool.Tools.Tests.csproj",
+        (RootDirectory / "src" / "AnalyseTool.Core.Tests" / "AnalyseTool.Core.Tests.csproj", "Debug R25"),
+        (RootDirectory / "src" / "AnalyseTool.Tools.Tests" / "AnalyseTool.Tools.Tests.csproj", "Debug R25"),
+        (RootDirectory / "libs" / "Ids" / "IdsSharp.Tests" / "IdsSharp.Tests.csproj", "Debug"),
     ];
 
     /// <summary>Dependency contract + headless invariant — same script devs run locally.</summary>
@@ -70,16 +80,19 @@ sealed partial class Build
     ///
     /// <para>One TFM is enough here, unlike CompileCi: these projects pull the Revit API compile-only and
     /// touch no Revit type, so there is no per-year behaviour to cover.</para>
+    ///
+    /// <para>Depends on CheckBoundaries so a dependency-contract violation fails before anything is
+    /// compiled — a test run that passes inside a broken layering is not information.</para>
     /// </summary>
     Target RunTests => _ => _
         .DependsOn(CheckBoundaries)
         .Executes(() =>
         {
-            foreach (AbsolutePath project in TestProjects)
+            foreach ((AbsolutePath project, string configuration) in TestProjects)
             {
                 DotNetTest(settings => settings
                     .SetProjectFile(project)
-                    .SetConfiguration("Debug R25")
+                    .SetConfiguration(configuration)
                     .SetVerbosity(DotNetVerbosity.minimal));
             }
         });

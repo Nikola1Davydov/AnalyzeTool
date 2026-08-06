@@ -26,7 +26,11 @@ $failures = @()
 $contract = @{
     'AnalyseTool.Sdk'        = @()
     'AnalyseTool.Core'       = @('AnalyseTool.Sdk')
-    'AnalyseTool.Tools'      = @('AnalyseTool.Sdk')
+    # IdsSharp is NOT part of the platform split. It is an independent MIT library that happens to
+    # live in this repository for now (libs/Ids), and Tools consumes it exactly as it would consume a
+    # NuGet package — the ProjectReference is a stand-in for a PackageReference and becomes one the
+    # day the library moves out. Whitelisted rather than exempted so the substitution stays visible.
+    'AnalyseTool.Tools'      = @('AnalyseTool.Sdk', 'IdsSharp')
     'AnalyseTool.Mcp.Bridge' = @('AnalyseTool.Core', 'AnalyseTool.Sdk')
     'AnalyseTool.App'        = @('AnalyseTool.Core', 'AnalyseTool.Mcp.Bridge', 'AnalyseTool.Sdk', 'AnalyseTool.Tools')
     'AnalyseTool.Mcp'        = @()

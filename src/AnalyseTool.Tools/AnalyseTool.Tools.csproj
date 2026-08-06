@@ -36,6 +36,12 @@
 
     <ItemGroup>
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+
+        <!-- An independent MIT library that happens to live in this repository for now. Consumed as a
+             package would be, so the day it moves to its own repository this line becomes a
+             PackageReference and nothing else changes. It brings ids-lib (buildingSMART's own IDS
+             auditor) and Microsoft.Extensions.Logging.Abstractions with it. -->
+        <ProjectReference Include="..\..\libs\Ids\IdsSharp\IdsSharp.csproj" />
     </ItemGroup>
 
     <!-- AiProviderRegistry needs ToolData.PLUGIN_NAME for the profile folder. -->
