@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A standalone, MIT-licensed reader and evaluator for buildingSMART IDS (Information Delivery
+    Specification) files.
+
+    DELIBERATELY SELF-CONTAINED. It lives under libs/ rather than src/ because it is not part of the
+    AnalyseTool platform split: src/ is governed by Check-Boundaries.ps1 and by central package
+    management, and this has neither a place in that dependency contract nor a reason to share its
+    package versions. Moving it to its own repository should be `git mv` and nothing else — no
+    imported props, no solution-level pins, no shared source.
+
+    NO DEPENDENCY ON REVIT, ON IFC, OR ON ANYTHING ELSE. The evaluator works against IModelEntity,
+    which a caller implements over whatever it has: a Revit document, a parsed IFC file, a test
+    double. That abstraction is the whole design — it is what lets the same checker answer "does the
+    Revit model satisfy this?" today and "does the exported IFC satisfy it?" later, without the
+    checking logic knowing the difference.
+
+    netstandard2.0 as well as net8.0 so it is usable from Dynamo, from .NET Framework tooling and
+    from console utilities, not only from a modern host.
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <PackageId>IdsSharp</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Nikolai Davydov</Authors>
+    <Description>
+      Reads buildingSMART IDS (Information Delivery Specification) files and evaluates them against
+      any model you can describe through a small interface. No IFC toolkit and no CAD dependency.
+      Reports which facets it does NOT support rather than passing them silently.
+    </Description>
+    <PackageTags>ids;buildingsmart;bim;ifc;validation;openbim</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
