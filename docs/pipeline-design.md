@@ -457,23 +457,7 @@ model, so reusing it would mean writing a graph library inside a dashboard. It l
 editor's own lazy chunk, which is why the dock pane's bundle is unaffected.
 
 Palette from the live command catalogue (`GetCommands`), so an installed extension's commands are
-in it without the editor knowing anything about extensions. **Grouped by the part each command
-plays, in the order those parts appear in a pipeline** — read → narrow → ask a model → approve →
-write → hand off — so reading the palette top to bottom reads the skeleton of a graph, instead of
-hunting `Filter` in an alphabetical list between `GetFamilyMesh` and `GetCadImports`.
-
-Worth recording why the palette is grouped and not *filtered down to the AI nodes*, since the
-references invite the opposite reading. ComfyUI's palette is mostly **deterministic** — loaders,
-latents, masks, upscalers — with the model in essentially one node; n8n's is hundreds of
-integrations with a handful of AI nodes. Their value is the size of that deterministic catalogue:
-the AI node is powerful because there is something to wire it to. Hide the ordinary commands here
-and `AiTransform` has neither an input (`GetFamilies`, `GetElements`) nor anything to write its
-answer (`SetDataToParameters`, `RenameFamilyType`) — what is left is a text box, which is a chat.
-
-The role comes from the **host** (`PipelineSafety.RoleOf`, published by `GetCommands`), not from a
-list in the editor. The editor already has to know which node is an AI and which is the gate — the
-graph invariant is enforced on exactly that — and a second list would be a second answer to one
-question, agreeing until the day one of them was edited. Parameter forms from the declared
+in it without the editor knowing anything about extensions. Parameter forms from the declared
 `inputSchema` — a command that declares its input gets a form for free, which is #89 paying for
 itself a second time. Validation is inline (`ValidatePipeline` with the draft document), so a
 pipeline is checked before it is ever written to disk.

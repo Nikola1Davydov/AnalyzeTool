@@ -86,39 +86,13 @@ async function preview() {
   }
 }
 
-// The palette, grouped by the part each command plays — and in the order those parts appear in a
-// pipeline. Seventy-two names in one alphabetical list is noise: Filter sits between FamilyMesh and
-// GetCadImports, and nothing tells an author where to start.
+// Commands that belong to the PIPELINE rather than to the model. They are what a graph is built out
+// of — Filter is in nearly every pipeline worth writing — and they do not deserve to be hunted for
+// in an alphabetical list between GetWorksets and PlaceFamilyInstance.
 //
-// This is what ComfyUI and n8n actually do, and it is worth being precise about it, because the
-// obvious reading of them is backwards. ComfyUI's palette is mostly DETERMINISTIC — loaders,
-// latents, masks, upscalers — with the model in one node; n8n's is hundreds of integrations with a
-// handful of AI nodes. Their value is the size of that deterministic catalogue: the AI node is
-// powerful because there is something to wire it to. What they group is the palette, not the graph.
-//
-// Roles come from the HOST (PipelineSafety.RoleOf, published by GetCommands). The editor already
-// needs to know which node is an AI and which is the gate — the validator enforces an invariant on
-// exactly that — and a second list here would be a second answer to one question. They would agree
-// until the day one of them was edited.
-const GROUPS: { role: string; title: string; hint: string; accent?: boolean }[] = [
-  { role: "read", title: "Read the model", hint: "Where a pipeline starts." },
-  { role: "narrow", title: "Narrow", hint: "Keep only the rows that matter." },
-  {
-    role: "ai",
-    title: "Ask a model",
-    hint: "A proposal, not a reading. Needs an approval before any write.",
-    accent: true,
-  },
-  {
-    role: "gate",
-    title: "Approve",
-    hint: "Splits proposals into what may be written and what a person looks at.",
-    accent: true,
-  },
-  { role: "write", title: "Change the model", hint: "Stopping a run does not undo what it did." },
-  { role: "report", title: "Hand off", hint: "What the run leaves behind for a person." },
-  { role: "other", title: "Other", hint: "Neither reads the model nor changes it." },
-];
+// A list here rather than a flag on the attribute: this is an editing convenience, and the SDK does
+// not need an opinion about it. It grows when #92 adds AI nodes.
+const PINNED = ["Filter", "AiTransform", "Approval", "ExportToCsv"];
 
 const matches = (c: { name: string; description: string | null }, term: string) =>
   !term ||
@@ -127,16 +101,14 @@ const matches = (c: { name: string; description: string | null }, term: string) 
 
 const term = computed(() => search.value.trim().toLowerCase());
 
-/** A build of the host without roles still gets a usable palette, in one group, rather than none. */
-const roleOf = (c: { role?: string }) => c.role ?? "other";
+const pinned = computed(() =>
+  commands.value.filter((c) => PINNED.includes(c.name) && matches(c, term.value)),
+);
 
-const groups = computed(() =>
-  GROUPS.map((group) => ({
-    ...group,
-    commands: commands.value
-      .filter((c) => roleOf(c) === group.role && matches(c, term.value))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  })).filter((group) => group.commands.length > 0),
+const palette = computed(() =>
+  [...commands.value]
+    .filter((c) => !PINNED.includes(c.name) && matches(c, term.value))
+    .sort((a, b) => a.name.localeCompare(b.name)),
 );
 
 const selectedIndex = computed(() =>
@@ -400,39 +372,33 @@ watch(() => doc.value.nodes.length, () => void pipeline.validate());
       <!-- Palette: the live command catalogue, so an installed extension's commands are here too. -->
       <div class="flex w-64 shrink-0 flex-col gap-2 border-r p-2">
         <InputText v-model="search" placeholder="Search commands" size="small" />
-        <!-- Groups in the order their parts appear in a pipeline, so reading the palette top to
-             bottom reads the skeleton of a graph: read, narrow, ask, gate, write, hand off. -->
         <div class="flex min-h-0 grow flex-col gap-1 overflow-auto">
-          <div v-for="group in groups" :key="group.role" class="flex flex-col gap-1">
-            <div class="mt-2 flex items-baseline gap-1 first:mt-0">
-              <span class="text-[11px] font-semibold uppercase tracking-wide opacity-70">
-                {{ group.title }}
-              </span>
+          <button
+            v-for="command in pinned"
+            :key="command.name"
+            class="rounded border border-primary-300 bg-primary-50 p-2 text-left text-xs hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40"
+            @click="addFromPalette(command.name)"
+          >
+            <div class="flex items-center gap-1">
+              <i class="pi pi-filter text-primary-500" style="font-size: 0.7rem" />
+              <span class="font-medium">{{ command.name }}</span>
             </div>
-            <p class="text-[10px] leading-tight opacity-45">{{ group.hint }}</p>
+            <div class="line-clamp-2 opacity-60">{{ command.description }}</div>
+          </button>
+          <div v-if="pinned.length && palette.length" class="my-1 border-t opacity-40" />
 
-            <button
-              v-for="command in group.commands"
-              :key="command.name"
-              class="rounded border p-2 text-left text-xs"
-              :class="
-                group.accent
-                  ? 'border-primary-300 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40'
-                  : 'hover:bg-surface-100 dark:hover:bg-surface-800'
-              "
-              @click="addFromPalette(command.name)"
-            >
-              <div class="flex items-center gap-1">
-                <span class="font-medium">{{ command.name }}</span>
-                <i v-if="command.destructive" class="pi pi-exclamation-triangle text-red-500" />
-              </div>
-              <div class="line-clamp-2 opacity-60">{{ command.description }}</div>
-            </button>
-          </div>
-
-          <p v-if="!groups.length" class="p-2 text-xs opacity-60">
-            No command matches “{{ search }}”.
-          </p>
+          <button
+            v-for="command in palette"
+            :key="command.name"
+            class="rounded border p-2 text-left text-xs hover:bg-surface-100 dark:hover:bg-surface-800"
+            @click="addFromPalette(command.name)"
+          >
+            <div class="flex items-center gap-1">
+              <span class="font-medium">{{ command.name }}</span>
+              <i v-if="command.destructive" class="pi pi-exclamation-triangle text-red-500" />
+            </div>
+            <div class="line-clamp-2 opacity-60">{{ command.description }}</div>
+          </button>
         </div>
       </div>
 

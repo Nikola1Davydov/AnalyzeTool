@@ -43,38 +43,6 @@ namespace AnalyseTool.Core.Common.Pipelines
             "SetInstancesWorkset",
         };
 
-        /// <summary>The two other nodes the palette has to recognise by name — the narrowing step and the
-        /// hand-off — so that the role of every command is decided in ONE place.</summary>
-        public const string FilterCommand = "Filter";
-        public const string ReportCommand = "ExportToCsv";
-
-        /// <summary>
-        /// What part a command plays in a pipeline, in the order the parts usually appear in one:
-        /// <c>read → narrow → ai → gate → write → report</c>.
-        ///
-        /// <para>Computed here and published by <c>GetCommands</c> rather than worked out again in the
-        /// editor. The frontend already needs to know which node is an AI and which is the gate, and a
-        /// second list over there would be a second answer to a question this file exists to answer —
-        /// the two would agree until the day one of them was edited.</para>
-        ///
-        /// <para>It is also what turns a palette of 72 alphabetical names into the shape of a pipeline:
-        /// read the model, narrow what came back, ask a model about it, gate the answer, write, hand
-        /// off. Reading the groups top to bottom is reading the skeleton of the graph.</para>
-        /// </summary>
-        public static string RoleOf(string? command, bool readOnly, bool destructive)
-        {
-            // Named roles first: Filter, AiTransform, Approval and ExportToCsv are all read-only, so
-            // testing the flags first would bury every one of them in "read".
-            if (string.Equals(command, FilterCommand, StringComparison.OrdinalIgnoreCase)) return "narrow";
-            if (IsAi(command)) return "ai";
-            if (IsApproval(command)) return "gate";
-            if (string.Equals(command, ReportCommand, StringComparison.OrdinalIgnoreCase)) return "report";
-
-            if (destructive) return "write";
-            if (readOnly) return "read";
-            return "other";
-        }
-
         public static bool IsAi(string? command) => command is not null && Ai.Contains(command);
 
         public static bool IsApproval(string? command) =>
