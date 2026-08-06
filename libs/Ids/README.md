@@ -73,11 +73,40 @@ The same reasoning runs through the rest:
 | `cardinality` required / optional / prohibited | supported |
 | `minOccurs` / `maxOccurs` on applicability | supported |
 | `classification`, `material`, `partOf` | **parsed, reported as not checked** |
-| XSD validation against the official `ids.xsd` | not yet |
+| Validating the .ids file itself | delegated to `ids-lib` (see below) |
 | Official buildingSMART test suite in CI | not yet |
 
-Until those last two are done, treat this as *"reads IDS and checks the facets above"* rather than
-*"IDS conformant"*. Claiming more than a tool does is the failure it is built to catch.
+Treat this as *"reads IDS and checks the facets above"* rather than *"IDS conformant"*. Claiming more
+than a tool does is the failure it is built to catch.
+
+## Validating the specification itself
+
+`IdsParser.ParseFile` runs **[ids-lib](https://www.nuget.org/packages/ids-lib)** — buildingSMART's
+own auditor, MIT — before parsing, and refuses a file with errors:
+
+```csharp
+IdsAuditResult audit = IdsAudit.CheckFile("project.ids");
+if (audit.HasErrors) Console.WriteLine(audit.Describe());
+```
+
+Delegated rather than hand-rolled. Reimplementing the XSD and the format's implementation agreements
+would produce a checker subtly wrong in ways only the official suite catches — and a checker that
+accepts an invalid specification and then reports a clean model is exactly what this library exists
+to prevent.
+
+`IdsParser.Parse(string)` stays lenient and does not audit: files in the wild carry several versions
+of the IDS namespace and some carry none, and refusing those would be strictness that helps nobody.
+Strict when you ask whether a file is valid; tolerant when you ask what it says.
+
+## What else exists, and when to use it instead
+
+- **[Xbim.IDS.Validator](https://github.com/xBimTeam/Xbim.IDS.Validator)** implements IDS 1.0 in full
+  — every facet, 100% on the official test suite, IFC2x3/IFC4/IFC4.3 and COBie. If you are validating
+  an **IFC file** and can live with **AGPL v3** (or buy a commercial licence from xbim Ltd), use it.
+  It is more complete than this will ever be.
+- **This library** exists for the case that one does not cover: checking a model that is **not IFC**
+  — an authoring model, a database, anything you can describe through six methods — under a permissive
+  licence. Not a competitor; a different question.
 
 ## Licence
 

@@ -27,10 +27,34 @@ namespace IdsSharp
     {
         private static readonly XNamespace Xs = "http://www.w3.org/2001/XMLSchema";
 
-        public static IdsDocument ParseFile(string path)
+        /// <summary>
+        /// Reads a .ids file from disk, auditing it first.
+        ///
+        /// <para>The audit is on by default because this is the entry point a real consumer uses, and
+        /// the failure it prevents is the expensive one: a specification that is subtly invalid parses
+        /// into something plausible, checks a model, and produces a report nobody can tell from a real
+        /// one. <see cref="Parse(string)"/> stays lenient for fragments and for callers who have
+        /// already audited.</para>
+        /// </summary>
+        /// <param name="path">Path to the .ids file.</param>
+        /// <param name="audit">False to skip buildingSMART's auditor.</param>
+        public static IdsDocument ParseFile(string path, bool audit = true)
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("No path.", nameof(path));
             if (!File.Exists(path)) throw new IdsParseException($"There is no IDS file at '{path}'.");
+
+            if (audit)
+            {
+                IdsAuditResult result = IdsAudit.CheckFile(path);
+
+                // Errors refuse; warnings do not. A file with structure warnings is still checkable, and
+                // refusing it would make the audit something callers switch off — which would cost the
+                // errors too.
+                if (result.HasErrors)
+                    throw new IdsParseException(
+                        $"'{Path.GetFileName(path)}' is not valid IDS, so nothing checked against it " +
+                        $"could be trusted. {result.Describe()}");
+            }
 
             return Parse(File.ReadAllText(path));
         }

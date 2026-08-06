@@ -43,6 +43,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      The ONE dependency, and it is buildingSMART's own: ids-lib audits a .ids file against the
+      official XML schema and the format's implementation agreements. Hand-rolled checks could not
+      credibly claim that, and a checker that accepts a subtly invalid specification and reports a
+      clean model is the exact failure this library is built to avoid.
+
+      MIT, and it targets netstandard2.0/net8.0 as this does. Microsoft.Extensions.Logging.Abstractions
+      arrives with it and is referenced explicitly because the audit's messages — the useful part —
+      only come out through an ILogger.
+    -->
+    <PackageReference Include="ids-lib" Version="1.0.121" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
