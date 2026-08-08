@@ -197,7 +197,7 @@ async function runAI() {
     }
     if (!detail.edits || !Array.isArray(detail.edits)) return;
 
-    const byElementId = new Map(detail.edits.map((e) => [e.ElementId, e]));
+    const byElementId = new Map(detail.edits.map((e) => [e.elementId, e]));
     let appliedCount = 0;
     rowState.value = rowState.value.map((s, i) => {
       if (readOnlyIndices.value.has(i)) return s;
@@ -206,8 +206,8 @@ async function runAI() {
       appliedCount++;
       return {
         ...s,
-        pendingValue: String(edit.NewValue ?? ""),
-        reason: String(edit.Reason ?? ""),
+        pendingValue: String(edit.newValue ?? ""),
+        reason: String(edit.reason ?? ""),
         decision: "accepted",
       };
     });
@@ -234,13 +234,24 @@ async function runAIRaw() {
     .filter((p): p is ParameterData => p != null);
 
   try {
-    const detail = await invoke<unknown>(Commands.OllamaAnalyse, {
-      items: paramItems,
-      prompt: aiPrompt.value,
-      model: aiSettingsStore.selectedModel!,
-      provider: aiSettingsStore.selectedProvider,
-    });
-    rawAiResponse.value = typeof detail === "string" ? detail : JSON.stringify(detail);
+    const detail = await invoke<{ analysis: string | null; error: string | null }>(
+      Commands.OllamaAnalyse,
+      {
+        items: paramItems,
+        prompt: aiPrompt.value,
+        model: aiSettingsStore.selectedModel!,
+        provider: aiSettingsStore.selectedProvider,
+      },
+    );
+
+    // A timeout or a rejected key now arrives as data rather than a thrown message, so it needs
+    // surfacing here — the catch below no longer sees it.
+    if (detail?.error) {
+      notificationStore.error(detail.error);
+      return;
+    }
+
+    rawAiResponse.value = detail?.analysis ?? null;
     showRawPanel.value = true;
     notificationStore.info("AI analysis completed");
   } catch (err) {

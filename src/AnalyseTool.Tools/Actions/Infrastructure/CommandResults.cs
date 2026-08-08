@@ -6,9 +6,12 @@ namespace AnalyseTool.Tools.Actions
     // Result types for the Actions commands. These are the write commands a pipeline ends with, so what
     // they return is not a detail: an unattended caller has no other way to learn what actually landed.
     //
-    // Both records carry error AND warnings, and they are different things. An error means the command
-    // did not do its job; a warning means Revit objected to something and the command resolved it
-    // without a dialog (see CollectingFailuresPreprocessor). A run can succeed with fifty warnings.
+    // SetDataResult and IsolationResult carry error AND warnings, and they are different things. An error
+    // means the command did not do its job; a warning means Revit objected to something and the command
+    // resolved it without a dialog (see CollectingFailuresPreprocessor). A run can succeed with fifty
+    // warnings. SelectionResult has no warnings field, deliberately: changing the selection opens no
+    // transaction, so there is no failure handler to collect any, and a field that is always empty
+    // promises a caller something this command can never deliver.
     //
     // camelCase spelled out: the wire is written by Newtonsoft (declared names by default) and the
     // schema published for OutputType is generated with Web defaults (camelCase).
@@ -29,4 +32,12 @@ namespace AnalyseTool.Tools.Actions
         [property: JsonProperty("isolated")] int Isolated,
         [property: JsonProperty("error")] string? Error,
         [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning> Warnings);
+
+    /// <summary>Outcome of setting the active document's selection. <see cref="Selected"/> is read back
+    /// from Revit rather than counted from the request: ids the document does not hold never make it
+    /// into the selection, and the caller's own list cannot tell it how many did.</summary>
+    public sealed record SelectionResult(
+        [property: JsonProperty("ok")] bool Ok,
+        [property: JsonProperty("selected")] int Selected,
+        [property: JsonProperty("error")] string? Error);
 }

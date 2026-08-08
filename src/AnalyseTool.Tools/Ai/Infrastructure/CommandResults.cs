@@ -49,4 +49,53 @@ namespace AnalyseTool.Tools.Ai
         [property: JsonProperty("running")] bool Running,
         [property: JsonProperty("models")] IReadOnlyList<string>? Models,
         [property: JsonProperty("error")] string? Error);
+
+    /// <summary>Free-text answer from an AI analysis run — prose for a human to read, not data to act on.
+    /// Wrapped in an object rather than returned as a bare string because a schema describes an object:
+    /// a top-level string leaves nowhere to put <see cref="Error"/>, and MCP's structuredContent cannot
+    /// carry it at all.</summary>
+    public sealed record AiAnalysisResult(
+        [property: JsonProperty("analysis")] string? Analysis,
+        [property: JsonProperty("error")] string? Error);
+
+    /// <summary>One parameter change the model proposes. Keyed by <see cref="ElementId"/> — the caller's
+    /// own id, echoed back — so a row can be matched to what the model said about it.
+    ///
+    /// A wire type of its own rather than AiAnalysisService.ParameterAiEdit: that record is the shape the
+    /// PROMPT asks the model for (System.Text.Json, PascalCase keys by instruction), and rewording a
+    /// prompt should not silently rename a published schema's fields.</summary>
+    public sealed record AiParameterEdit(
+        [property: JsonProperty("elementId")] long ElementId,
+        [property: JsonProperty("parameter")] string Parameter,
+        [property: JsonProperty("oldValue")] string OldValue,
+        [property: JsonProperty("newValue")] string NewValue,
+        [property: JsonProperty("reason")] string Reason);
+
+    /// <summary>Proposed parameter edits — a proposal, never an applied change: the caller decides, then
+    /// writes them with SetDataToParameters. <see cref="Raw"/> is the model's unparsed answer, kept
+    /// because when parsing yields nothing it is the only evidence of why.</summary>
+    public sealed record AiEditsResult(
+        [property: JsonProperty("edits")] IReadOnlyList<AiParameterEdit> Edits,
+        [property: JsonProperty("raw")] string? Raw,
+        [property: JsonProperty("error")] string? Error);
+
+    /// <summary>One configured AI provider as the frontend may see it. There is no key field and never
+    /// will be: <see cref="HasKey"/> says whether one is stored, and the key itself stays host-side,
+    /// DPAPI-encrypted (see AiProviderRegistry).</summary>
+    public sealed record AiProviderInfo(
+        [property: JsonProperty("id")] string Id,
+        [property: JsonProperty("displayName")] string DisplayName,
+        [property: JsonProperty("type")] string Type,
+        [property: JsonProperty("baseUrl")] string BaseUrl,
+        [property: JsonProperty("hasKey")] bool HasKey,
+        [property: JsonProperty("timeoutSeconds")] int TimeoutSeconds,
+        [property: JsonProperty("builtIn")] bool BuiltIn);
+
+    /// <summary>The provider registry after a read, a save or a delete. All three commands answer the same
+    /// question — what the registry looks like NOW — so they share one shape, and a caller that just
+    /// changed something never has to ask again to find out what it changed.</summary>
+    public sealed record AiProvidersResult(
+        [property: JsonProperty("ok")] bool Ok,
+        [property: JsonProperty("providers")] IReadOnlyList<AiProviderInfo> Providers,
+        [property: JsonProperty("error")] string? Error);
 }
