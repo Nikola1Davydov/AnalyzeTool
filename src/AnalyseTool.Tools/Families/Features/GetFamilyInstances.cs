@@ -3,6 +3,7 @@ using AnalyseTool.Tools.Elements;
 using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
+using System.ComponentModel;
 
 namespace AnalyseTool.Tools.Families
 {
@@ -40,18 +41,24 @@ namespace AnalyseTool.Tools.Families
         public sealed class Request
         {
             /// <summary>Owning family id (single-family case, e.g. Select/Isolate from a card).</summary>
+            [Description("Owning family id — the single-family case. Ids come from GetFamilies.")]
             public long? FamilyId { get; set; }
 
             /// <summary>Owning family ids (multi-family case, e.g. the Family Types tab over filtered families).</summary>
+            [Description("Owning family ids — the multi-family case. Use instead of familyId, not with it.")]
             public List<long>? FamilyIds { get; set; }
 
             /// <summary>Single type (FamilySymbol) id to narrow the instances to one type.</summary>
+            [Description("Optional FamilySymbol id, narrowing the answer to instances of that one type.")]
             public long? TypeId { get; set; }
 
             /// <summary>Type (FamilySymbol) ids to narrow the instances (e.g. a grouped row of types).</summary>
+            [Description("Optional FamilySymbol ids, narrowing the answer to instances of those types.")]
             public List<long>? TypeIds { get; set; }
 
             /// <summary>Optional cap on the number of returned instances (the total count is still reported).</summary>
+            [Description("Optional cap on how many instances come back. The total count is reported either " +
+                         "way, so a truncated answer still says how much was left out.")]
             public int? Limit { get; set; }
         }
     }

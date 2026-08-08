@@ -12,9 +12,11 @@ sealed partial class Build
     // CI guardrails live HERE (not in the workflow YAML) so the exact same pipeline runs locally
     // (`src/build.cmd Ci`) and on GitHub — ci.yml is reduced to "checkout, setup .NET, run Ci".
     //   1. dependency contract + headless Core/Tools invariant (Check-Boundaries.ps1)
-    //   2. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
-    //   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
-    //   4. the extension template the plugin generates actually builds, and Core's embedded
+    //   2. command schema contract: every command describes itself, declares the input it reads and
+    //      the output it returns (Check-Schemas.ps1)
+    //   3. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
+    //   4. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+    //   5. the extension template the plugin generates actually builds, and Core's embedded
     //      template resources are really in the assembly (Build.Ci.Template.cs)
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
@@ -35,12 +37,26 @@ sealed partial class Build
         });
 
     /// <summary>
+    /// Command schema contract — what a caller can know about a command without reading its source.
+    /// A source scan like CheckBoundaries, so it runs before any build: a command that describes
+    /// itself badly is cheaper to catch here than after three Revit years have compiled.
+    /// </summary>
+    Target CheckSchemas => _ => _
+        .Executes(() =>
+        {
+            AbsolutePath script = RootDirectory / "src" / "build" / "Check-Schemas.ps1";
+            ProcessTasks
+                .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\"", RootDirectory)
+                .AssertZeroExitCode();
+        });
+
+    /// <summary>
     /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
     /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
     /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
     /// </summary>
     Target CompileCi => _ => _
-        .DependsOn(CheckBoundaries)
+        .DependsOn(CheckBoundaries, CheckSchemas)
         .Executes(() =>
         {
             foreach (string configuration in new[] { "Debug R25", "Debug R26", "Debug R27" })

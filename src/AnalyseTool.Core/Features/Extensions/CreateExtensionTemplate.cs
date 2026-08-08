@@ -5,6 +5,7 @@ using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System.ComponentModel;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -277,13 +278,19 @@ namespace AnalyseTool.Core.Features.Extensions
 
     internal sealed class CreateExtensionTemplatePayload
     {
+        [Description("Folder name to scaffold into, created under the target root.")]
         public string FolderName { get; set; } = string.Empty;
         /// <summary>Template flavour: "UiOnly", "Csharp" or "Combo".</summary>
+        [Description("Template flavour: \"UiOnly\", \"Csharp\" or \"Combo\".")]
         public string Kind { get; set; } = "UiOnly";
+        [Description("Contents of the extension's plugin.json manifest.")]
         public ExtensionTemplateManifest PluginJson { get; set; } = new();
         /// <summary>HTML content for UI-flavoured templates. Ignored for "Csharp".</summary>
+        [Description("HTML content for UI-flavoured templates. Ignored for \"Csharp\".")]
         public string IndexHtml { get; set; } = string.Empty;
         /// <summary>Optional: which registered extension source root to scaffold into. Empty = default root.</summary>
+        [Description("Optional: which registered extension source root to scaffold " +
+                                           "into. Empty = the default root.")]
         public string TargetRoot { get; set; } = string.Empty;
     }
 

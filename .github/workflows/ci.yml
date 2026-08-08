@@ -3,8 +3,9 @@ name: CI
 # Thin wrapper: ALL CI logic lives in the Nuke build (src/build/Build.Ci.cs, target `Ci`), so the
 # exact same guardrails run locally via `src\build.cmd Ci`:
 #   1. dependency contract + headless Core/Tools invariant
-#   2. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
-#   3. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+#   2. command schema contract (every command describes itself, its input and its output)
+#   3. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
+#   4. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
 
 # Every branch, not just main/dev: the Sdk's build files (Extension.props, Sdk.targets) are consumed
 # by extension repositories that check this repo out by BRANCH, so an unverified push there breaks

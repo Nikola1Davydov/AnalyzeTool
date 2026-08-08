@@ -3,6 +3,7 @@ using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace AnalyseTool.Core.Features.Scripting
@@ -73,9 +74,11 @@ namespace AnalyseTool.Core.Features.Scripting
         internal sealed class Request
         {
             /// <summary>The C# to compile and run — a bare body or a full IRevitTask class.</summary>
+            [Description("The C# to compile and run: either a bare method body or a full IRevitTask class.")]
             public string Code { get; set; } = string.Empty;
 
             /// <summary>Optional description used when a bare body is wrapped into a command.</summary>
+            [Description("Optional description applied to the command a bare body gets wrapped into.")]
             public string? Description { get; set; }
         }
     }

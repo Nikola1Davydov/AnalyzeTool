@@ -1,4 +1,5 @@
 using AnalyseTool.Sdk;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 
@@ -30,6 +31,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
     internal sealed class OpenFolderPayload
     {
+        [Description("Absolute path of an existing folder to reveal in Explorer.")]
         public string Path { get; set; } = string.Empty;
     }
 }
