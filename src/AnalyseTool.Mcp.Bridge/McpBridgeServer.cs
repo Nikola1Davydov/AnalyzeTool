@@ -193,6 +193,24 @@ namespace AnalyseTool.Mcp.Bridge
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
 
+                // Checked HERE rather than in the command: the command deserializes with Newtonsoft, which
+                // drops an unrecognised field without a word, so a misspelled filter comes back as an
+                // unfiltered result that looks like a successful call.
+                //
+                // Validated against Compact() — the SAME schema tools/list published, not the stored one.
+                // They differ for a command whose schema exceeded the listing cap and went out as
+                // free-form: holding a caller to parameters it was never shown would be a rejection it
+                // cannot act on, so those go through unchecked, exactly as they do today.
+                // An unknown command is left alone — the queue owns that message.
+                CommandRegistration? registration = _queue.RegisteredCommands
+                    .FirstOrDefault(c => string.Equals(c.Name, command, StringComparison.OrdinalIgnoreCase));
+                if (registration is not null)
+                {
+                    string? complaint = PayloadValidator.Validate(
+                        command, SchemaListing.Compact(registration.InputSchemaJson), payload);
+                    if (complaint is not null) return Err(id, complaint);
+                }
+
                 object? result = await _queue.ExecuteAsync(
                     new CommandRequest(command, payload, Source)
                     {
