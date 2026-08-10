@@ -100,8 +100,11 @@ builder.Services
         catch (Exception ex)
         {
             // Bridge unreachable/slow — return no tools (don't fail the whole server). Log to stderr,
-            // which shows up in the AI client's MCP server log for diagnosis.
-            Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {ex.Message}");
+            // which shows up in the AI client's MCP server log for diagnosis. The code is worth having
+            // here too: "no tools appeared" has two common causes with opposite fixes — Revit is not
+            // running (revit_unreachable) versus the client was configured without a token
+            // (unauthorized) — and the bare message has been read as the wrong one before.
+            Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {Describe(ex)}");
         }
 
         // Published only now: until this assignment, callers still see the previous listing whole.
@@ -143,7 +146,7 @@ builder.Services
             return new CallToolResult
             {
                 IsError = true,
-                Content = { new TextContentBlock { Text = ex.Message } },
+                Content = { new TextContentBlock { Text = Describe(ex) } },
             };
         }
     });
@@ -242,6 +245,21 @@ static JsonElement FreeFormObjectSchema()
 /// here.</item>
 /// </list>
 /// </summary>
+/// <summary>
+/// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error
+/// is a text block, so the code has to travel inside the text, and a fixed leading token is something a
+/// reader can branch on where a sentence is not. The hint follows only when there is one — a line that
+/// restates the message teaches the reader to skip hints.
+/// </summary>
+static string Describe(Exception ex)
+{
+    if (ex is not BridgeException bridge)
+        return $"[{McpWire.Codes.CommandFailed}] {ex.Message}";
+
+    string text = $"[{bridge.Code}] {bridge.Message}";
+    return string.IsNullOrWhiteSpace(bridge.Hint) ? text : $"{text}\nHint: {bridge.Hint}";
+}
+
 static bool DeclaresObjectResult(JsonNode? schema)
 {
     if (schema is not JsonObject obj) return false;

@@ -22,7 +22,7 @@ namespace AnalyseTool.Mcp.Bridge
     /// connection). This connect-per-request model removes all persistent-socket/reconnect fragility.
     ///
     /// Protocol: request { "id", "type":"invoke"|"list", "command", "payload" }
-    ///           response { "id", "result": &lt;any&gt; } | { "id", "error": "message" }
+    ///           response { "id", "result": &lt;any&gt; } | { "id", "error": { code, message, hint? } }
     /// </summary>
     internal sealed class McpBridgeServer
     {
@@ -164,8 +164,10 @@ namespace AnalyseTool.Mcp.Bridge
                 // open this port, and what is behind it drives Revit. The token proves the caller was
                 // configured by the user (Settings hands it out in the client config snippet).
                 if (!IsAuthorized((string?)req[McpWire.Token]))
-                    return Err(id, "Unauthorized: missing or wrong bridge token. Re-copy the MCP client " +
-                                   "configuration from AnalyseTool Settings — it now includes a --token argument.");
+                    return Err(id, McpWire.Codes.Unauthorized,
+                        "Missing or wrong bridge token.",
+                        "Re-copy the MCP client configuration from AnalyseTool Settings — it includes a " +
+                        "--token argument.");
 
                 string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
 
@@ -201,15 +203,30 @@ namespace AnalyseTool.Mcp.Bridge
                 // They differ for a command whose schema exceeded the listing cap and went out as
                 // free-form: holding a caller to parameters it was never shown would be a rejection it
                 // cannot act on, so those go through unchecked, exactly as they do today.
-                // An unknown command is left alone — the queue owns that message.
-                CommandRegistration? registration = _queue.RegisteredCommands
+                // Named `registered`, not `registration`: the Gate lambda below already binds that name,
+                // and C# refuses a lambda parameter that shadows an enclosing local.
+                CommandRegistration? registered = _queue.RegisteredCommands
                     .FirstOrDefault(c => string.Equals(c.Name, command, StringComparison.OrdinalIgnoreCase));
-                if (registration is not null)
+
+                if (registered is null)
                 {
-                    string? complaint = PayloadValidator.Validate(
-                        command, SchemaListing.Compact(registration.InputSchemaJson), payload);
-                    if (complaint is not null) return Err(id, complaint);
+                    // Answered here rather than left to the dispatcher, which can only say "not
+                    // registered": the bridge knows the catalogue it published and can point at the name
+                    // the caller probably meant. Suggestions come from the AI-VISIBLE names only —
+                    // pointing an agent at a command it may not call is a worse answer than none.
+                    string? nearest = NearestName.Closest(
+                        command, _queue.RegisteredCommands.Where(IsAvailableToAi).Select(c => c.Name));
+                    return Err(id, McpWire.Codes.UnknownCommand, $"No command named '{command}'.",
+                        nearest is null
+                            ? "Call tools/list for the commands this server offers."
+                            : $"Did you mean '{nearest}'? Call tools/list for the full set.");
                 }
+
+                string? complaint = PayloadValidator.Validate(
+                    command, SchemaListing.Compact(registered.InputSchemaJson), payload);
+                if (complaint is not null)
+                    return Err(id, McpWire.Codes.InvalidArguments, complaint,
+                        "Nothing was executed. Correct the arguments and call again.");
 
                 object? result = await _queue.ExecuteAsync(
                     new CommandRequest(command, payload, Source)
@@ -224,9 +241,21 @@ namespace AnalyseTool.Mcp.Bridge
                     }).ConfigureAwait(false);
                 return Ok(id, result is null ? JValue.CreateNull() : JToken.FromObject(result));
             }
+            // Classified by exception TYPE, never by matching the message text: a reworded sentence must
+            // not silently reclassify an error that a caller branches on.
+            catch (UnauthorizedAccessException ex)
+            {
+                return Err(id, McpWire.Codes.NotAvailable, ex.Message,
+                    "This command is not exposed to AI callers. The C#-execution tools additionally " +
+                    "require the toggle in AnalyseTool Settings.");
+            }
+            catch (OperationCanceledException)
+            {
+                return Err(id, McpWire.Codes.Cancelled, "The call was cancelled before it finished.");
+            }
             catch (Exception ex)
             {
-                return Err(id, ex.Message);
+                return Err(id, McpWire.Codes.CommandFailed, ex.Message);
             }
         }
 
@@ -261,8 +290,19 @@ namespace AnalyseTool.Mcp.Bridge
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
 
-        private static string Err(string? id, string message) =>
-            new JObject { [McpWire.Id] = id, [McpWire.Error] = message }.ToString(Formatting.None);
+        /// <summary>An error the caller can act on: a code to branch on, a message to read, and — only
+        /// when there is something useful to say — what to do about it.</summary>
+        private static string Err(string? id, string code, string message, string? hint = null)
+        {
+            JObject error = new()
+            {
+                [McpWire.ErrorCode] = code,
+                [McpWire.ErrorMessage] = message,
+            };
+            if (!string.IsNullOrWhiteSpace(hint)) error[McpWire.ErrorHint] = hint;
+
+            return new JObject { [McpWire.Id] = id, [McpWire.Error] = error }.ToString(Formatting.None);
+        }
 
         /// <summary>Requests are command payloads, not file uploads — anything larger is a mistake or an
         /// attack, and reading it costs the Revit process its memory.</summary>

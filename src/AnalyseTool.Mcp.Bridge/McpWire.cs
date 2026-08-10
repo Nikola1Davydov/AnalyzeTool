@@ -8,9 +8,15 @@ namespace AnalyseTool.Mcp
     ///
     /// Shapes:
     ///   request  { id, token, type: "invoke"|"list", command?, payload? }
-    ///   response { id, result } | { id, error }
+    ///   response { id, result } | { id, error: { code, message, hint? } }
     ///   list result: { commands: [ { name, source, description, readOnly, destructive,
     ///                                inputSchema, outputSchema } ] }
+    ///
+    /// The error is an OBJECT so a caller can branch on <c>code</c> instead of matching prose — an agent
+    /// deciding between "fix the arguments and retry" and "wait for Revit" should not be doing string
+    /// comparison on a sentence that may be reworded. Both halves ship from the same build, so the shape
+    /// cannot skew; the reader still accepts a bare string, because tolerating the older form costs one
+    /// line and turns a hypothetical mismatch into a readable message rather than a crash.
     ///
     /// Every request carries the session token. Binding to 127.0.0.1 keeps the browser and the network
     /// out, but it does not keep out other processes running as the same user — and this bridge drives
@@ -49,5 +55,47 @@ namespace AnalyseTool.Mcp
         /// obliges the server to return structuredContent conforming to it, so the two changes go
         /// together or not at all.</summary>
         public const string OutputSchema = "outputSchema";
+
+        // Error object fields
+        public const string ErrorCode = "code";
+        public const string ErrorMessage = "message";
+
+        /// <summary>What to DO about it, when there is something to do. Omitted rather than filled with a
+        /// restatement of the message — a hint that adds nothing trains a reader to skip hints.</summary>
+        public const string ErrorHint = "hint";
+
+        /// <summary>
+        /// The closed set of error codes. Closed on purpose: a caller can only branch on values it knows,
+        /// so a new code is a deliberate addition here, not a string invented at a throw site.
+        /// </summary>
+        public static class Codes
+        {
+            /// <summary>Missing or wrong bridge token. Not retryable without reconfiguring the client.</summary>
+            public const string Unauthorized = "unauthorized";
+
+            /// <summary>The payload did not match the command's published inputSchema. Retryable by the
+            /// caller alone: fix the arguments, call again.</summary>
+            public const string InvalidArguments = "invalid_arguments";
+
+            /// <summary>No command by that name. Retryable after tools/list.</summary>
+            public const string UnknownCommand = "unknown_command";
+
+            /// <summary>The command exists but this transport may not call it. Not retryable as-is.</summary>
+            public const string NotAvailable = "not_available";
+
+            /// <summary>The command ran and threw. Whether it is retryable depends on the message.</summary>
+            public const string CommandFailed = "command_failed";
+
+            /// <summary>The call was cancelled — by the caller or by shutdown.</summary>
+            public const string Cancelled = "cancelled";
+
+            /// <summary>Minted client-side: Revit did not answer within the invoke deadline. Retryable
+            /// once it goes idle, which GetQueueStatus can report.</summary>
+            public const string Timeout = "timeout";
+
+            /// <summary>Minted client-side: the bridge could not be reached at all. Revit is not running,
+            /// or its MCP server is off.</summary>
+            public const string RevitUnreachable = "revit_unreachable";
+        }
     }
 }

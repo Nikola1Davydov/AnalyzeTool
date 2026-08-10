@@ -49,7 +49,8 @@ namespace AnalyseTool.Mcp.Bridge
 
                 if (declared is null)
                 {
-                    string suggestion = Suggest(argument.Name, properties.Properties().Select(p => p.Name));
+                    string? nearest = NearestName.Closest(argument.Name, properties.Properties().Select(p => p.Name));
+                    string suggestion = nearest is null ? string.Empty : $" Did you mean '{nearest}'?";
                     problems.Add($"'{argument.Name}' is not a parameter of this command.{suggestion}");
                     continue;
                 }
@@ -121,42 +122,6 @@ namespace AnalyseTool.Mcp.Bridge
             JTokenType.Null => "null",
             _ => "value",
         };
-
-        /// <summary>"Did you mean" for a near miss only. A suggestion that is merely the least-bad of a
-        /// list of unrelated names sends the caller somewhere wrong with confidence, so the distance has
-        /// to be small relative to the word.</summary>
-        private static string Suggest(string typed, IEnumerable<string> candidates)
-        {
-            string? best = null;
-            int bestDistance = int.MaxValue;
-            foreach (string candidate in candidates)
-            {
-                int distance = Distance(typed.ToLowerInvariant(), candidate.ToLowerInvariant());
-                if (distance < bestDistance) { bestDistance = distance; best = candidate; }
-            }
-
-            int tolerance = Math.Min(3, Math.Max(1, (best?.Length ?? 0) / 3));
-            return best is not null && bestDistance <= tolerance ? $" Did you mean '{best}'?" : string.Empty;
-        }
-
-        private static int Distance(string a, string b)
-        {
-            int[] previous = new int[b.Length + 1];
-            int[] current = new int[b.Length + 1];
-            for (int j = 0; j <= b.Length; j++) previous[j] = j;
-
-            for (int i = 1; i <= a.Length; i++)
-            {
-                current[0] = i;
-                for (int j = 1; j <= b.Length; j++)
-                {
-                    int substitute = previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1);
-                    current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1), substitute);
-                }
-                (previous, current) = (current, previous);
-            }
-            return previous[b.Length];
-        }
 
         private static JObject? TryParseObject(string json)
         {
