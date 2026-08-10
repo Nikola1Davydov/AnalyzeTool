@@ -7,8 +7,9 @@ using AnalyseTool.Sdk;
 namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
-        Description = "Returns imported (non-linked) CAD instances in the document (id, name). " +
-                      "Imported CAD is often a model-hygiene concern.",
+        Description = "Returns imported (non-linked) CAD instances in the document (id, name). Imported CAD " +
+                      "is often a model-hygiene concern. Read-only. Cost: one scan of the document's import " +
+                      "instances.",
         ReadOnly = true,
         OutputType = typeof(List<ImportInfo>))]
     internal sealed class GetCadImports : IRevitTask

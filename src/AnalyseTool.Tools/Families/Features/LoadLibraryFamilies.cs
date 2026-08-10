@@ -13,8 +13,10 @@ namespace AnalyseTool.Tools.Families
     /// present, invalid) is skipped and counted. Backs the palette Library "Load" action.
     /// </summary>
     [RevitCommand(
-        Description = "Loads the given .rfa files into the current document, skipping any that fail. " +
-                      "Returns { loaded, failed }.",
+        Description = "MODIFIES the model: loads the given .rfa files into the current document, skipping " +
+                      "any that fail. Paths come from GetLibraryFamilies. Returns { loaded, failed }. Cost: " +
+                      "one transaction, and each family is read from disk — this scales with the number and " +
+                      "size of the files.",
         Destructive = true,
         InputType = typeof(LoadLibraryFamilies.Request),
         OutputType = typeof(LoadFamiliesResult))]

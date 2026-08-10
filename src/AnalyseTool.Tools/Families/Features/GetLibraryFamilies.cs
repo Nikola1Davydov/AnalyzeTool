@@ -13,7 +13,8 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Lists Revit family files under the given folders, flagging which are already loaded " +
-                      "in the document. Read-only.",
+                      "in the document. Read-only. Cost: walks those folders on DISK, so it scales with the " +
+                      "size of the library, not of the model.",
         ReadOnly = true,
         InputType = typeof(GetLibraryFamilies.Request),
         OutputType = typeof(LibraryFamiliesResult))]

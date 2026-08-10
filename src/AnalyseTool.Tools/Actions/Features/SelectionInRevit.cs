@@ -6,7 +6,8 @@ namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Selects the given elements (by id) in the active document. An empty list clears the " +
-                      "selection. Returns { ok, selected, error } — 'selected' is what Revit ended up holding.",
+                      "selection. Returns { ok, selected, error } — 'selected' is what Revit ended up holding. " +
+                      "Changes the UI selection, not the model. Cheap.",
         InputType = typeof(SelectionInRevit.SelectionPayload),
         OutputType = typeof(SelectionResult))]
     internal sealed class SelectionInRevit : IRevitTask

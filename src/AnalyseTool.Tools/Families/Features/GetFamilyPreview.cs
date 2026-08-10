@@ -14,7 +14,8 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Renders a small PNG thumbnail (base64 data URI) from the Revit preview image of a " +
                       "family (its first type) OR a specific type/system type. Read-only. Pass a family id " +
-                      "or a type (ElementType) id.",
+                      "from GetFamilies or a type (ElementType) id from GetFamilyTypes. Cost: reads a " +
+                      "stored preview image — far cheaper than GetFamilyMesh, which builds geometry.",
         ReadOnly = true,
         InputType = typeof(GetFamilyPreview.Request),
         OutputType = typeof(FamilyPreviewResult))]

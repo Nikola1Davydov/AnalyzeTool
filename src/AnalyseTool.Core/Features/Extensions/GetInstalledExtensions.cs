@@ -6,7 +6,9 @@ namespace AnalyseTool.Core.Features.Extensions
 {
     /// <summary>Lists every installed extension (compatible or not) for the Settings page.</summary>
     [RevitCommand(
-        Description = "Lists every installed extension (compatible or not) with id, version, target Revit and capabilities.",
+        Description = "Lists every installed extension (compatible or not) with id, version, target Revit " +
+                      "and capabilities. Read-only and cheap — it reads the extension registry, not the " +
+                      "Revit model.",
         ReadOnly = true)]
     internal sealed class GetInstalledExtensions : IRevitTask
     {

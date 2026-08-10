@@ -15,7 +15,8 @@ namespace AnalyseTool.Tools.Families
     [RevitCommand(
         Description = "Lists the families in the active document with category, type count and " +
                       "placed-instance count, plus an in-place flag. Read-only. Filter with " +
-                      "categoryContains / nameContains; cap the result with limit.",
+                      "categoryContains / nameContains; cap the result with limit. This is where family ids " +
+                      "come from. Cost: scans the families and counts their instances.",
         ReadOnly = true,
         InputType = typeof(GetFamilies.Request),
         OutputType = typeof(FamilyInventory))]

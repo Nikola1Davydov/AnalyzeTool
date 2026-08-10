@@ -22,9 +22,10 @@ diminishing return. Say so rather than implying full coverage.
 Known limits, stated rather than discovered later:
   - This is a source scan, not a compiler. It reads what is written, and a command assembled at
     runtime is invisible to it.
-  - Files that GENERATE command source (the scripting templates) are skipped by path — a generator
-    emitting [RevitCommand] is not itself a command. Every other line-start [RevitCommand] must
-    parse, and one that does not FAILS the run instead of being quietly skipped.
+  - No file is exempt. A [RevitCommand] written inside a raw string literal (the templates that
+    GENERATE command source for script extensions) is blanked out first, because it is a string and
+    not a declaration. Every remaining line-start [RevitCommand] must parse, and one that does not
+    FAILS the run instead of being quietly skipped.
 
 Run locally:  pwsh -File src/build/Check-Schemas.ps1
 CI runs it through the Nuke `CheckSchemas` target, before any build, so it fails fast.
@@ -34,12 +35,15 @@ $ErrorActionPreference = 'Stop'
 $src = Split-Path $PSScriptRoot -Parent
 $failures = @()
 
-# Source generators, not commands: these emit [RevitCommand] into a string for a script extension.
-$templateFiles = @(
-    'Features/Scripting/SaveAsCommand.cs',
-    'Common/Extensions/Scripting/RoslynScriptCompiler.cs',
-    'Features/Extensions/Templates/'
-)
+# A [RevitCommand] inside a STRING is not a declaration. Several files generate command source for a
+# script extension, and their templates are raw string literals that contain the attribute, the class
+# and a Description — indistinguishable from the real thing to a pattern that reads them as code.
+# Blanked (not removed) so every offset and line number in the file stays true.
+function Remove-RawStringLiterals([string] $text) {
+    return [regex]::Replace($text, '"""[\s\S]*?"""', {
+        param($literal) $literal.Value -replace '[^\r\n]', ' '
+    })
+}
 
 # [RevitCommand ... )] immediately followed by the class it decorates.
 #   group 1 = the whole argument list including brackets   group 2 = the arguments   group 3 = class
@@ -60,10 +64,10 @@ foreach ($project in 'AnalyseTool.Tools', 'AnalyseTool.Core') {
         $relative = $file.FullName.Substring($src.Length + 1).Replace('\', '/')
         $text = Get-Content $file.FullName -Raw
         if (-not $text) { continue }
+        $text = Remove-RawStringLiterals $text
 
         $occurrences = [regex]::Matches($text, $occurrencePattern, $options).Count
         if ($occurrences -eq 0) { continue }
-        if ($templateFiles | Where-Object { $relative -like "*$_*" }) { continue }
 
         $matched = @([regex]::Matches($text, $commandPattern, $options))
         if ($matched.Count -ne $occurrences) {
@@ -96,7 +100,7 @@ if ($commands.Count -eq 0) { $failures += "NO COMMANDS FOUND: the scan matched n
 $allSources = @{}
 foreach ($file in Get-SourceFiles $src) {
     $key = $file.FullName.Substring($src.Length + 1).Replace('\', '/')
-    $allSources[$key] = Get-Content $file.FullName -Raw
+    $allSources[$key] = Remove-RawStringLiterals (Get-Content $file.FullName -Raw)
 }
 
 # Resolves ONE type name inside a scope (a whole file, or an enclosing type's body).

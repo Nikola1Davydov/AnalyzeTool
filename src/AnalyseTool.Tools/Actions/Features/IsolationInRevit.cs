@@ -7,7 +7,9 @@ namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Temporarily isolates the given elements (by id) in the active view " +
-                      "(reversible temporary hide/isolate). Pass an empty list to do nothing.",
+                      "(reversible temporary hide/isolate). Pass an empty list to do nothing. " +
+                      "Changes the ACTIVE VIEW, not the model, and is undone by resetting temporary " +
+                      "hide/isolate. Cost: one view transaction — cheap.",
         InputType = typeof(IsolationInRevit.Request),
         OutputType = typeof(IsolationResult))]
     internal sealed class IsolationInRevit : IRevitTask

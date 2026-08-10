@@ -20,7 +20,9 @@ namespace AnalyseTool.Core.Features.Scripting
     [RevitCommand(
         Description = "Compiles and runs a C# snippet inside Revit and returns its result. The snippet is " +
                       "either a bare statement body (with uiapp/uidoc/doc in scope, may 'return' any object) " +
-                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings.",
+                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings. " +
+                      "MAY MODIFY the model — what the snippet does is up to the snippet. Cost: Roslyn " +
+                      "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
         Destructive = true)] // arbitrary code: assume it can modify the model
     internal sealed class ExecuteRevitCode : IRevitTask

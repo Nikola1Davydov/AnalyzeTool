@@ -12,7 +12,8 @@ namespace AnalyseTool.Tools.Elements
                       "Token-friendly: no parameter values unless requested. Pass parameterNames to include specific " +
                       "parameters' values, nameContains to filter by name, and limit to cap the count. " +
                       $"Call {nameof(GetCategoriesInRevit)} for valid category names and " +
-                      $"{nameof(GetCategoryParameters)} to discover parameter names.",
+                      $"{nameof(GetCategoryParameters)} to discover parameter names. " +
+                      "Read-only. Cost: scans the requested category — pass limit on a large model.",
         ReadOnly = true,
         InputType = typeof(GetElements.Request),
         OutputType = typeof(List<ElementSummary>))]

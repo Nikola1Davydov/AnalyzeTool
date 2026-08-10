@@ -9,8 +9,9 @@ namespace AnalyseTool.Tools.Families
 {
     /// <summary>Renames a family in the active document. Returns ok=false on a duplicate/invalid name.</summary>
     [RevitCommand(
-        Description = "Renames a family (by id) in the active document. Returns ok=false with an error " +
-                      "message on a duplicate or invalid name.",
+        Description = "MODIFIES the model: renames a family (by id from GetFamilies) in the active " +
+                      "document. Returns ok=false with an error message on a duplicate or invalid name. " +
+                      "Cost: one transaction — cheap.",
         Destructive = true,
         InputType = typeof(RenameFamily.Request),
         OutputType = typeof(RenameResult))]

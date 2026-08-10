@@ -11,7 +11,9 @@ namespace AnalyseTool.Tools.Elements
         Description = "Returns the parameter names available on elements of a Revit category " +
                       "(name, storageType, isReadOnly, isType), sampled from a representative element. " +
                       $"Use this to discover which parameterNames to request from {nameof(GetElements)}. " +
-                      $"Call {nameof(GetCategoriesInRevit)} first for valid category names.",
+                      $"Call {nameof(GetCategoriesInRevit)} first for valid category names. " +
+                      "Read-only. Cost: samples one representative element instead of scanning the " +
+                      "category.",
         ReadOnly = true,
         InputType = typeof(GetCategoryParameters.Request),
         OutputType = typeof(List<CategoryParameterInfo>))]

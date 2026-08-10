@@ -6,7 +6,8 @@ namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns the active document's review warnings, each with its description and the " +
-                      "failing/additional element ids.",
+                      "failing/additional element ids. Read-only. Cost: proportional to the number of " +
+                      "warnings, not to the size of the model.",
         ReadOnly = true,
         OutputType = typeof(List<GetWarningsInRevit.WarningInRevitModel>))]
     internal sealed class GetWarningsInRevit : IRevitTask

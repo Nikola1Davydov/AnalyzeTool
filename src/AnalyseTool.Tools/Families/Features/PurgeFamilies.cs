@@ -13,8 +13,11 @@ namespace AnalyseTool.Tools.Families
     /// can't be removed is skipped and counted rather than aborting the purge. Returns { deleted, failed }.
     /// </summary>
     [RevitCommand(
-        Description = "Deletes the given families, skipping (and counting) any that can't be removed. " +
-                      "Used by 'purge unused families'. Returns { deleted, failed }.",
+        Description = "MODIFIES the model: deletes the given families, skipping (and counting) any that " +
+                      "can't be removed. Deleting a family also deletes its instances — check the instance " +
+                      "count from GetFamilies first, where the ids come from. Used by 'purge unused " +
+                      "families'. Returns { deleted, failed }. Cost: one transaction over the given " +
+                      "families.",
         Destructive = true,
         InputType = typeof(PurgeFamilies.Request),
         OutputType = typeof(PurgeResult))]

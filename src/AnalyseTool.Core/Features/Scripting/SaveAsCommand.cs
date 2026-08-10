@@ -5,6 +5,7 @@ using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Serilog;
+using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -22,7 +23,9 @@ namespace AnalyseTool.Core.Features.Scripting
     [RevitCommand(
         Description = "Saves a working C# snippet as a permanent script extension: creates a ribbon button " +
                       "plus a named command callable from JS/MCP, then reloads. The snippet is a bare body or a " +
-                      "full IRevitTask. Disabled by default — enable C# execution in AnalyseTool Settings.",
+                      "full IRevitTask. Disabled by default — enable C# execution in AnalyseTool Settings. " +
+                      "MODIFIES the extensions on disk and reloads them; it does not touch the Revit model. " +
+                      "Cost: compiles and writes files, then a full extension reload.",
         InputType = typeof(Request),
         Destructive = true)]
     internal sealed class SaveAsCommand : IRevitTask
@@ -252,22 +255,36 @@ namespace AnalyseTool.Core.Features.Scripting
         internal sealed class Request
         {
             /// <summary>The C# to save — a bare body (wrapped into a class) or a full IRevitTask.</summary>
+            [Description("The C# to save: either a bare method body, which gets wrapped into a class, " +
+                         "or a full IRevitTask.")]
             public string Code { get; set; } = string.Empty;
 
             /// <summary>Stable extension id / folder name (e.g. "acme.count-walls").</summary>
+            [Description("Stable extension id, also used as the folder name, e.g. \"acme.count-walls\".")]
             public string Id { get; set; } = string.Empty;
 
             /// <summary>Ribbon button label.</summary>
+            [Description("Ribbon button label.")]
             public string Name { get; set; } = string.Empty;
 
+            [Description("Description of the saved command — becomes its [RevitCommand] Description, " +
+                         "so it is what a later caller selects the command by.")]
             public string? Description { get; set; }
+
+            [Description("Ribbon tab to place the button on. Empty = the default tab.")]
             public string? Tab { get; set; }
+
+            [Description("Ribbon panel to place the button on. Empty = the default panel.")]
             public string? Panel { get; set; }
 
             /// <summary>Optional registered source root to save into; empty = default root.</summary>
+            [Description("Optional registered source root to save into. Empty = the default root.")]
             public string? TargetRoot { get; set; }
 
+            [Description("Marks the saved command as read-only, i.e. it does not modify the model.")]
             public bool ReadOnly { get; set; }
+
+            [Description("Marks the saved command as destructive, i.e. it deletes or overwrites.")]
             public bool Destructive { get; set; }
         }
     }

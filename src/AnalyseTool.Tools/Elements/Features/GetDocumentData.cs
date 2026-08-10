@@ -5,7 +5,9 @@ using Newtonsoft.Json;
 namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
-        Description = "Returns summary information about the active Revit document (title, path and related metadata).",
+        Description = "Returns the active document's title and its stable creation id. Read-only and cheap " +
+                      "— it reads no elements. For what a session actually needs up front (units, language, " +
+                      "levels, per-category instance counts) call GetModelOverview instead.",
         ReadOnly = true,
         OutputType = typeof(DocumentData))]
     internal sealed class GetDocumentData : IRevitTask

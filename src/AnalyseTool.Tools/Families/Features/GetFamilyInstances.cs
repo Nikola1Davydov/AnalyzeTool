@@ -13,9 +13,10 @@ namespace AnalyseTool.Tools.Families
     /// SelectionInRevit / IsolationInRevit), the Worksets view and advanced instance filtering.
     /// </summary>
     [RevitCommand(
-        Description = "Lists the placed instances of one or more families (optionally one type) with " +
-                      "type, category, level and workset. Read-only. Pass familyId or familyIds, " +
-                      "optional typeId and limit.",
+        Description = "Lists the placed instances of one or more families (optionally one type) with type, " +
+                      "category, level and workset. Read-only. Pass familyId or familyIds, optional typeId " +
+                      "and limit; ids come from GetFamilies and GetFamilyTypes. Cost: scans the instances " +
+                      "of the requested families only.",
         ReadOnly = true,
         InputType = typeof(GetFamilyInstances.Request),
         OutputType = typeof(FamilyInstancesResult))]

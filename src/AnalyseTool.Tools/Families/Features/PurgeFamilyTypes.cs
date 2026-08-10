@@ -14,8 +14,9 @@ namespace AnalyseTool.Tools.Families
     /// number actually deleted and the number that couldn't be.
     /// </summary>
     [RevitCommand(
-        Description = "Deletes the given family types, skipping (and counting) any that can't be removed. " +
-                      "Used by 'purge unused types'. Returns { deleted, failed }.",
+        Description = "MODIFIES the model: deletes the given family types, skipping (and counting) any that " +
+                      "can't be removed. Type ids come from GetFamilyTypes. Used by 'purge unused types'. " +
+                      "Returns { deleted, failed }. Cost: one transaction over the given types.",
         Destructive = true,
         InputType = typeof(PurgeFamilyTypes.Request),
         OutputType = typeof(PurgeResult))]

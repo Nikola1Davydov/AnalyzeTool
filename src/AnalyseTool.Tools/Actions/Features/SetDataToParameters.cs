@@ -15,7 +15,9 @@ namespace AnalyseTool.Tools.Actions
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
                       "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }. " +
                       "Returns { ok, written, skipped, warnings: [{ description, elementIds }] } — 'skipped' counts " +
-                      "items whose element or parameter was not found, was read-only, or that the mode filtered out.",
+                      "items whose element or parameter was not found, was read-only, or that the mode filtered out. " +
+                      "Parameter ids come from GetCategoryParameters. Cost: one transaction over the given " +
+                      "items.",
         Destructive = true,
         InputType = typeof(SetDataToParameters.SetDataToParametersDto),
         OutputType = typeof(SetDataResult))]

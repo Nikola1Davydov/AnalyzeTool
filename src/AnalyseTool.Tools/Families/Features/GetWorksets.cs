@@ -13,7 +13,9 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Lists the user worksets of the active document (id, name, open/editable, owner). " +
-                      "Read-only. isWorkshared=false for a non-workshared project.",
+                      "Read-only and cheap — it reads the workset table, not the elements. " +
+                      "isWorkshared=false for a non-workshared project. This is where workset ids for " +
+                      "SetInstancesWorkset come from.",
         ReadOnly = true,
         OutputType = typeof(WorksetsResult))]
     internal sealed class GetWorksets : IRevitTask

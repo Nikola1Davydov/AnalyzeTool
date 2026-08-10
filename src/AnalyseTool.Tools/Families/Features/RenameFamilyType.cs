@@ -9,8 +9,9 @@ namespace AnalyseTool.Tools.Families
 {
     /// <summary>Renames a family type (FamilySymbol). Returns ok=false on a duplicate/invalid name.</summary>
     [RevitCommand(
-        Description = "Renames a family type (FamilySymbol, by id) in the active document. Returns " +
-                      "ok=false with an error message on a duplicate or invalid name.",
+        Description = "MODIFIES the model: renames a family type (FamilySymbol, by id from GetFamilyTypes) " +
+                      "in the active document. Returns ok=false with an error message on a duplicate or " +
+                      "invalid name. Cost: one transaction — cheap.",
         Destructive = true,
         InputType = typeof(RenameFamilyType.Request),
         OutputType = typeof(RenameResult))]
