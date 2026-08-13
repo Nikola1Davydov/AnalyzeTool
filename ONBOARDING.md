@@ -740,6 +740,30 @@ Notes:
   both schemas automatically. A command that declares neither type is callable but opaque: free-form
   arguments, free-form answer, and nothing that can be chained or validated.
 
+### 9.1 The other direction — letting the AI write the command
+
+Everything above is an agent *calling* your commands. It can also write them, without you copying
+files around: it reads the authoring guide over MCP (`GetAuthoringGuide` serves the same
+[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md) this repo ships),
+saves a C# command, and — when the command needs a form —
+saves the HTML/CSS/JS page and the ribbon button that opens it. If the script does not compile it
+reads the error back and tries again, and it can read its own earlier source to refine rather than
+replace it.
+
+Two things worth knowing before you use it:
+
+- **It is off unless a person turns it on.** Writing and running C# is behind the code-execution
+  switch in Settings, which is deliberately not something an agent can flip for itself — the command
+  that sets it is hidden from MCP entirely.
+- **Where the script lands is your choice.** Settings names the dev folder new scripts are saved
+  into, and refining a script that already exists writes it back to the folder it lives in — so a
+  shared team folder registered as a source root keeps working, and a fix does not silently land in
+  a different copy.
+
+The mechanics — every command in the loop, the manifest it writes, the recovery paths — are in
+[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md), which is written to
+be pasted into the agent rather than read end-to-end.
+
 ## 10. Publishing your extension
 
 Everything above gets an extension running on **your** machine. To hand it to someone else you

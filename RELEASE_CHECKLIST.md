@@ -44,7 +44,8 @@ A reusable checklist to run before publishing a new AnalyseTool version.
 
 ### Live in Revit (can't be verified from the repo)
 
-- [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (all three buttons).
+- [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (all four buttons: AnalyseTool,
+      Family Manager, Component, Scripts).
 - [ ] Smoke-test the features that changed this release (open windows, run the new/changed commands on a
       **copy** of a real project — especially any model-write action: delete / purge / load / rename).
 - [ ] Long operations show progress and don't freeze Revit; closing a window mid-operation doesn't crash.

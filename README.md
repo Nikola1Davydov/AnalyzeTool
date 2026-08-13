@@ -64,11 +64,12 @@ Install [Ollama](https://ollama.com/download) and keep it running. Then in **Set
 
 <p align="center"><img src="img/ribbon.png" width="680" alt="AnalyseTool ribbon" /></p>
 
-Open the **AnalyseTool** tab — three main buttons plus management:
+Open the **AnalyseTool** tab — four main buttons plus management:
 
 - **AnalyseTool** — the main window: parameters, analytics, bulk editing and AI workflows.
 - **Family Manager** — browse, audit and clean up the project's families.
 - **Component** — a dockable palette for placing families and loading them from your libraries.
+- **Scripts** — a dockable list of your script commands, including the ones an AI wrote: run one straight from its row, or step into its form if it takes input. Any command can be pinned to the ribbon from here instead.
 - **Settings / Reload / Report a bug** — configure AI & extensions, reload extensions live, file an issue.
 
 ## 🧱 Family Manager
@@ -141,6 +142,8 @@ Two distinct things — kept separate on purpose:
 flowchart LR
     AI["AI agent<br/>(Claude Desktop, …)"] --> M[MCP server] --> T[AnalyseTool] --> R[Revit]
 ```
+
+An agent can also **write** the commands. It reads the authoring guide, saves a C# command — plus a web page for it when it needs a form — gets the compiler error back when it fails, and fixes it. So a script a colleague sent you that doesn't work in your project is something you can hand to your AI to repair. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
 
 ## Extensions — plug in a DLL, don't fork the host
 
