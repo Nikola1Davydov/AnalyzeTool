@@ -68,39 +68,36 @@ const confirmVisible = computed({
 });
 
 /**
- * Scripts lead, and by default they are all you see. "All" adds the host's own built-in commands —
- * dozens nobody launches by hand, but you cannot pin what the list will not show you.
- *
- * What "All" does NOT add is a DLL extension's commands. Those are never listed here, in any scope: a
- * compiled extension ships its own page and its own ribbon button, so a generic launcher would only be
- * a second, worse door into something that already has one.
+ * Two scopes, and the second is a subset of the first: every script, or only the ones you gave a
+ * ribbon button. There is nothing else to switch to — this window handles generated scripts and
+ * nothing else, which is what its name says.
  */
-const scope = ref<"scripts" | "all" | "ribbon">("scripts");
+const scope = ref<"scripts" | "ribbon">("scripts");
 const scopes = [
   { label: "Scripts", value: "scripts" },
-  { label: "All", value: "all" },
   { label: "Ribbon", value: "ribbon" },
 ];
 
 /**
- * The only two kinds this window deals with, as an ALLOWLIST rather than a "hide dll" rule.
+ * The one kind this window deals with, as an ALLOWLIST rather than a "hide dll" rule.
  *
  * The polarity matters. Written as an exclusion, a command whose `kind` the host did not report —
  * an older host, a field lost in a rename — slips through and is shown, which is the one outcome
- * this rule exists to prevent. Written this way, anything unrecognised is hidden, and a kind added
- * later stays hidden until someone decides it belongs here.
+ * this rule exists to prevent. Written this way, anything unrecognised is hidden.
+ *
+ * A compiled extension ships its own page and its own ribbon button, so listing its commands here
+ * would be a second, worse door into something that already has one. The host's built-ins are out for
+ * a plainer reason: dozens of them, none launched by hand.
  */
 function listable(command: CommandInfo): boolean {
-  return command.kind === "script" || command.kind === "core";
+  return command.kind === "script";
 }
 
 const filtered = computed(() => {
   const needle = search.value.trim().toLowerCase();
   return commands.value
     .filter(listable)
-    .filter((c) =>
-      scope.value === "scripts" ? c.kind === "script" : scope.value === "ribbon" ? c.onRibbon : true,
-    )
+    .filter((c) => scope.value !== "ribbon" || c.onRibbon)
     .filter(
       (c) =>
         !needle ||
@@ -329,13 +326,15 @@ watch(
       return;
     }
     // No exception for the deep link either. Opening a page for a command the list refuses to show
-    // would put a compiled extension's command in this window through the back door — the ribbon no
-    // longer sends them here, and if one arrives anyway it is turned away.
+    // would put it in this window through the back door — the ribbon no longer sends those here, and
+    // if one arrives anyway it is turned away.
     if (!listable(match)) {
-      notificationStore.error(`'${wanted}' belongs to a compiled extension — run it from its own button.`);
+      notificationStore.error(`'${wanted}' is not a generated script — this window only runs those.`);
       return;
     }
-    if (match.kind === "core") scope.value = "all"; // else the Scripts scope would hide it on Back
+    // Ribbon is a subset of Scripts, so a deep link that arrives while it is selected would open a
+    // page whose row is missing behind it.
+    scope.value = "scripts";
     open(match);
   },
   { immediate: true },
