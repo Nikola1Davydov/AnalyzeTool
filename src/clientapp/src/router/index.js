@@ -21,6 +21,12 @@ const routes = [
   { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
+    // Dockable, like the family palette: the launcher lives in the pane, not in a window of its own.
+    path: "/scripts",
+    component: () => import("@/view/Scripts/ScriptLauncherView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
     path: "/system/settings",
     component: () => import("@/view/System/ExtensionsSettingsView.vue"),
     meta: { layout: "bare" },

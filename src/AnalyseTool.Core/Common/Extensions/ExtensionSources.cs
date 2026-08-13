@@ -69,6 +69,51 @@ namespace AnalyseTool.Core.Common.Extensions
         public static string DefaultVersionDir(string revitVersion) =>
             Path.Combine(DefaultDevRoot, revitVersion);
 
+        /// <summary>
+        /// Where the authoring commands (SaveAsCommand, SaveExtensionUi) save what they generate when
+        /// the caller names no root. Defaults to the built-in dev root.
+        ///
+        /// Falls back to that default whenever the stored choice is no longer a registered DEV root:
+        /// a folder the user has since removed must not keep swallowing generated scripts where
+        /// nothing scans for them.
+        /// </summary>
+        public static string AuthoringRoot
+        {
+            get
+            {
+                string? stored = Load().AuthoringRoot;
+                if (string.IsNullOrWhiteSpace(stored)) return DefaultDevRoot;
+
+                return AllRoots().Any(r => r.Zone == ExtensionZone.Dev &&
+                                           string.Equals(r.Path, stored, StringComparison.OrdinalIgnoreCase))
+                    ? stored!
+                    : DefaultDevRoot;
+            }
+        }
+
+        /// <summary>Chooses where generated scripts land. Null on success, otherwise why not.
+        /// Managed roots are refused: the Extension Manager owns <c>extensions-dist</c>, and the next
+        /// install or update there would overwrite whatever was generated into it.</summary>
+        public static string? SetAuthoringRoot(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return "A folder is required.";
+
+            string full = Path.GetFullPath(path.Trim());
+            ExtensionSourceRoot? root = AllRoots()
+                .FirstOrDefault(r => string.Equals(r.Path, full, StringComparison.OrdinalIgnoreCase));
+
+            if (root is null)
+                return $"'{full}' is not a registered extension source. Add it as a path first.";
+            if (root.Zone != ExtensionZone.Dev)
+                return "Installed packages are managed by the Extension Manager — an update would " +
+                       "overwrite anything generated there. Choose one of your own folders.";
+
+            Settings settings = Load();
+            settings.AuthoringRoot = full;
+            Save(settings);
+            return null;
+        }
+
         /// <summary>Adds a user dev root (no-op for the built-in roots or duplicates). Returns the normalized path.</summary>
         public static string AddRoot(string path)
         {
@@ -96,23 +141,34 @@ namespace AnalyseTool.Core.Common.Extensions
             SaveUserRoots(roots);
         }
 
-        private static List<string> LoadUserRoots()
+        private static List<string> LoadUserRoots() => Load().Paths;
+
+        private static void SaveUserRoots(List<string> paths)
+        {
+            // Read-modify-write, not a fresh object: the same file carries the authoring root, and a
+            // from-scratch rewrite would reset it every time a path is added or removed.
+            Settings settings = Load();
+            settings.Paths = paths;
+            Save(settings);
+        }
+
+        private static Settings Load()
         {
             try
             {
                 if (File.Exists(SettingsFile))
-                    return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFile))?.Paths ?? new();
+                    return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFile)) ?? new();
             }
-            catch { /* fall through to empty */ }
+            catch { /* fall through to defaults */ }
             return new();
         }
 
-        private static void SaveUserRoots(List<string> paths)
+        private static void Save(Settings settings)
         {
             try
             {
                 Directory.CreateDirectory(PathProvider.ProfilePath);
-                File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(new Settings { Paths = paths }, Formatting.Indented));
+                File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(settings, Formatting.Indented));
             }
             catch { /* best-effort; non-fatal */ }
         }
@@ -120,6 +176,10 @@ namespace AnalyseTool.Core.Common.Extensions
         private sealed class Settings
         {
             public List<string> Paths { get; set; } = new();
+
+            /// <summary>Absent in every file written before this setting existed — which is exactly
+            /// what "no choice made, use the built-in dev root" looks like.</summary>
+            public string? AuthoringRoot { get; set; }
         }
     }
 }

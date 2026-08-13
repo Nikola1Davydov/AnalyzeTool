@@ -13,9 +13,14 @@ namespace AnalyseTool.Tools.Families
     /// ids it computed from the inventory). Runs in a transaction with a warning-swallowing handler.
     /// </summary>
     [RevitCommand(
-        Description = "Deletes families and/or family types (by id) from the active document. Deleting a " +
-                      "family deletes its instances. Used for both Delete and Purge-unused.",
-        InputType = typeof(DeleteFamilyElements.Request))]
+        Description = "MODIFIES the model, destructively: deletes families and/or family types (by id) from " +
+                      "the active document. Deleting a family deletes every instance of it, so one wrong id " +
+                      "can empty a project and only Ctrl+Z brings it back. Ids come from GetFamilies and " +
+                      "GetFamilyTypes. Used for both Delete and Purge-unused. Cost: one transaction, " +
+                      "proportional to what is removed.",
+        Destructive = true,
+        InputType = typeof(DeleteFamilyElements.Request),
+        OutputType = typeof(DeleteResult))]
     internal sealed class DeleteFamilyElements : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -12,9 +12,12 @@ namespace AnalyseTool.Tools.Families
     /// ok=false on a non-workshared project. Backs the "edit worksets" action in the Worksets view.
     /// </summary>
     [RevitCommand(
-        Description = "Moves the given elements (by id) to a target workset in the active document. " +
-                      "Returns ok=false on a non-workshared project.",
-        InputType = typeof(SetInstancesWorkset.Request))]
+        Description = "MODIFIES the model: moves the given elements (by id) to a target workset in the " +
+                      "active document. Workset ids come from GetWorksets. Returns ok=false on a " +
+                      "non-workshared project. Cost: one transaction over the given elements.",
+        Destructive = true,
+        InputType = typeof(SetInstancesWorkset.Request),
+        OutputType = typeof(WorksetAssignResult))]
     internal sealed class SetInstancesWorkset : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

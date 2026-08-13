@@ -28,6 +28,16 @@ namespace AnalyseTool.Core.Common.Bootstrap
         /// has no knowledge of the ribbon.</summary>
         public static event Action? ExtensionsReloaded;
 
+        /// <summary>Raised when what the ribbon SHOWS changed while the commands behind it did not —
+        /// the user pinning a command in the launcher, or taking a button away. Deliberately not
+        /// <see cref="ExtensionsReloaded"/>: redrawing one button must not unload and rebuild every
+        /// collectible load context, which is what a reload does.</summary>
+        public static event Action? RibbonButtonsChanged;
+
+        /// <summary>Announces a ribbon-only change. Safe before Initialize — with no host subscribed
+        /// there is no ribbon to refresh, and the state itself is already on disk.</summary>
+        public static void RaiseRibbonButtonsChanged() => RibbonButtonsChanged?.Invoke();
+
         public static void Initialize(CommandQueue queue, ExtensionLoader loader, string revitVersion)
         {
             Queue = queue;

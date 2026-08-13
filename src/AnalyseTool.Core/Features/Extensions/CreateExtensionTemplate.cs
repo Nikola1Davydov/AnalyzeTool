@@ -5,6 +5,7 @@ using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System.ComponentModel;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -141,7 +142,6 @@ namespace AnalyseTool.Core.Features.Extensions
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
 
         /// <summary>
@@ -225,7 +225,7 @@ namespace AnalyseTool.Core.Features.Extensions
         /// <summary>The author guide, served verbatim from the embedded <c>src/LLM.md</c>. It takes no
         /// arguments on purpose: the document is the same for every extension — the two parameters the
         /// previous hand-written copy accepted were never used by it.</summary>
-        private static string BuildLLMInstructions() => ReadTemplate(LlmResource);
+        private static string BuildLLMInstructions() => AuthoringGuide.Read();
 
         /// <summary>Returns one of the registered extension source roots, defaulting to the dev root
         /// when the caller didn't specify (templates are user-authored work-in-progress). Rejects
@@ -277,13 +277,19 @@ namespace AnalyseTool.Core.Features.Extensions
 
     internal sealed class CreateExtensionTemplatePayload
     {
+        [Description("Folder name to scaffold into, created under the target root.")]
         public string FolderName { get; set; } = string.Empty;
         /// <summary>Template flavour: "UiOnly", "Csharp" or "Combo".</summary>
+        [Description("Template flavour: \"UiOnly\", \"Csharp\" or \"Combo\".")]
         public string Kind { get; set; } = "UiOnly";
+        [Description("Contents of the extension's plugin.json manifest.")]
         public ExtensionTemplateManifest PluginJson { get; set; } = new();
         /// <summary>HTML content for UI-flavoured templates. Ignored for "Csharp".</summary>
+        [Description("HTML content for UI-flavoured templates. Ignored for \"Csharp\".")]
         public string IndexHtml { get; set; } = string.Empty;
         /// <summary>Optional: which registered extension source root to scaffold into. Empty = default root.</summary>
+        [Description("Optional: which registered extension source root to scaffold " +
+                                           "into. Empty = the default root.")]
         public string TargetRoot { get; set; } = string.Empty;
     }
 

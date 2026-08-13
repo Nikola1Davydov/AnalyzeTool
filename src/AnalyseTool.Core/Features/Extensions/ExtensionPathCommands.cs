@@ -17,15 +17,18 @@ namespace AnalyseTool.Core.Features.Extensions
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             string version = CoreServices.RevitVersion;
+            // Resolved once, not per row: reading it re-scans the registered roots to check the stored
+            // choice is still one of them.
+            string authoringRoot = ExtensionSources.AuthoringRoot;
 
             var paths = ExtensionSources.AllRoots()
-                .Select(root => DescribeRoot(root, version))
+                .Select(root => DescribeRoot(root, version, authoringRoot))
                 .ToList();
 
             return Task.FromResult<object?>(new { revitVersion = version, paths });
         }
 
-        internal static object DescribeRoot(ExtensionSourceRoot root, string version)
+        internal static object DescribeRoot(ExtensionSourceRoot root, string version, string authoringRoot)
         {
             bool rootExists = Directory.Exists(root.Path);
             int count = rootExists ? ExtensionCatalog.ScanRoot(root, version, strict: false).Count : 0;
@@ -44,6 +47,8 @@ namespace AnalyseTool.Core.Features.Extensions
                 valid = count > 0,
                 reason,
                 extensionCount = count,
+                // Where SaveAsCommand / SaveExtensionUi put what they generate when no root is named.
+                isAuthoringRoot = string.Equals(root.Path, authoringRoot, StringComparison.OrdinalIgnoreCase),
             };
         }
     }
@@ -96,33 +101,39 @@ namespace AnalyseTool.Core.Features.Extensions
         }
     }
 
-    /// <summary>Creates <c>&lt;base&gt;\extensions</c> inside a chosen base folder and registers it as a dev
-    /// source root — extensions then live directly under it (<c>&lt;root&gt;\&lt;id&gt;</c>, no version subfolder).</summary>
+    /// <summary>
+    /// Chooses which registered folder receives what the authoring commands generate — the scripts an
+    /// AI writes over MCP, and the pages that go with them.
+    ///
+    /// It matters because those commands are called with no folder in mind: an agent asked to "save
+    /// this as a command" names an id, not a path. Until now that always meant the built-in dev root,
+    /// so a user who keeps their extensions in a synced or version-controlled folder had to move every
+    /// generated script there by hand.
+    /// </summary>
     [RevitCommand(
-        Description = "Creates an extensions folder in a base folder and registers it as a source root.",
-        InputType = typeof(CreateExtensionRoot.Request),
-        HiddenFromMcp = true)]
-    internal sealed class CreateExtensionRoot : IRevitTask
+        Description = "Chooses which extension folder generated scripts are saved into when no target " +
+                      "root is named. Must be one of your own dev folders — installed packages are " +
+                      "overwritten by updates.",
+        InputType = typeof(SetAuthoringRoot.Request),
+        HiddenFromMcp = true)] // local plugin management, not for the AI
+    internal sealed class SetAuthoringRoot : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request? data = ctx.Payload.As<Request>();
-            if (string.IsNullOrWhiteSpace(data?.BasePath))
-                throw new InvalidOperationException("Base path is required.");
-            if (!Directory.Exists(data.BasePath))
-                throw new InvalidOperationException($"Folder does not exist: {data.BasePath}");
+            if (string.IsNullOrWhiteSpace(data?.Path))
+                throw new InvalidOperationException("Path is required.");
 
-            string root = Path.Combine(data.BasePath, "extensions");
-            Directory.CreateDirectory(root);
-            ExtensionSources.AddRoot(root);
+            string? problem = ExtensionSources.SetAuthoringRoot(data.Path);
+            if (problem is not null) throw new InvalidOperationException(problem);
 
-            return Task.FromResult<object?>(new { root });
+            return Task.FromResult<object?>(new { root = ExtensionSources.AuthoringRoot });
         }
 
         internal sealed record Request
         {
-            [Description("Base folder; the structure is created as <base>\\extensions.")]
-            public string BasePath { get; set; } = string.Empty;
+            [Description("A registered dev source root — generated scripts will be saved there.")]
+            public string Path { get; set; } = string.Empty;
         }
     }
 

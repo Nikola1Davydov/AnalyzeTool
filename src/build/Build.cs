@@ -26,9 +26,10 @@ sealed partial class Build : NukeBuild
             .Select(pair => pair.Key)
             .Select(config => config.Remove(config.LastIndexOf('|')))
             .Where(config => Configurations.Any(wildcard => FileSystemName.MatchesSimpleExpression(wildcard, config)))
-            // The solution declares every configuration for three platforms (Any CPU, x64, x86), so
-            // stripping the platform yields "Release R25" three times. Without this the callers build
-            // each configuration three times over — and BuildClientApp runs `npm run build` nine.
+            // The solution declares every configuration for Any CPU only, so stripping the platform
+            // already yields distinct names. Kept as a guard: should x64/x86 ever come back, without
+            // this the callers would build each configuration three times over — and BuildClientApp
+            // would run `npm run build` nine.
             .Distinct()
             .ToList();
 

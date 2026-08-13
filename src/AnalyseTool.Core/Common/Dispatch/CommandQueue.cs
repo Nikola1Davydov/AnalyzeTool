@@ -74,6 +74,11 @@ namespace AnalyseTool.Core.Common.Dispatch
 
         public bool IsRegistered(string command) => _dispatcher.IsRegistered(command);
 
+        /// <summary>One command's metadata, or null when it is not registered. Callers that need more
+        /// than "does it exist" — the ribbon deciding whether a button click can run a command or has
+        /// to ask for its arguments first — would otherwise scan <see cref="RegisteredCommands"/>.</summary>
+        public CommandRegistration? GetRegistration(string command) => _dispatcher.GetRegistration(command);
+
         public async Task<object?> ExecuteAsync(CommandRequest request)
         {
             if (request.Gate is not null)

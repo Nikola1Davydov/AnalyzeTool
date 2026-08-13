@@ -20,16 +20,17 @@ namespace AnalyseTool.Tools.Ai
                       "Returns { suggestions: [{ id, name }], error }.",
         ReadOnly = true,
         InputType = typeof(OllamaSuggestNames.Request),
-        HiddenFromMcp = true)]
+        HiddenFromMcp = true,
+        OutputType = typeof(AiNameSuggestionsResult))]
     internal sealed class OllamaSuggestNames : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             Request? req = ctx.Payload.As<Request>();
             if (req is null || string.IsNullOrWhiteSpace(req.Model))
-                return new { suggestions = Array.Empty<object>(), error = "No AI model selected." };
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "No AI model selected.");
             if (req.Items is not { Count: > 0 })
-                return new { suggestions = Array.Empty<object>(), error = "Nothing to rename." };
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "Nothing to rename.");
 
             try
             {
@@ -37,20 +38,21 @@ namespace AnalyseTool.Tools.Ai
                 var items = req.Items
                     .Select(i => new AiAnalysisService.NameItem(i.Id, i.CurrentName ?? string.Empty, i.Context ?? string.Empty))
                     .ToList();
-                var result = await ai.SuggestNamesAsync(items, req.Prompt ?? string.Empty);
-                return new
-                {
-                    suggestions = result.Select(s => new { id = s.Id, name = s.Name }).ToArray(),
-                    error = (string?)null
-                };
+                var result = await ai.SuggestNamesAsync(items, req.Prompt ?? string.Empty, ct);
+                return new AiNameSuggestionsResult(
+                    result.Select(s => new AiNameSuggestion(s.Id, s.Name)).ToArray(), null);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "AI timeout: the model did not answer in time.");
             }
             catch (OperationCanceledException)
             {
-                return new { suggestions = Array.Empty<object>(), error = "AI timeout: the model did not answer in time." };
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "Cancelled.");
             }
             catch (Exception ex)
             {
-                return new { suggestions = Array.Empty<object>(), error = ex.Message };
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), ex.Message);
             }
         }
 

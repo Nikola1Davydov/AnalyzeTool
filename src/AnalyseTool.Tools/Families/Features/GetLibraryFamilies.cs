@@ -13,9 +13,11 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Lists Revit family files under the given folders, flagging which are already loaded " +
-                      "in the document. Read-only.",
+                      "in the document. Read-only. Cost: walks those folders on DISK, so it scales with the " +
+                      "size of the library, not of the model.",
         ReadOnly = true,
-        InputType = typeof(GetLibraryFamilies.Request))]
+        InputType = typeof(GetLibraryFamilies.Request),
+        OutputType = typeof(LibraryFamiliesResult))]
     internal sealed class GetLibraryFamilies : IRevitTask
     {
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -30,7 +32,7 @@ namespace AnalyseTool.Tools.Families
             return await ctx.RunInRevitAsync<object?>(app =>
             {
                 var families = new LibraryService().Decorate(app.ActiveUIDocument.Document, files);
-                return new { count = families.Count, families };
+                return new LibraryFamiliesResult(families.Count, families);
             });
         }
 

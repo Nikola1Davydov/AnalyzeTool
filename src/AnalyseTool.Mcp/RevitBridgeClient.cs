@@ -15,6 +15,16 @@ namespace AnalyseTool.Mcp;
 internal sealed class RevitBridgeClient
 {
     private const string Host = "127.0.0.1";
+
+    /// <summary>
+    /// Upper bound on ONE command invocation. A blocked Revit — a modal dialog, an edit mode, a native
+    /// command — cannot serve the request until it goes idle again, and the bridge has no way to say so
+    /// mid-flight, so an unbounded read waits forever and takes the agent's call with it.
+    /// Deliberately generous: purging thousands of families or an AI round-trip legitimately takes
+    /// minutes, and a timeout that fires on real work is worse than none. This only catches "never".
+    /// </summary>
+    private static readonly TimeSpan InvokeTimeout = TimeSpan.FromMinutes(10);
+
     private readonly int _port;
     private readonly string _token;
 
@@ -33,8 +43,32 @@ internal sealed class RevitBridgeClient
         return await SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeList }, timeout.Token);
     }
 
-    public Task<JsonNode?> InvokeAsync(string command, JsonNode? payload, CancellationToken ct)
-        => SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeInvoke, [McpWire.Command] = command, [McpWire.Payload] = payload }, ct);
+    public async Task<JsonNode?> InvokeAsync(string command, JsonNode? payload, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(InvokeTimeout);
+
+        try
+        {
+            return await SendAsync(
+                new JsonObject
+                {
+                    [McpWire.Type] = McpWire.TypeInvoke,
+                    [McpWire.Command] = command,
+                    [McpWire.Payload] = payload,
+                },
+                timeout.Token);
+        }
+        // Only OUR deadline is turned into a diagnostic. When the caller cancelled, the cancellation is
+        // theirs and must propagate as one — reporting it as a timeout would blame Revit for a Ctrl-C.
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new BridgeException(McpWire.Codes.Timeout,
+                $"'{command}' did not answer within {InvokeTimeout.TotalMinutes:0} minutes. Revit is most " +
+                "likely blocked by a modal dialog or an edit mode.",
+                "Call GetQueueStatus — it answers even then — and retry once waitingForUser is false.");
+        }
+    }
 
     private async Task<JsonNode?> SendAsync(JsonObject envelope, CancellationToken ct)
     {
@@ -54,8 +88,9 @@ internal sealed class RevitBridgeClient
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Cannot reach Revit on {Host}:{_port}. Is Revit running with the AnalyseTool MCP server enabled (Settings)? ({ex.Message})");
+                throw new BridgeException(McpWire.Codes.RevitUnreachable,
+                    $"Cannot reach Revit on {Host}:{_port}. ({ex.Message})",
+                    "Start Revit and enable the AnalyseTool MCP server in Settings.");
             }
         }
 
@@ -69,8 +104,25 @@ internal sealed class RevitBridgeClient
         string responseText = await ReadJsonAsync(stream, ct);
         JsonNode? node = JsonNode.Parse(responseText);
         if (node?[McpWire.Error] is JsonNode err)
-            throw new InvalidOperationException(err.GetValue<string>());
+            throw ToException(err);
         return node?[McpWire.Result]?.DeepClone();
+    }
+
+    /// <summary>
+    /// Turns the wire's error into a typed one. The shape is { code, message, hint? }; a bare string is
+    /// still accepted, because tolerating it costs one branch and turns a hypothetical version skew
+    /// between the two halves into a readable message instead of a cast exception.
+    /// </summary>
+    private static BridgeException ToException(JsonNode err)
+    {
+        if (err is JsonObject error)
+        {
+            string code = error[McpWire.ErrorCode]?.GetValue<string>() ?? McpWire.Codes.CommandFailed;
+            string message = error[McpWire.ErrorMessage]?.GetValue<string>() ?? "The call failed.";
+            return new BridgeException(code, message, error[McpWire.ErrorHint]?.GetValue<string>());
+        }
+
+        return new BridgeException(McpWire.Codes.CommandFailed, err.ToString());
     }
 
     /// <summary>Reads bytes until the buffer is one complete JSON value (the response may span

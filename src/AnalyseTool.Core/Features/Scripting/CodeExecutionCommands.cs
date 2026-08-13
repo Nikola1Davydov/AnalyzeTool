@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
+using System.ComponentModel;
 
 namespace AnalyseTool.Core.Features.Scripting
 {
@@ -33,6 +34,7 @@ namespace AnalyseTool.Core.Features.Scripting
 
         internal sealed class Request
         {
+            [Description("True to allow C# execution commands to run, false to refuse them.")]
             public bool Enabled { get; set; }
         }
     }

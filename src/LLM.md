@@ -70,6 +70,7 @@ namespace AnalyseTool.Sdk
         public bool    ReadOnly   { get; set; }    // command only reads the model
         public bool    Destructive{ get; set; }    // command may modify/delete
         public Type?   InputType  { get; set; }    // generates the JSON input schema
+        public Type?   OutputType{ get; set; }     // SDK 1.2+: schema of what the command RETURNS
         public bool    HiddenFromMcp { get; set; } // callable from JS, hidden from the AI tool list
     }
 
@@ -271,6 +272,8 @@ to say which Revit versions it supports.
 
 Generate one only when the request explicitly asks for a script, or when you are the agent running
 the code yourself. For anything a person will install, generate the C# project from §4.
+If you ARE that agent — connected over MCP — §7.2 has the commands to run, save, read back and
+diagnose one without a human copying files.
 
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
@@ -417,6 +420,134 @@ then refuses to guess which one is the package.
 
 ---
 
+### 7.2 Doing all of this yourself (over MCP)
+
+Everything above assumes a person copies files and clicks Reload. If you are connected over MCP you
+can run the whole loop, because the host exposes it as commands.
+
+**Gate first.** All of this requires **C# code execution** to be ON in AnalyseTool Settings. While it
+is off these tools are not merely refused — they are not in `tools/list` at all, so if you cannot see
+them, ask the user to turn the setting on. Only a person can: the command that flips it is hidden
+from MCP on purpose, so you cannot grant yourself code execution.
+
+The loop, and what each step answers:
+
+| Step | Command | What comes back |
+| --- | --- | --- |
+| Learn the rules | `GetAuthoringGuide` | This document. Call it first — it is not otherwise reachable over MCP, and everything below assumes it. |
+| Try it | `ExecuteRevitCode { code, description? }` | The snippet's own return value. Nothing is persisted. On a compile failure, `{ error, diagnostics }` — read the diagnostics and fix the code; no human relays them. |
+| Keep it | `SaveAsCommand { code, id, name, … }` | `{ ok, created, command, directory, error, diagnostics, warnings }` |
+| Give it a form | `SaveExtensionUi { id, name, files, … }` | `{ ok, id, directory, entryHtml, files, error }` |
+| Tidy the ribbon | `UpdateExtensionManifest { id, name?, tab?, panel?, removeButton? }` | The rewritten manifest |
+| Read it back | `GetScriptSource { id }` | `{ ok, id, directory, files: [{ name, content }] }` — script extensions only |
+| Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, `error` if it failed to compile or load, and `shadowedBy` when another folder claimed the same id first |
+| Apply | `ReloadExtensions` | Only needed for changes made another way — the save commands reload by themselves |
+
+`SaveAsCommand` takes either form from §5 — a bare body it wraps into a named class, or a full
+`IRevitTask` you wrote. It **compiles before writing**, so code that does not build never reaches
+disk, and it names the button after the command the dispatcher will actually register. `tab` and
+`panel` place the button; `readOnly` / `destructive` become the command's own metadata.
+
+**To refine a command you already made, pass `overwrite: true`** — that is the difference between
+generating a command and being able to improve it. Read the current source with `GetScriptSource`
+first rather than rewriting from memory. Overwrite only replaces a folder this command created
+(`Command.cs` + `plugin.json` and nothing else); anything else is refused, so you cannot flatten
+someone's hand-built extension by picking its id.
+
+**A save for an existing id goes to that extension's OWN folder** — leave `targetRoot` empty and it
+resolves there, wherever it is. This matters most for a script that did not come from this machine: a
+team keeps its scripts in a shared folder, everyone adds it as a source, and fixing one has to fix
+THAT copy. Naming a different root instead leaves the broken original where the team can see it and
+adds a second folder with the same id, one of which then silently wins.
+
+So when the result's `directory` is not the user's own folder, **say so**: a fix in a shared folder is
+everyone's fix, and that is their call to make, not yours.
+
+**A command WITH a form** is two saves into the SAME `id`:
+
+1. `SaveAsCommand { id: "niko.sheets", name: "Create sheets", code: … }` — the C# that does the work
+   and returns JSON. Note the `command` it reports back, e.g. `niko.sheets.CreateSheets`.
+2. `SaveExtensionUi { id: "niko.sheets", files: [{ name: "index.html", content: … }] }` — the page,
+   which calls that command with `AT.invoke("niko.sheets.CreateSheets", { … })`.
+
+**The ribbon button follows one rule: if the extension has a page, the button OPENS the page;
+if it has none, the button RUNS the command.** So save the page second and the button opens the
+form — the host decides by whether `ui.button.command` is set, and adding a page clears it. Both
+save commands MERGE into the existing `plugin.json` rather than replacing it, so neither erases the
+other's half (nor any vendor metadata already there).
+
+Files are written flat into the extension folder, so `SaveExtensionUi` takes hand-authored
+HTML/CSS/JS — plain `window.AT.invoke` as in §6, no build step. A framework project with an
+`assets/` tree is not this: that is a folder a person builds and installs.
+
+**One extension, many commands — do this by default.** Each extension gets at most ONE ribbon button
+(the host keys them by extension id), so saving ten commands as ten extensions puts ten buttons on
+the ribbon. Roslyn compiles every `.cs` in a folder, so the folder was never the limit:
+
+- Pass `fileName: "CreateSheets.cs"` to put another command into an extension that already exists.
+  They compile together and share the extension's id, so their wire names are
+  `niko.sheets.CreateSheets`, `niko.sheets.RenumberSheets`, and so on.
+- Pass `button: false` for commands that should not each get a button — the extension keeps the one
+  it has, and every command stays callable from MCP and from JS regardless.
+- `UpdateExtensionManifest { id, removeButton: true }` takes an extension off the ribbon entirely
+  without touching its code, for a ribbon that has already collected too much.
+
+`overwrite` is asked of the FILE, not the folder: adding a second command is not overwriting the
+first, so only re-saving the same `fileName` needs it.
+
+**A command with no button is not a command nobody can run.** The host's **Scripts** button opens a
+dockable launcher listing the generated script commands that stand on their own — so a command saved
+with `button: false` is still one click from being run, and that is why saving without a button costs
+nothing.
+
+Two kinds of command are deliberately absent, both for the same reason — they already have a front
+door, and a second one would only skip it:
+
+- **A compiled extension's commands.** It ships its own page and its own ribbon button.
+- **The commands behind a page you saved.** Once `SaveExtensionUi` gives an extension an entry page,
+  its ribbon button opens that page, and the commands become the page's backend. A form that needs
+  two `IRevitTask`s — one to fetch, one to apply — is ONE tool with two steps, and listing the steps
+  as two scripts both misdescribes it and invites someone to run "apply" without "fetch".
+
+So the shape of what you build decides where it appears, and both shapes are complete: **commands
+only** → they are rows in the launcher, each with a form built from its schema; **commands plus a
+page** → one ribbon button that opens the page you designed. What you must not do is assume a
+half-built tool is visible: if you have saved the C# and intend to add a form, the commands are
+listed until the page lands and then they are not, which is correct rather than a regression.
+
+The launcher BUILDS THE FORM FROM `inputSchema` — the practical reason to declare `InputType` on a
+generated command even when nothing chains it. A command that declares one opens its own page with
+typed fields and a Run button; a command that declares none has no form to show, and its ▶ simply
+runs it. So `InputType` is the difference between a command a person can drive and one they can only
+trigger.
+
+**Where a command lives is the user's call, not yours.** Every row in that launcher has a pin that
+moves its command onto the ribbon or back off it, and it works for any command — including one from
+an extension whose manifest you must never write. So `button` and `removeButton` set the DEFAULT a
+command arrives with; the user overrides it afterwards and their override wins. Do not argue with a
+ribbon they have already arranged: never flip `button` on an existing command just to make it easier
+to find, and say "it is in the Scripts launcher, pin it if you want a button" instead.
+
+A pinned button knows the difference between a command it can run and one it cannot: no `InputType`
+means the click runs it, and an `InputType` means the click opens the launcher with the form already
+on screen. Another reason a generated command should declare one.
+
+**Where saves land is also the user's call.** With no `targetRoot`, `SaveAsCommand` and
+`SaveExtensionUi` write into the folder chosen in Settings → Extension paths (tagged `scripts`),
+which is the built-in dev root until the user picks another. Leave `targetRoot` empty unless the user
+names a folder — passing the default explicitly overrides a choice they made on purpose.
+
+Two things to expect:
+
+- **`warnings` in the save result.** A full class that declares no `InputType` / `OutputType` saves
+  and works, but is opaque over MCP — nobody can tell what to send it or what it returns. Fix it and
+  save again with `overwrite: true`. (A wrapped bare body gets no such warning: it takes no arguments
+  and returns whatever the body returns, so there is nothing to declare.)
+- **A brand-new ribbon button needs one Revit restart** to appear, as in §7. The command itself is
+  callable immediately after the reload — you do not have to wait to test it.
+
+---
+
 ## 8. Rules — ALWAYS / NEVER
 
 - **ALWAYS** generate a compiled C# project (`.dll`). A script (§5) is only for an explicit request
@@ -425,10 +556,17 @@ then refuses to guess which one is the package.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
   the generated schema balloons.
+- **ALWAYS** declare `OutputType` too (SDK 1.2+). A command that declares neither is callable but
+  opaque over MCP — free-form arguments, free-form answer — so it cannot be chained and its payload
+  cannot be checked. If `ExecuteAsync` returns an anonymous object, promote it to a named record
+  first: that refactor IS the work, the attribute is the easy half.
 - **NEVER** ship copies of `AnalyseTool.Sdk` / Revit API / `Newtonsoft.Json` in the extension output.
 - **NEVER** touch the WebView, sockets, or threads from a command — return a serializable object.
 - **Category names are language-specific.** On a German Revit a wall's category is `"Wände"`, not
-  `"Walls"`. To resolve names, call `GetCategoriesInRevit` first; don't hard-code English names.
+  `"Walls"`. Don't hard-code English names: call `GetModelOverview` — it reports the UI language, the
+  display units and a per-category INSTANCE count in one call, so it also tells you which categories
+  actually hold geometry — or `GetCategoriesInRevit` for the full list. In your own code prefer
+  `BuiltInCategory` (`OST_Walls`), which means the same thing on every install.
 - Return plain, serializable data (numbers, strings, lists, anonymous objects). Don't return raw
   Revit `Element`/`Parameter` objects.
 
@@ -448,9 +586,19 @@ the user to pick one.
   A `storage` event fires when another window changes them.
 - **Ollama status / local models:** `AT.invoke("OllamaGetModels")` → `{ running: bool, models: string[]|null }`
   (`running:false` = Ollama unreachable; distinct from "running with 0 models").
-- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host): `OllamaAnalyse`,
-  `OllamaEditParameters` (returns suggested parameter edits), `OllamaSuggestName` (one new name from a
-  current name + instruction). Pass `{ model, prompt, … }` where `model` is the shared model name.
+- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host). Pass
+  `{ model, prompt, … }`; `model` is the shared model name and is **required** — there is no default.
+  Each returns its failure as DATA in an `error` field rather than throwing, so always read `error`
+  before the payload:
+  - `OllamaAnalyse` → `{ analysis, error }` — free-text analysis. It **streams**: call it with
+    `AT.invoke(cmd, payload, { onProgress })` and append `p.message`, which carries the generated text
+    as it arrives (`p.fraction` stays 0 — token generation has no honest total). The returned
+    `analysis` is authoritative; replace what you streamed with it when the call finishes.
+  - `OllamaEditParameters` → `{ edits: [{ elementId, parameter, oldValue, newValue, reason }], raw, error }`
+    — proposed edits only; apply them yourself with `SetDataToParameters`.
+  - `OllamaSuggestName` → `{ name, error }` — one new name from a current name + instruction.
+- **Cancelling a long AI call:** pass an `AbortSignal` — `AT.invoke(cmd, payload, { signal })`. The
+  host cancels the model call itself, and the command comes back with `error: "Cancelled."`.
 - In your **own** C# AI command: take the model name in the payload, and run the AI/HTTP call **outside**
   `RunInRevitAsync` (see §2 — slow I/O must not block the Revit thread); marshal only the model touch.
 
@@ -463,6 +611,6 @@ the user to pick one.
 - [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
-      for commands that take arguments.
+      for commands that take arguments; `OutputType` for what they return (SDK 1.2+).
 - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
 - [ ] Tell the user the deploy path and that they click **Reload** (or restart for a new button).

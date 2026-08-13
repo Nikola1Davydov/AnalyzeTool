@@ -259,7 +259,7 @@ function commitEdit() {
         <div class="flex items-center gap-2">
           <InputText
             v-model="newCloud"
-            placeholder="e.g. gemma4:31b-cloud"
+            placeholder="e.g. qwen3:32b-cloud"
             class="grow"
             @keyup.enter="addCloud"
           />

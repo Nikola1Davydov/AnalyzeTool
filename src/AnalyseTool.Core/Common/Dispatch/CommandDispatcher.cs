@@ -104,8 +104,9 @@ namespace AnalyseTool.Core.Common.Dispatch
                 attr?.Description,
                 attr?.ReadOnly ?? false,
                 attr?.Destructive ?? false,
-                BuildInputSchema(attr?.InputType),
-                ExposeToMcp: !(attr?.HiddenFromMcp ?? false));
+                BuildSchema(attr?.InputType),
+                ExposeToMcp: !(attr?.HiddenFromMcp ?? false),
+                OutputSchemaJson: BuildSchema(attr?.OutputType));
 
             // TryAdd, not check-then-set: first registration wins, and the winner is decided atomically.
             if (!_commands.TryAdd(name, registration))
@@ -120,26 +121,42 @@ namespace AnalyseTool.Core.Common.Dispatch
             }
         }
 
-        /// <summary>Generates a JSON Schema for the declared input type (via Microsoft.Extensions.AI, already
-        /// referenced) so MCP clients know which arguments the command takes. No input → empty object.</summary>
-        private static string BuildInputSchema(Type? inputType)
+        /// <summary>
+        /// Generates a JSON Schema for a declared input or output type (via Microsoft.Extensions.AI,
+        /// already referenced). No declared type → empty object.
+        /// <para>The schema is stored WHOLE. It used to be capped at 4096 chars here, which suited the
+        /// one consumer that existed — an MCP tool listing, where a deeply nested DTO bloats every
+        /// response. It does not suit the second: a graph validator comparing one command's output
+        /// against the next one's input needs the real thing, and output types (lists of elements with
+        /// their parameters) blow past that cap almost always, so capping at registration would leave
+        /// every interesting edge uncheckable. The cap now lives with the consumer that wants it —
+        /// see <see cref="SchemaListing"/>.</para>
+        /// </summary>
+        private static string BuildSchema(Type? type)
         {
             try
             {
-                if (inputType != null)
-                {
-                    string json = AIJsonUtilities.CreateJsonSchema(inputType).GetRawText();
-                    // Keep tools/list small: deeply-nested DTOs (e.g. lists of element/parameter
-                    // models) generate huge schemas that bloat every listing without helping the AI
-                    // much. Over the cap, fall back to a permissive object schema; the command's
-                    // Description carries the shape instead.
-                    if (json.Length <= 4096) return json;
-                    return "{\"type\":\"object\",\"additionalProperties\":true}";
-                }
+                if (type != null) return AIJsonUtilities.CreateJsonSchema(type).GetRawText();
             }
             catch { /* fall through to the empty-object schema */ }
-            return "{\"type\":\"object\",\"properties\":{}}";
+            return SchemaListing.EmptyObject;
         }
+    }
+
+    /// <summary>Trims a schema down for a LISTING — a response that carries every command at once and is
+    /// re-fetched on every reconnect, where a full nested DTO helps nobody. Callers that reason about the
+    /// schema (graph validation, connection checks) take the stored one instead.</summary>
+    internal static class SchemaListing
+    {
+        public const string EmptyObject = "{\"type\":\"object\",\"properties\":{}}";
+        public const string FreeFormObject = "{\"type\":\"object\",\"additionalProperties\":true}";
+
+        private const int MaxChars = 4096;
+
+        /// <summary>Over the cap, falls back to a permissive object schema; the command's Description
+        /// carries the shape instead. This is exactly the behaviour registration used to bake in.</summary>
+        public static string Compact(string schemaJson) =>
+            schemaJson.Length <= MaxChars ? schemaJson : FreeFormObject;
     }
 
     internal sealed record CommandRegistration(
@@ -149,6 +166,7 @@ namespace AnalyseTool.Core.Common.Dispatch
         string? Description = null,
         bool ReadOnly = false,
         bool Destructive = false,
-        string InputSchemaJson = "{\"type\":\"object\",\"properties\":{}}",
-        bool ExposeToMcp = true);
+        string InputSchemaJson = SchemaListing.EmptyObject,
+        bool ExposeToMcp = true,
+        string OutputSchemaJson = SchemaListing.EmptyObject);
 }

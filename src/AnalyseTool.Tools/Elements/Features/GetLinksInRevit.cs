@@ -7,9 +7,10 @@ using AnalyseTool.Sdk;
 namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
-        Description = "Returns linked content in the document: Revit links and linked CAD files " +
-                      "(each with id and name).",
-        ReadOnly = true)]
+        Description = "Returns linked content in the document: Revit links and linked CAD files (each with " +
+                      "id and name). Read-only. Cost: one scan of the document's link and import instances.",
+        ReadOnly = true,
+        OutputType = typeof(LinksResult))]
     internal sealed class GetLinksInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>

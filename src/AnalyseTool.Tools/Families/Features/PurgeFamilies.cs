@@ -13,9 +13,14 @@ namespace AnalyseTool.Tools.Families
     /// can't be removed is skipped and counted rather than aborting the purge. Returns { deleted, failed }.
     /// </summary>
     [RevitCommand(
-        Description = "Deletes the given families, skipping (and counting) any that can't be removed. " +
-                      "Used by 'purge unused families'. Returns { deleted, failed }.",
-        InputType = typeof(PurgeFamilies.Request))]
+        Description = "MODIFIES the model: deletes the given families, skipping (and counting) any that " +
+                      "can't be removed. Deleting a family also deletes its instances — check the instance " +
+                      "count from GetFamilies first, where the ids come from. Used by 'purge unused " +
+                      "families'. Returns { deleted, failed }. Cost: one transaction over the given " +
+                      "families.",
+        Destructive = true,
+        InputType = typeof(PurgeFamilies.Request),
+        OutputType = typeof(PurgeResult))]
     internal sealed class PurgeFamilies : IRevitTask, IProgressAware
     {
         private const int ChunkSize = 40;
@@ -32,7 +37,8 @@ namespace AnalyseTool.Tools.Families
             List<long> plan = await ctx.RunInRevitAsync(app =>
                 service.PlanPurgeFamilies(app.ActiveUIDocument.Document, req.FamilyIds));
 
-            if (plan.Count == 0) return new { ok = true, deleted = 0, failed = 0 };
+            List<TransactionWarning> warnings = new();
+            if (plan.Count == 0) return new PurgeResult(true, 0, 0, warnings);
 
             int deleted = 0, failed = 0, done = 0;
             for (int i = 0; i < plan.Count; i += ChunkSize)
@@ -45,11 +51,12 @@ namespace AnalyseTool.Tools.Families
 
                 deleted += res.Deleted;
                 failed += res.Failed;
+                if (res.Warnings is { Count: > 0 }) warnings.AddRange(res.Warnings);
                 done += chunk.Count;
                 Progress?.Report(new ProgressInfo(done / (double)plan.Count, "Deleting unused families…"));
             }
 
-            return new { ok = true, deleted, failed };
+            return new PurgeResult(true, deleted, failed, warnings);
         }
 
         public sealed class Request

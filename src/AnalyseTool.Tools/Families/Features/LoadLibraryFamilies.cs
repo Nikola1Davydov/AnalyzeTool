@@ -13,9 +13,13 @@ namespace AnalyseTool.Tools.Families
     /// present, invalid) is skipped and counted. Backs the palette Library "Load" action.
     /// </summary>
     [RevitCommand(
-        Description = "Loads the given .rfa files into the current document, skipping any that fail. " +
-                      "Returns { loaded, failed }.",
-        InputType = typeof(LoadLibraryFamilies.Request))]
+        Description = "MODIFIES the model: loads the given .rfa files into the current document, skipping " +
+                      "any that fail. Paths come from GetLibraryFamilies. Returns { loaded, failed }. Cost: " +
+                      "one transaction, and each family is read from disk — this scales with the number and " +
+                      "size of the files.",
+        Destructive = true,
+        InputType = typeof(LoadLibraryFamilies.Request),
+        OutputType = typeof(LoadFamiliesResult))]
     internal sealed class LoadLibraryFamilies : IRevitTask, IProgressAware
     {
         public IProgress<ProgressInfo>? Progress { get; set; }
@@ -24,10 +28,11 @@ namespace AnalyseTool.Tools.Families
         {
             Request req = ctx.Payload.As<Request>() ?? new Request();
             List<string> paths = req.Paths ?? new List<string>();
-            if (paths.Count == 0) return new { ok = true, loaded = 0, failed = 0 };
+            if (paths.Count == 0) return new LoadFamiliesResult(true, 0, 0, Array.Empty<TransactionWarning>());
 
             LibraryService service = new();
             int loaded = 0, failed = 0;
+            List<TransactionWarning> warnings = new();
 
             for (int i = 0; i < paths.Count; i++)
             {
@@ -36,13 +41,14 @@ namespace AnalyseTool.Tools.Families
 
                 // One family per round-trip: control returns to the UI thread between files so the
                 // progress bar animates (loading is slow, so the round-trip overhead is negligible).
-                bool ok = await ctx.RunInRevitAsync(app => service.LoadOne(app.ActiveUIDocument.Document, path));
-                if (ok) loaded++; else failed++;
+                LoadOneResult result = await ctx.RunInRevitAsync(app => service.LoadOne(app.ActiveUIDocument.Document, path));
+                if (result.Ok) loaded++; else failed++;
+                if (result.Warnings is { Count: > 0 }) warnings.AddRange(result.Warnings);
 
                 Progress?.Report(new ProgressInfo((i + 1) / (double)paths.Count, "Loading families…"));
             }
 
-            return new { ok = true, loaded, failed };
+            return new LoadFamiliesResult(true, loaded, failed, warnings);
         }
 
         public sealed class Request

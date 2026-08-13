@@ -13,11 +13,13 @@ namespace AnalyseTool.Tools.Families
     /// round-trip for the whole selection instead of one per type.
     /// </summary>
     [RevitCommand(
-        Description = "Returns the non-empty type parameters (display values) for a batch of family " +
-                      "types. Payload: { typeIds: [long] }. Returns { types: [{ typeId, parameters: " +
-                      "[{ name, value }] }] }. Read-only.",
+        Description = "Returns the non-empty type parameters (display values) for a batch of family types. " +
+                      "Read-only. Payload: { typeIds: [long] }, ids from GetFamilyTypes or " +
+                      "GetFamilyTypeRows. Returns { types: [{ typeId, parameters: [{ name, value }] }] }. " +
+                      "Cost: reads only the given types — cheap.",
         ReadOnly = true,
-        InputType = typeof(GetTypeParameters.Request))]
+        InputType = typeof(GetTypeParameters.Request),
+        OutputType = typeof(TypeParametersResult))]
     internal sealed class GetTypeParameters : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

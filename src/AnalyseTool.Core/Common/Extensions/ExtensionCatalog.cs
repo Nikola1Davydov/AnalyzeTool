@@ -30,6 +30,17 @@ namespace AnalyseTool.Core.Common.Extensions
 
         public bool HasUi => Manifest.Ui?.Button is not null;
 
+        /// <summary>The ribbon button OPENS THE EXTENSION'S PAGE instead of running one command — the
+        /// same test the host applies when it builds the button (RibbonHost.CreateButton), read from the
+        /// one place that decides it. Such an extension is its own way in, and its commands are that
+        /// page's backend: a form needing two <c>IRevitTask</c>s (fetch, then apply) is ONE tool with two
+        /// steps, not two tools. Listing those steps separately offers a second door that skips the page
+        /// the author built, and invites running step two without step one.
+        /// <para>An extension with no button at all is NOT this: nothing else can reach its commands, so
+        /// the launcher is their only door and must keep showing them.</para></summary>
+        public bool OpensPage =>
+            Manifest.Ui?.Button is { } button && string.IsNullOrWhiteSpace(button.Command);
+
         /// <summary>False only when a declared entry assembly has no build for the running Revit
         /// version — such extensions are listed (as incompatible) but never loaded.</summary>
         public bool IsCompatibleWithHost => !DeclaresDll || HasDll;

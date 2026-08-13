@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions.Scripting;
+using AnalyseTool.Core.Features.Extensions;
 using AnalyseTool.Core.Features.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -22,7 +23,7 @@ namespace AnalyseTool.Mcp.Bridge
     /// connection). This connect-per-request model removes all persistent-socket/reconnect fragility.
     ///
     /// Protocol: request { "id", "type":"invoke"|"list", "command", "payload" }
-    ///           response { "id", "result": &lt;any&gt; } | { "id", "error": "message" }
+    ///           response { "id", "result": &lt;any&gt; } | { "id", "error": { code, message, hint? } }
     /// </summary>
     internal sealed class McpBridgeServer
     {
@@ -164,8 +165,10 @@ namespace AnalyseTool.Mcp.Bridge
                 // open this port, and what is behind it drives Revit. The token proves the caller was
                 // configured by the user (Settings hands it out in the client config snippet).
                 if (!IsAuthorized((string?)req[McpWire.Token]))
-                    return Err(id, "Unauthorized: missing or wrong bridge token. Re-copy the MCP client " +
-                                   "configuration from AnalyseTool Settings — it now includes a --token argument.");
+                    return Err(id, McpWire.Codes.Unauthorized,
+                        "Missing or wrong bridge token.",
+                        "Re-copy the MCP client configuration from AnalyseTool Settings — it includes a " +
+                        "--token argument.");
 
                 string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
 
@@ -181,13 +184,67 @@ namespace AnalyseTool.Mcp.Bridge
                             [McpWire.Description] = c.Description,
                             [McpWire.ReadOnly] = c.ReadOnly,
                             [McpWire.Destructive] = c.Destructive,
-                            [McpWire.InputSchema] = JToken.Parse(c.InputSchemaJson),
+                            // Compacted HERE, not at registration: a listing carries every command and is
+                            // re-fetched on every reconnect, so a huge nested DTO costs on each one. The
+                            // stored schema stays whole for callers that reason about it.
+                            [McpWire.InputSchema] = JToken.Parse(SchemaListing.Compact(c.InputSchemaJson)),
+                            [McpWire.OutputSchema] = JToken.Parse(SchemaListing.Compact(c.OutputSchemaJson)),
                         }));
                     return Ok(id, new JObject { [McpWire.Commands] = commands });
                 }
 
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
+
+                // Checked HERE rather than in the command: the command deserializes with Newtonsoft, which
+                // drops an unrecognised field without a word, so a misspelled filter comes back as an
+                // unfiltered result that looks like a successful call.
+                //
+                // Validated against Compact() — the SAME schema tools/list published, not the stored one.
+                // They differ for a command whose schema exceeded the listing cap and went out as
+                // free-form: holding a caller to parameters it was never shown would be a rejection it
+                // cannot act on, so those go through unchecked, exactly as they do today.
+                // Named `registered`, not `registration`: the Gate lambda below already binds that name,
+                // and C# refuses a lambda parameter that shadows an enclosing local.
+                //
+                // Filtered on ExposeToMcp, so a command the AI may NEVER call is indistinguishable from
+                // one that does not exist. Looking it up unfiltered leaked it: a guessed name reached
+                // the validator, which answered "invalid arguments" and listed the command's
+                // parameters — telling an agent that SetCodeExecution exists and what it takes, which
+                // is the one command HiddenFromMcp is load-bearing for.
+                CommandRegistration? registered = _queue.RegisteredCommands
+                    .Where(c => c.ExposeToMcp)
+                    .FirstOrDefault(c => string.Equals(c.Name, command, StringComparison.OrdinalIgnoreCase));
+
+                if (registered is null)
+                {
+                    // Answered here rather than left to the dispatcher, which can only say "not
+                    // registered": the bridge knows the catalogue it published and can point at the name
+                    // the caller probably meant. Suggestions come from the AI-VISIBLE names only —
+                    // pointing an agent at a command it may not call is a worse answer than none.
+                    string? nearest = NearestName.Closest(
+                        command, _queue.RegisteredCommands.Where(IsAvailableToAi).Select(c => c.Name));
+                    return Err(id, McpWire.Codes.UnknownCommand, $"No command named '{command}'.",
+                        nearest is null
+                            ? "Call tools/list for the commands this server offers."
+                            : $"Did you mean '{nearest}'? Call tools/list for the full set.");
+                }
+
+                // Answered BEFORE the payload is validated. An authoring tool switched off is not a
+                // secret — its name and schema are in the authoring guide and in tools/list whenever
+                // the toggle is on — so it gets a sentence it can act on rather than an unknown-command
+                // answer. But making the agent correct its arguments first, only to be refused for a
+                // reason no argument can fix, is a retry loop with a known-useless end.
+                if (!IsAvailableToAi(registered))
+                    return Err(id, McpWire.Codes.NotAvailable,
+                        $"'{command}' needs C# code execution, which is switched off in AnalyseTool Settings.",
+                        "Only a person can enable it — ask the user to turn it on, then call tools/list again.");
+
+                string? complaint = PayloadValidator.Validate(
+                    command, SchemaListing.Compact(registered.InputSchemaJson), payload);
+                if (complaint is not null)
+                    return Err(id, McpWire.Codes.InvalidArguments, complaint,
+                        "Nothing was executed. Correct the arguments and call again.");
 
                 object? result = await _queue.ExecuteAsync(
                     new CommandRequest(command, payload, Source)
@@ -202,9 +259,21 @@ namespace AnalyseTool.Mcp.Bridge
                     }).ConfigureAwait(false);
                 return Ok(id, result is null ? JValue.CreateNull() : JToken.FromObject(result));
             }
+            // Classified by exception TYPE, never by matching the message text: a reworded sentence must
+            // not silently reclassify an error that a caller branches on.
+            catch (UnauthorizedAccessException ex)
+            {
+                return Err(id, McpWire.Codes.NotAvailable, ex.Message,
+                    "This command is not exposed to AI callers. The C#-execution tools additionally " +
+                    "require the toggle in AnalyseTool Settings.");
+            }
+            catch (OperationCanceledException)
+            {
+                return Err(id, McpWire.Codes.Cancelled, "The call was cancelled before it finished.");
+            }
             catch (Exception ex)
             {
-                return Err(id, ex.Message);
+                return Err(id, McpWire.Codes.CommandFailed, ex.Message);
             }
         }
 
@@ -224,23 +293,44 @@ namespace AnalyseTool.Mcp.Bridge
         /// tools/list and invoke, so the two can never drift apart:
         /// <list type="bullet">
         /// <item><c>HiddenFromMcp</c> commands are local plugin management, never AI tools;</item>
-        /// <item>the code-execution tools additionally require the Settings toggle (they hard-refuse
+        /// <item>the code-authoring tools additionally require the Settings toggle (they hard-refuse
         /// when off anyway — this keeps them out of reach instead of merely out of sight).</item>
         /// </list>
         /// </summary>
         private static bool IsAvailableToAi(CommandRegistration command) =>
-            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeExecTool(command.Name));
+            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(command.Name));
 
-        /// <summary>The C#-execution tools gated behind the Settings toggle.</summary>
-        private static bool IsCodeExecTool(string name) =>
+        /// <summary>
+        /// The tools behind the Settings toggle. Not only the two that RUN code: reading a script's
+        /// source hands the AI code off the user's machine, and reloading is the step that makes written
+        /// code take effect — the toggle is the user saying "I am authoring code here with AI", and each
+        /// of these is part of doing that. The toggle itself stays out of reach: SetCodeExecution is
+        /// HiddenFromMcp, so only a person at the Settings page turns this on or off.
+        /// </summary>
+        private static bool IsCodeAuthoringTool(string name) =>
             string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
+            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, GetScriptSource.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, SaveExtensionUi.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, UpdateExtensionManifest.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
 
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
 
-        private static string Err(string? id, string message) =>
-            new JObject { [McpWire.Id] = id, [McpWire.Error] = message }.ToString(Formatting.None);
+        /// <summary>An error the caller can act on: a code to branch on, a message to read, and — only
+        /// when there is something useful to say — what to do about it.</summary>
+        private static string Err(string? id, string code, string message, string? hint = null)
+        {
+            JObject error = new()
+            {
+                [McpWire.ErrorCode] = code,
+                [McpWire.ErrorMessage] = message,
+            };
+            if (!string.IsNullOrWhiteSpace(hint)) error[McpWire.ErrorHint] = hint;
+
+            return new JObject { [McpWire.Id] = id, [McpWire.Error] = error }.ToString(Formatting.None);
+        }
 
         /// <summary>Requests are command payloads, not file uploads — anything larger is a mistake or an
         /// attack, and reading it costs the Revit process its memory.</summary>

@@ -1,12 +1,15 @@
 ﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 
 namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
         Description = "Returns the active document's review warnings, each with its description and the " +
-                      "failing/additional element ids.",
-        ReadOnly = true)]
+                      "failing/additional element ids. Read-only. Cost: proportional to the number of " +
+                      "warnings, not to the size of the model.",
+        ReadOnly = true,
+        OutputType = typeof(List<GetWarningsInRevit.WarningInRevitModel>))]
     internal sealed class GetWarningsInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
@@ -28,10 +31,17 @@ namespace AnalyseTool.Tools.Elements
                 return result;
             });
 
-        private sealed record WarningInRevitModel
+        /// <summary>Internal, not private: <c>typeof(...)</c> in the attribute above has to reach it, and
+        /// the SDK asks declared schema types to be at least internal for exactly that reason.</summary>
+        internal sealed record WarningInRevitModel
         {
+            [JsonProperty("warningDescription")]
             public string WarningDescription { get; set; } = string.Empty;
+
+            [JsonProperty("failingElements")]
             public List<long> FailingElements { get; set; } = new();
+
+            [JsonProperty("additionalElements")]
             public List<long> AdditionalElements { get; set; } = new();
         }
     }

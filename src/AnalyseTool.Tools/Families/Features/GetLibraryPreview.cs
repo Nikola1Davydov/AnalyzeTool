@@ -16,7 +16,8 @@ namespace AnalyseTool.Tools.Families
         Description = "Returns the .rfa file's embedded preview image as a PNG data URI (or null). Read-only.",
         ReadOnly = true,
         HiddenFromMcp = true,
-        InputType = typeof(GetLibraryPreview.Request))]
+        InputType = typeof(GetLibraryPreview.Request),
+        OutputType = typeof(LibraryPreviewResult))]
     internal sealed class GetLibraryPreview : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -28,7 +29,7 @@ namespace AnalyseTool.Tools.Families
             return Task.Run<object?>(() =>
             {
                 string? dataUri = string.IsNullOrWhiteSpace(req.Path) ? null : ShellThumbnail.GetPngDataUri(req.Path!);
-                return new { path = req.Path, dataUri };
+                return new LibraryPreviewResult(req.Path, dataUri);
             }, ct);
         }
 

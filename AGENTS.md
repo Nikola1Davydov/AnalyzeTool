@@ -34,8 +34,9 @@ Hard rules:
 # Full plugin chain (Debug deploys to %AppData%\Autodesk\Revit\Addins\<year>\ automatically!)
 dotnet build src/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj -c "Debug R25"   # or R26 / R27
 
-# Boundary check (same script CI runs first)
+# Static checks (the same two scripts CI runs first)
 powershell -File src/build/Check-Boundaries.ps1
+powershell -File src/build/Check-Schemas.ps1
 ```
 
 - Configurations: `Debug|Release R25/R26/R27` → TFM `net8.0-windows` (R25/26) / `net10.0-windows` (R27), from `src/AnalyseTool.Sdk/build/AnalyseTool.Extension.props`.
@@ -46,9 +47,10 @@ powershell -File src/build/Check-Boundaries.ps1
 ## Guardrails (CI: .github/workflows/ci.yml)
 
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
-2. Build chain for R25 (net8) and R27 (net10).
-3. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
-4. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\<year>\` — a live smoke test of the real ALC loading path.
+2. `Check-Schemas.ps1` — command schema contract: every command carries a `Description`, a command that reads `ctx.Payload` declares `InputType` and every property of that type carries `[Description]`, and every `AnalyseTool.Tools` command declares `OutputType`. Core commands are exempt from the output rule (extension management / scripting — they never appear in a pipeline). A source scan, so it runs before any build.
+3. Build chain for R25 (net8) and R27 (net10).
+4. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
+5. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\<year>\` — a live smoke test of the real ALC loading path.
 
 ## Docs to keep in sync
 

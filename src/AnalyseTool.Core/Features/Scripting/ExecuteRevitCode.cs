@@ -3,6 +3,7 @@ using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace AnalyseTool.Core.Features.Scripting
@@ -19,7 +20,9 @@ namespace AnalyseTool.Core.Features.Scripting
     [RevitCommand(
         Description = "Compiles and runs a C# snippet inside Revit and returns its result. The snippet is " +
                       "either a bare statement body (with uiapp/uidoc/doc in scope, may 'return' any object) " +
-                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings.",
+                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings. " +
+                      "MAY MODIFY the model — what the snippet does is up to the snippet. Cost: Roslyn " +
+                      "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
         Destructive = true)] // arbitrary code: assume it can modify the model
     internal sealed class ExecuteRevitCode : IRevitTask
@@ -73,9 +76,11 @@ namespace AnalyseTool.Core.Features.Scripting
         internal sealed class Request
         {
             /// <summary>The C# to compile and run — a bare body or a full IRevitTask class.</summary>
+            [Description("The C# to compile and run: either a bare method body or a full IRevitTask class.")]
             public string Code { get; set; } = string.Empty;
 
             /// <summary>Optional description used when a bare body is wrapped into a command.</summary>
+            [Description("Optional description applied to the command a bare body gets wrapped into.")]
             public string? Description { get; set; }
         }
     }

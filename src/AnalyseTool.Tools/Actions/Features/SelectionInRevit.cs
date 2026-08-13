@@ -5,8 +5,11 @@ using System.ComponentModel;
 namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
-        Description = "Selects the given elements (by id) in the active document.",
-        InputType = typeof(SelectionInRevit.SelectionPayload))]
+        Description = "Selects the given elements (by id) in the active document. An empty list clears the " +
+                      "selection. Returns { ok, selected, error } — 'selected' is what Revit ended up holding. " +
+                      "Changes the UI selection, not the model. Cheap.",
+        InputType = typeof(SelectionInRevit.SelectionPayload),
+        OutputType = typeof(SelectionResult))]
     internal sealed class SelectionInRevit : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
@@ -19,8 +22,17 @@ namespace AnalyseTool.Tools.Actions
 
             return ctx.RunInRevitAsync<object?>(app =>
             {
-                app.ActiveUIDocument.Selection.SetElementIds(elementsIds);
-                return null;
+                // Reported rather than thrown: with no document open there is nothing to select in, and a
+                // caller with nobody watching the screen deserves that sentence over a NullReference.
+                Autodesk.Revit.UI.UIDocument? uiDoc = app.ActiveUIDocument;
+                if (uiDoc is null)
+                    return new SelectionResult(false, 0, "No active document.");
+
+                uiDoc.Selection.SetElementIds(elementsIds);
+
+                // Read back instead of returning elementsIds.Count: the request is what was asked for, the
+                // selection is what happened, and those two differ the moment an id has gone stale.
+                return new SelectionResult(true, uiDoc.Selection.GetElementIds().Count, null);
             });
         }
 

@@ -14,9 +14,13 @@ namespace AnalyseTool.Tools.Families
     /// </summary>
     [RevitCommand(
         Description = "Lists family types (FamilySymbols) for the given families with category, instance " +
-                      "count, the worksets their instances occupy and all type parameters. Read-only.",
+                      "count, the worksets their instances occupy and all type parameters. Read-only. " +
+                      "Family ids come from GetFamilies. Cost: scans those families' types AND their " +
+                      "instances, and every type parameter is included — ask for the families you need " +
+                      "rather than all of them.",
         ReadOnly = true,
-        InputType = typeof(GetFamilyTypeRows.Request))]
+        InputType = typeof(GetFamilyTypeRows.Request),
+        OutputType = typeof(TypeRowsResult))]
     internal sealed class GetFamilyTypeRows : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)

@@ -41,6 +41,8 @@ const mode = ref<EditMode>("read");
 const aiPrompt = ref("");
 const aiRunning = ref(false);
 const aiRawRunning = ref(false);
+// Lives outside runAIRaw so the Stop button can reach it. One per run; cleared when the run ends.
+let aiRawAbort: AbortController | null = null;
 const rawAiResponse = ref<string | null>(null);
 const showRawPanel = ref(false);
 const rowState = ref<RowState[]>([]);
@@ -197,7 +199,7 @@ async function runAI() {
     }
     if (!detail.edits || !Array.isArray(detail.edits)) return;
 
-    const byElementId = new Map(detail.edits.map((e) => [e.ElementId, e]));
+    const byElementId = new Map(detail.edits.map((e) => [e.elementId, e]));
     let appliedCount = 0;
     rowState.value = rowState.value.map((s, i) => {
       if (readOnlyIndices.value.has(i)) return s;
@@ -206,8 +208,8 @@ async function runAI() {
       appliedCount++;
       return {
         ...s,
-        pendingValue: String(edit.NewValue ?? ""),
-        reason: String(edit.Reason ?? ""),
+        pendingValue: String(edit.newValue ?? ""),
+        reason: String(edit.reason ?? ""),
         decision: "accepted",
       };
     });
@@ -227,6 +229,10 @@ async function runAIRaw() {
   if (!aiPrompt.value.trim()) return;
 
   aiRawRunning.value = true;
+  // Local const, and the module-level field only mirrors it for the Stop button: narrowing a
+  // module-level `let` does not survive into the closures below.
+  const abort = new AbortController();
+  aiRawAbort = abort;
   rawAiResponse.value = null;
 
   const paramItems = props.items
@@ -234,20 +240,63 @@ async function runAIRaw() {
     .filter((p): p is ParameterData => p != null);
 
   try {
-    const detail = await invoke<unknown>(Commands.OllamaAnalyse, {
-      items: paramItems,
-      prompt: aiPrompt.value,
-      model: aiSettingsStore.selectedModel!,
-      provider: aiSettingsStore.selectedProvider,
-    });
-    rawAiResponse.value = typeof detail === "string" ? detail : JSON.stringify(detail);
+    // The panel opens BEFORE the call, so the answer is watched as it is written rather than
+    // appearing all at once after a minute of nothing.
     showRawPanel.value = true;
+    rawAiResponse.value = "";
+
+    const detail = await invoke<{ analysis: string | null; error: string | null }>(
+      Commands.OllamaAnalyse,
+      {
+        items: paramItems,
+        prompt: aiPrompt.value,
+        model: aiSettingsStore.selectedModel!,
+        provider: aiSettingsStore.selectedProvider,
+      },
+      {
+        // OllamaAnalyse streams generated text in `message` (fraction stays 0 — token generation has
+        // no honest total). Each update is a DELTA, so append.
+        onProgress: (p) => {
+          if (p.message) rawAiResponse.value = (rawAiResponse.value ?? "") + p.message;
+        },
+        signal: abort.signal,
+      },
+    );
+
+    // A cancel the user asked for is not a failure to report back to them.
+    if (abort.signal.aborted) {
+      rawAiResponse.value = null;
+      showRawPanel.value = false;
+      return;
+    }
+
+    // A timeout or a rejected key now arrives as data rather than a thrown message, so it needs
+    // surfacing here — the catch below no longer sees it.
+    if (detail?.error) {
+      // Whatever streamed before the failure goes with it: a fragment left on screen reads like an
+      // answer, and the host stops streaming at the same point for the same reason.
+      rawAiResponse.value = null;
+      showRawPanel.value = false;
+      notificationStore.error(detail.error);
+      return;
+    }
+
+    // Replaced, not kept: the streamed text is for watching, and the returned answer is the one that
+    // is authoritative — so a dropped or truncated delta cannot leave a wrong answer on screen.
+    rawAiResponse.value = detail?.analysis ?? null;
     notificationStore.info("AI analysis completed");
   } catch (err) {
-    notificationStore.error(String((err as Error)?.message ?? err));
+    rawAiResponse.value = null;
+    showRawPanel.value = false;
+    if (!abort.signal.aborted) notificationStore.error(String((err as Error)?.message ?? err));
   } finally {
     aiRawRunning.value = false;
+    aiRawAbort = null;
   }
+}
+
+function stopAIRaw() {
+  aiRawAbort?.abort();
 }
 
 watch(aiAvailable, (ok) => {
@@ -327,6 +376,14 @@ function applyToRevit() {
             label="Analyze"
             icon="pi pi-sparkles"
             @click="runAIRaw"
+          />
+          <Button
+            v-if="aiRawRunning"
+            size="small"
+            severity="secondary"
+            label="Stop"
+            icon="pi pi-times"
+            @click="stopAIRaw"
           />
           <Button
             size="small"

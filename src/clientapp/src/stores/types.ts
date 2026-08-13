@@ -54,10 +54,12 @@ export interface AnalyzeParameterWithAi {
   model: string;
 }
 
+/** Wire shape of one AI-proposed edit (OllamaEditParameters → AiParameterEdit). camelCase since the
+ *  command declares an output schema and the host spells these names out to match it. */
 export interface ParameterEdit {
-  ElementId: number;
-  Parameter: string;
-  OldValue: string;
-  NewValue: string;
-  Reason: string;
+  elementId: number;
+  parameter: string;
+  oldValue: string;
+  newValue: string;
+  reason: string;
 }
