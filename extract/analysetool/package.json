@@ -1,5 +1,5 @@
 {
-  "name": "clientapp",
+  "name": "analysetool-ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,12 +15,14 @@
   "dependencies": {
     "@primeuix/themes": "^1.2.5",
     "@tailwindcss/vite": "^4.1.17",
+    "chart.js": "^4.5.1",
     "marked": "^18.0.6",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.4.1",
     "tailwindcss": "^4.1.17",
     "tailwindcss-primeui": "^0.6.1",
+    "three": "^0.169.0",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },

@@ -6,31 +6,21 @@ export type WebViewMessage = {
   Error?: string | null;
 };
 
+/**
+ * PLATFORM commands only. The framework deliberately does not maintain a catalogue of feature
+ * commands: those are registered by extensions at load time and discovered at runtime via
+ * `invoke("GetCommands")`. Anything feature-shaped belongs in the extension that ships it.
+ */
 export const Commands = {
-  SelectionInRevit: "SelectionInRevit",
-  IsolationInRevit: "IsolationInRevit",
-  GetCategoriesInRevit: "GetCategoriesInRevit",
-  GetDataByCategoryName: "GetDataByCategoryName",
   CheckUpdate: "CheckUpdate",
-  GetDocumentData: "GetDocumentData",
-  SetDataToParameters: "SetDataToParameters",
-  OllamaAnalyse: "OllamaAnalyse",
-  OllamaEditParameters: "OllamaEditParameters",
-  OllamaSuggestName: "OllamaSuggestName",
-  OllamaSuggestNames: "OllamaSuggestNames",
-  OllamaSuggestTemplate: "OllamaSuggestTemplate",
-  OllamaGetModels: "OllamaGetModels",
+  // AI provider registry — platform infrastructure, not a feature: it stores endpoints and API keys
+  // host-side (keys never reach the frontend, only `hasKey`) so extensions don't each reimplement
+  // credential storage. Surfaced in the Extension Manager's settings page.
   AiGetProviders: "AiGetProviders",
   AiSaveProvider: "AiSaveProvider",
   AiDeleteProvider: "AiDeleteProvider",
   AiGetModels: "AiGetModels",
-  PlaceFamilyInstance: "PlaceFamilyInstance",
-  PurgeFamilyTypes: "PurgeFamilyTypes",
-  PurgeFamilies: "PurgeFamilies",
-  GetLibraryFamilies: "GetLibraryFamilies",
-  GetLibraryPreview: "GetLibraryPreview",
-  LoadLibraryFamilies: "LoadLibraryFamilies",
-  PickFolder: "PickFolder",
+  OllamaGetModels: "OllamaGetModels",
 } as const;
 
 export const enum MessageType {

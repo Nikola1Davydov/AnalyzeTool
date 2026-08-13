@@ -6,11 +6,13 @@ const visible = inject("sidebarVisible", ref(false));
 const { closeSidebar } = inject("sidebarActions");
 const router = useRouter();
 
-// The shell owns only platform screens. Extensions surface themselves through the ribbon and the
-// Extension Manager, not through this menu.
 const menuItems = [
-  { label: "Extensions", icon: "pi pi-th-large", to: "/system/settings" },
-  { label: "About", icon: "pi pi-info-circle", to: "/about" },
+  { label: "Home", icon: "pi pi-th-large", to: "/parameterCanvasView" },
+  { label: "Parameter Empty Check", icon: "pi pi-home", to: "/parameterFilledEmptyPage" },
+  { label: "Parameter Value Check", icon: "pi pi-check-square", to: "/parametervaluecheck" },
+  // { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
+  // { label: "Families", icon: "pi-objects-column", to: "/families" },
+  // { label: "ConnectParameters", icon: "pi pi-info-circle", to: "/connectParameters" },
 ];
 
 const handleNavigation = (to) => {

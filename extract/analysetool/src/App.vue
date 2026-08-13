@@ -2,7 +2,7 @@
 import { ref, onMounted, provide, watch, computed } from "vue";
 import { useRoute } from "vue-router";
 import { useToast } from "primevue/usetoast";
-import { useUpdateStore } from "@/stores/useUpdateStore";
+import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
@@ -12,7 +12,6 @@ import RevitBusyBar from "@/components/RevitBusyBar.vue";
 
 const toast = useToast();
 const notificationStore = useNotificationStore();
-const updateStore = useUpdateStore();
 const sidebarVisible = ref(false);
 
 // System pages (/system/*) render without the app chrome (header/sidebar/footer).
@@ -36,9 +35,10 @@ const closeSidebar = () => {
 };
 
 // Each store requests its own data via AT.invoke and resolves the result directly, so there is no
-// central message listener routing responses by command name anymore.
+// central message listener routing responses by command name. Update checking is NOT done here: the
+// host's Extension Manager owns updates for this extension (see FooterLayout).
 onMounted(() => {
-  updateStore.loadUpdateData();
+  useDocumentDataStore().loadDocumentData();
 });
 
 provide("sidebarVisible", sidebarVisible);
