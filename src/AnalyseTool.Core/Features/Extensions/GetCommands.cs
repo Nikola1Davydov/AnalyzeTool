@@ -20,9 +20,19 @@ namespace AnalyseTool.Core.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            // Once for the whole listing, not once per command: reading it means scanning every
-            // manifest on disk, and all 60-odd rows ask the same question.
-            HashSet<string> declared = CommandButtons.ManifestDeclared(CoreServices.RevitVersion);
+            // ONE scan for the whole listing. Both facts below come from the extension manifests on
+            // disk, and all 60-odd rows ask the same two questions.
+            IReadOnlyList<ExtensionDescriptor> found = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion);
+            HashSet<string> declared = CommandButtons.ManifestDeclared(found);
+
+            // What each extension is made of. The launcher shows generated SCRIPTS by default and hides
+            // compiled ones, because a DLL extension usually ships its own page and a ribbon button —
+            // listing its commands in a generic launcher offers a second, worse way in.
+            Dictionary<string, string> kinds = new(StringComparer.OrdinalIgnoreCase);
+            foreach (ExtensionDescriptor descriptor in found)
+                kinds[descriptor.Manifest.Id] = descriptor.DeclaresDll ? "dll"
+                    : descriptor.HasScript ? "script"
+                    : "js";
 
             var commands = CoreServices.Queue.RegisteredCommands
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
@@ -30,6 +40,10 @@ namespace AnalyseTool.Core.Features.Extensions
                 {
                     name = c.Name,
                     source = c.Source, // "core" for built-ins, else the extension id
+                    // "core" | "script" | "dll" | "js" — where the command came from, not what it does.
+                    kind = string.Equals(c.Source, "core", StringComparison.Ordinal) ? "core"
+                        : kinds.TryGetValue(c.Source, out string? k) ? k
+                        : "unknown",
                     description = c.Description,
                     readOnly = c.ReadOnly,
                     destructive = c.Destructive,

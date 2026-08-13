@@ -79,10 +79,15 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>The commands an extension manifest already puts on the ribbon — the author's
         /// defaults. Read once per listing: every caller needs the whole set, and it costs a scan of
         /// every manifest on disk.</summary>
-        public static HashSet<string> ManifestDeclared(string revitVersion)
+        public static HashSet<string> ManifestDeclared(string revitVersion) =>
+            ManifestDeclared(ExtensionCatalog.EnumerateAll(revitVersion));
+
+        /// <summary>The same, from a scan the caller already has — a listing that needs more than one
+        /// fact per extension should not walk every manifest on disk once per fact.</summary>
+        public static HashSet<string> ManifestDeclared(IEnumerable<ExtensionDescriptor> found)
         {
             HashSet<string> declared = new(StringComparer.OrdinalIgnoreCase);
-            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.EnumerateAll(revitVersion))
+            foreach (ExtensionDescriptor descriptor in found)
             {
                 string? command = descriptor.Manifest.Ui?.Button?.Command;
                 if (!string.IsNullOrWhiteSpace(command)) declared.Add(command!.Trim());

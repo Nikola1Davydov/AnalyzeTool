@@ -496,10 +496,16 @@ the ribbon. Roslyn compiles every `.cs` in a folder, so the folder was never the
 first, so only re-saving the same `fileName` needs it.
 
 **A command with no button is not a command nobody can run.** The host's **Scripts** button opens a
-dockable launcher listing every registered command, with search, and it BUILDS THE FORM FROM
-`inputSchema` — which is the practical reason to declare `InputType` on a generated command even when
-nothing chains it. A command that declares one gets typed fields; a command that declares none shows
-up with no form and can only be run without arguments.
+dockable launcher, and what it lists by DEFAULT is script extensions — the generated ones. A compiled
+extension ships its own page and its own ribbon button, so listing its commands there would offer a
+second, worse way into something that already has a front door; they are one click away under "All",
+not gone. Everything you save with `SaveAsCommand` is a script, so everything you save appears there.
+
+The launcher BUILDS THE FORM FROM `inputSchema` — the practical reason to declare `InputType` on a
+generated command even when nothing chains it. A command that declares one opens its own page with
+typed fields and a Run button; a command that declares none has no form to show, and its ▶ simply
+runs it. So `InputType` is the difference between a command a person can drive and one they can only
+trigger.
 
 **Where a command lives is the user's call, not yours.** Every row in that launcher has a pin that
 moves its command onto the ribbon or back off it, and it works for any command — including one from

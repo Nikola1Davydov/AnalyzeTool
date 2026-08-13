@@ -40,6 +40,7 @@ interface ExtensionRow {
   compatible: boolean;
   binaryYears?: string[]; // Revit years this extension actually ships a build for
   zone: "managed" | "dev";
+  kind: "dll" | "script" | "js"; // what it is made of, not what it does
   legacyLayout?: boolean;
   compileError?: string | null;
   directory: string;
@@ -365,12 +366,16 @@ function askRemove(row: ExtensionRow) {
   removeDialogVisible.value = true;
 }
 
+// Two commands, one dialog. The manager owns extensions-dist and refuses dev folders on purpose, so
+// deleting one of your own goes through its own command — but the question being asked of the user is
+// the same one, and a second dialog would only be the first one reworded.
 async function confirmRemove() {
-  if (!removeTarget.value) return;
+  const target = removeTarget.value;
+  if (!target) return;
   removeBusy.value = true;
   removeError.value = "";
   try {
-    await invoke("RemoveExtension", { id: removeTarget.value.id });
+    await invoke(target.zone === "dev" ? "RemoveDevExtension" : "RemoveExtension", { id: target.id });
     removeDialogVisible.value = false;
     await Promise.all([load(), loadPaths(), loadCommands()]);
   } catch (e) {
@@ -678,17 +683,26 @@ onMounted(() => {
       </template>
     </Dialog>
 
-    <!-- Uninstall confirmation (managed zone only). -->
+    <!-- Delete confirmation, for both zones. -->
     <Dialog
       v-model:visible="removeDialogVisible"
       modal
-      header="Uninstall extension"
+      :header="removeTarget?.zone === 'dev' ? 'Delete extension' : 'Uninstall extension'"
       class="w-[28rem]"
     >
       <div class="text-sm flex flex-col gap-3">
         <p>
           Remove <b>{{ removeTarget?.name || removeTarget?.id }}</b> and delete its folder? This
           cannot be undone.
+        </p>
+        <!-- The path, for dev folders only. An installed package sits where the manager put it; one of
+             your own could be anywhere, including a folder you share with your team. -->
+        <p v-if="removeTarget?.zone === 'dev'" class="text-xs text-surface-500 break-all font-mono">
+          {{ removeTarget?.directory }}
+        </p>
+        <p v-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'" class="text-amber-600">
+          This is a compiled extension — its source project is somewhere else, but the built output
+          here goes.
         </p>
         <p v-if="removeError" class="text-red-500">{{ removeError }}</p>
       </div>
@@ -700,7 +714,12 @@ onMounted(() => {
           :disabled="removeBusy"
           @click="removeDialogVisible = false"
         />
-        <Button label="Uninstall" severity="danger" :loading="removeBusy" @click="confirmRemove" />
+        <Button
+          :label="removeTarget?.zone === 'dev' ? 'Delete' : 'Uninstall'"
+          severity="danger"
+          :loading="removeBusy"
+          @click="confirmRemove"
+        />
       </template>
     </Dialog>
 
@@ -1000,16 +1019,28 @@ onMounted(() => {
             />
           </template>
         </Column>
-        <Column header="" class="w-16">
+        <Column header="" class="w-24">
           <template #body="{ data: row }">
-            <Button
-              icon="pi pi-folder-open"
-              size="small"
-              text
-              severity="secondary"
-              v-tooltip.left="'Open in Explorer'"
-              @click="openFolder(row.directory)"
-            />
+            <div class="flex justify-end gap-1">
+              <Button
+                icon="pi pi-folder-open"
+                size="small"
+                text
+                severity="secondary"
+                v-tooltip.left="'Open in Explorer'"
+                @click="openFolder(row.directory)"
+              />
+              <!-- Deleting your own folder used to mean going to Explorer and doing it by hand, which
+                   is fine for one extension and a chore for the ten a session can generate. -->
+              <Button
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                v-tooltip.left="'Delete folder'"
+                @click="askRemove(row)"
+              />
+            </div>
           </template>
         </Column>
         <template #empty>
