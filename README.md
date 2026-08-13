@@ -98,6 +98,16 @@ Switch to **Library** mode to browse your `.rfa` folders: each file shows its em
 - Infinite Canvas workflow with AI-assisted edits.
 - Select / Isolate actions directly in Revit.
 
+## 🧾 Scripts
+
+Commands that don't need a window of their own live in a dockable list — including the ones you had an AI write for you. Run one straight from its row, or step into its form if it takes input. The left border marks which is which, a destructive command asks before it runs, and the search box is there because the list grows.
+
+<p align="center"><img src="img/scripts_panel.png" width="340" alt="The Scripts pane listing generated commands" /></p>
+
+Prefer a button to a list? Pin a command from its row and it moves onto the ribbon instead. Where a command lives is your choice — it works the same for a command you generated, one from an installed package, and a built-in.
+
+<p align="center"><img src="img/ribbon_with_scripts.png" width="680" alt="Generated commands with ribbon buttons of their own" /></p>
+
 ## 🧠 AI — free and local
 
 - Free local AI via **Ollama** — no paid subscription required.
