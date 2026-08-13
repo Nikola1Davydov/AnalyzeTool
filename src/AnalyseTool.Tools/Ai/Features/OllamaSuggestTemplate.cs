@@ -36,7 +36,7 @@ namespace AnalyseTool.Tools.Ai
                 AiAnalysisService ai = new AiAnalysisService(req.Provider, req.Model);
                 var result = await ai.SuggestTemplateAsync(
                     req.Example, req.Name ?? string.Empty, req.Family ?? string.Empty,
-                    req.Category ?? string.Empty, req.Parameters ?? new Dictionary<string, string>());
+                    req.Category ?? string.Empty, req.Parameters ?? new Dictionary<string, string>(), ct);
 
                 if (result is null || string.IsNullOrWhiteSpace(result.Template))
                     return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "The model returned no usable template.");
@@ -49,9 +49,13 @@ namespace AnalyseTool.Tools.Ai
                         .ToArray(),
                     null);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "AI timeout: the model did not answer in time.");
+            }
+            catch (OperationCanceledException)
+            {
+                return new AiTemplateSuggestionResult(null, Array.Empty<AiAbbreviationSuggestion>(), "Cancelled.");
             }
             catch (Exception ex)
             {

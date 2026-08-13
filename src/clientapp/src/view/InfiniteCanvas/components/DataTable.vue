@@ -234,6 +234,11 @@ async function runAIRaw() {
     .filter((p): p is ParameterData => p != null);
 
   try {
+    // The panel opens BEFORE the call, so the answer is watched as it is written rather than
+    // appearing all at once after a minute of nothing.
+    showRawPanel.value = true;
+    rawAiResponse.value = "";
+
     const detail = await invoke<{ analysis: string | null; error: string | null }>(
       Commands.OllamaAnalyse,
       {
@@ -242,19 +247,33 @@ async function runAIRaw() {
         model: aiSettingsStore.selectedModel!,
         provider: aiSettingsStore.selectedProvider,
       },
+      {
+        // OllamaAnalyse streams generated text in `message` (fraction stays 0 — token generation has
+        // no honest total). Each update is a DELTA, so append.
+        onProgress: (p) => {
+          if (p.message) rawAiResponse.value = (rawAiResponse.value ?? "") + p.message;
+        },
+      },
     );
 
     // A timeout or a rejected key now arrives as data rather than a thrown message, so it needs
     // surfacing here — the catch below no longer sees it.
     if (detail?.error) {
+      // Whatever streamed before the failure goes with it: a fragment left on screen reads like an
+      // answer, and the host stops streaming at the same point for the same reason.
+      rawAiResponse.value = null;
+      showRawPanel.value = false;
       notificationStore.error(detail.error);
       return;
     }
 
+    // Replaced, not kept: the streamed text is for watching, and the returned answer is the one that
+    // is authoritative — so a dropped or truncated delta cannot leave a wrong answer on screen.
     rawAiResponse.value = detail?.analysis ?? null;
-    showRawPanel.value = true;
     notificationStore.info("AI analysis completed");
   } catch (err) {
+    rawAiResponse.value = null;
+    showRawPanel.value = false;
     notificationStore.error(String((err as Error)?.message ?? err));
   } finally {
     aiRawRunning.value = false;

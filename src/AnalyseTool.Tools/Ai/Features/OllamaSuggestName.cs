@@ -32,12 +32,16 @@ namespace AnalyseTool.Tools.Ai
             {
                 AiAnalysisService ai = new AiAnalysisService(req.Provider, req.Model);
                 string name = await ai.SuggestNameAsync(
-                    req.CurrentName ?? string.Empty, req.Context ?? string.Empty, req.Prompt ?? string.Empty);
+                    req.CurrentName ?? string.Empty, req.Context ?? string.Empty, req.Prompt ?? string.Empty, ct);
                 return new AiNameSuggestionResult(name, null);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                return new AiNameSuggestionResult(null, "AI timeout: the model did not answer in time.");
             }
             catch (OperationCanceledException)
             {
-                return new AiNameSuggestionResult(null, "AI timeout: the model did not answer in time.");
+                return new AiNameSuggestionResult(null, "Cancelled.");
             }
             catch (Exception ex)
             {

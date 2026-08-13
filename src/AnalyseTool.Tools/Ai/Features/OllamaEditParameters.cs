@@ -21,11 +21,13 @@ namespace AnalyseTool.Tools.Ai
             AnalyzeParameterWithAiRequest? request = ctx.Payload.As<AnalyzeParameterWithAiRequest>();
             if (request == null)
                 return new AiEditsResult(Array.Empty<AiParameterEdit>(), null, "Empty payload.");
+            if (string.IsNullOrWhiteSpace(request.Model))
+                return new AiEditsResult(Array.Empty<AiParameterEdit>(), null, "No AI model selected.");
 
             try
             {
                 AiAnalysisService ai = new AiAnalysisService(request.Provider, request.Model);
-                AiAnalysisService.AiResponse result = await ai.AnalyzeAndEditAsync(request.Items, request.Prompt);
+                AiAnalysisService.AiResponse result = await ai.AnalyzeAndEditAsync(request.Items, request.Prompt, ct);
 
                 // Mapped, not handed over: ParameterAiEdit is what the PROMPT asks the model to produce.
                 // Copying it onto the wire type keeps the published schema out of the prompt's reach.
@@ -41,10 +43,14 @@ namespace AnalyseTool.Tools.Ai
             // Returned rather than thrown, like the other AI commands. The raw answer is null here on
             // purpose: a call that timed out has none, and an empty string would read as "the model
             // replied with nothing", which is a different failure.
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 return new AiEditsResult(
                     Array.Empty<AiParameterEdit>(), null, "AI timeout: the model did not answer in time.");
+            }
+            catch (OperationCanceledException)
+            {
+                return new AiEditsResult(Array.Empty<AiParameterEdit>(), null, "Cancelled.");
             }
             catch (Exception ex)
             {

@@ -38,13 +38,17 @@ namespace AnalyseTool.Tools.Ai
                 var items = req.Items
                     .Select(i => new AiAnalysisService.NameItem(i.Id, i.CurrentName ?? string.Empty, i.Context ?? string.Empty))
                     .ToList();
-                var result = await ai.SuggestNamesAsync(items, req.Prompt ?? string.Empty);
+                var result = await ai.SuggestNamesAsync(items, req.Prompt ?? string.Empty, ct);
                 return new AiNameSuggestionsResult(
                     result.Select(s => new AiNameSuggestion(s.Id, s.Name)).ToArray(), null);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "AI timeout: the model did not answer in time.");
+            }
+            catch (OperationCanceledException)
+            {
+                return new AiNameSuggestionsResult(Array.Empty<AiNameSuggestion>(), "Cancelled.");
             }
             catch (Exception ex)
             {

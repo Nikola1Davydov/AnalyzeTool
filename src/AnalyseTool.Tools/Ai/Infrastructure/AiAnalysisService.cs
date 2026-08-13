@@ -30,7 +30,9 @@ namespace AnalyseTool.Tools.Ai
             _timeoutSeconds = provider.TimeoutSeconds;
         }
 
-        public async Task<string> AnalyzeAsync(List<ParameterData> elements, string userPrompt)
+        public async Task<string> AnalyzeAsync(
+            List<ParameterData> elements, string userPrompt,
+            CancellationToken ct = default, Action<string>? onDelta = null)
         {
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
@@ -58,7 +60,7 @@ namespace AnalyseTool.Tools.Ai
                     """)
             };
 
-            string raw = await BuildAnswer(chatHistory);
+            string raw = await BuildAnswer(chatHistory, default, ct, onDelta);
 
             return raw;
         }
@@ -67,7 +69,8 @@ namespace AnalyseTool.Tools.Ai
         /// free-text instruction. Returns just the cleaned name (one line, no quotes/markdown). Used by
         /// Family Control's Rename dialog AI mode.
         /// </summary>
-        public async Task<string> SuggestNameAsync(string currentName, string context, string userPrompt)
+        public async Task<string> SuggestNameAsync(
+            string currentName, string context, string userPrompt, CancellationToken ct = default)
         {
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
@@ -86,7 +89,7 @@ namespace AnalyseTool.Tools.Ai
                     """)
             };
 
-            string raw = await BuildAnswer(chatHistory);
+            string raw = await BuildAnswer(chatHistory, default, ct);
             return CleanName(raw);
         }
 
@@ -96,7 +99,8 @@ namespace AnalyseTool.Tools.Ai
         /// naming scheme when it sees the full list at once. Returns (id, name) pairs; ids not present in
         /// the answer simply keep their current name (the caller treats missing as unchanged).
         /// </summary>
-        public async Task<List<NameSuggestion>> SuggestNamesAsync(List<NameItem> items, string userPrompt)
+        public async Task<List<NameSuggestion>> SuggestNamesAsync(
+            List<NameItem> items, string userPrompt, CancellationToken ct = default)
         {
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
@@ -125,7 +129,7 @@ namespace AnalyseTool.Tools.Ai
                 ResponseFormat = ChatResponseFormat.Json,
                 Instructions = "Include every input element in the output (same count)."
             };
-            string raw = await BuildAnswer(chatHistory, jsonOptions);
+            string raw = await BuildAnswer(chatHistory, jsonOptions, ct);
 
             return ParseArray<NameSuggestion>(raw, s => s is { Id: > 0, Name: not null })
                 .Select(s => s with { Name = CleanName(s.Name) })
@@ -143,7 +147,8 @@ namespace AnalyseTool.Tools.Ai
         /// example implies (e.g. "Alu" for parameter value "Aluminium").
         /// </summary>
         public async Task<TemplateSuggestion?> SuggestTemplateAsync(
-            string example, string name, string family, string category, Dictionary<string, string> parameters)
+            string example, string name, string family, string category, Dictionary<string, string> parameters,
+            CancellationToken ct = default)
         {
             List<ChatMessage> chatHistory = new List<ChatMessage>
             {
@@ -175,7 +180,7 @@ namespace AnalyseTool.Tools.Ai
             };
 
             ChatOptions jsonOptions = new ChatOptions { ResponseFormat = ChatResponseFormat.Json };
-            string raw = await BuildAnswer(chatHistory, jsonOptions);
+            string raw = await BuildAnswer(chatHistory, jsonOptions, ct);
             return ParseObject<TemplateSuggestion>(raw);
         }
 
@@ -224,7 +229,8 @@ namespace AnalyseTool.Tools.Ai
             return line.Trim().Trim('"', '\'', '`', '*').Trim();
         }
 
-        public async Task<AiResponse> AnalyzeAndEditAsync(List<ParameterData> elements, string userPrompt)
+        public async Task<AiResponse> AnalyzeAndEditAsync(
+            List<ParameterData> elements, string userPrompt, CancellationToken ct = default)
         {
             var simplified = elements.Select(e => new
             {
@@ -263,7 +269,7 @@ namespace AnalyseTool.Tools.Ai
                 ResponseFormat = ChatResponseFormat.Json,
                 Instructions = "Include every input element in the output (same count)."
             };
-            string raw = await BuildAnswer(chatHistory, jsonOptions);
+            string raw = await BuildAnswer(chatHistory, jsonOptions, ct);
 
             return new AiResponse(raw, ParseEdits(raw));
         }
@@ -273,18 +279,52 @@ namespace AnalyseTool.Tools.Ai
             PropertyNameCaseInsensitive = true,
             NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
         };
-        private async Task<string> BuildAnswer(List<ChatMessage> chatHistory, ChatOptions chatOptions = default)
+        /// <summary>Flush cadence for <c>onDelta</c>. The response already arrives token by token; posting
+        /// each one across the WebView bridge would be hundreds of messages for one answer, and no reader
+        /// benefits from a word at a time. Whichever of the two comes first.</summary>
+        private const int DeltaFlushChars = 80;
+        private const int DeltaFlushMilliseconds = 150;
+
+        /// <param name="ct">The CALLER's cancellation, linked with this provider's deadline below. It was
+        /// ignored until now: the service made its own token, so a caller that gave up kept the model
+        /// running and paid for the whole answer it had stopped waiting for.</param>
+        /// <param name="onDelta">Receives generated text as it arrives, throttled. Null means the caller is
+        /// not watching, and then nothing is buffered for it.</param>
+        private async Task<string> BuildAnswer(
+            List<ChatMessage> chatHistory, ChatOptions chatOptions = default,
+            CancellationToken ct = default, Action<string>? onDelta = null)
         {
-            using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(_timeoutSeconds));
+            // Linked, not replaced: the caller pressing Cancel must stop the HTTP call, AND an endpoint
+            // that never answers must still hit the deadline. Which of the two fired is told apart by the
+            // command, which owns the caller's token and can ask whether it was the one cancelled.
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(_timeoutSeconds));
+
             StringBuilder stringBuilder = new StringBuilder();
+            StringBuilder pending = new StringBuilder();
             System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+            long lastFlush = 0;
             try
             {
                 await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, cts.Token))
                 {
-                    if (!string.IsNullOrEmpty(item.Text))
-                        stringBuilder.Append(item.Text);
+                    if (string.IsNullOrEmpty(item.Text)) continue;
+                    stringBuilder.Append(item.Text);
+
+                    if (onDelta is null) continue;
+                    pending.Append(item.Text);
+                    if (pending.Length >= DeltaFlushChars ||
+                        watch.ElapsedMilliseconds - lastFlush >= DeltaFlushMilliseconds)
+                    {
+                        onDelta(pending.ToString());
+                        pending.Clear();
+                        lastFlush = watch.ElapsedMilliseconds;
+                    }
                 }
+
+                // The tail, only on success. A call that threw has no complete answer, and handing over
+                // the fragment it managed would show the user something that reads like a result.
+                if (onDelta is not null && pending.Length > 0) onDelta(pending.ToString());
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
@@ -295,8 +335,14 @@ namespace AnalyseTool.Tools.Ai
             }
             catch (OperationCanceledException)
             {
-                Serilog.Log.Warning("AI call timed out after {Timeout}s ({Provider}/{Model})",
-                    _timeoutSeconds, _providerName, _model);
+                // Two different events reach here now, and calling both a timeout would make the log lie
+                // about a user who simply changed their mind.
+                if (ct.IsCancellationRequested)
+                    Serilog.Log.Information("AI call cancelled by the caller ({Provider}/{Model})",
+                        _providerName, _model);
+                else
+                    Serilog.Log.Warning("AI call timed out after {Timeout}s ({Provider}/{Model})",
+                        _timeoutSeconds, _providerName, _model);
                 throw;
             }
             catch (Exception ex)
