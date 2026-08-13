@@ -486,6 +486,12 @@ the ribbon. Roslyn compiles every `.cs` in a folder, so the folder was never the
 `overwrite` is asked of the FILE, not the folder: adding a second command is not overwriting the
 first, so only re-saving the same `fileName` needs it.
 
+**A command with no button is not a command nobody can run.** The host's **Scripts** button opens a
+dockable launcher listing every registered command, with search, and it BUILDS THE FORM FROM
+`inputSchema` — which is the practical reason to declare `InputType` on a generated command even when
+nothing chains it. A command that declares one gets typed fields; a command that declares none shows
+up with no form and can only be run without arguments.
+
 Two things to expect:
 
 - **`warnings` in the save result.** A full class that declares no `InputType` / `OutputType` saves

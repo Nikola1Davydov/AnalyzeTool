@@ -26,6 +26,7 @@ namespace AnalyseTool.App.Common.Extensions
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
         private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
+        private const string ScriptsCommandClass = "AnalyseTool.Launcher.RevitCommands.ScriptsCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
@@ -97,6 +98,13 @@ namespace AnalyseTool.App.Common.Extensions
                 AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
                     FamilyPaletteCommandClass, "Place a component — dockable family palette",
                     image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (list)
+
+            // Fourth button: the script launcher. It exists so that GENERATED commands do not each need
+            // a ribbon button of their own — the ribbon holds one entry and the list behind it grows.
+            RegisterStaticButton("AnalyseToolScripts", "Scripts",
+                AddStaticButton(mainPanel, "AnalyseToolScripts", "Scripts", launcherPath,
+                    ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote",
+                    image: BuildGlyphIcon("\uE943"))); // Segoe MDL2 "Code"
 
             ApplyStaticButtonVisibility();
 
@@ -317,6 +325,16 @@ namespace AnalyseTool.App.Common.Extensions
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
             DockPaneHost.ShowRoute("#/families-dock");
+        }
+
+        /// <summary>Ribbon "Scripts" button — shows the dockable command launcher (#/scripts). Same
+        /// pattern as the family palette: initialize the host so the pane's transport has a dispatcher,
+        /// then route the single registered pane.</summary>
+        public static void ShowScriptLauncher(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            DockPaneHost.ShowRoute("#/scripts");
         }
 
         public static void Reload(UIApplication uiApp)

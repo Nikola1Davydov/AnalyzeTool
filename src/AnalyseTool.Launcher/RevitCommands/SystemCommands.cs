@@ -20,6 +20,14 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
     }
 
+    /// <summary>Ribbon "Scripts" button — shows the dockable launcher listing every registered command.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class ScriptsCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("ShowScriptLauncher", commandData.Application);
+    }
+
     /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand
