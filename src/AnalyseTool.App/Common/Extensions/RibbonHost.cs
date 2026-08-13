@@ -32,11 +32,20 @@ namespace AnalyseTool.App.Common.Extensions
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
+        private const string PinnedPanelTitle = "Scripts";
 
         private static readonly HashSet<string> _createdTabs = new(StringComparer.OrdinalIgnoreCase);
         // extension id -> (button, key of the panel it currently sits in)
         private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _extButtons =
             new(StringComparer.OrdinalIgnoreCase);
+        // command name -> its button, for commands the USER pinned in the launcher. Kept apart from
+        // _extButtons because the two are keyed differently and answer to different owners: one
+        // extension has one manifest button, while a pin names a single command and may name one from
+        // an extension whose manifest we must not write, or from no extension at all.
+        private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _pinnedButtons =
+            new(StringComparer.OrdinalIgnoreCase);
+        // Built once, on the UI thread, the first time a pinned button needs it.
+        private static ImageSource? _pinnedIcon;
         // "tab\npanel" -> the AdWindows panel source we created for it
         private static readonly Dictionary<string, AdWin.RibbonPanelSource> _adwPanels =
             new(StringComparer.Ordinal);
@@ -145,6 +154,7 @@ namespace AnalyseTool.App.Common.Extensions
             List<ExtensionDescriptor> found = ExtensionCatalog
                 .Scan(revitVersion)
                 .Where(d => d.HasUi && d.IsCompatibleWithHost && ExtensionStateStore.IsEnabled(d.Manifest.Id))
+                .Where(d => !UserTookButtonAway(d))
                 .ToList();
 
             HashSet<string> foundIds = new(found.Select(d => d.Manifest.Id), StringComparer.OrdinalIgnoreCase);
@@ -153,7 +163,94 @@ namespace AnalyseTool.App.Common.Extensions
             foreach (ExtensionDescriptor descriptor in found)
                 SyncButton(descriptor);
 
+            RefreshPinnedButtons(found);
             RemoveEmptyPanelsAndTabs();
+        }
+
+        /// <summary>A manifest button the user turned off in the launcher. Only COMMAND buttons can be
+        /// turned off there — the launcher lists commands, and a button that opens a page is not one,
+        /// so a UI extension keeps its button no matter what the store says about its commands.</summary>
+        private static bool UserTookButtonAway(ExtensionDescriptor descriptor)
+        {
+            string? command = descriptor.Manifest.Ui?.Button?.Command;
+            return !string.IsNullOrWhiteSpace(command) && CommandButtons.Override(command!) == false;
+        }
+
+        /// <summary>
+        /// Brings the pinned-command buttons in sync — the ones the user asked for in the launcher.
+        ///
+        /// Runs from the same refresh as the manifest pass so every existing trigger (startup, Reload,
+        /// install/remove) covers it, and takes that pass's result so one command cannot end up with
+        /// two buttons: an author who already put it on the ribbon wins, and the pin adds nothing.
+        /// </summary>
+        private static void RefreshPinnedButtons(IReadOnlyCollection<ExtensionDescriptor> shownExtensions)
+        {
+            HashSet<string> alreadyShown = new(
+                shownExtensions.Select(d => d.Manifest.Ui?.Button?.Command)
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Select(c => c!),
+                StringComparer.OrdinalIgnoreCase);
+
+            List<CommandButtonPin> pins = CommandButtons.Pinned()
+                .Where(p => !alreadyShown.Contains(p.Command) && IsRegisteredOrUnknown(p.Command))
+                .ToList();
+
+            HashSet<string> wanted = new(pins.Select(p => p.Command), StringComparer.OrdinalIgnoreCase);
+            foreach (string command in _pinnedButtons.Keys.ToList())
+            {
+                if (wanted.Contains(command)) continue;
+
+                (AdWin.RibbonButton button, string panelKey) = _pinnedButtons[command];
+                if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? panel))
+                    panel.Items.Remove(button);
+                _pinnedButtons.Remove(command);
+            }
+
+            foreach (CommandButtonPin pin in pins)
+                SyncPinnedButton(pin);
+        }
+
+        /// <summary>Whether a pinned command still exists. The ribbon is built at Revit startup, before
+        /// the platform has registered anything, so "cannot tell yet" has to mean SHOW: a button that
+        /// appears and is pruned on the first reload beats one that is missing until the user happens
+        /// to click something else.</summary>
+        private static bool IsRegisteredOrUnknown(string command) =>
+            !CoreServices.IsInitialized || CoreServices.Queue.IsRegistered(command);
+
+        /// <summary>Creates or refreshes one pinned command's button.</summary>
+        private static void SyncPinnedButton(CommandButtonPin pin)
+        {
+            string panelKey = DefaultTab + "\n" + PinnedPanelTitle;
+
+            if (_pinnedButtons.TryGetValue(pin.Command, out (AdWin.RibbonButton Button, string PanelKey) entry))
+            {
+                entry.Button.Text = pin.Label;
+                entry.Button.ToolTip = pin.Tooltip;
+                return;
+            }
+
+            AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(DefaultTab, PinnedPanelTitle, panelKey);
+            if (source is null) return;
+
+            _pinnedIcon ??= BuildGlyphIcon("\uE943"); // Segoe MDL2 "Code" — same mark as the launcher
+
+            AdWin.RibbonButton button = new()
+            {
+                Id = "AnalyseTool.Pin." + pin.Command,
+                Text = pin.Label,
+                ShowText = true,
+                ShowImage = true,
+                Size = AdWin.RibbonItemSize.Large,
+                Orientation = System.Windows.Controls.Orientation.Vertical,
+                ToolTip = pin.Tooltip,
+                Image = _pinnedIcon,
+                LargeImage = _pinnedIcon,
+                CommandHandler = new RelayCommand(() =>
+                    RibbonEventHub.Run(uiApp => RunCommandFromRibbon(pin.Command, uiApp))),
+            };
+
+            source.Items.Add(button);
+            _pinnedButtons[pin.Command] = (button, panelKey);
         }
 
         /// <summary>Removes the AdWindows buttons (and cached descriptors) of extensions that are no
@@ -222,11 +319,7 @@ namespace AnalyseTool.App.Common.Extensions
             string? command = info.Command;
             RelayCommand handler = string.IsNullOrWhiteSpace(command)
                 ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp)))
-                : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
-                    {
-                        AnalyseToolBootstrap.Initialize(uiApp); // ensure the dispatcher is ready
-                        InvokeSavedCommand(command!);           // fire-and-forget (no deadlock on the hub)
-                    }));
+                : new RelayCommand(() => RibbonEventHub.Run(uiApp => RunCommandFromRibbon(command!, uiApp)));
 
             AdWin.RibbonButton button = new()
             {
@@ -372,6 +465,53 @@ namespace AnalyseTool.App.Common.Extensions
             window.Closed += (_, _) => _extWindows.Remove(id);
             _extWindows[id] = window;
             window.Show();
+        }
+
+        /// <summary>
+        /// What a ribbon button for a COMMAND does — whether the author declared it in a manifest or
+        /// the user pinned it in the launcher.
+        ///
+        /// A command that takes no arguments is simply run. One that takes them cannot be: a click has
+        /// no arguments to give, and dispatching with an empty payload is precisely how a command with
+        /// an optional filter quietly returns nothing and reads as "no matches". So it opens the
+        /// launcher with that command selected, where the form is built from its input schema.
+        /// </summary>
+        private static void RunCommandFromRibbon(string commandName, UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp); // ensure the dispatcher is ready
+
+            Core.Common.Dispatch.CommandRegistration? registration =
+                CoreServices.Queue.GetRegistration(commandName);
+            if (registration is null)
+            {
+                TaskDialog.Show("AnalyseTool", $"'{commandName}' is not registered. Its extension may " +
+                                               "have been removed, disabled, or failed to load.");
+                return;
+            }
+
+            if (!TakesArguments(registration))
+            {
+                InvokeSavedCommand(commandName); // fire-and-forget (no deadlock on the hub)
+                return;
+            }
+
+            if (!WebView2Runtime.EnsureOrWarn()) return;
+            DockPaneHost.ShowRoute("#/scripts?command=" + Uri.EscapeDataString(commandName));
+        }
+
+        /// <summary>Whether the command declares any input. A command with no InputType is left with
+        /// the empty-object schema, which is exactly "takes nothing".</summary>
+        private static bool TakesArguments(Core.Common.Dispatch.CommandRegistration registration)
+        {
+            try
+            {
+                return JObject.Parse(registration.InputSchemaJson)["properties"] is JObject properties
+                       && properties.Count > 0;
+            }
+            catch (JsonException)
+            {
+                return false; // an unreadable schema is no reason to refuse to run the command
+            }
         }
 
         /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a

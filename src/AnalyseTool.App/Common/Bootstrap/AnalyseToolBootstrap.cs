@@ -59,6 +59,11 @@ namespace AnalyseTool.App.Common.Bootstrap
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
+            // Pinning a command in the launcher changes the ribbon and nothing else — same refresh,
+            // without unloading and rebuilding every extension load context to redraw one button.
+            CoreServices.RibbonButtonsChanged += () =>
+                RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
+
             // Busy-state push: every window/pane shows what the platform is doing (bottom status bar).
             // The payload mirrors GetQueueStatus so event and poll stay one shape.
             queue.RunningChanged += () =>

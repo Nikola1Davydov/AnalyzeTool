@@ -492,6 +492,22 @@ dockable launcher listing every registered command, with search, and it BUILDS T
 nothing chains it. A command that declares one gets typed fields; a command that declares none shows
 up with no form and can only be run without arguments.
 
+**Where a command lives is the user's call, not yours.** Every row in that launcher has a pin that
+moves its command onto the ribbon or back off it, and it works for any command — including one from
+an extension whose manifest you must never write. So `button` and `removeButton` set the DEFAULT a
+command arrives with; the user overrides it afterwards and their override wins. Do not argue with a
+ribbon they have already arranged: never flip `button` on an existing command just to make it easier
+to find, and say "it is in the Scripts launcher, pin it if you want a button" instead.
+
+A pinned button knows the difference between a command it can run and one it cannot: no `InputType`
+means the click runs it, and an `InputType` means the click opens the launcher with the form already
+on screen. Another reason a generated command should declare one.
+
+**Where saves land is also the user's call.** With no `targetRoot`, `SaveAsCommand` and
+`SaveExtensionUi` write into the folder chosen in Settings → Extension paths (tagged `scripts`),
+which is the built-in dev root until the user picks another. Leave `targetRoot` empty unless the user
+names a folder — passing the default explicitly overrides a choice they made on purpose.
+
 Two things to expect:
 
 - **`warnings` in the save result.** A full class that declares no `InputType` / `OutputType` saves

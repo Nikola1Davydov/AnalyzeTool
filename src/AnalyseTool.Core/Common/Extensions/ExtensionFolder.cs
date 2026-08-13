@@ -51,11 +51,12 @@ namespace AnalyseTool.Core.Common.Extensions
         }
 
         /// <summary>A registered extension source, or null when the caller named something else. Empty
-        /// means the default dev root.</summary>
+        /// means whichever root the user picked in Settings for generated scripts — the AI saving a
+        /// command has no opinion on where the user keeps their work.</summary>
         public static string? ResolveTargetRoot(string? requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
-                return ExtensionSources.DefaultDevRoot;
+                return ExtensionSources.AuthoringRoot;
 
             string full = Path.GetFullPath(requested!.Trim());
             return ExtensionSources.Roots()

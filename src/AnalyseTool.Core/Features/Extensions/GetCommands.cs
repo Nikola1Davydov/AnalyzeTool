@@ -1,4 +1,5 @@
 using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 
@@ -19,6 +20,10 @@ namespace AnalyseTool.Core.Features.Extensions
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
+            // Once for the whole listing, not once per command: reading it means scanning every
+            // manifest on disk, and all 60-odd rows ask the same question.
+            HashSet<string> declared = CommandButtons.ManifestDeclared(CoreServices.RevitVersion);
+
             var commands = CoreServices.Queue.RegisteredCommands
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(c => new
@@ -29,6 +34,10 @@ namespace AnalyseTool.Core.Features.Extensions
                     readOnly = c.ReadOnly,
                     destructive = c.Destructive,
                     exposedToMcp = c.ExposeToMcp,
+                    // Whether this command has a ribbon button right now: the user's override if they
+                    // made one, else whatever the extension's manifest declares. The launcher renders
+                    // the toggle from this, so it must be the EFFECTIVE answer, not either half.
+                    onRibbon = CommandButtons.Override(c.Name) ?? declared.Contains(c.Name),
                     // Both whole, uncapped: this is the introspection callers reason about (the Settings
                     // table, and the pipeline graph validator that has to compare one command's output
                     // against the next one's input). The MCP listing gets a compacted copy instead.

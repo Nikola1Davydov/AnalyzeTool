@@ -11,8 +11,14 @@
  * renders the fields. Which is also why a generated command that declares no InputType shows up here
  * with no form: it is not that the launcher cannot show it, it is that the command never said what it
  * takes.
+ *
+ * Each row also decides WHERE its command lives. The pin is the user's answer to "the shared list, or
+ * a button of its own" — it is stored as an override of what the extension's manifest declares, so it
+ * works the same for a command from an installed package (whose manifest must not be written) and for
+ * a built-in one (which has no manifest at all).
  */
 import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 import { invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 
@@ -29,27 +35,39 @@ type CommandInfo = {
   description?: string | null;
   readOnly: boolean;
   destructive: boolean;
+  onRibbon: boolean;
   inputSchema?: JsonSchema | null;
 };
 
+const route = useRoute();
 const notificationStore = useNotificationStore();
 
 const commands = ref<CommandInfo[]>([]);
 const loading = ref(false);
 const search = ref("");
-const onlyExtensions = ref(true);
+const running = ref(false);
+const pinning = ref<string | null>(null);
 const selected = ref<CommandInfo | null>(null);
 const args = ref<Record<string, unknown>>({});
-const running = ref(false);
 const result = ref<string | null>(null);
 const failed = ref(false);
 
-/** "core" is the host's own surface — dozens of commands nobody launches by hand. Extensions are what
- *  this window is for, so they lead; the toggle is there for the times that is wrong. */
+/** "core" is the host's own surface — dozens of commands nobody launches by hand — so extensions lead.
+ *  But they are not all there is: a built-in can be pinned to the ribbon too, and you cannot pin what
+ *  the list will not show you. Hence a scope, not a checkbox. */
+const scope = ref<"ext" | "all" | "ribbon">("ext");
+const scopes = [
+  { label: "Extensions", value: "ext" },
+  { label: "All", value: "all" },
+  { label: "Ribbon", value: "ribbon" },
+];
+
 const filtered = computed(() => {
   const needle = search.value.trim().toLowerCase();
   return commands.value
-    .filter((c) => !onlyExtensions.value || c.source !== "core")
+    .filter((c) =>
+      scope.value === "ext" ? c.source !== "core" : scope.value === "ribbon" ? c.onRibbon : true,
+    )
     .filter(
       (c) =>
         !needle ||
@@ -103,6 +121,21 @@ function select(command: CommandInfo) {
   }
 }
 
+/** Moves a command between the ribbon and this list. The command itself never moves — it stays
+ *  callable from here, from MCP and from JS either way; only the button appears or goes. */
+async function togglePin(command: CommandInfo) {
+  const next = !command.onRibbon;
+  pinning.value = command.name;
+  try {
+    await invoke("SetCommandButton", { command: command.name, onRibbon: next });
+    command.onRibbon = next;
+  } catch (err) {
+    notificationStore.error(String((err as Error)?.message ?? err));
+  } finally {
+    pinning.value = null;
+  }
+}
+
 /** Empty fields are OMITTED, not sent as "". An optional filter left blank must not become a filter
  *  for the empty string, which would quietly return nothing and look like "no matches". */
 function buildPayload(): Record<string, unknown> | null {
@@ -153,7 +186,22 @@ async function run() {
   }
 }
 
-onMounted(load);
+/** A pinned button for a command that TAKES arguments routes here with ?command=… rather than running
+ *  it blind — this is the form it was sent to find, so open on it. */
+onMounted(async () => {
+  await load();
+
+  const wanted = String(route.query.command ?? "").trim();
+  if (!wanted) return;
+
+  const match = commands.value.find((c) => c.name.toLowerCase() === wanted.toLowerCase());
+  if (!match) {
+    notificationStore.error(`'${wanted}' is not registered.`);
+    return;
+  }
+  if (match.source === "core") scope.value = "all"; // else the default scope would hide it
+  select(match);
+});
 </script>
 
 <template>
@@ -163,32 +211,51 @@ onMounted(load);
       <Button size="small" text icon="pi pi-refresh" :loading="loading" @click="load" />
     </div>
 
-    <div class="flex items-center gap-2 text-xs">
-      <Checkbox v-model="onlyExtensions" binary input-id="onlyExt" />
-      <label for="onlyExt" class="cursor-pointer">Extensions only</label>
-      <span class="ml-auto opacity-60">{{ filtered.length }}</span>
+    <div class="flex items-center gap-2">
+      <SelectButton
+        v-model="scope"
+        :options="scopes"
+        optionLabel="label"
+        optionValue="value"
+        :allowEmpty="false"
+        size="small"
+        class="!text-xs"
+      />
+      <span class="ml-auto text-xs opacity-60">{{ filtered.length }}</span>
     </div>
 
     <div class="flex-1 min-h-0 overflow-auto border rounded" style="border-color: var(--p-content-border-color)">
       <div v-if="!filtered.length" class="p-3 text-xs opacity-60">
         {{ loading ? "Loading…" : "No commands match." }}
       </div>
-      <button
+      <!-- A row is a div, not a button: it holds the pin, and a button inside a button is not valid. -->
+      <div
         v-for="command in filtered"
         :key="command.name"
-        class="w-full text-left px-2 py-1.5 border-b hover:bg-[var(--p-content-hover-background)]"
+        class="flex items-center gap-1 border-b hover:bg-[var(--p-content-hover-background)]"
         :class="{ 'bg-[var(--p-highlight-background)]': selected?.name === command.name }"
         style="border-color: var(--p-content-border-color)"
-        @click="select(command)"
       >
-        <div class="flex items-center gap-1">
-          <span class="font-medium truncate">{{ command.name }}</span>
-          <i v-if="command.destructive" class="pi pi-exclamation-triangle text-[10px] text-orange-500" />
-        </div>
-        <div v-if="command.description" class="text-[11px] opacity-60 line-clamp-2">
-          {{ command.description }}
-        </div>
-      </button>
+        <button class="flex-1 min-w-0 text-left px-2 py-1.5" @click="select(command)">
+          <div class="flex items-center gap-1">
+            <span class="font-medium truncate">{{ command.name }}</span>
+            <i v-if="command.destructive" class="pi pi-exclamation-triangle text-[10px] text-orange-500" />
+          </div>
+          <div v-if="command.description" class="text-[11px] opacity-60 line-clamp-2">
+            {{ command.description }}
+          </div>
+        </button>
+        <Button
+          size="small"
+          text
+          class="shrink-0"
+          icon="pi pi-thumbtack"
+          :severity="command.onRibbon ? 'primary' : 'secondary'"
+          :loading="pinning === command.name"
+          v-tooltip.left="command.onRibbon ? 'On the ribbon — click to remove' : 'Add a ribbon button'"
+          @click="togglePin(command)"
+        />
+      </div>
     </div>
 
     <div v-if="selected" class="flex flex-col gap-2 border-t pt-2" style="border-color: var(--p-content-border-color)">

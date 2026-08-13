@@ -76,6 +76,7 @@ interface PathRow {
   valid: boolean;
   reason: string;
   extensionCount: number;
+  isAuthoringRoot: boolean; // where generated scripts are saved when no root is named
 }
 
 interface CommandRow {
@@ -451,6 +452,21 @@ async function removePath(path: string) {
   }
 }
 
+// Where SaveAsCommand / SaveExtensionUi save when the caller names no folder — which is every call an
+// AI makes over MCP, since "save this as a command" names an id, not a path. Only re-lists: nothing
+// that is already loaded moves, so there is no reason to reload extensions.
+async function useForScripts(path: string) {
+  pathsBusy.value = true;
+  try {
+    await invoke("SetAuthoringRoot", { path });
+    await loadPaths();
+  } catch (e) {
+    console.error("Failed to set the scripts folder", e);
+  } finally {
+    pathsBusy.value = false;
+  }
+}
+
 async function loadCommands() {
   try {
     const res = await invoke<{ commands: CommandRow[] }>("GetCommands");
@@ -691,7 +707,13 @@ onMounted(() => {
     <!-- Extension paths: the source roots scanned for the running Revit version (default + user-added). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
       <div class="flex items-center justify-between mb-3 gap-3">
-        <h2 class="text-sm font-bold">Extension paths</h2>
+        <div>
+          <h2 class="text-sm font-bold">Extension paths</h2>
+          <p class="text-xs text-surface-500">
+            The folder tagged <span class="font-medium">scripts</span> is where commands generated over
+            MCP are saved when no folder is named.
+          </p>
+        </div>
         <div class="flex gap-2 shrink-0">
           <Button
             label="Add path"
@@ -725,11 +747,24 @@ onMounted(() => {
               :severity="row.valid ? 'success' : 'warn'"
             />
             <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
+            <Tag v-if="row.isAuthoringRoot" value="scripts" severity="info" class="ml-1" />
           </template>
         </Column>
-        <Column header="" class="w-24">
+        <Column header="" class="w-32">
           <template #body="{ data: row }">
             <div class="flex justify-end gap-1">
+              <!-- Managed roots are not offered: the Extension Manager owns extensions-dist, and the
+                   next update there would overwrite anything generated into it. -->
+              <Button
+                v-if="row.zone === 'dev' && !row.isAuthoringRoot"
+                icon="pi pi-code"
+                size="small"
+                text
+                severity="secondary"
+                :disabled="pathsBusy"
+                v-tooltip.left="'Save generated scripts here'"
+                @click="useForScripts(row.path)"
+              />
               <Button
                 icon="pi pi-folder-open"
                 size="small"
