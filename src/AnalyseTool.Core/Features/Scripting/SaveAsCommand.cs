@@ -70,10 +70,22 @@ namespace AnalyseTool.Core.Features.Scripting
             // whole point of generating one. Guarded, though: only a folder that looks like OUR OWN
             // output is replaceable, so a hand-written extension or a DLL extension that happens to
             // share the id is refused rather than quietly flattened.
+            // Default Command.cs, as before. An explicit name is how several commands come to live in
+            // ONE extension: Roslyn compiles every .cs in the folder, so the limit was never the loader,
+            // only this command writing a single fixed file. It matters because one extension means one
+            // ribbon button — twenty generated tools should not be twenty buttons.
+            string fileName = string.IsNullOrWhiteSpace(req.FileName) ? "Command.cs" : req.FileName!.Trim();
+            string? nameProblem = ExtensionFolder.ValidateFileName(fileName, new[] { ".cs" });
+            if (nameProblem is not null)
+                return Task.FromResult<object?>(SaveCommandResult.Failed(nameProblem));
+
             bool exists = Directory.Exists(directory);
-            if (exists && !req.Overwrite)
+            // Asked of the FILE, not the folder: adding a second command to an extension is not
+            // overwriting it, and demanding overwrite:true for that would make the flag mean two things.
+            if (exists && File.Exists(Path.Combine(directory, fileName)) && !req.Overwrite)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
-                    $"An extension folder already exists: {id}. Pass overwrite:true to replace it."));
+                    $"'{id}' already has {fileName}. Pass overwrite:true to replace it, or fileName to " +
+                    "add another command to the same extension."));
             if (exists && !ExtensionFolder.IsGeneratedFolder(directory))
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     $"'{id}' exists but was not created by these commands — it holds files they never " +
@@ -97,16 +109,18 @@ namespace AnalyseTool.Core.Features.Scripting
             string commandName = $"{id}.{shape.BaseName}";
 
             Directory.CreateDirectory(directory);
-            File.WriteAllText(Path.Combine(directory, "Command.cs"), source);
+            File.WriteAllText(Path.Combine(directory, fileName), source);
             // Merged, not rewritten: a page saved by SaveExtensionUi, and any vendor metadata, must
             // survive a re-save of the code. The writer also decides what the ribbon button does.
             ExtensionManifestWriter.Write(directory, id, new ManifestEdit
             {
-                ButtonName = req.Name,
-                Tooltip = req.Description,
-                Tab = req.Tab,
-                Panel = req.Panel,
-                CommandName = commandName,
+                // button:false leaves the manifest's button alone rather than removing one — "do not
+                // give THIS command a button" is not "take the extension's button away".
+                ButtonName = req.Button ? req.Name : null,
+                Tooltip = req.Button ? req.Description : null,
+                Tab = req.Button ? req.Tab : null,
+                Panel = req.Button ? req.Panel : null,
+                CommandName = req.Button ? commandName : null,
             });
 
             Log.Information("SaveAsCommand: {Action} command {Command} at {Directory}",
@@ -117,7 +131,8 @@ namespace AnalyseTool.Core.Features.Scripting
             CoreServices.ReloadExtensions();
 
             return Task.FromResult<object?>(new SaveCommandResult(
-                true, !exists, commandName, directory, null, null, SchemaWarnings(shape, isFullClass)));
+                true, !exists, commandName, directory, fileName, null, null,
+                SchemaWarnings(shape, isFullClass)));
         }
 
         /// <summary>
@@ -289,10 +304,21 @@ namespace AnalyseTool.Core.Features.Scripting
             [Description("Marks the saved command as destructive, i.e. it deletes or overwrites.")]
             public bool Destructive { get; set; }
 
-            [Description("Replace an existing command of the same id — how a generated command gets " +
-                         "refined. Only a folder created by this command (Command.cs + plugin.json and " +
-                         "nothing else) can be replaced; anything else is refused.")]
+            [Description("Replace this extension's existing file of the same name — how a generated " +
+                         "command gets refined. Only a folder created by these commands can be written " +
+                         "to; anything else is refused.")]
             public bool Overwrite { get; set; }
+
+            [Description("Source file name, e.g. \"CreateSheets.cs\". Default \"Command.cs\". Give " +
+                         "each command its own name to put SEVERAL commands in one extension — they all " +
+                         "compile together and share one ribbon button, instead of becoming one " +
+                         "extension and one button each.")]
+            public string? FileName { get; set; }
+
+            [Description("Give this command a ribbon button. Default true. Set false when adding a " +
+                         "command to an extension that already has its button, or when the command is " +
+                         "only meant to be called from MCP, from JS, or by another command.")]
+            public bool Button { get; set; } = true;
         }
     }
 
@@ -309,11 +335,12 @@ namespace AnalyseTool.Core.Features.Scripting
         [property: JsonProperty("created")] bool Created,
         [property: JsonProperty("command")] string? Command,
         [property: JsonProperty("directory")] string? Directory,
+        [property: JsonProperty("fileName")] string? FileName,
         [property: JsonProperty("error")] string? Error,
         [property: JsonProperty("diagnostics")] IReadOnlyList<string>? Diagnostics,
         [property: JsonProperty("warnings")] IReadOnlyList<string>? Warnings)
     {
         public static SaveCommandResult Failed(string error, IReadOnlyList<string>? diagnostics = null) =>
-            new(false, false, null, null, error, diagnostics, null);
+            new(false, false, null, null, null, error, diagnostics, null);
     }
 }

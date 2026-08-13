@@ -438,6 +438,7 @@ The loop, and what each step answers:
 | Try it | `ExecuteRevitCode { code, description? }` | The snippet's own return value. Nothing is persisted. On a compile failure, `{ error, diagnostics }` — read the diagnostics and fix the code; no human relays them. |
 | Keep it | `SaveAsCommand { code, id, name, … }` | `{ ok, created, command, directory, error, diagnostics, warnings }` |
 | Give it a form | `SaveExtensionUi { id, name, files, … }` | `{ ok, id, directory, entryHtml, files, error }` |
+| Tidy the ribbon | `UpdateExtensionManifest { id, name?, tab?, panel?, removeButton? }` | The rewritten manifest |
 | Read it back | `GetScriptSource { id }` | `{ ok, id, directory, files: [{ name, content }] }` — script extensions only |
 | Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, and `error` if it failed to compile or load |
 | Apply | `ReloadExtensions` | Only needed for changes made another way — the save commands reload by themselves |
@@ -469,6 +470,21 @@ other's half (nor any vendor metadata already there).
 Files are written flat into the extension folder, so `SaveExtensionUi` takes hand-authored
 HTML/CSS/JS — plain `window.AT.invoke` as in §6, no build step. A framework project with an
 `assets/` tree is not this: that is a folder a person builds and installs.
+
+**One extension, many commands — do this by default.** Each extension gets at most ONE ribbon button
+(the host keys them by extension id), so saving ten commands as ten extensions puts ten buttons on
+the ribbon. Roslyn compiles every `.cs` in a folder, so the folder was never the limit:
+
+- Pass `fileName: "CreateSheets.cs"` to put another command into an extension that already exists.
+  They compile together and share the extension's id, so their wire names are
+  `niko.sheets.CreateSheets`, `niko.sheets.RenumberSheets`, and so on.
+- Pass `button: false` for commands that should not each get a button — the extension keeps the one
+  it has, and every command stays callable from MCP and from JS regardless.
+- `UpdateExtensionManifest { id, removeButton: true }` takes an extension off the ribbon entirely
+  without touching its code, for a ribbon that has already collected too much.
+
+`overwrite` is asked of the FILE, not the folder: adding a second command is not overwriting the
+first, so only re-saving the same `fileName` needs it.
 
 Two things to expect:
 

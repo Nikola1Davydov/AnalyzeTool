@@ -21,6 +21,10 @@ namespace AnalyseTool.Core.Common.Extensions
         public string? EntryHtml { get; init; }
 
         public bool? Dockable { get; init; }
+
+        /// <summary>Drop the ribbon button entirely. An extension with many commands does not want one
+        /// button per command — it wants none, or one page that lists them.</summary>
+        public bool RemoveButton { get; init; }
     }
 
     /// <summary>
@@ -59,7 +63,14 @@ namespace AnalyseTool.Core.Common.Extensions
             // command directly and the form is never seen.
             if (ui["entryHtml"] is not null) button.Remove("command");
 
-            ui["button"] = button;
+            // An EMPTY button is not the same as no button: the host treats the presence of ui.button as
+            // "this extension has a ribbon entry" (ExtensionDescriptor.HasUi), so writing {} would put a
+            // nameless button on the ribbon. A button needs a name to exist at all.
+            if (edit.RemoveButton || button["name"] is null)
+                ui.Remove("button");
+            else
+                ui["button"] = button;
+
             manifest["ui"] = ui;
 
             Directory.CreateDirectory(directory);

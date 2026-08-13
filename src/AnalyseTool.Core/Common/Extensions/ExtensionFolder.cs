@@ -19,6 +19,24 @@ namespace AnalyseTool.Core.Common.Extensions
 
         public static bool IsValidId(string id) => ValidId.IsMatch(id);
 
+        /// <summary>Null when the name is a plain file name that may be written into an extension folder,
+        /// otherwise why not. Rejecting separators outright is simpler than resolving paths and then
+        /// arguing about which of them escape.</summary>
+        public static string? ValidateFileName(string? name, IReadOnlyCollection<string> allowedExtensions)
+        {
+            string candidate = name?.Trim() ?? string.Empty;
+            if (candidate.Length == 0) return "A file has no name.";
+
+            if (candidate.Contains('/') || candidate.Contains('\\') || candidate.Contains("..") ||
+                Path.IsPathRooted(candidate) || candidate != Path.GetFileName(candidate))
+                return $"'{candidate}' is not a plain file name — files are written flat into the extension folder.";
+
+            string extension = Path.GetExtension(candidate).ToLowerInvariant();
+            return allowedExtensions.Contains(extension)
+                ? null
+                : $"'{candidate}' has an extension these commands do not write. Allowed: {string.Join(", ", allowedExtensions)}.";
+        }
+
         /// <summary>The extension directory inside <paramref name="root"/>, or null when the id would
         /// escape it. Defence in depth: the id is already character-checked, and this catches whatever
         /// that check ever fails to.</summary>

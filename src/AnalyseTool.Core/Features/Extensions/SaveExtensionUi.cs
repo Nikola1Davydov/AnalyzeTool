@@ -125,23 +125,12 @@ namespace AnalyseTool.Core.Features.Extensions
 
         private static string? Validate(UiFile file)
         {
-            string name = file.Name?.Trim() ?? string.Empty;
-            if (name.Length == 0) return "A file has no name.";
+            string? problem = ExtensionFolder.ValidateFileName(file.Name, AllowedExtensions);
+            if (problem is not null) return problem;
 
-            // Flat names only. Rejecting separators outright is simpler than resolving paths and
-            // arguing about which of them escape.
-            if (name.Contains('/') || name.Contains('\\') || name.Contains("..") ||
-                Path.IsPathRooted(name) || name != Path.GetFileName(name))
-                return $"'{name}' is not a plain file name — files are written flat into the extension folder.";
-
-            string extension = Path.GetExtension(name).ToLowerInvariant();
-            if (!AllowedExtensions.Contains(extension))
-                return $"'{name}' has an extension these commands do not write. Allowed: {string.Join(", ", AllowedExtensions)}.";
-
-            if ((file.Content?.Length ?? 0) > MaxFileChars)
-                return $"'{name}' is larger than {MaxFileChars / 1024} KB.";
-
-            return null;
+            return (file.Content?.Length ?? 0) > MaxFileChars
+                ? $"'{file.Name?.Trim()}' is larger than {MaxFileChars / 1024} KB."
+                : null;
         }
 
         internal sealed class Request
