@@ -82,14 +82,22 @@ const scopes = [
   { label: "Ribbon", value: "ribbon" },
 ];
 
+/**
+ * The only two kinds this window deals with, as an ALLOWLIST rather than a "hide dll" rule.
+ *
+ * The polarity matters. Written as an exclusion, a command whose `kind` the host did not report —
+ * an older host, a field lost in a rename — slips through and is shown, which is the one outcome
+ * this rule exists to prevent. Written this way, anything unrecognised is hidden, and a kind added
+ * later stays hidden until someone decides it belongs here.
+ */
+function listable(command: CommandInfo): boolean {
+  return command.kind === "script" || command.kind === "core";
+}
+
 const filtered = computed(() => {
   const needle = search.value.trim().toLowerCase();
   return commands.value
-    // Ahead of the scope, not inside it: a DLL extension's commands are not a category you can switch
-    // on, they are simply not this window's business. They stay REACHABLE by ?command= though — a
-    // manifest button for a command that takes arguments sends the user here, and that button has to
-    // keep working — they are just never listed.
-    .filter((c) => c.kind !== "dll")
+    .filter(listable)
     .filter((c) =>
       scope.value === "scripts" ? c.kind === "script" : scope.value === "ribbon" ? c.onRibbon : true,
     )
@@ -320,9 +328,14 @@ watch(
       notificationStore.error(`'${wanted}' is not registered.`);
       return;
     }
-    // Widen only for a built-in, which "All" does show. A DLL command opens its page and is still
-    // absent from the list behind it — that is the rule, not an oversight.
-    if (match.kind === "core") scope.value = "all";
+    // No exception for the deep link either. Opening a page for a command the list refuses to show
+    // would put a compiled extension's command in this window through the back door — the ribbon no
+    // longer sends them here, and if one arrives anyway it is turned away.
+    if (!listable(match)) {
+      notificationStore.error(`'${wanted}' belongs to a compiled extension — run it from its own button.`);
+      return;
+    }
+    if (match.kind === "core") scope.value = "all"; // else the Scripts scope would hide it on Back
     open(match);
   },
   { immediate: true },

@@ -245,8 +245,10 @@ namespace AnalyseTool.App.Common.Extensions
                 ToolTip = pin.Tooltip,
                 Image = _pinnedIcon,
                 LargeImage = _pinnedIcon,
+                // A pin can only be made from the launcher, which lists scripts and built-ins alone, so
+                // the command behind one is always something that window can show again.
                 CommandHandler = new RelayCommand(() =>
-                    RibbonEventHub.Run(uiApp => RunCommandFromRibbon(pin.Command, uiApp))),
+                    RibbonEventHub.Run(uiApp => RunCommandFromRibbon(pin.Command, uiApp, canOpenLauncher: true))),
             };
 
             source.Items.Add(button);
@@ -319,7 +321,8 @@ namespace AnalyseTool.App.Common.Extensions
             string? command = info.Command;
             RelayCommand handler = string.IsNullOrWhiteSpace(command)
                 ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp)))
-                : new RelayCommand(() => RibbonEventHub.Run(uiApp => RunCommandFromRibbon(command!, uiApp)));
+                : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
+                    RunCommandFromRibbon(command!, uiApp, LauncherLists(id))));
 
             AdWin.RibbonButton button = new()
             {
@@ -467,6 +470,12 @@ namespace AnalyseTool.App.Common.Extensions
             window.Show();
         }
 
+        /// <summary>Whether the script launcher would list this extension's commands. It shows generated
+        /// scripts and the host's own and nothing else, so a compiled extension's command must never be
+        /// sent there — the user would land on a window that refuses to show it.</summary>
+        private static bool LauncherLists(string id) =>
+            !_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor) || !descriptor.DeclaresDll;
+
         /// <summary>
         /// What a ribbon button for a COMMAND does — whether the author declared it in a manifest or
         /// the user pinned it in the launcher.
@@ -475,8 +484,13 @@ namespace AnalyseTool.App.Common.Extensions
         /// no arguments to give, and dispatching with an empty payload is precisely how a command with
         /// an optional filter quietly returns nothing and reads as "no matches". So it opens the
         /// launcher with that command selected, where the form is built from its input schema.
+        ///
+        /// Unless the launcher does not list it. A compiled extension is absent from that window by
+        /// design, so its own button falls back to running the command as it always has — an author who
+        /// points a button at a command that needs arguments is choosing that, and it is not this
+        /// method's place to invent a form the extension never shipped.
         /// </summary>
-        private static void RunCommandFromRibbon(string commandName, UIApplication uiApp)
+        private static void RunCommandFromRibbon(string commandName, UIApplication uiApp, bool canOpenLauncher)
         {
             AnalyseToolBootstrap.Initialize(uiApp); // ensure the dispatcher is ready
 
@@ -489,7 +503,7 @@ namespace AnalyseTool.App.Common.Extensions
                 return;
             }
 
-            if (!TakesArguments(registration))
+            if (!canOpenLauncher || !TakesArguments(registration))
             {
                 InvokeSavedCommand(commandName); // fire-and-forget (no deadlock on the hub)
                 return;
