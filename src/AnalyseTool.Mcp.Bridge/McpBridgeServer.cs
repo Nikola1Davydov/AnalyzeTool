@@ -294,6 +294,7 @@ namespace AnalyseTool.Mcp.Bridge
             string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, GetScriptSource.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, SaveExtensionUi.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
 
         private static string Ok(string? id, JToken result) =>

@@ -434,11 +434,13 @@ The loop, and what each step answers:
 
 | Step | Command | What comes back |
 | --- | --- | --- |
+| Learn the rules | `GetAuthoringGuide` | This document. Call it first — it is not otherwise reachable over MCP, and everything below assumes it. |
 | Try it | `ExecuteRevitCode { code, description? }` | The snippet's own return value. Nothing is persisted. On a compile failure, `{ error, diagnostics }` — read the diagnostics and fix the code; no human relays them. |
 | Keep it | `SaveAsCommand { code, id, name, … }` | `{ ok, created, command, directory, error, diagnostics, warnings }` |
+| Give it a form | `SaveExtensionUi { id, name, files, … }` | `{ ok, id, directory, entryHtml, files, error }` |
 | Read it back | `GetScriptSource { id }` | `{ ok, id, directory, files: [{ name, content }] }` — script extensions only |
 | Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, and `error` if it failed to compile or load |
-| Apply | `ReloadExtensions` | Only needed for changes made another way — `SaveAsCommand` reloads by itself |
+| Apply | `ReloadExtensions` | Only needed for changes made another way — the save commands reload by themselves |
 
 `SaveAsCommand` takes either form from §5 — a bare body it wraps into a named class, or a full
 `IRevitTask` you wrote. It **compiles before writing**, so code that does not build never reaches
@@ -450,6 +452,23 @@ generating a command and being able to improve it. Read the current source with 
 first rather than rewriting from memory. Overwrite only replaces a folder this command created
 (`Command.cs` + `plugin.json` and nothing else); anything else is refused, so you cannot flatten
 someone's hand-built extension by picking its id.
+
+**A command WITH a form** is two saves into the SAME `id`:
+
+1. `SaveAsCommand { id: "niko.sheets", name: "Create sheets", code: … }` — the C# that does the work
+   and returns JSON. Note the `command` it reports back, e.g. `niko.sheets.CreateSheets`.
+2. `SaveExtensionUi { id: "niko.sheets", files: [{ name: "index.html", content: … }] }` — the page,
+   which calls that command with `AT.invoke("niko.sheets.CreateSheets", { … })`.
+
+**The ribbon button follows one rule: if the extension has a page, the button OPENS the page;
+if it has none, the button RUNS the command.** So save the page second and the button opens the
+form — the host decides by whether `ui.button.command` is set, and adding a page clears it. Both
+save commands MERGE into the existing `plugin.json` rather than replacing it, so neither erases the
+other's half (nor any vendor metadata already there).
+
+Files are written flat into the extension folder, so `SaveExtensionUi` takes hand-authored
+HTML/CSS/JS — plain `window.AT.invoke` as in §6, no build step. A framework project with an
+`assets/` tree is not this: that is a folder a person builds and installs.
 
 Two things to expect:
 

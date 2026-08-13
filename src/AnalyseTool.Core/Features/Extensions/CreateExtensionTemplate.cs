@@ -142,7 +142,6 @@ namespace AnalyseTool.Core.Features.Extensions
         // Resource names are pinned via LogicalName in AnalyseTool.Core.csproj rather than left to the
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
-        private const string LlmResource = "AnalyseTool.Core.Templates.LLM.md";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
 
         /// <summary>
@@ -226,7 +225,7 @@ namespace AnalyseTool.Core.Features.Extensions
         /// <summary>The author guide, served verbatim from the embedded <c>src/LLM.md</c>. It takes no
         /// arguments on purpose: the document is the same for every extension — the two parameters the
         /// previous hand-written copy accepted were never used by it.</summary>
-        private static string BuildLLMInstructions() => ReadTemplate(LlmResource);
+        private static string BuildLLMInstructions() => AuthoringGuide.Read();
 
         /// <summary>Returns one of the registered extension source roots, defaulting to the dev root
         /// when the caller didn't specify (templates are user-authored work-in-progress). Rejects

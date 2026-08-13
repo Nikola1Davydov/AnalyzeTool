@@ -3,7 +3,6 @@ using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using Serilog;
 using System.ComponentModel;
 using System.IO;
@@ -51,20 +50,18 @@ namespace AnalyseTool.Core.Features.Scripting
                 return Task.FromResult<object?>(SaveCommandResult.Failed("Button name is required."));
 
             string id = req.Id.Trim();
-            if (!IsValidId(id))
+            if (!ExtensionFolder.IsValidId(id))
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     "Id may contain only letters, digits, '.', '-' and '_'."));
 
             // Scripts are version-independent, so they live directly under the root (no year folder).
-            string? root = ResolveTargetRoot(req.TargetRoot);
+            string? root = ExtensionFolder.ResolveTargetRoot(req.TargetRoot);
             if (root is null)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     $"'{req.TargetRoot}' is not a registered extension source. Leave targetRoot empty for the default root."));
-            string directory = Path.Combine(root, id);
 
-            // Defense-in-depth: the resolved folder must stay inside the root.
-            string fullRoot = Path.GetFullPath(root);
-            if (!Path.GetFullPath(directory).StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            string? directory = ExtensionFolder.ResolveExtensionDirectory(root, id);
+            if (directory is null)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     "Invalid extension id (path escapes the extensions folder)."));
 
@@ -77,10 +74,10 @@ namespace AnalyseTool.Core.Features.Scripting
             if (exists && !req.Overwrite)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     $"An extension folder already exists: {id}. Pass overwrite:true to replace it."));
-            if (exists && !IsReplaceableScriptFolder(directory))
+            if (exists && !ExtensionFolder.IsGeneratedFolder(directory))
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
-                    $"'{id}' exists but was not created by SaveAsCommand — it holds files beyond " +
-                    "Command.cs and plugin.json. Refusing to overwrite; choose another id."));
+                    $"'{id}' exists but was not created by these commands — it holds files they never " +
+                    "write. Refusing to overwrite; choose another id."));
 
             // Body → named class (or keep a full class the AI already wrote).
             bool isFullClass = RoslynScriptCompiler.LooksLikeFullCommand(req.Code);
@@ -101,7 +98,16 @@ namespace AnalyseTool.Core.Features.Scripting
 
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "Command.cs"), source);
-            File.WriteAllText(Path.Combine(directory, "plugin.json"), BuildManifest(id, req, commandName));
+            // Merged, not rewritten: a page saved by SaveExtensionUi, and any vendor metadata, must
+            // survive a re-save of the code. The writer also decides what the ribbon button does.
+            ExtensionManifestWriter.Write(directory, id, new ManifestEdit
+            {
+                ButtonName = req.Name,
+                Tooltip = req.Description,
+                Tab = req.Tab,
+                Panel = req.Panel,
+                CommandName = commandName,
+            });
 
             Log.Information("SaveAsCommand: {Action} command {Command} at {Directory}",
                 exists ? "updated" : "created", commandName, directory);
@@ -112,17 +118,6 @@ namespace AnalyseTool.Core.Features.Scripting
 
             return Task.FromResult<object?>(new SaveCommandResult(
                 true, !exists, commandName, directory, null, null, SchemaWarnings(shape, isFullClass)));
-        }
-
-        /// <summary>Only a folder holding exactly what this command writes may be replaced. Anything
-        /// else — a DLL extension, a hand-built one, a folder someone dropped files into — keeps its
-        /// contents and the caller is told to pick another id.</summary>
-        private static bool IsReplaceableScriptFolder(string directory)
-        {
-            string[] allowed = { "command.cs", "plugin.json" };
-            if (Directory.GetDirectories(directory).Length > 0) return false;
-            return Directory.GetFiles(directory)
-                .All(path => allowed.Contains(Path.GetFileName(path).ToLowerInvariant()));
         }
 
         /// <summary>
@@ -173,31 +168,6 @@ namespace AnalyseTool.Core.Features.Scripting
             }
         }
 
-        private static string BuildManifest(string id, Request req, string commandName)
-        {
-            var manifest = new
-            {
-                id,
-                version = "1.0.0",
-                ui = new
-                {
-                    tab = string.IsNullOrWhiteSpace(req.Tab) ? null : req.Tab!.Trim(),
-                    panel = string.IsNullOrWhiteSpace(req.Panel) ? null : req.Panel!.Trim(),
-                    button = new
-                    {
-                        name = req.Name!.Trim(),
-                        tooltip = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description!.Trim(),
-                        command = commandName,
-                    },
-                },
-            };
-
-            return JsonConvert.SerializeObject(manifest, Formatting.Indented, new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                ContractResolver = new CamelCasePropertyNamesContractResolver(),
-            });
-        }
 
         /// <summary>Wraps a bare statement body into a complete, re-editable IRevitTask class file.</summary>
         private static string BuildCommandClass(string body, string ns, string className,
@@ -282,30 +252,7 @@ namespace AnalyseTool.Core.Features.Scripting
         private static string Capitalize(string s) =>
             s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
-        private static bool IsValidId(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id)) return false;
-            if (id.Contains("..", StringComparison.Ordinal)) return false; // no path traversal
-            if (!char.IsLetterOrDigit(id[0])) return false;                // no leading '.' '-' '_'
-            return id.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_');
-        }
 
-        /// <summary>Returns a registered extension source root (the dev root when unspecified — saved
-        /// scripts are user-authored); rejects anything not registered so we never scaffold where the
-        /// host wouldn't scan.</summary>
-        private static string? ResolveTargetRoot(string? requested)
-        {
-            if (string.IsNullOrWhiteSpace(requested))
-                return ExtensionSources.DefaultDevRoot;
-
-            string full = Path.GetFullPath(requested.Trim());
-            bool registered = ExtensionSources.Roots()
-                .Any(r => string.Equals(Path.GetFullPath(r), full, StringComparison.OrdinalIgnoreCase));
-
-            // Null, not an exception: an unregistered root is a caller mistake like any other here, and
-            // this command answers all of those the same way.
-            return registered ? full : null;
-        }
 
         internal sealed class Request
         {
