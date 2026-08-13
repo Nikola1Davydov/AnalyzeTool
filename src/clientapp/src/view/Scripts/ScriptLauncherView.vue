@@ -68,12 +68,12 @@ const confirmVisible = computed({
 });
 
 /**
- * Scripts lead, and by default they are all you see.
+ * Scripts lead, and by default they are all you see. "All" adds the host's own built-in commands —
+ * dozens nobody launches by hand, but you cannot pin what the list will not show you.
  *
- * A DLL extension is a built thing that ships its own page and its own ribbon button — listing its
- * commands here offers a second, worse way into something that already has a front door. "core" is the
- * host's own surface, dozens of commands nobody launches by hand. Neither is hidden for good: All is
- * one click away, and you cannot pin what the list will not show you.
+ * What "All" does NOT add is a DLL extension's commands. Those are never listed here, in any scope: a
+ * compiled extension ships its own page and its own ribbon button, so a generic launcher would only be
+ * a second, worse door into something that already has one.
  */
 const scope = ref<"scripts" | "all" | "ribbon">("scripts");
 const scopes = [
@@ -85,6 +85,11 @@ const scopes = [
 const filtered = computed(() => {
   const needle = search.value.trim().toLowerCase();
   return commands.value
+    // Ahead of the scope, not inside it: a DLL extension's commands are not a category you can switch
+    // on, they are simply not this window's business. They stay REACHABLE by ?command= though — a
+    // manifest button for a command that takes arguments sends the user here, and that button has to
+    // keep working — they are just never listed.
+    .filter((c) => c.kind !== "dll")
     .filter((c) =>
       scope.value === "scripts" ? c.kind === "script" : scope.value === "ribbon" ? c.onRibbon : true,
     )
@@ -315,7 +320,9 @@ watch(
       notificationStore.error(`'${wanted}' is not registered.`);
       return;
     }
-    if (match.kind !== "script") scope.value = "all"; // else the default scope would hide it on Back
+    // Widen only for a built-in, which "All" does show. A DLL command opens its page and is still
+    // absent from the list behind it — that is the rule, not an oversight.
+    if (match.kind === "core") scope.value = "all";
     open(match);
   },
   { immediate: true },
