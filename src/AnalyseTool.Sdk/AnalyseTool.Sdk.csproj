@@ -35,7 +35,7 @@
     <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). Ahead of
          nuget.org on purpose: 1.1.2 dropped the duplicated Revit API references (NU1504) and 1.2.0
          adds OutputType. A published version is immutable, so each fix needs a new number to reach
-         anyone. Docs still pin 1.1.1 — what authors can restore today — and move only in the same
+         anyone. Docs still pin 1.1.2 — what authors can restore today — and move only in the same
          commit as the push. -->
     <Version>1.2.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
