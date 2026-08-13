@@ -70,6 +70,7 @@ namespace AnalyseTool.Sdk
         public bool    ReadOnly   { get; set; }    // command only reads the model
         public bool    Destructive{ get; set; }    // command may modify/delete
         public Type?   InputType  { get; set; }    // generates the JSON input schema
+        public Type?   OutputType{ get; set; }     // SDK 1.2+: schema of what the command RETURNS
         public bool    HiddenFromMcp { get; set; } // callable from JS, hidden from the AI tool list
     }
 
@@ -271,6 +272,8 @@ to say which Revit versions it supports.
 
 Generate one only when the request explicitly asks for a script, or when you are the agent running
 the code yourself. For anything a person will install, generate the C# project from §4.
+If you ARE that agent — connected over MCP — §7.2 has the commands to run, save, read back and
+diagnose one without a human copying files.
 
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
@@ -417,6 +420,48 @@ then refuses to guess which one is the package.
 
 ---
 
+### 7.2 Doing all of this yourself (over MCP)
+
+Everything above assumes a person copies files and clicks Reload. If you are connected over MCP you
+can run the whole loop, because the host exposes it as commands.
+
+**Gate first.** All of this requires **C# code execution** to be ON in AnalyseTool Settings. While it
+is off these tools are not merely refused — they are not in `tools/list` at all, so if you cannot see
+them, ask the user to turn the setting on. Only a person can: the command that flips it is hidden
+from MCP on purpose, so you cannot grant yourself code execution.
+
+The loop, and what each step answers:
+
+| Step | Command | What comes back |
+| --- | --- | --- |
+| Try it | `ExecuteRevitCode { code, description? }` | The snippet's own return value. Nothing is persisted. On a compile failure, `{ error, diagnostics }` — read the diagnostics and fix the code; no human relays them. |
+| Keep it | `SaveAsCommand { code, id, name, … }` | `{ ok, created, command, directory, error, diagnostics, warnings }` |
+| Read it back | `GetScriptSource { id }` | `{ ok, id, directory, files: [{ name, content }] }` — script extensions only |
+| Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, and `error` if it failed to compile or load |
+| Apply | `ReloadExtensions` | Only needed for changes made another way — `SaveAsCommand` reloads by itself |
+
+`SaveAsCommand` takes either form from §5 — a bare body it wraps into a named class, or a full
+`IRevitTask` you wrote. It **compiles before writing**, so code that does not build never reaches
+disk, and it names the button after the command the dispatcher will actually register. `tab` and
+`panel` place the button; `readOnly` / `destructive` become the command's own metadata.
+
+**To refine a command you already made, pass `overwrite: true`** — that is the difference between
+generating a command and being able to improve it. Read the current source with `GetScriptSource`
+first rather than rewriting from memory. Overwrite only replaces a folder this command created
+(`Command.cs` + `plugin.json` and nothing else); anything else is refused, so you cannot flatten
+someone's hand-built extension by picking its id.
+
+Two things to expect:
+
+- **`warnings` in the save result.** A full class that declares no `InputType` / `OutputType` saves
+  and works, but is opaque over MCP — nobody can tell what to send it or what it returns. Fix it and
+  save again with `overwrite: true`. (A wrapped bare body gets no such warning: it takes no arguments
+  and returns whatever the body returns, so there is nothing to declare.)
+- **A brand-new ribbon button needs one Revit restart** to appear, as in §7. The command itself is
+  callable immediately after the reload — you do not have to wait to test it.
+
+---
+
 ## 8. Rules — ALWAYS / NEVER
 
 - **ALWAYS** generate a compiled C# project (`.dll`). A script (§5) is only for an explicit request
@@ -425,10 +470,17 @@ then refuses to guess which one is the package.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
   the generated schema balloons.
+- **ALWAYS** declare `OutputType` too (SDK 1.2+). A command that declares neither is callable but
+  opaque over MCP — free-form arguments, free-form answer — so it cannot be chained and its payload
+  cannot be checked. If `ExecuteAsync` returns an anonymous object, promote it to a named record
+  first: that refactor IS the work, the attribute is the easy half.
 - **NEVER** ship copies of `AnalyseTool.Sdk` / Revit API / `Newtonsoft.Json` in the extension output.
 - **NEVER** touch the WebView, sockets, or threads from a command — return a serializable object.
 - **Category names are language-specific.** On a German Revit a wall's category is `"Wände"`, not
-  `"Walls"`. To resolve names, call `GetCategoriesInRevit` first; don't hard-code English names.
+  `"Walls"`. Don't hard-code English names: call `GetModelOverview` — it reports the UI language, the
+  display units and a per-category INSTANCE count in one call, so it also tells you which categories
+  actually hold geometry — or `GetCategoriesInRevit` for the full list. In your own code prefer
+  `BuiltInCategory` (`OST_Walls`), which means the same thing on every install.
 - Return plain, serializable data (numbers, strings, lists, anonymous objects). Don't return raw
   Revit `Element`/`Parameter` objects.
 
@@ -448,9 +500,19 @@ the user to pick one.
   A `storage` event fires when another window changes them.
 - **Ollama status / local models:** `AT.invoke("OllamaGetModels")` → `{ running: bool, models: string[]|null }`
   (`running:false` = Ollama unreachable; distinct from "running with 0 models").
-- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host): `OllamaAnalyse`,
-  `OllamaEditParameters` (returns suggested parameter edits), `OllamaSuggestName` (one new name from a
-  current name + instruction). Pass `{ model, prompt, … }` where `model` is the shared model name.
+- **Existing AI commands** (all `HiddenFromMcp`, run Ollama on the host). Pass
+  `{ model, prompt, … }`; `model` is the shared model name and is **required** — there is no default.
+  Each returns its failure as DATA in an `error` field rather than throwing, so always read `error`
+  before the payload:
+  - `OllamaAnalyse` → `{ analysis, error }` — free-text analysis. It **streams**: call it with
+    `AT.invoke(cmd, payload, { onProgress })` and append `p.message`, which carries the generated text
+    as it arrives (`p.fraction` stays 0 — token generation has no honest total). The returned
+    `analysis` is authoritative; replace what you streamed with it when the call finishes.
+  - `OllamaEditParameters` → `{ edits: [{ elementId, parameter, oldValue, newValue, reason }], raw, error }`
+    — proposed edits only; apply them yourself with `SetDataToParameters`.
+  - `OllamaSuggestName` → `{ name, error }` — one new name from a current name + instruction.
+- **Cancelling a long AI call:** pass an `AbortSignal` — `AT.invoke(cmd, payload, { signal })`. The
+  host cancels the model call itself, and the command comes back with `error: "Cancelled."`.
 - In your **own** C# AI command: take the model name in the payload, and run the AI/HTTP call **outside**
   `RunInRevitAsync` (see §2 — slow I/O must not block the Revit thread); marshal only the model touch.
 
@@ -463,6 +525,6 @@ the user to pick one.
 - [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
-      for commands that take arguments.
+      for commands that take arguments; `OutputType` for what they return (SDK 1.2+).
 - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
 - [ ] Tell the user the deploy path and that they click **Reload** (or restart for a new button).

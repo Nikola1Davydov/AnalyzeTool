@@ -463,11 +463,17 @@ public sealed class SetWallComment : IRevitTask
 | `ReadOnly = true` | Marks the tool `readOnlyHint` — clients treat it as safe. Use for `Get*`/query commands. |
 | `Destructive = true` | Marks the tool `destructiveHint` — clients may warn/confirm. Use for writes/deletes. |
 | `InputType = typeof(T)` | The host generates the tool's JSON **input schema** from `T`, so an AI knows which arguments to send. Omit for no-argument commands. |
+| `OutputType = typeof(T)` | **SDK 1.2+.** The counterpart: the host generates the **output schema** from `T`, so a caller knows what comes back instead of inferring it from the description — and two commands can be checked for compatibility before being chained. If `ExecuteAsync` returns an anonymous object, promote it to a named record first. |
 | `HiddenFromMcp = true` | Keeps the command callable from JS but **hides it from the AI's tool list**. Use for plugin-management or UI-only commands. Default: exposed. |
 
 Notes:
-- The type passed to `InputType` must be at least `internal` (so `typeof(...)` in the attribute can
-  reference it) — a `private` nested type won't compile there. No-argument commands omit `InputType`.
+- The types passed to `InputType` / `OutputType` must be at least `internal` (so `typeof(...)` in the
+  attribute can reference it) — a `private` nested type won't compile there. No-argument commands omit
+  `InputType`.
+- **Spell the JSON names out** on an output type: `[JsonProperty("id")]`. Results are serialized by
+  Newtonsoft, which writes the declared property names, while the published schema is generated with
+  camelCase — so a DTO without them goes out as `{"Id":…}` while its own schema promises `{"id":…}`.
+  An output schema that misnames what it describes is worse than none.
 - **Use a LEAN input type** — only the fields the caller actually sends. Don't reuse rich
   domain/output models (ones with Revit-type properties or deep nesting): the generated schema
   balloons (and gets truncated by a size cap). Define a small purpose-built record per command.
@@ -729,8 +735,10 @@ Notes:
   code-execution switch) are neither listed nor callable over MCP — the bridge enforces that on the
   invoke path, not just when building the tool list.
 - Nothing extra is required in your extension. To make a command *useful* to an AI, give it a
-  `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` (see §4.5)
-  — that becomes the tool's description, safety hints, and input schema automatically.
+  `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` **and**
+  `OutputType = typeof(Result)` (see §4.5) — that becomes the tool's description, safety hints, and
+  both schemas automatically. A command that declares neither type is callable but opaque: free-form
+  arguments, free-form answer, and nothing that can be chained or validated.
 
 ## 10. Publishing your extension
 
@@ -811,6 +819,7 @@ public sealed class RevitCommandAttribute : Attribute
     public bool    ReadOnly      { get; set; }  // the command only reads the model
     public bool    Destructive   { get; set; }  // the command may modify or delete
     public Type?   InputType     { get; set; }  // generates the JSON input schema
+    public Type?   OutputType    { get; set; }  // SDK 1.2+: generates the JSON output schema
     public bool    HiddenFromMcp { get; set; }  // callable from JS, hidden from the AI tool list
 }
 
