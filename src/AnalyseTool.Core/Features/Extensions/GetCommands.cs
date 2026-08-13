@@ -25,14 +25,24 @@ namespace AnalyseTool.Core.Features.Extensions
             IReadOnlyList<ExtensionDescriptor> found = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion);
             HashSet<string> declared = CommandButtons.ManifestDeclared(found);
 
-            // What each extension is made of. The launcher shows generated SCRIPTS by default and hides
-            // compiled ones, because a DLL extension usually ships its own page and a ribbon button —
-            // listing its commands in a generic launcher offers a second, worse way in.
+            // What each extension is made of. The launcher shows generated SCRIPTS and nothing else,
+            // because a DLL extension ships its own page and a ribbon button — listing its commands in a
+            // generic launcher offers a second, worse way in.
             Dictionary<string, string> kinds = new(StringComparer.OrdinalIgnoreCase);
+
+            // Extensions whose ribbon button opens a PAGE. Their commands are that page's backend — the
+            // two IRevitTasks behind one form are one tool in two steps — so the launcher lists the page's
+            // button, not the steps. Same rule as the dll exclusion, keyed on what a thing IS rather than
+            // how it was built: a generated script that grew a form is exactly as page-owned as a DLL.
+            HashSet<string> pageBacked = new(StringComparer.OrdinalIgnoreCase);
+
             foreach (ExtensionDescriptor descriptor in found)
+            {
                 kinds[descriptor.Manifest.Id] = descriptor.DeclaresDll ? "dll"
                     : descriptor.HasScript ? "script"
                     : "js";
+                if (descriptor.OpensPage) pageBacked.Add(descriptor.Manifest.Id);
+            }
 
             var commands = CoreServices.Queue.RegisteredCommands
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
@@ -44,6 +54,8 @@ namespace AnalyseTool.Core.Features.Extensions
                     kind = string.Equals(c.Source, "core", StringComparison.Ordinal) ? "core"
                         : kinds.TryGetValue(c.Source, out string? k) ? k
                         : "unknown",
+                    // This command backs an extension page rather than standing on its own.
+                    backsPage = pageBacked.Contains(c.Source),
                     description = c.Description,
                     readOnly = c.ReadOnly,
                     destructive = c.Destructive,

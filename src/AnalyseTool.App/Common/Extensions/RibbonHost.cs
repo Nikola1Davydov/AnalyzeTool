@@ -470,11 +470,18 @@ namespace AnalyseTool.App.Common.Extensions
             window.Show();
         }
 
-        /// <summary>Whether the script launcher would list this extension's commands. It shows generated
-        /// scripts and the host's own and nothing else, so a compiled extension's command must never be
-        /// sent there — the user would land on a window that refuses to show it.</summary>
-        private static bool LauncherLists(string id) =>
-            !_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor) || !descriptor.DeclaresDll;
+        /// <summary>Whether the script launcher would list this command's extension. It shows generated
+        /// scripts that stand on their own, so neither a compiled extension nor one whose button opens a
+        /// page may be sent there — the user would land on a window that refuses to show it.
+        /// <para>Must stay in step with <c>listable()</c> in ScriptLauncherView.vue; both read the same
+        /// two facts, and this side is the one that decides whether to navigate at all.</para></summary>
+        private static bool LauncherLists(string source) =>
+            // "core" is not an extension id and never will be in _descriptors, so it has to be named:
+            // the window stopped listing built-ins, and a predicate called LauncherLists must not claim
+            // otherwise just because the lookup missed.
+            !string.Equals(source, "core", StringComparison.Ordinal)
+            && (!_descriptors.TryGetValue(source, out ExtensionDescriptor? descriptor)
+                || (!descriptor.DeclaresDll && !descriptor.OpensPage));
 
         /// <summary>
         /// What a ribbon button for a COMMAND does — whether the author declared it in a manifest or
@@ -503,7 +510,11 @@ namespace AnalyseTool.App.Common.Extensions
                 return;
             }
 
-            if (!canOpenLauncher || !TakesArguments(registration))
+            // Asked of the command that is actually registered, not only of the caller. A PIN passes true
+            // because pins can only be made from the launcher — but a pin outlives the listing it was made
+            // from: give an extension a page, and yesterday's pin now points at a command that window no
+            // longer shows. Re-checking here means one answer for both callers and no stranded button.
+            if (!canOpenLauncher || !LauncherLists(registration.Source) || !TakesArguments(registration))
             {
                 InvokeSavedCommand(commandName); // fire-and-forget (no deadlock on the hub)
                 return;

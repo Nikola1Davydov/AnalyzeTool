@@ -37,6 +37,8 @@ type CommandInfo = {
   source: string;
   /** Where the command came from: "core" | "script" | "dll" | "js". */
   kind: string;
+  /** The command backs an extension page (its button opens the page), so the page is the way in. */
+  backsPage?: boolean;
   description?: string | null;
   readOnly: boolean;
   destructive: boolean;
@@ -88,9 +90,17 @@ const scopes = [
  * A compiled extension ships its own page and its own ribbon button, so listing its commands here
  * would be a second, worse door into something that already has one. The host's built-ins are out for
  * a plainer reason: dozens of them, none launched by hand.
+ *
+ * `backsPage` says the same thing about a SCRIPT that grew a form. A command needing two IRevitTasks —
+ * fetch, then apply — is one tool in two steps, and listing the steps as two scripts both misdescribes
+ * it and lets someone run step two alone. Its page's button is the door.
+ *
+ * That half is an exclusion and not an allowlist, deliberately: a missing `backsPage` has to mean "not
+ * page-backed", because reading it the other way would empty this window on any host that does not send
+ * the field. An extra row is a wrong label; no rows is a broken window.
  */
 function listable(command: CommandInfo): boolean {
-  return command.kind === "script";
+  return command.kind === "script" && command.backsPage !== true;
 }
 
 const filtered = computed(() => {

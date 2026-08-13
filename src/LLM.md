@@ -496,10 +496,24 @@ the ribbon. Roslyn compiles every `.cs` in a folder, so the folder was never the
 first, so only re-saving the same `fileName` needs it.
 
 **A command with no button is not a command nobody can run.** The host's **Scripts** button opens a
-dockable launcher, and what it lists by DEFAULT is script extensions — the generated ones. A compiled
-extension ships its own page and its own ribbon button, so listing its commands there would offer a
-second, worse way into something that already has a front door; they are one click away under "All",
-not gone. Everything you save with `SaveAsCommand` is a script, so everything you save appears there.
+dockable launcher listing the generated script commands that stand on their own — so a command saved
+with `button: false` is still one click from being run, and that is why saving without a button costs
+nothing.
+
+Two kinds of command are deliberately absent, both for the same reason — they already have a front
+door, and a second one would only skip it:
+
+- **A compiled extension's commands.** It ships its own page and its own ribbon button.
+- **The commands behind a page you saved.** Once `SaveExtensionUi` gives an extension an entry page,
+  its ribbon button opens that page, and the commands become the page's backend. A form that needs
+  two `IRevitTask`s — one to fetch, one to apply — is ONE tool with two steps, and listing the steps
+  as two scripts both misdescribes it and invites someone to run "apply" without "fetch".
+
+So the shape of what you build decides where it appears, and both shapes are complete: **commands
+only** → they are rows in the launcher, each with a form built from its schema; **commands plus a
+page** → one ribbon button that opens the page you designed. What you must not do is assume a
+half-built tool is visible: if you have saved the C# and intend to add a form, the commands are
+listed until the page lands and then they are not, which is correct rather than a regression.
 
 The launcher BUILDS THE FORM FROM `inputSchema` — the practical reason to declare `InputType` on a
 generated command even when nothing chains it. A command that declares one opens its own page with
