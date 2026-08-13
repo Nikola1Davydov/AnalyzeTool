@@ -50,12 +50,22 @@ const notificationStore = useNotificationStore();
 const commands = ref<CommandInfo[]>([]);
 const loading = ref(false);
 const search = ref("");
-const running = ref(false);
+/** Name of the command currently executing — a run can be started from a row, so it is not one flag. */
+const running = ref<string | null>(null);
 const pinning = ref<string | null>(null);
 const selected = ref<CommandInfo | null>(null);
 const args = ref<Record<string, unknown>>({});
 const result = ref<string | null>(null);
 const failed = ref(false);
+
+/** A destructive run waiting to be confirmed, with the payload it was started with. */
+const pendingRun = ref<{ command: CommandInfo; payload: Record<string, unknown> | null } | null>(null);
+const confirmVisible = computed({
+  get: () => pendingRun.value !== null,
+  set: (open: boolean) => {
+    if (!open) pendingRun.value = null;
+  },
+});
 
 /**
  * Scripts lead, and by default they are all you see.
@@ -146,17 +156,14 @@ function back() {
   failed.value = false;
 }
 
-/**
- * The row's ▶. It always opens the command's page, because that is where the answer goes — the same
- * shape as the ribbon, where a pinned command runs and reports into a dialog. What differs is whether
- * it runs on arrival: a command with nothing to fill in does, one with arguments waits for them.
- *
- * A DESTRUCTIVE command waits too, even with no arguments to give it. One click in a list should not
- * change the model; the page says what it does and puts a labelled button under it.
- */
+/** The row's ▶. A command with arguments cannot be run from a list — there is nowhere to put them, so
+ *  it opens its page. One without is simply run where it stands. */
 function start(command: CommandInfo) {
-  open(command);
-  if (!takesInput(command) && !command.destructive) void run();
+  if (takesInput(command)) {
+    open(command);
+    return;
+  }
+  ask(command, null);
 }
 
 /** Moves a command between the ribbon and this list. The command itself never moves — it stays
@@ -213,23 +220,73 @@ function buildPayload(): Record<string, unknown> | null {
   return payload;
 }
 
-async function run() {
-  if (!selected.value) return;
-  const payload = buildPayload();
-  if (payload === null) return;
+/** The page's Run. */
+function runSelected() {
+  const command = selected.value;
+  if (!command) return;
 
-  running.value = true;
-  result.value = null;
-  failed.value = false;
-  try {
-    const answer = await invoke<unknown>(selected.value.name, Object.keys(payload).length ? payload : null);
-    result.value = typeof answer === "string" ? answer : JSON.stringify(answer, null, 2);
-  } catch (err) {
-    failed.value = true;
-    result.value = String((err as Error)?.message ?? err);
-  } finally {
-    running.value = false;
+  const payload = buildPayload();
+  if (payload === null) return; // a field failed to parse; buildPayload already said which
+  ask(command, Object.keys(payload).length ? payload : null);
+}
+
+/** The one gate everything that executes goes through, so a command that modifies the model asks
+ *  first no matter where it was started from — a row, or the button on its own page. */
+function ask(command: CommandInfo, payload: Record<string, unknown> | null) {
+  if (command.destructive) {
+    pendingRun.value = { command, payload };
+    return;
   }
+  void execute(command, payload);
+}
+
+function confirmRun() {
+  const pending = pendingRun.value;
+  pendingRun.value = null;
+  if (pending) void execute(pending.command, pending.payload);
+}
+
+/**
+ * The answer lands on the command's page when that page is open, and in a toast when the run came from
+ * a row — where there is nowhere else to put it. The toast is truncated on purpose: a script that
+ * returns a page of JSON is one to open rather than fire.
+ */
+async function execute(command: CommandInfo, payload: Record<string, unknown> | null) {
+  running.value = command.name;
+  if (selected.value?.name === command.name) {
+    result.value = null;
+    failed.value = false;
+  }
+
+  try {
+    const answer = await invoke<unknown>(command.name, payload);
+    // A command that returns nothing is the normal case for one that acts on the model — "Done." is
+    // the honest rendering of that, where JSON.stringify would put the word "null" on screen.
+    const text =
+      answer === null || answer === undefined
+        ? "Done."
+        : typeof answer === "string"
+          ? answer
+          : JSON.stringify(answer, null, 2);
+    report(command, text || "Done.", false);
+  } catch (err) {
+    report(command, String((err as Error)?.message ?? err), true);
+  } finally {
+    running.value = null;
+  }
+}
+
+function report(command: CommandInfo, text: string, isError: boolean) {
+  if (selected.value?.name === command.name) {
+    result.value = text;
+    failed.value = isError;
+    return;
+  }
+  notificationStore.notify(
+    isError ? "error" : "success",
+    command.name.slice(command.name.lastIndexOf(".") + 1),
+    text.length > 400 ? text.slice(0, 400) + "…" : text,
+  );
 }
 
 /** The initial load, started once and shared: the watcher below runs before mount, and both it and the
@@ -326,9 +383,8 @@ watch(
             class="shrink-0"
             icon="pi pi-play"
             :severity="command.destructive ? 'warning' : 'primary'"
-            v-tooltip.left="
-              takesInput(command) || command.destructive ? 'Open and fill in' : 'Run now'
-            "
+            :loading="running === command.name"
+            v-tooltip.left="takesInput(command) ? 'Open and fill in' : 'Run now'"
             @click="start(command)"
           />
         </div>
@@ -410,10 +466,30 @@ watch(
         class="shrink-0"
         :label="selected.destructive ? 'Run (modifies the model)' : 'Run'"
         :severity="selected.destructive ? 'warning' : 'primary'"
-        :loading="running"
+        :loading="running === selected.name"
         icon="pi pi-play"
-        @click="run"
+        @click="runSelected"
       />
     </template>
+
+    <!-- The one thing standing between a click and a changed model. Modal, so it also covers the case
+         the row ▶ opens: there is no page to read before pressing it. -->
+    <Dialog
+      v-model:visible="confirmVisible"
+      modal
+      header="Run this command?"
+      :style="{ width: '90%', maxWidth: '22rem' }"
+    >
+      <p class="text-xs">
+        <b class="break-all">{{ pendingRun?.command.name }}</b> modifies the model.
+      </p>
+      <p v-if="pendingRun?.command.description" class="text-[11px] opacity-60 mt-2">
+        {{ pendingRun?.command.description }}
+      </p>
+      <template #footer>
+        <Button label="Cancel" size="small" text severity="secondary" @click="pendingRun = null" />
+        <Button label="Run" size="small" severity="warning" icon="pi pi-play" @click="confirmRun" />
+      </template>
+    </Dialog>
   </div>
 </template>
