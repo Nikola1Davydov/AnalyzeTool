@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions.Scripting;
+using AnalyseTool.Core.Features.Extensions;
 using AnalyseTool.Core.Features.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -275,17 +276,25 @@ namespace AnalyseTool.Mcp.Bridge
         /// tools/list and invoke, so the two can never drift apart:
         /// <list type="bullet">
         /// <item><c>HiddenFromMcp</c> commands are local plugin management, never AI tools;</item>
-        /// <item>the code-execution tools additionally require the Settings toggle (they hard-refuse
+        /// <item>the code-authoring tools additionally require the Settings toggle (they hard-refuse
         /// when off anyway — this keeps them out of reach instead of merely out of sight).</item>
         /// </list>
         /// </summary>
         private static bool IsAvailableToAi(CommandRegistration command) =>
-            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeExecTool(command.Name));
+            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(command.Name));
 
-        /// <summary>The C#-execution tools gated behind the Settings toggle.</summary>
-        private static bool IsCodeExecTool(string name) =>
+        /// <summary>
+        /// The tools behind the Settings toggle. Not only the two that RUN code: reading a script's
+        /// source hands the AI code off the user's machine, and reloading is the step that makes written
+        /// code take effect — the toggle is the user saying "I am authoring code here with AI", and each
+        /// of these is part of doing that. The toggle itself stays out of reach: SetCodeExecution is
+        /// HiddenFromMcp, so only a person at the Settings page turns this on or off.
+        /// </summary>
+        private static bool IsCodeAuthoringTool(string name) =>
             string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
+            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, GetScriptSource.CommandName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
 
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);

@@ -27,6 +27,7 @@ namespace AnalyseTool.Core.Features.Scripting
                       "MODIFIES the extensions on disk and reloads them; it does not touch the Revit model. " +
                       "Cost: compiles and writes files, then a full extension reload.",
         InputType = typeof(Request),
+        OutputType = typeof(SaveCommandResult),
         Destructive = true)]
     internal sealed class SaveAsCommand : IRevitTask
     {
@@ -34,33 +35,52 @@ namespace AnalyseTool.Core.Features.Scripting
 
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
+            // Every refusal leaves through the same door. This is the command an agent iterates on, and
+            // a loop that has to tell a thrown message apart from a returned one gets one of them wrong.
+            // (No frontend consumer to break — checked; this command is MCP-only.)
             if (!CodeExecutionSettings.Enabled)
-                throw new InvalidOperationException(
-                    "C# code execution is disabled. Enable it in AnalyseTool Settings to save commands.");
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    "C# code execution is disabled. Enable it in AnalyseTool Settings to save commands."));
 
             Request? req = ctx.Payload.As<Request>();
             if (req is null || string.IsNullOrWhiteSpace(req.Code))
-                throw new InvalidOperationException("No code provided.");
+                return Task.FromResult<object?>(SaveCommandResult.Failed("No code provided."));
             if (string.IsNullOrWhiteSpace(req.Id))
-                throw new InvalidOperationException("Extension id is required.");
+                return Task.FromResult<object?>(SaveCommandResult.Failed("Extension id is required."));
             if (string.IsNullOrWhiteSpace(req.Name))
-                throw new InvalidOperationException("Button name is required.");
+                return Task.FromResult<object?>(SaveCommandResult.Failed("Button name is required."));
 
             string id = req.Id.Trim();
             if (!IsValidId(id))
-                throw new InvalidOperationException("Id may contain only letters, digits, '.', '-' and '_'.");
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    "Id may contain only letters, digits, '.', '-' and '_'."));
 
             // Scripts are version-independent, so they live directly under the root (no year folder).
-            string root = ResolveTargetRoot(req.TargetRoot);
+            string? root = ResolveTargetRoot(req.TargetRoot);
+            if (root is null)
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    $"'{req.TargetRoot}' is not a registered extension source. Leave targetRoot empty for the default root."));
             string directory = Path.Combine(root, id);
 
             // Defense-in-depth: the resolved folder must stay inside the root.
             string fullRoot = Path.GetFullPath(root);
             if (!Path.GetFullPath(directory).StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Invalid extension id (path escapes the extensions folder).");
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    "Invalid extension id (path escapes the extensions folder)."));
 
-            if (Directory.Exists(directory))
-                throw new InvalidOperationException($"An extension folder already exists: {id}");
+            // Overwrite is what makes this iterable. Without it "now also group by type" forced a new id
+            // or a manual delete, so a generated command could never be refined — and refining is the
+            // whole point of generating one. Guarded, though: only a folder that looks like OUR OWN
+            // output is replaceable, so a hand-written extension or a DLL extension that happens to
+            // share the id is refused rather than quietly flattened.
+            bool exists = Directory.Exists(directory);
+            if (exists && !req.Overwrite)
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    $"An extension folder already exists: {id}. Pass overwrite:true to replace it."));
+            if (exists && !IsReplaceableScriptFolder(directory))
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    $"'{id}' exists but was not created by SaveAsCommand — it holds files beyond " +
+                    "Command.cs and plugin.json. Refusing to overwrite; choose another id."));
 
             // Body → named class (or keep a full class the AI already wrote).
             bool isFullClass = RoslynScriptCompiler.LooksLikeFullCommand(req.Code);
@@ -72,33 +92,68 @@ namespace AnalyseTool.Core.Features.Scripting
             // Compile once up front so we never write code that won't load.
             ScriptCompileResult compiled = RoslynScriptCompiler.CompileSnippet(source, "validate_" + id, req.Description);
             if (!compiled.Success)
-                return Task.FromResult<object?>(new { created = false, error = "Compilation failed.", diagnostics = compiled.Errors });
+                return Task.FromResult<object?>(SaveCommandResult.Failed("Compilation failed.", compiled.Errors));
 
             // The button must invoke the actual registered command name (<id>.<baseName>), resolved the
             // same way the dispatcher does — from the compiled type's [RevitCommand] name or class name.
-            string commandName = $"{id}.{ResolveCommandBaseName(compiled)}";
+            CommandShape shape = InspectCommand(compiled);
+            string commandName = $"{id}.{shape.BaseName}";
 
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "Command.cs"), source);
             File.WriteAllText(Path.Combine(directory, "plugin.json"), BuildManifest(id, req, commandName));
 
-            Log.Information("SaveAsCommand: created command {Command} at {Directory}", commandName, directory);
+            Log.Information("SaveAsCommand: {Action} command {Command} at {Directory}",
+                exists ? "updated" : "created", commandName, directory);
 
             // Reload picks up the new script (compiles it); the host's ExtensionsReloaded handler
             // refreshes the ribbon so the new button appears.
             CoreServices.ReloadExtensions();
 
-            return Task.FromResult<object?>(new
-            {
-                created = true,
-                directory,
-                command = commandName,
-            });
+            return Task.FromResult<object?>(new SaveCommandResult(
+                true, !exists, commandName, directory, null, null, SchemaWarnings(shape, isFullClass)));
         }
 
-        /// <summary>Inspects the compiled assembly to find the command's base name exactly as the
-        /// dispatcher will register it (attribute name, else class name).</summary>
-        private static string ResolveCommandBaseName(ScriptCompileResult compiled)
+        /// <summary>Only a folder holding exactly what this command writes may be replaced. Anything
+        /// else — a DLL extension, a hand-built one, a folder someone dropped files into — keeps its
+        /// contents and the caller is told to pick another id.</summary>
+        private static bool IsReplaceableScriptFolder(string directory)
+        {
+            string[] allowed = { "command.cs", "plugin.json" };
+            if (Directory.GetDirectories(directory).Length > 0) return false;
+            return Directory.GetFiles(directory)
+                .All(path => allowed.Contains(Path.GetFileName(path).ToLowerInvariant()));
+        }
+
+        /// <summary>
+        /// A generated command that declares neither InputType nor OutputType is callable but opaque:
+        /// over MCP its arguments and its answer both come through as free-form, so it cannot be chained
+        /// and its payload cannot be validated. Reported as a WARNING rather than a refusal — the command
+        /// works, it is just second-class — and only for a full class, because a wrapped bare body takes
+        /// no arguments and returns whatever the body returns, so there is genuinely nothing to declare.
+        /// </summary>
+        private static IReadOnlyList<string>? SchemaWarnings(CommandShape shape, bool isFullClass)
+        {
+            if (!isFullClass) return null;
+
+            List<string> warnings = new();
+            if (!shape.DeclaresInput)
+                warnings.Add("The command declares no InputType. If it reads ctx.Payload, declare the " +
+                             "type so callers know what to send and the host can validate it.");
+            if (!shape.DeclaresOutput)
+                warnings.Add("The command declares no OutputType. Declare the type it returns so callers " +
+                             "know the shape without guessing it from the description.");
+            return warnings.Count == 0 ? null : warnings;
+        }
+
+        /// <summary>What the compiled command turned out to be: the name the dispatcher will register it
+        /// under, and whether it described its own input and output.</summary>
+        private sealed record CommandShape(string BaseName, bool DeclaresInput, bool DeclaresOutput);
+
+        /// <summary>Inspects the compiled assembly — the name exactly as the dispatcher will resolve it
+        /// (attribute name, else class name), plus the declared schemas. Reflection over metadata only:
+        /// nothing in the generated command runs here.</summary>
+        private static CommandShape InspectCommand(ScriptCompileResult compiled)
         {
             ExtensionLoadContext alc = new("inspect_" + Guid.NewGuid().ToString("N"));
             try
@@ -106,10 +161,11 @@ namespace AnalyseTool.Core.Features.Scripting
                 Assembly assembly = alc.LoadImage(compiled.Assembly!, compiled.Pdb);
                 Type? type = assembly.GetTypes().FirstOrDefault(t =>
                     typeof(IRevitTask).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
-                if (type is null) return "Command";
+                if (type is null) return new CommandShape("Command", false, false);
 
                 RevitCommandAttribute? attr = type.GetCustomAttribute<RevitCommandAttribute>();
-                return string.IsNullOrEmpty(attr?.Name) ? type.Name : attr!.Name!;
+                string baseName = string.IsNullOrEmpty(attr?.Name) ? type.Name : attr!.Name!;
+                return new CommandShape(baseName, attr?.InputType is not null, attr?.OutputType is not null);
             }
             finally
             {
@@ -237,7 +293,7 @@ namespace AnalyseTool.Core.Features.Scripting
         /// <summary>Returns a registered extension source root (the dev root when unspecified — saved
         /// scripts are user-authored); rejects anything not registered so we never scaffold where the
         /// host wouldn't scan.</summary>
-        private static string ResolveTargetRoot(string? requested)
+        private static string? ResolveTargetRoot(string? requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
                 return ExtensionSources.DefaultDevRoot;
@@ -246,10 +302,9 @@ namespace AnalyseTool.Core.Features.Scripting
             bool registered = ExtensionSources.Roots()
                 .Any(r => string.Equals(Path.GetFullPath(r), full, StringComparison.OrdinalIgnoreCase));
 
-            if (!registered)
-                throw new InvalidOperationException($"Target root is not a registered extension source: {requested}");
-
-            return full;
+            // Null, not an exception: an unregistered root is a caller mistake like any other here, and
+            // this command answers all of those the same way.
+            return registered ? full : null;
         }
 
         internal sealed class Request
@@ -286,6 +341,32 @@ namespace AnalyseTool.Core.Features.Scripting
 
             [Description("Marks the saved command as destructive, i.e. it deletes or overwrites.")]
             public bool Destructive { get; set; }
+
+            [Description("Replace an existing command of the same id — how a generated command gets " +
+                         "refined. Only a folder created by this command (Command.cs + plugin.json and " +
+                         "nothing else) can be replaced; anything else is refused.")]
+            public bool Overwrite { get; set; }
         }
+    }
+
+    /// <summary>
+    /// Outcome of saving a generated command. Typed rather than anonymous because this is the command an
+    /// agent iterates on: it has to branch on whether the code compiled, whether it replaced something,
+    /// and what to call next — and reading that out of prose is how a loop goes wrong.
+    ///
+    /// <see cref="Diagnostics"/> are Roslyn errors: the code never reached disk. <see cref="Warnings"/>
+    /// are the opposite — the command IS saved and working, but something about it will limit it later.
+    /// </summary>
+    internal sealed record SaveCommandResult(
+        [property: JsonProperty("ok")] bool Ok,
+        [property: JsonProperty("created")] bool Created,
+        [property: JsonProperty("command")] string? Command,
+        [property: JsonProperty("directory")] string? Directory,
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("diagnostics")] IReadOnlyList<string>? Diagnostics,
+        [property: JsonProperty("warnings")] IReadOnlyList<string>? Warnings)
+    {
+        public static SaveCommandResult Failed(string error, IReadOnlyList<string>? diagnostics = null) =>
+            new(false, false, null, null, error, diagnostics, null);
     }
 }
