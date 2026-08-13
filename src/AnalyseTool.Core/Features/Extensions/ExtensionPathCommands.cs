@@ -137,36 +137,6 @@ namespace AnalyseTool.Core.Features.Extensions
         }
     }
 
-    /// <summary>Creates <c>&lt;base&gt;\extensions</c> inside a chosen base folder and registers it as a dev
-    /// source root — extensions then live directly under it (<c>&lt;root&gt;\&lt;id&gt;</c>, no version subfolder).</summary>
-    [RevitCommand(
-        Description = "Creates an extensions folder in a base folder and registers it as a source root.",
-        InputType = typeof(CreateExtensionRoot.Request),
-        HiddenFromMcp = true)]
-    internal sealed class CreateExtensionRoot : IRevitTask
-    {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
-        {
-            Request? data = ctx.Payload.As<Request>();
-            if (string.IsNullOrWhiteSpace(data?.BasePath))
-                throw new InvalidOperationException("Base path is required.");
-            if (!Directory.Exists(data.BasePath))
-                throw new InvalidOperationException($"Folder does not exist: {data.BasePath}");
-
-            string root = Path.Combine(data.BasePath, "extensions");
-            Directory.CreateDirectory(root);
-            ExtensionSources.AddRoot(root);
-
-            return Task.FromResult<object?>(new { root });
-        }
-
-        internal sealed record Request
-        {
-            [Description("Base folder; the structure is created as <base>\\extensions.")]
-            public string BasePath { get; set; } = string.Empty;
-        }
-    }
-
     // BrowseForFolder lives in the App project (Features\BrowseForFolder.cs): it opens a WPF dialog,
     // and Core is headless by design.
 }

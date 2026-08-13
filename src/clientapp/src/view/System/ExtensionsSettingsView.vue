@@ -431,20 +431,6 @@ async function addPath() {
   }
 }
 
-async function createStructure() {
-  const base = await browseFolder();
-  if (!base) return;
-  pathsBusy.value = true;
-  try {
-    await invoke("CreateExtensionRoot", { basePath: base });
-    await afterPathsChanged();
-  } catch (e) {
-    console.error("Failed to create structure", e);
-  } finally {
-    pathsBusy.value = false;
-  }
-}
-
 async function removePath(path: string) {
   pathsBusy.value = true;
   try {
@@ -741,14 +727,6 @@ onMounted(() => {
             severity="secondary"
             :loading="pathsBusy"
             @click="addPath"
-          />
-          <Button
-            label="Create structure"
-            icon="pi pi-plus"
-            size="small"
-            severity="secondary"
-            :loading="pathsBusy"
-            @click="createStructure"
           />
         </div>
       </div>
