@@ -75,15 +75,14 @@ namespace AnalyseTool.Core.Features.Extensions
                 return Task.FromResult<object?>(SaveUiResult.Failed(
                     $"None of the files is named '{entryHtml}'. The entry page has to be among them."));
 
-            string? root = ExtensionFolder.ResolveTargetRoot(req.TargetRoot);
-            if (root is null)
-                return Task.FromResult<object?>(SaveUiResult.Failed(
-                    $"'{req.TargetRoot}' is not a registered extension source. Leave targetRoot empty for the default root."));
+            // Same rule as SaveAsCommand: an id that already exists resolves to its own folder. A page
+            // saved for a command that lives in a shared folder belongs beside that command, not in a
+            // second folder of the same name that shadows it.
+            SaveTarget target = ExtensionFolder.ResolveSaveDirectory(id, req.TargetRoot);
+            if (target.Directory is null)
+                return Task.FromResult<object?>(SaveUiResult.Failed(target.Error!));
 
-            string? directory = ExtensionFolder.ResolveExtensionDirectory(root, id);
-            if (directory is null)
-                return Task.FromResult<object?>(SaveUiResult.Failed(
-                    "Invalid extension id (path escapes the extensions folder)."));
+            string directory = target.Directory;
 
             bool exists = Directory.Exists(directory);
             if (exists && !req.Overwrite && File.Exists(Path.Combine(directory, entryHtml)))
@@ -166,7 +165,9 @@ namespace AnalyseTool.Core.Features.Extensions
                          "can be written to; anything else is refused.")]
             public bool Overwrite { get; set; }
 
-            [Description("Optional registered source root to save into. Empty = the default root.")]
+            [Description("Optional registered source root to save into. Leave it EMPTY: an id that " +
+                         "already exists then resolves to its own folder — including a shared team " +
+                         "folder — and a new one to the folder chosen in Settings.")]
             public string? TargetRoot { get; set; }
         }
     }

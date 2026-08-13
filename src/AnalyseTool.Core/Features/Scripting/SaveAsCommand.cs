@@ -55,15 +55,13 @@ namespace AnalyseTool.Core.Features.Scripting
                     "Id may contain only letters, digits, '.', '-' and '_'."));
 
             // Scripts are version-independent, so they live directly under the root (no year folder).
-            string? root = ExtensionFolder.ResolveTargetRoot(req.TargetRoot);
-            if (root is null)
-                return Task.FromResult<object?>(SaveCommandResult.Failed(
-                    $"'{req.TargetRoot}' is not a registered extension source. Leave targetRoot empty for the default root."));
+            // An existing id resolves to ITS OWN folder, wherever that is — editing a script from a
+            // shared team folder must fix that script, not leave a copy behind in the user's own root.
+            SaveTarget target = ExtensionFolder.ResolveSaveDirectory(id, req.TargetRoot);
+            if (target.Directory is null)
+                return Task.FromResult<object?>(SaveCommandResult.Failed(target.Error!));
 
-            string? directory = ExtensionFolder.ResolveExtensionDirectory(root, id);
-            if (directory is null)
-                return Task.FromResult<object?>(SaveCommandResult.Failed(
-                    "Invalid extension id (path escapes the extensions folder)."));
+            string directory = target.Directory;
 
             // Overwrite is what makes this iterable. Without it "now also group by type" forced a new id
             // or a manual delete, so a generated command could never be refined — and refining is the
@@ -294,8 +292,10 @@ namespace AnalyseTool.Core.Features.Scripting
             [Description("Ribbon panel to place the button on. Empty = the default panel.")]
             public string? Panel { get; set; }
 
-            /// <summary>Optional registered source root to save into; empty = default root.</summary>
-            [Description("Optional registered source root to save into. Empty = the default root.")]
+            /// <summary>Optional registered source root; empty resolves to the extension's own folder.</summary>
+            [Description("Optional registered source root to save into. Leave it EMPTY: an id that " +
+                         "already exists then resolves to its own folder — including a shared team " +
+                         "folder — and a new one to the folder chosen in Settings.")]
             public string? TargetRoot { get; set; }
 
             [Description("Marks the saved command as read-only, i.e. it does not modify the model.")]

@@ -440,7 +440,7 @@ The loop, and what each step answers:
 | Give it a form | `SaveExtensionUi { id, name, files, … }` | `{ ok, id, directory, entryHtml, files, error }` |
 | Tidy the ribbon | `UpdateExtensionManifest { id, name?, tab?, panel?, removeButton? }` | The rewritten manifest |
 | Read it back | `GetScriptSource { id }` | `{ ok, id, directory, files: [{ name, content }] }` — script extensions only |
-| Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, and `error` if it failed to compile or load |
+| Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, `error` if it failed to compile or load, and `shadowedBy` when another folder claimed the same id first |
 | Apply | `ReloadExtensions` | Only needed for changes made another way — the save commands reload by themselves |
 
 `SaveAsCommand` takes either form from §5 — a bare body it wraps into a named class, or a full
@@ -453,6 +453,15 @@ generating a command and being able to improve it. Read the current source with 
 first rather than rewriting from memory. Overwrite only replaces a folder this command created
 (`Command.cs` + `plugin.json` and nothing else); anything else is refused, so you cannot flatten
 someone's hand-built extension by picking its id.
+
+**A save for an existing id goes to that extension's OWN folder** — leave `targetRoot` empty and it
+resolves there, wherever it is. This matters most for a script that did not come from this machine: a
+team keeps its scripts in a shared folder, everyone adds it as a source, and fixing one has to fix
+THAT copy. Naming a different root instead leaves the broken original where the team can see it and
+adds a second folder with the same id, one of which then silently wins.
+
+So when the result's `directory` is not the user's own folder, **say so**: a fix in a shared folder is
+everyone's fix, and that is their call to make, not yours.
 
 **A command WITH a form** is two saves into the SAME `id`:
 
