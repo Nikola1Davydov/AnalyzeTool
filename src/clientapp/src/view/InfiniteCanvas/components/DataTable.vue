@@ -41,6 +41,8 @@ const mode = ref<EditMode>("read");
 const aiPrompt = ref("");
 const aiRunning = ref(false);
 const aiRawRunning = ref(false);
+// Lives outside runAIRaw so the Stop button can reach it. One per run; cleared when the run ends.
+let aiRawAbort: AbortController | null = null;
 const rawAiResponse = ref<string | null>(null);
 const showRawPanel = ref(false);
 const rowState = ref<RowState[]>([]);
@@ -227,6 +229,10 @@ async function runAIRaw() {
   if (!aiPrompt.value.trim()) return;
 
   aiRawRunning.value = true;
+  // Local const, and the module-level field only mirrors it for the Stop button: narrowing a
+  // module-level `let` does not survive into the closures below.
+  const abort = new AbortController();
+  aiRawAbort = abort;
   rawAiResponse.value = null;
 
   const paramItems = props.items
@@ -253,8 +259,16 @@ async function runAIRaw() {
         onProgress: (p) => {
           if (p.message) rawAiResponse.value = (rawAiResponse.value ?? "") + p.message;
         },
+        signal: abort.signal,
       },
     );
+
+    // A cancel the user asked for is not a failure to report back to them.
+    if (abort.signal.aborted) {
+      rawAiResponse.value = null;
+      showRawPanel.value = false;
+      return;
+    }
 
     // A timeout or a rejected key now arrives as data rather than a thrown message, so it needs
     // surfacing here — the catch below no longer sees it.
@@ -274,10 +288,15 @@ async function runAIRaw() {
   } catch (err) {
     rawAiResponse.value = null;
     showRawPanel.value = false;
-    notificationStore.error(String((err as Error)?.message ?? err));
+    if (!abort.signal.aborted) notificationStore.error(String((err as Error)?.message ?? err));
   } finally {
     aiRawRunning.value = false;
+    aiRawAbort = null;
   }
+}
+
+function stopAIRaw() {
+  aiRawAbort?.abort();
 }
 
 watch(aiAvailable, (ok) => {
@@ -357,6 +376,14 @@ function applyToRevit() {
             label="Analyze"
             icon="pi pi-sparkles"
             @click="runAIRaw"
+          />
+          <Button
+            v-if="aiRawRunning"
+            size="small"
+            severity="secondary"
+            label="Stop"
+            icon="pi pi-times"
+            @click="stopAIRaw"
           />
           <Button
             size="small"

@@ -36,6 +36,8 @@ export const Commands = {
 export const enum MessageType {
   Request = "Request",
   Response = "Response",
+  /** Abandon an in-flight Request by its Id. The host still answers the original call. */
+  Cancel = "Cancel",
 }
 
 // --- AT.invoke: correlated request/response over the same WebView channel -------------------
@@ -53,6 +55,14 @@ type PendingCall = {
 export type InvokeOptions = {
   /** Called for each intermediate progress update pushed by a progress-aware host command. */
   onProgress?: (p: ProgressInfo) => void;
+
+  /**
+   * Abort the call. The host cancels the command's CancellationToken; the promise still settles the
+   * normal way — either rejecting with "Cancelled." or resolving with whatever the command chose to
+   * return when interrupted. It is deliberately NOT settled here: one answer, one path, and no
+   * pending entry left behind for a response that is still coming.
+   */
+  signal?: AbortSignal;
 };
 
 const pendingCalls = new Map<string, PendingCall>();
@@ -119,6 +129,14 @@ export function invoke<T = any>(
       Payload: payload,
       Id: id,
     };
+
+    if (options?.signal) {
+      const signal = options.signal;
+      const requestCancel = () =>
+        webview.postMessage({ Type: MessageType.Cancel, Command: command, Payload: null, Id: id });
+      if (signal.aborted) requestCancel();
+      else signal.addEventListener("abort", requestCancel, { once: true });
+    }
 
     webview.postMessage(message);
   });

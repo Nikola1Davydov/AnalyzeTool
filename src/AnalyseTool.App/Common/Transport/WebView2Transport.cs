@@ -20,6 +20,10 @@ namespace AnalyseTool.App.Common.Transport
         // died without detaching.
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<WebView2Transport, byte> _attached = new();
 
+        // In-flight requests of THIS window, so a Cancel can reach the one it names. Per-transport, not
+        // static: a window may abandon its own calls and no one else's.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource> _inFlight = new();
+
         public WebView2Transport(WebView2 webView, CommandQueue queue)
         {
             _webView = webView;
@@ -50,24 +54,57 @@ namespace AnalyseTool.App.Common.Transport
         {
             WebViewMessage? request = JsonConvert.DeserializeObject<WebViewMessage>(args.WebMessageAsJson);
             if (request == null) return;
+
+            // Cancel carries no work of its own: it names an id and returns. The command it interrupts
+            // still answers through the normal path, so there is exactly one way a call finishes.
+            if (string.Equals(request.Type, WebMessageTypeEnum.Cancel.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrEmpty(request.Id) &&
+                    _inFlight.TryGetValue(request.Id!, out CancellationTokenSource? pending))
+                {
+                    try { pending.Cancel(); } catch (ObjectDisposedException) { /* it just finished */ }
+                }
+                return;
+            }
+
             if (!string.Equals(request.Type, WebMessageTypeEnum.Request.ToString(), StringComparison.OrdinalIgnoreCase))
                 return;
 
             string command = request.Command;
             string? id = request.Id;
+
+            // A token for every request, whether or not anyone ever cancels it: deciding per command
+            // would mean knowing in advance which ones are worth interrupting.
+            CancellationTokenSource cts = new();
+            if (!string.IsNullOrEmpty(id)) _inFlight[id!] = cts;
             try
             {
                 // Progress sink bound to THIS window + request id, so a progress-aware command's updates
                 // are pushed back only to the caller that started it.
                 IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info => SendProgress(command, id, info));
                 object? result = await _queue.ExecuteAsync(
-                    new CommandRequest(command, request.Payload, Source) { Progress = progress });
+                    new CommandRequest(command, request.Payload, Source)
+                    {
+                        Progress = progress,
+                        CancellationToken = cts.Token,
+                    });
                 // Always reply (null -> JSON null) so a caller awaiting this command's response resolves.
                 SendResponse(command, id, result);
+            }
+            catch (OperationCanceledException)
+            {
+                // The caller asked for this, so it is not a fault — but the promise still has to settle,
+                // and saying which way it settled is the whole point.
+                SendError(command, id, "Cancelled.");
             }
             catch (Exception ex)
             {
                 SendError(command, id, ex.Message);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(id)) _inFlight.TryRemove(id!, out _);
+                cts.Dispose();
             }
         }
 
