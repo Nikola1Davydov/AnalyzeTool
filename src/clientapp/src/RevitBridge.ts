@@ -120,8 +120,25 @@ export function invoke<T = any>(
 
     ensureInvokeListener();
 
+    // Already aborted: settle here and send nothing. Posting Cancel first was worse than useless — the
+    // host drops it against an id it has not seen yet, and the Request that follows then runs the call
+    // to completion, uncancelled. The wording matches what the host sends for a real cancellation.
+    if (options?.signal?.aborted) {
+      reject(new Error("Cancelled."));
+      return;
+    }
+
     const id = `at-${Date.now()}-${++invokeSeq}`;
-    pendingCalls.set(id, { resolve, reject, onProgress: options?.onProgress });
+
+    // Settled through these wrappers so the abort listener goes with the call. A view that keeps one
+    // AbortController for the whole page would otherwise leave one listener per invoke on it, each
+    // holding a finished request id and each posting a Cancel for it when the user finally aborts.
+    let stopListening: (() => void) | undefined;
+    pendingCalls.set(id, {
+      resolve: (value) => { stopListening?.(); resolve(value); },
+      reject: (reason) => { stopListening?.(); reject(reason); },
+      onProgress: options?.onProgress,
+    });
 
     const message: WebViewMessage = {
       Type: MessageType.Request,
@@ -130,12 +147,12 @@ export function invoke<T = any>(
       Id: id,
     };
 
-    if (options?.signal) {
-      const signal = options.signal;
+    const signal = options?.signal;
+    if (signal) {
       const requestCancel = () =>
         webview.postMessage({ Type: MessageType.Cancel, Command: command, Payload: null, Id: id });
-      if (signal.aborted) requestCancel();
-      else signal.addEventListener("abort", requestCancel, { once: true });
+      signal.addEventListener("abort", requestCancel, { once: true });
+      stopListening = () => signal.removeEventListener("abort", requestCancel);
     }
 
     webview.postMessage(message);

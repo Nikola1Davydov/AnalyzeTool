@@ -90,14 +90,17 @@ namespace AnalyseTool.Tools.Elements
             if (kind is KindTypes or KindAll)
                 elements.AddRange(new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsElementType().ToElements());
 
-            // Resolved before filtering, because the filters ask about them. Cached by type id: a category
-            // of 5000 doors has a handful of types between them, and this is a document lookup each time.
+            // Cached by type id: a category of 5000 doors has a handful of types between them, and each
+            // Describe is a document lookup (the element's type, and for a family instance its family).
             Dictionary<long, ElementType?> typeCache = new();
-            List<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> described = new(elements.Count);
-            foreach (Element el in elements)
-                described.Add(Describe(doc, el, typeCache));
 
-            IEnumerable<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> matching = described;
+            // LAZY on purpose. The filters below ask about family and type names, so a filtered query
+            // has to describe every element to know what matches. An UNfiltered one does not: nothing
+            // is pulled through this Select until the page is taken, so Describe runs `limit` times
+            // rather than once per element in the category — which is what makes limit bound the WORK
+            // and not merely the answer, as the command's own description promises.
+            IEnumerable<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> matching =
+                elements.Select(el => Describe(doc, el, typeCache));
 
             // nameContains matches the element's own name, its FAMILY name or its TYPE name. Narrower was
             // the bug: "Laub" over Bepflanzung found nothing, because the family is "Baum RPC - Laubbaum"
@@ -114,9 +117,22 @@ namespace AnalyseTool.Tools.Elements
             if (!string.IsNullOrWhiteSpace(query.TypeNameContains))
                 matching = matching.Where(d => Contains(d.TypeName, query.TypeNameContains));
 
-            List<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> hits = matching.ToList();
+            // The reported total needs every element only when a filter decides membership. With none it
+            // is the count already in hand, and materialising the list to learn a number we know would
+            // describe the whole category for nothing.
+            bool filtered = !string.IsNullOrWhiteSpace(query.NameContains)
+                            || !string.IsNullOrWhiteSpace(query.FamilyNameContains)
+                            || !string.IsNullOrWhiteSpace(query.TypeNameContains);
 
-            IEnumerable<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> page = hits;
+            int total = elements.Count;
+            if (filtered)
+            {
+                List<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> hits = matching.ToList();
+                total = hits.Count;
+                matching = hits;
+            }
+
+            IEnumerable<(Element Element, long? FamilyId, string? FamilyName, string? TypeName)> page = matching;
             if (query.Limit is > 0) page = page.Take(query.Limit.Value);
 
             HashSet<string>? wanted = (query.ParameterNames != null && query.ParameterNames.Count > 0)
@@ -140,7 +156,7 @@ namespace AnalyseTool.Tools.Elements
                 });
             }
 
-            return new ElementsResult(match.Name, kind, hits.Count, summaries.Count, summaries, null, null);
+            return new ElementsResult(match.Name, kind, total, summaries.Count, summaries, null, null);
         }
 
         private static ElementsResult Empty(

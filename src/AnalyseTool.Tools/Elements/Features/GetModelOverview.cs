@@ -36,7 +36,12 @@ namespace AnalyseTool.Tools.Elements
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
             ctx.RunInRevitAsync<object?>(app =>
             {
-                Document doc = app.ActiveUIDocument.Document;
+                // The command that says "call me first" is the one most likely to be called with no
+                // project open, and a caller with nobody watching the screen deserves this sentence
+                // over a NullReference.
+                if (app.ActiveUIDocument?.Document is not Document doc)
+                    throw new InvalidOperationException(
+                        "No document is open in Revit. Open a project and call again.");
 
                 // Resolved first: every length below is reported in these units, so the caller never has
                 // to know that Revit stores them as feet.

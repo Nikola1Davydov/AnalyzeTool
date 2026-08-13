@@ -206,7 +206,14 @@ namespace AnalyseTool.Mcp.Bridge
                 // cannot act on, so those go through unchecked, exactly as they do today.
                 // Named `registered`, not `registration`: the Gate lambda below already binds that name,
                 // and C# refuses a lambda parameter that shadows an enclosing local.
+                //
+                // Filtered on ExposeToMcp, so a command the AI may NEVER call is indistinguishable from
+                // one that does not exist. Looking it up unfiltered leaked it: a guessed name reached
+                // the validator, which answered "invalid arguments" and listed the command's
+                // parameters — telling an agent that SetCodeExecution exists and what it takes, which
+                // is the one command HiddenFromMcp is load-bearing for.
                 CommandRegistration? registered = _queue.RegisteredCommands
+                    .Where(c => c.ExposeToMcp)
                     .FirstOrDefault(c => string.Equals(c.Name, command, StringComparison.OrdinalIgnoreCase));
 
                 if (registered is null)
@@ -222,6 +229,16 @@ namespace AnalyseTool.Mcp.Bridge
                             ? "Call tools/list for the commands this server offers."
                             : $"Did you mean '{nearest}'? Call tools/list for the full set.");
                 }
+
+                // Answered BEFORE the payload is validated. An authoring tool switched off is not a
+                // secret — its name and schema are in the authoring guide and in tools/list whenever
+                // the toggle is on — so it gets a sentence it can act on rather than an unknown-command
+                // answer. But making the agent correct its arguments first, only to be refused for a
+                // reason no argument can fix, is a retry loop with a known-useless end.
+                if (!IsAvailableToAi(registered))
+                    return Err(id, McpWire.Codes.NotAvailable,
+                        $"'{command}' needs C# code execution, which is switched off in AnalyseTool Settings.",
+                        "Only a person can enable it — ask the user to turn it on, then call tools/list again.");
 
                 string? complaint = PayloadValidator.Validate(
                     command, SchemaListing.Compact(registered.InputSchemaJson), payload);

@@ -85,9 +85,16 @@ namespace AnalyseTool.Core.Features.Extensions
             string directory = target.Directory;
 
             bool exists = Directory.Exists(directory);
-            if (exists && !req.Overwrite && File.Exists(Path.Combine(directory, entryHtml)))
+            // Asked of EVERY file, not just the entry page. Guarding the entry page alone meant a save
+            // under a new page name replaced the app.js and style.css beside it without being asked —
+            // and, before plugin.json was refused outright, the manifest with them.
+            string? clash = !exists || req.Overwrite
+                ? null
+                : req.Files.Select(f => f.Name!.Trim())
+                    .FirstOrDefault(name => File.Exists(Path.Combine(directory, name)));
+            if (clash is not null)
                 return Task.FromResult<object?>(SaveUiResult.Failed(
-                    $"'{id}' already has a page at {entryHtml}. Pass overwrite:true to replace it."));
+                    $"'{id}' already has {clash}. Pass overwrite:true to replace it."));
             if (exists && !ExtensionFolder.IsGeneratedFolder(directory))
                 return Task.FromResult<object?>(SaveUiResult.Failed(
                     $"'{id}' exists but was not created by these commands — it holds files they never " +
@@ -126,6 +133,15 @@ namespace AnalyseTool.Core.Features.Extensions
         {
             string? problem = ExtensionFolder.ValidateFileName(file.Name, AllowedExtensions);
             if (problem is not null) return problem;
+
+            // plugin.json is the manifest, not a page asset, and .json is on the allowlist for the data
+            // files a page legitimately ships. Writing it here would land BEFORE ExtensionManifestWriter
+            // reads the folder as its merge base — so a caller could replace the whole manifest through
+            // a door meant for HTML and CSS, losing entryAssembly, updateFeed, the vendor fields and the
+            // C# side's button.command, which is exactly what merging exists to prevent.
+            if (string.Equals(file.Name?.Trim(), "plugin.json", StringComparison.OrdinalIgnoreCase))
+                return "plugin.json is the manifest and is written by the host. " +
+                       "Use UpdateExtensionManifest to change it.";
 
             return (file.Content?.Length ?? 0) > MaxFileChars
                 ? $"'{file.Name?.Trim()}' is larger than {MaxFileChars / 1024} KB."

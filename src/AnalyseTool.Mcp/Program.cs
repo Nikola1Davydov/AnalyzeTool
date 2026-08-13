@@ -245,6 +245,13 @@ static JsonElement FreeFormObjectSchema()
 /// here.</item>
 /// </list>
 /// </summary>
+static bool DeclaresObjectResult(JsonNode? schema)
+{
+    if (schema is not JsonObject obj) return false;
+    if (obj["type"]?.GetValue<string>() != "object") return false;
+    return obj["properties"] is JsonObject properties && properties.Count > 0;
+}
+
 /// <summary>
 /// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error
 /// is a text block, so the code has to travel inside the text, and a fixed leading token is something a
@@ -258,13 +265,6 @@ static string Describe(Exception ex)
 
     string text = $"[{bridge.Code}] {bridge.Message}";
     return string.IsNullOrWhiteSpace(bridge.Hint) ? text : $"{text}\nHint: {bridge.Hint}";
-}
-
-static bool DeclaresObjectResult(JsonNode? schema)
-{
-    if (schema is not JsonObject obj) return false;
-    if (obj["type"]?.GetValue<string>() != "object") return false;
-    return obj["properties"] is JsonObject properties && properties.Count > 0;
 }
 
 /// <summary>What tools/list decided about one tool name: the Revit command it maps back to, and whether

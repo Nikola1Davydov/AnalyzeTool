@@ -17,7 +17,7 @@
  * works the same for a command from an installed package (whose manifest must not be written) and for
  * a built-in one (which has no manifest at all).
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
@@ -149,8 +149,16 @@ function buildPayload(): Record<string, unknown> | null {
     const text = String(raw ?? "").trim();
     if (!text) continue;
 
-    if (field.kind === "number") payload[field.name] = Number(text);
-    else if (field.kind === "array")
+    if (field.kind === "number") {
+      // Reported, not passed on. Number("5O") is NaN, which JSON serializes to null — the host would
+      // read that as "no value given" and, for something like limit, quietly return everything.
+      const value = Number(text);
+      if (!Number.isFinite(value)) {
+        notificationStore.error(`'${field.name}' is not a number.`);
+        return null;
+      }
+      payload[field.name] = value;
+    } else if (field.kind === "array")
       payload[field.name] = text
         .split(/[\s,]+/)
         .filter(Boolean)
@@ -186,22 +194,37 @@ async function run() {
   }
 }
 
-/** A pinned button for a command that TAKES arguments routes here with ?command=… rather than running
- *  it blind — this is the form it was sent to find, so open on it. */
-onMounted(async () => {
-  await load();
+/** The initial load, started once and shared: the watcher below runs before mount, and both it and the
+ *  first render need the list. The refresh button calls load() again on purpose. */
+const ready = load();
 
-  const wanted = String(route.query.command ?? "").trim();
-  if (!wanted) return;
+/**
+ * A pinned button for a command that TAKES arguments routes here with ?command=… rather than running it
+ * blind — this is the form it was sent to find, so open on it.
+ *
+ * A WATCHER, not onMounted. The pane navigates by changing the hash fragment, which is a same-document
+ * navigation: vue-router keeps this component mounted and reuses it, so onMounted fired for the first
+ * pinned button and never again. The second button then showed the FIRST command's form, and Run
+ * executed the wrong command.
+ */
+watch(
+  () => route.query.command,
+  async (raw) => {
+    await ready;
 
-  const match = commands.value.find((c) => c.name.toLowerCase() === wanted.toLowerCase());
-  if (!match) {
-    notificationStore.error(`'${wanted}' is not registered.`);
-    return;
-  }
-  if (match.source === "core") scope.value = "all"; // else the default scope would hide it
-  select(match);
-});
+    const wanted = String(raw ?? "").trim();
+    if (!wanted) return; // arrived through the plain Scripts button; leave any selection alone
+
+    const match = commands.value.find((c) => c.name.toLowerCase() === wanted.toLowerCase());
+    if (!match) {
+      notificationStore.error(`'${wanted}' is not registered.`);
+      return;
+    }
+    if (match.source === "core") scope.value = "all"; // else the default scope would hide it
+    select(match);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

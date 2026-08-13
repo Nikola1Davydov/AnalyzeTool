@@ -46,7 +46,10 @@ namespace AnalyseTool.Core.Common.Extensions
         public static string? ResolveExtensionDirectory(string root, string id)
         {
             string directory = Path.Combine(root, id);
-            string fullRoot = Path.GetFullPath(root);
+            // Trimmed before the separator is appended: a root that already ends in one — "D:\", which
+            // is what GetFullPath returns for a drive — would otherwise be compared against "D:\\", and
+            // nothing starts with that. Every save into such a root failed, blaming the id for it.
+            string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar);
             return Path.GetFullPath(directory)
                 .StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
                 ? directory
@@ -75,8 +78,10 @@ namespace AnalyseTool.Core.Common.Extensions
             {
                 string? named = ResolveTargetRoot(requestedRoot);
                 return named is null
-                    ? new SaveTarget(null, $"'{requestedRoot}' is not a registered extension source. " +
-                                           "Leave targetRoot empty to save where the extension already lives.")
+                    ? new SaveTarget(null, $"'{requestedRoot}' is not a folder these commands may write " +
+                                           "to — it is not a registered source, or it holds installed " +
+                                           "packages the Extension Manager overwrites on update. Leave " +
+                                           "targetRoot empty to save where the extension already lives.")
                     : Combine(named, id);
             }
 
@@ -106,17 +111,25 @@ namespace AnalyseTool.Core.Common.Extensions
                 : new SaveTarget(directory, null);
         }
 
-        /// <summary>A registered extension source, or null when the caller named something else. Empty
-        /// means whichever root the user picked in Settings for generated scripts — the AI saving a
-        /// command has no opinion on where the user keeps their work.</summary>
+        /// <summary>
+        /// A registered DEV source a save may be aimed at, or null. Empty means whichever root the user
+        /// picked in Settings for generated scripts — the AI saving a command has no opinion on where
+        /// the user keeps their work.
+        ///
+        /// Managed roots are excluded, which they were not before: an explicit targetRoot could still
+        /// aim a generated script at <c>extensions-dist</c>, the one folder both the implicit search and
+        /// <see cref="ExtensionSources.SetAuthoringRoot"/> refuse — and the next package install or
+        /// update there deletes whatever was written.
+        /// </summary>
         public static string? ResolveTargetRoot(string? requested)
         {
             if (string.IsNullOrWhiteSpace(requested))
                 return ExtensionSources.AuthoringRoot;
 
             string full = Path.GetFullPath(requested!.Trim());
-            return ExtensionSources.Roots()
-                .Any(r => string.Equals(Path.GetFullPath(r), full, StringComparison.OrdinalIgnoreCase))
+            return ExtensionSources.AllRoots()
+                .Any(r => r.Zone == ExtensionZone.Dev &&
+                          string.Equals(Path.GetFullPath(r.Path), full, StringComparison.OrdinalIgnoreCase))
                 ? full
                 : null;
         }
