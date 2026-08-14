@@ -1,0 +1,17 @@
+{
+  "id": "family-manager",
+  "version": "1.0.0",
+  "description": "Browse, audit, rename and place the families of a Revit project, with a loadable family library and a dockable placement palette.",
+  "publisher": "Nikolai Davydov",
+  "website": "https://github.com/Nikola1Davydov/AnalyzeTool",
+  "supportUrl": "https://github.com/Nikola1Davydov/AnalyzeTool/issues",
+  "ui": {
+    "entryHtml": "index.html",
+    "tab": "AnalyseTool",
+    "panel": "Parameter",
+    "button": {
+      "name": "Family Control",
+      "tooltip": "Browse, audit and manage the families in this project"
+    }
+  }
+}

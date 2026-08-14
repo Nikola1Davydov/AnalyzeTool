@@ -7,20 +7,31 @@ export type WebViewMessage = {
 };
 
 /**
- * PLATFORM commands only. The framework deliberately does not maintain a catalogue of feature
- * commands: those are registered by extensions at load time and discovered at runtime via
- * `invoke("GetCommands")`. Anything feature-shaped belongs in the extension that ships it.
+ * Commands AnalyseTool itself calls. Commands that extensions register are NOT listed here — they
+ * are namespaced by extension id and discovered at runtime via `invoke("GetCommands")`.
+ *
+ * The family commands (PlaceFamilyInstance, PurgeFamilies, GetLibraryFamilies, LoadLibraryFamilies,
+ * GetLibraryPreview, PickFolder…) and the AI naming prompts (OllamaSuggestName/Names/Template) left
+ * with the Family Manager extension.
  */
 export const Commands = {
+  SelectionInRevit: "SelectionInRevit",
+  IsolationInRevit: "IsolationInRevit",
+  GetCategoriesInRevit: "GetCategoriesInRevit",
+  GetDataByCategoryName: "GetDataByCategoryName",
   CheckUpdate: "CheckUpdate",
-  // AI provider registry — platform infrastructure, not a feature: it stores endpoints and API keys
-  // host-side (keys never reach the frontend, only `hasKey`) so extensions don't each reimplement
-  // credential storage. Surfaced in the Extension Manager's settings page.
+  GetDocumentData: "GetDocumentData",
+  SetDataToParameters: "SetDataToParameters",
+  OllamaAnalyse: "OllamaAnalyse",
+  OllamaEditParameters: "OllamaEditParameters",
+  // AI provider registry — platform infrastructure rather than a feature: endpoints and API keys are
+  // stored host-side (keys never reach the frontend, only `hasKey`), so extensions call it through
+  // the host instead of each reimplementing credential storage.
+  OllamaGetModels: "OllamaGetModels",
   AiGetProviders: "AiGetProviders",
   AiSaveProvider: "AiSaveProvider",
   AiDeleteProvider: "AiDeleteProvider",
   AiGetModels: "AiGetModels",
-  OllamaGetModels: "OllamaGetModels",
 } as const;
 
 export const enum MessageType {

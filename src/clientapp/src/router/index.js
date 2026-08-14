@@ -1,17 +1,24 @@
 import { createWebHashHistory, createRouter } from "vue-router";
 
-// This is the FRAMEWORK shell: it ships the Extension Manager and the About page, nothing else.
-// Feature screens live in extensions, each serving its own SPA from its own folder — they never add
-// routes here.
+// Routes here belong to AnalyseTool itself (parameter analysis) plus the platform screens (Extension
+// Manager, About). Feature screens that ship as extensions are NOT routed here — each extension
+// serves its own SPA from its own folder. The family browser left for that reason: it lives in the
+// Family Manager extension now.
 //
-// Views are imported DYNAMICALLY: each host window is its own WebView that loads this SPA and shows
-// exactly one route, so a static import would make every window parse the code of ALL pages. With
-// dynamic imports Vite emits one chunk per view. NOTE: PrimeVue components stay globally registered
-// in main.js on purpose — only the per-view code and its heavy deps (marked) are split out.
+// Views are imported DYNAMICALLY: each plugin window is its own WebView that loads this SPA and
+// shows exactly one route — a static import would make every window (even the narrow dockable
+// palette) parse the code of ALL pages. With dynamic imports Vite emits one chunk per view, so a
+// window parses the app core + its own page only. NOTE: PrimeVue components stay globally
+// registered in main.js on purpose (the canvas relies on runtime component resolution) — only the
+// per-view code and its heavy deps (chart.js, marked) are split out.
 const routes = [
-  { path: "/", redirect: "/system/settings" },
-  { path: "/index.html", redirect: "/system/settings" },
+  { path: "/", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
+  { path: "/index.html", redirect: "/" },
   { path: "/about", component: () => import("@/view/AboutView.vue") },
+  { path: "/parameterFilledEmptyPage", component: () => import("@/view/ParameterFilledEmptyView.vue") },
+  { path: "/parametervaluecheck", component: () => import("@/view/ParameterValueCheckView.vue") },
+  { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
+  { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
     path: "/system/settings",
     component: () => import("@/view/System/ExtensionsSettingsView.vue"),

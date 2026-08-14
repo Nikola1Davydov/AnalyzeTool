@@ -19,31 +19,35 @@ export type WebViewMessage = {
 };
 
 /** Commands this extension calls. Names are resolved by the host dispatcher at runtime — this map is
- *  only here so typos surface at compile time rather than as a rejected promise. */
+ *  only here so typos surface at compile time rather than as a rejected promise.
+ *
+ *  Three groups, and the difference matters for what has to travel with this extension:
+ *   - family commands, shipped BY this extension (its own C# assembly);
+ *   - AI naming prompts, also shipped by this extension — nothing else calls them;
+ *   - host services this extension merely consumes: selection/isolation, the folder picker, and the
+ *     AI provider registry (API keys stay host-side; the frontend only ever sees `hasKey`).
+ */
 export const Commands = {
-  SelectionInRevit: "SelectionInRevit",
-  IsolationInRevit: "IsolationInRevit",
-  GetCategoriesInRevit: "GetCategoriesInRevit",
-  GetDataByCategoryName: "GetDataByCategoryName",
-  GetDocumentData: "GetDocumentData",
-  SetDataToParameters: "SetDataToParameters",
-  OllamaAnalyse: "OllamaAnalyse",
-  OllamaEditParameters: "OllamaEditParameters",
-  OllamaSuggestName: "OllamaSuggestName",
-  OllamaSuggestNames: "OllamaSuggestNames",
-  OllamaSuggestTemplate: "OllamaSuggestTemplate",
-  OllamaGetModels: "OllamaGetModels",
-  AiGetProviders: "AiGetProviders",
-  AiSaveProvider: "AiSaveProvider",
-  AiDeleteProvider: "AiDeleteProvider",
-  AiGetModels: "AiGetModels",
+  // --- shipped by this extension -------------------------------------------------------------
   PlaceFamilyInstance: "PlaceFamilyInstance",
   PurgeFamilyTypes: "PurgeFamilyTypes",
   PurgeFamilies: "PurgeFamilies",
   GetLibraryFamilies: "GetLibraryFamilies",
   GetLibraryPreview: "GetLibraryPreview",
   LoadLibraryFamilies: "LoadLibraryFamilies",
+  OllamaSuggestName: "OllamaSuggestName",
+  OllamaSuggestNames: "OllamaSuggestNames",
+  OllamaSuggestTemplate: "OllamaSuggestTemplate",
+
+  // --- consumed from the host ----------------------------------------------------------------
+  SelectionInRevit: "SelectionInRevit",
+  IsolationInRevit: "IsolationInRevit",
   PickFolder: "PickFolder",
+  OllamaGetModels: "OllamaGetModels",
+  AiGetProviders: "AiGetProviders",
+  AiSaveProvider: "AiSaveProvider",
+  AiDeleteProvider: "AiDeleteProvider",
+  AiGetModels: "AiGetModels",
 } as const;
 
 export const enum MessageType {
