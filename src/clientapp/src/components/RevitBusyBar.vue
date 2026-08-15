@@ -24,7 +24,12 @@ const POLL_BUSY_MS = 2000;
 // GetQueueStatus never touches the Revit thread, so this is cheap even while Revit is blocked —
 // still, a Revit session runs for hours with several windows open, so the idle cadence is much
 // slower than the busy one. (Both were 2000 ms, which made the busy/idle choice below a no-op.)
-const POLL_IDLE_MS = 2000;
+//
+// The comment above said that BEFORE this line said it: the constant stayed at 2000 while the text
+// claimed otherwise, so the busy/idle branch really was a no-op and a session logged one poll every
+// two seconds for hours. 10 s idle still arms the proactive warning well inside the time it takes a
+// person to notice a frozen Revit, and the first sign of work flips the cadence back to 2 s.
+const POLL_IDLE_MS = 10000;
 
 const status = ref<QueueStatus | null>(null);
 let pollTimer: number | null = null;

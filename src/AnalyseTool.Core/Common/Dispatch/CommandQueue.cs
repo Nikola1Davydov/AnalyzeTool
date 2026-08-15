@@ -92,9 +92,17 @@ namespace AnalyseTool.Core.Common.Dispatch
                         $"Command '{request.Command}' is not available over {request.Source}.");
             }
 
-            Log.Debug("Command {Command} invoked via {Source}", request.Command, request.Source);
-
             bool track = !Untracked.Contains(request.Command);
+
+            // Logged only for TRACKED commands, and Untracked already names the right set: a status
+            // poll that must not make the tool look busy is the same poll that must not fill the log.
+            // The indicator asks every couple of seconds, per open window, for as long as Revit runs —
+            // one session measured ~840 of these lines around three real events, which does not make a
+            // log verbose, it makes it unreadable, and a log nobody can read is the reason a command
+            // that failed all evening was never diagnosed.
+            if (track)
+                Log.Debug("Command {Command} invoked via {Source}", request.Command, request.Source);
+
             long runId = 0;
             if (track)
             {
