@@ -1,0 +1,5 @@
+# Obsidian per-machine state — churns on every pane you open
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/
