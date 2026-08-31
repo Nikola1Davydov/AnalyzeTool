@@ -22,6 +22,7 @@ updated: 2026-08-31
 | Страница | Что это |
 | --- | --- |
 | [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 88 issue, самый плотный источник здесь |
+| [`sources/pipeline-design-doc.md`](sources/pipeline-design-doc.md) | дизайн конвейеров с ветки — единственный источник с замерами в живом Revit |
 | [`sources/karpathy-llm-wiki-pattern.md`](sources/karpathy-llm-wiki-pattern.md) | паттерн, на котором построена вики, и как мы его адаптировали |
 | [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) | обзор документации репозитория и AI-значимых проектов |
 
@@ -67,10 +68,9 @@ updated: 2026-08-31
   [#63](https://github.com/Nikola1Davydov/AnalyzeTool/issues/63), [#68](https://github.com/Nikola1Davydov/AnalyzeTool/issues/68))
   или как не планируемые ([#75](https://github.com/Nikola1Davydov/AnalyzeTool/issues/75)),
   причём с обоснованием. Тела закрытых issue не читались.
-- **`docs/pipeline-design.md`** живёт в ветке `claude/pipelines-plan-f8jrgf` и не читался;
-  на него ссылаются [#88](https://github.com/Nikola1Davydov/AnalyzeTool/issues/88)–[#92](https://github.com/Nikola1Davydov/AnalyzeTool/issues/92).
-  После вычитки комментариев к [#70](https://github.com/Nikola1Davydov/AnalyzeTool/issues/70)
-  это самый крупный непрочитанный источник.
+- **Устройство редактора конвейеров** ([#91](https://github.com/Nikola1Davydov/AnalyzeTool/issues/91))
+  из дизайн-документа не взято: порты, идентификаторы узлов, компоновка канвы. Это UI за
+  гейтом, и в охват вики он не попадает — но если гейт откроется, читать оттуда.
 - **Спека MCP `2026-07-28` не подтверждена** —
   [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) работал по пересказу
   release candidate, и его гейт-вопрос (поддерживает ли `ModelContextProtocol` 1.3.0)

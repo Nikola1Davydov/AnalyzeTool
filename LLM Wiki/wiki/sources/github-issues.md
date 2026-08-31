@@ -69,7 +69,9 @@ issue — не тикеты, а разобранные дизайн-заметк
   ```
 
 - **Закрытые issue**, кроме факта, что они закрыты.
-- **Связанные дизайн-документы** — `docs/pipeline-design.md` живёт в ветке и не прочитан.
+- **Связанные дизайн-документы** — `docs/pipeline-design.md` прочитан отдельно, см.
+  [`pipeline-design-doc.md`](pipeline-design-doc.md). Он новее первых комментариев к
+  [#70](https://github.com/Nikola1Davydov/AnalyzeTool/issues/70) и где расходятся — прав он.
 
 ## Как обновить
 
