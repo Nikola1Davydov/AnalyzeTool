@@ -3,3 +3,7 @@
 .obsidian/workspace-mobile.json
 .obsidian/cache
 .trash/
+
+# Python
+scripts/__pycache__/
+*.pyc
