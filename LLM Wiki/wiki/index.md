@@ -33,6 +33,7 @@ updated: 2026-08-31
 | [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md) | MCP-сервер, снимок каталога инструментов, позиция по безопасности |
 | [`entities/command-queue.md`](entities/command-queue.md) | единственная дверь в платформу — и почему это не очередь |
 | [`entities/shadow-index.md`](entities/shadow-index.md) | непостроенный компонент, на который опираются пять планов |
+| [`entities/project-folder.md`](entities/project-folder.md) | папка как интерфейс, шина сообщений и хранилище свода |
 | [`entities/ollama.md`](entities/ollama.md) | локальный вывод и почему это не просто дешёвый тариф |
 
 ## Концепции

@@ -43,7 +43,7 @@ TERMS = {
     "CommandQueue":      (r"CommandQueue",                            "wiki/entities/command-queue.md"),
     "модуль проверки":   (r"модул[а-я]+ проверки|свод[а-я]* правил", "wiki/analyses/checking-module.md"),
     "порог прерывания":  (r"порог[а-я]* прерывания",                  "wiki/concepts/proactivity-budget.md"),
-    "папка проекта":     (r"папк[а-я]+ проекта",                      None),
+    "папка проекта":     (r"папк[а-я]+ проекта",                      "wiki/entities/project-folder.md"),
     "конвейер":          (r"конвейер",                                "wiki/sources/pipeline-design-doc.md"),
 }
 
