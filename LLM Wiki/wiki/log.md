@@ -1267,3 +1267,24 @@ Platform Services; четыре шва закладываются сейчас, 
 Попутно закрыта дыра в
 [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md): блок
 конфигурации клиента собирает фронтенд, форма и место в интерфейсе записаны.
+
+## 2026-09-01 — refresh: снимок тот же, состояние — нет
+
+Снимок за сегодня уже был, `--force` не применял. Изменения пришли не из трекера, а из
+сессии: закрыты [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) (отгружен) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) (команды больше
+нет); в [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64), [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48), [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) отписан статус.
+Открытых 64 — счётчики в [`index.md`](index.md), [`overview.md`](overview.md),
+[`analyses/backlog-map.md`](analyses/backlog-map.md) и
+[`analyses/roadmap.md`](analyses/roadmap.md) поправлены.
+
+**На что вики опиралась и что сдвинулось.** Roadmap держал #129 пунктом 4 этапа 1 и
+«типы кнопок» как предстоящую работу — оба сняты, пункты помечены сделанными, а не
+удалены, чтобы порядок этапа читался как был. Самая большая правка — каталог инструментов
+в [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md): группа
+«Семейства» и восемь команд записи исчезли из платформы вместе с Family Manager
+(63a1992), об этом вики не знала целый день.
+
+Не тронул: фраза в roadmap «66 открытых issue выглядят как 63 обязательства» — риторика с
+неясным выводом второго числа, править вслепую не стал.
+
+Линт до правок: чисто. После — см. следующий прогон.

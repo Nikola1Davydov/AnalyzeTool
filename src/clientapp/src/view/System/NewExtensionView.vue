@@ -44,8 +44,8 @@ function createAnother() {
     <template v-if="!createdDirectory">
       <h1 class="text-xl font-bold">New extension</h1>
       <p class="text-sm text-surface-500 mb-5">
-        A folder with a manifest and a starting point. It appears on the ribbon as soon as it is
-        created; from there you edit the files.
+        A folder with a manifest, a page and a starter C# command. It appears on the ribbon as soon
+        as it is created; from there you edit the files — and delete the half you don't need.
       </p>
       <CreateExtensionForm :key="formKey" @created="onCreated" @cancel="closeWindow" />
     </template>

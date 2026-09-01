@@ -1,13 +1,13 @@
 ---
 type: analysis
-updated: 2026-08-31
+updated: 2026-09-01
 status: draft
 sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 ---
 
 # Куда двигаться дальше
 
-Синтез по всему бэклогу: 66 открытых issue, 49 комментариев, дизайн-документ конвейеров.
+Синтез по всему бэклогу: 66 открытых issue на момент написания (64 после закрытия [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) 2026-09-01), 49 комментариев, дизайн-документ конвейеров.
 
 **Большая часть решений уже принята вами** — в [#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119),
 [#120](https://github.com/Nikola1Davydov/AnalyzeTool/issues/120) и в
@@ -214,7 +214,7 @@ MCP, ни единого вызова модели в рантайме. Моде
 | 1 | [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97): пройти по цепочке `InnerException`, добавить `Log.Error` с именем команды и аргументами, тип исключения в `hint` | часы |
 | 2 | **Включить прогон тестов в CI** ([#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128)): цель `Test` в NUKE, `Ci` зависит от неё. Это не написание тестов — проекты `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests` уже есть и просто не запускаются | часы |
 | 3 | [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98): воспроизвести один раз, прочитать настоящее исключение, починить, **закрепить тестом** | после первых двух — вероятно день |
-| 4 | `GetFamilyPreview` ([#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129)): пометить `HiddenFromMcp` одной строкой, пока нет блока изображения | минуты |
+| 4 | ~~`GetFamilyPreview` ([#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129))~~ — снято 2026-09-01: слайс семейств целиком уехал в расширение (63a1992), команды в платформе нет, issue закрыт | — |
 | 5 | [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100): слать `notifications/tools/list_changed` при перезагрузке расширений | день |
 | 6 | [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102): сначала выяснить, запрос из WebView не уходит или не получает ответа. Ограничить по времени | неизвестно, отсюда и таймбокс |
 
@@ -230,7 +230,11 @@ MCP, ни единого вызова модели в рантайме. Моде
 Этап 1 — не только починка. Сюда же ложатся мелкие добавления, которые готовят почву для
 остального, и одно из них пришло из обратной связи от авторов расширений.
 
-**Типы кнопок в манифесте.** Сегодня `ui.button` — **одна** кнопка с именем, подсказкой и
+**Типы кнопок в манифесте.** *Сделано 2026-09-01* (e1ded76, e233aa3): `ui.buttons`, типы
+push / stacked / pulldown, порядок, версия схемы — [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) закрыт. Из списка ниже
+не сделан только крючок состояния «заблокирована / выключена». Постановка сохранена как была:
+
+Сегодня `ui.button` — **одна** кнопка с именем, подсказкой и
 иконкой (`Core/Common/Extensions/ExtensionManifest.cs`). Ни выбора типа, ни нескольких
 кнопок на расширение. При этом возможность в Revit API есть и хостом уже используется:
 `RibbonHost` собирает собственную панель Manage через `AddStackedItems`. То есть наружу не
@@ -256,9 +260,9 @@ MCP, ни единого вызова модели в рантайме. Моде
   [`licensing-and-monetization.md`](licensing-and-monetization.md). Делать их вместе дешевле,
   чем возвращаться.
 
-**Заодно добавляется версия схемы манифеста**
-([#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127)) — без неё ни хост, ни агент
-не могут заметить, что расширение написано по старому формату. Механика и правила миграции —
+**Версия схемы манифеста добавлена вместе с этим**
+([#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127), закрыт) — без неё ни хост, ни агент
+не могли заметить, что расширение написано по старому формату. Механика и правила миграции —
 [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md).
 
 > [!warning] стоит проверить

@@ -25,6 +25,9 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 const CreateExtensionTemplateDrawer = defineAsyncComponent(
   () => import("@/view/System/CreateExtensionTemplateDrawer.vue"),
 );
+const EditExtensionDrawer = defineAsyncComponent(
+  () => import("@/view/System/EditExtensionDrawer.vue"),
+);
 
 const notifications = useNotificationStore();
 
@@ -121,6 +124,16 @@ const templateDrawerVisible = ref(false);
 
 function openTemplateDrawer() {
   templateDrawerVisible.value = true;
+}
+
+// ---- Edit: the manifest, in a form. The rows could open the folder and delete it, but not change the
+// one thing people change most — what the button says and where it sits.
+const editDrawerVisible = ref(false);
+const editTargetId = ref<string | null>(null);
+
+function openEdit(row: ExtensionRow) {
+  editTargetId.value = row.id;
+  editDrawerVisible.value = true;
 }
 
 async function load() {
@@ -654,7 +667,7 @@ onMounted(() => {
                   />
                 </template>
               </Column>
-              <Column header="" class="w-32">
+              <Column header="" class="w-40">
                 <template #body="{ data: row }">
                   <Button
                     v-if="updateChecks[row.id]?.updateAvailable"
@@ -665,6 +678,14 @@ onMounted(() => {
                     :loading="updatingId === row.id"
                     v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
                     @click="updateExtension(row)"
+                  />
+                  <Button
+                    icon="pi pi-pencil"
+                    size="small"
+                    text
+                    severity="secondary"
+                    v-tooltip.left="'View manifest (installed packages are read-only)'"
+                    @click="openEdit(row)"
                   />
                   <Button
                     icon="pi pi-folder-open"
@@ -764,9 +785,17 @@ onMounted(() => {
                   />
                 </template>
               </Column>
-              <Column header="" class="w-24">
+              <Column header="" class="w-32">
                 <template #body="{ data: row }">
                   <div class="flex justify-end gap-1">
+                    <Button
+                      icon="pi pi-pencil"
+                      size="small"
+                      text
+                      severity="secondary"
+                      v-tooltip.left="'Edit name, button, description…'"
+                      @click="openEdit(row)"
+                    />
                     <Button
                       icon="pi pi-folder-open"
                       size="small"
@@ -1118,5 +1147,13 @@ onMounted(() => {
     </Dialog>
 
     <CreateExtensionTemplateDrawer v-model:visible="templateDrawerVisible" @created="reload" />
+
+    <!-- Save already reloaded on the host; re-list so the row shows the new name and the ribbon
+         change is mirrored here. -->
+    <EditExtensionDrawer
+      v-model:visible="editDrawerVisible"
+      :extensionId="editTargetId"
+      @saved="Promise.all([load(), loadPaths()])"
+    />
   </div>
 </template>

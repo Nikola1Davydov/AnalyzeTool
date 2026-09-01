@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-08-31
+updated: 2026-09-01
 status: current
 ---
 
@@ -34,6 +34,12 @@ issue — не тикеты, а разобранные дизайн-заметк
 **Дыра снимка.** Те два комментария ссылаются на **#131** (worker) и **#132** (ACC / Autodesk
 Platform Services) — issue, заведённые уже ПОСЛЕ съёмки тел за 2026-09-01. В `raw/` их нет, и
 всё, что вики о них знает, — эти две ссылки. Следующий снимок тел их заберёт.
+
+**После снимка, тем же вечером (2026-09-01), из сессии, а не из снимка:** закрыты
+[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) (версия схемы манифеста — отгружена, e1ded76) и
+[#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) (`GetFamilyPreview` исчез вместе со всем слайсом семейств, 63a1992);
+в [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64), [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) и [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) отписан статус «что из
+этого уже отгружено». Открытых стало **64**. В `raw/` этого нет — заберёт следующий снимок.
 
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:

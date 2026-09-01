@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-08-31
+updated: 2026-09-01
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -114,7 +114,10 @@ OneDrive. Ничего не ломается; общая папка команд
 
 ## Дефект, которого не было в списке: агент слеп
 
-Заведён [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129).
+Заведён [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129). **Закрыт 2026-09-01 без починки:** `GetFamilyPreview` исчез
+вместе со всем слайсом семейств — Family Manager уехал в расширение (63a1992). Раздел ниже
+остаётся как запись о принципе: любая будущая команда, отдающая картинку, либо шлёт блок
+изображения MCP, либо помечается `HiddenFromMcp` с первого дня.
 
 Найден в комментарии к [#80](https://github.com/Nikola1Davydov/AnalyzeTool/issues/80)
 (25.08.2026) и **подтверждён по коду 2026-08-31**.

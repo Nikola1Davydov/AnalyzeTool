@@ -7,6 +7,11 @@
  * identity, who made it, and the ribbon button that opens it. It shows no file previews — plugin.json
  * and index.html are written to disk, where an editor renders them better than a <pre> ever did, and
  * the previews were two thirds of the old drawer's height.
+ *
+ * ONE flavour, not three. The form used to ask "page, C# commands, or both?" — a choice a beginner
+ * cannot make with any confidence, and a question an agent never needed asked: it has the authoring
+ * guide and deletes or adds what the task turns out to need. So every template is page + C#, and
+ * whoever knows better removes a file. The host still accepts the other kinds for callers that do.
  */
 import { computed, onMounted, ref } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
@@ -59,14 +64,10 @@ const notifications = useNotificationStore();
 const busy = ref(false);
 const showMore = ref(false);
 
-const kindOptions: { value: TemplateKind; label: string; hint: string }[] = [
-  { value: "UiOnly", label: "Page", hint: "A ribbon button that opens an HTML page." },
-  { value: "Csharp", label: "C# commands", hint: "A C# project with a starter command; no page." },
-  { value: "Combo", label: "Page + C#", hint: "Both: a page and the C# commands behind it." },
-];
+/** Always page + C#: see the note at the top. */
+const KIND: TemplateKind = "Combo";
 
 const form = ref({
-  kind: "UiOnly" as TemplateKind,
   name: "",
   id: "",
   description: "",
@@ -81,8 +82,8 @@ const form = ref({
   targetRoot: "",
 });
 
-const hasUi = computed(() => form.value.kind === "UiOnly" || form.value.kind === "Combo");
-const hasCsharp = computed(() => form.value.kind === "Csharp" || form.value.kind === "Combo");
+const hasUi = computed(() => KIND === "UiOnly" || KIND === "Combo");
+const hasCsharp = computed(() => KIND === "Csharp" || KIND === "Combo");
 
 // Already-installed extensions (across all roots), for conflict checks before the host is asked.
 const existingExtensions = ref<{ id: string; directory: string }[]>([]);
@@ -292,7 +293,7 @@ async function create() {
   try {
     const payload: CreateExtensionTemplatePayload = {
       folderName: folderName.value,
-      kind: form.value.kind,
+      kind: KIND,
       pluginJson: manifest.value,
       targetRoot: form.value.targetRoot.trim() || undefined,
     };
@@ -315,25 +316,6 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <!-- What kind of thing: drives which files are written and which fields matter. -->
-    <div class="flex flex-col gap-2">
-      <label class="text-sm font-medium">What do you want to make?</label>
-      <div class="flex gap-2 flex-wrap">
-        <Button
-          v-for="o in kindOptions"
-          :key="o.value"
-          :label="o.label"
-          :severity="form.kind === o.value ? 'primary' : 'secondary'"
-          :outlined="form.kind !== o.value"
-          size="small"
-          @click="form.kind = o.value"
-        />
-      </div>
-      <small class="text-surface-500">
-        {{ kindOptions.find((o) => o.value === form.kind)?.hint }}
-      </small>
-    </div>
-
     <!-- Identity -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
       <div class="flex flex-col gap-1">

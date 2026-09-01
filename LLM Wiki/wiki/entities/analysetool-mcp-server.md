@@ -17,8 +17,8 @@ MCP-сервер, позволяющий внешнему агенту упра�
 
 ## Каталог инструментов
 
-Снят с живой сессии 2026-08-31. Список генерируется из загруженных команд и растёт с
-установленными расширениями — это снимок, а не контракт.
+Снят с живой сессии 2026-08-31, пересверен с кодом 2026-09-01. Список генерируется из
+загруженных команд и растёт с установленными расширениями — это снимок, а не контракт.
 
 **Попадание в список не означает, что инструмент работает.** `GetElements` — первое, за
 чем тянется агент, — падала на любом вводе всю сессию полевого теста
@@ -32,16 +32,24 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `GetCategoryParameters` · `GetTypeParameters` · `GetViewsAndSheets` · `GetWorksets` ·
 `GetLinksInRevit` · `GetCadImports` · `GetWarningsInRevit`
 
-### Семейства
+### Семейства — группы больше нет
 
-`GetFamilies` · `GetFamilyTypes` · `GetFamilyTypeRows` · `GetFamilyInstances` ·
-`GetInPlaceFamilies` · `GetLibraryFamilies` · `GetFamilyMesh` · `GetFamilyPreview`
+2026-09-01 (63a1992) слайс `Tools/Families` удалён из платформы целиком: Family Manager
+работает как расширение, и его 17 команд (`GetFamilies*`, `GetFamilyMesh`, `GetFamilyPreview`,
+`RenameFamily*`, `LoadLibraryFamilies`, `PlaceFamilyInstance`, `DeleteFamilyElements`,
+`PurgeFamilies`, `PurgeFamilyTypes`, `SetInstancesWorkset`) переехали с ним — в списке
+инструментов они появляются только с установленным расширением, под его префиксом.
+Зарегистрированных команд стало 51 вместо 68. `GetWorksets` и `GetTypeParameters` остались:
+они не про семейства и переехали в `Elements`.
+
+Следствие для вики: всё, что выше и ниже сказано о размещении семейств и о `Destructive`
+на командах Family Manager ([`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md),
+[`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md)),
+теперь относится к расширению, а не к платформе.
 
 ### Запись в модель
 
-`SetDataToParameters` · `SetInstancesWorkset` · `RenameFamily` · `RenameFamilyType` ·
-`LoadLibraryFamilies` · `PlaceFamilyInstance` · `DeleteFamilyElements` ·
-`PurgeFamilies` · `PurgeFamilyTypes` · `SaveAsCommand`
+`SetDataToParameters` · `SaveAsCommand`
 
 ### Состояние вида и сессии
 

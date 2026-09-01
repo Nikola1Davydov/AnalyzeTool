@@ -7,7 +7,7 @@ sources: [../sources/github-issues.md]
 
 # Карта открытого бэклога
 
-66 открытых issue (снимок 2026-09-01), сгруппированных по тому, о чём они на самом деле, а не по меткам.
+64 открытых issue (снимок 2026-09-01, минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
 AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
@@ -15,7 +15,7 @@ AI-кластеры развёрнуты в других страницах ви
 
 | Кластер | Issue | Где |
 | --- | --- | --- |
-| Дефекты и протокол MCP | 83–85, 97–113, 128, 129 | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
+| Дефекты и протокол MCP | 83–85, 97–113, 128 (129 закрыт: команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
 | Агент и где он крутится | 80, 115–118 | [`agent-hosting.md`](agent-hosting.md), [`../concepts/proactivity-budget.md`](../concepts/proactivity-budget.md) |
 | Безопасность и одобрение | 88, 106, 123, 126 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 | Лента, карточки, порог | 79, 80, 116, 118, 122, 126 | [`../concepts/inbox-and-cards.md`](../concepts/inbox-and-cards.md) |
@@ -159,12 +159,11 @@ issue. Ниже — состав.
 
 ## Платформа, не AI
 
-[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста
-(заведён 2026-08-31, разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
+~~[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста~~ — закрыт 2026-09-01, отгружен (e1ded76; разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
 [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних ·
-[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений ·
+[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений (отгружен, с 2026-09-01 своё окно; статус отписан в issue) ·
 [#72](https://github.com/Nikola1Davydov/AnalyzeTool/issues/72) лицензирование ·
-[#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) реестр ·
+[#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) реестр (половина «Available» есть как каталог в плагине; открыт вопрос, нужен ли отдельный репозиторий) ·
 [#81](https://github.com/Nikola1Davydov/AnalyzeTool/issues/81) публикация SDK ·
 [#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87) цепочка поставки ·
 [#93](https://github.com/Nikola1Davydov/AnalyzeTool/issues/93) путь публикации ·

@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.IO;
 
@@ -21,6 +21,18 @@ namespace AnalyseTool.Core.Common.Extensions
         public string? EntryHtml { get; init; }
 
         public bool? Dockable { get; init; }
+
+        // ---- Vendor metadata and button shape, from the Edit form in the extension manager. Same
+        // ---- null-means-leave rule; for these an EMPTY string means "remove the field" — a person
+        // ---- clearing "Website" in a form expects it gone, not kept.
+        public string? Description { get; init; }
+        public string? Publisher { get; init; }
+        public string? Website { get; init; }
+        public string? SupportUrl { get; init; }
+        public string? UpdateFeed { get; init; }
+        /// <summary>Ribbon shape: "push" (written as absent — it is the default), "stacked", "pulldown".</summary>
+        public string? Kind { get; init; }
+        public int? Order { get; init; }
 
         /// <summary>Drop the ribbon button entirely. An extension with many commands does not want one
         /// button per command — it wants none, or one page that lists them.</summary>
@@ -45,6 +57,12 @@ namespace AnalyseTool.Core.Common.Extensions
             manifest["id"] = id;
             if (manifest["version"] is null) manifest["version"] = "1.0.0";
 
+            SetOrRemove(manifest, "description", edit.Description);
+            SetOrRemove(manifest, "publisher", edit.Publisher);
+            SetOrRemove(manifest, "website", edit.Website);
+            SetOrRemove(manifest, "supportUrl", edit.SupportUrl);
+            SetOrRemove(manifest, "updateFeed", edit.UpdateFeed);
+
             JObject ui = manifest["ui"] as JObject ?? new JObject();
             JObject button = ui["button"] as JObject ?? new JObject();
 
@@ -55,6 +73,17 @@ namespace AnalyseTool.Core.Common.Extensions
             Set(ui, "entryHtml", edit.EntryHtml);
             if (edit.Dockable is bool dockable) ui["dockable"] = dockable;
             if (edit.CommandName is not null) button["command"] = edit.CommandName;
+            if (edit.Kind is not null)
+            {
+                // "push" is the default the host falls back to, so it is written as absence — a manifest
+                // should not carry a field that says "the usual".
+                string kind = edit.Kind.Trim().ToLowerInvariant();
+                if (kind.Length == 0 || kind == "push") button.Remove("kind"); else button["kind"] = kind;
+            }
+            if (edit.Order is int order)
+            {
+                if (order == 0) button.Remove("order"); else button["order"] = order;
+            }
 
             // THE RULE, in one place so both writers obey it: an extension with a page opens the page
             // when its ribbon button is clicked, and one without runs its command. The host decides this
@@ -71,7 +100,8 @@ namespace AnalyseTool.Core.Common.Extensions
             else
                 ui["button"] = button;
 
-            manifest["ui"] = ui;
+            // An extension with no page and no button has no "ui" — do not leave an empty object behind.
+            if (ui.HasValues) manifest["ui"] = ui; else manifest.Remove("ui");
 
             Directory.CreateDirectory(directory);
             File.WriteAllText(path, manifest.ToString(Formatting.Indented));
@@ -81,6 +111,14 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             if (string.IsNullOrWhiteSpace(value)) return;
             target[name] = value!.Trim();
+        }
+
+        /// <summary>Null leaves the field alone; empty removes it; anything else replaces it.</summary>
+        private static void SetOrRemove(JObject target, string name, string? value)
+        {
+            if (value is null) return;
+            if (string.IsNullOrWhiteSpace(value)) target.Remove(name);
+            else target[name] = value.Trim();
         }
 
         /// <summary>An unreadable manifest is treated as absent: refusing to write over a corrupt file

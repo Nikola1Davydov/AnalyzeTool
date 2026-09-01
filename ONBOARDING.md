@@ -289,7 +289,7 @@ Each build lands in its own `<year>\` folder, so run one command per Revit versi
 they accumulate side by side. (CI builds `samples/Acme.Sample` against the freshly packed SDK in
 exactly this mode — `-p:UseSdkPackage=true` — so this path stays verified.)
 
-> **Tip:** you don't have to write this by hand — **AnalyseTool tab → New → C# commands**
+> **Tip:** you don't have to write this by hand — **AnalyseTool tab → New** (every template is page + C#; delete the half you don't need)
 > scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
 > write commands for you).
 
@@ -690,6 +690,13 @@ commands / UI, an enable/disable switch, **Open folder**, and — for installed 
 **Reload**, the host **Environment** (Revit / SDK / plugin version), the **Extension paths** it
 scans, the **Commands** catalog (§5.2), and the **MCP server** controls. The **Catalog** tab is the
 other direction — the repositories extensions can be installed *from* (§10).
+
+Every row also has **Edit** (the pencil): the ribbon button's name, tooltip, tab, panel, shape and
+dock setting, plus description, publisher, links and update feed — written back into `plugin.json`
+by merging, so fields the form does not show (`entryAssembly`, `devUrl`, `icon`, a second button)
+stay as they are. The **id is never editable** there: it is the folder, the command namespace and the
+key the enabled state is stored under. Installed packages open read-only — their manifest belongs to
+the publisher.
 
 Two red tags mean different things, and the difference is the fix:
 
