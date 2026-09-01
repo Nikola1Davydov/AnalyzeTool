@@ -57,6 +57,7 @@ updated: 2026-08-31
 | [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md) | что нашёл полевой тест 1.5 и в каком порядке чинить |
 | [`analyses/agent-hosting.md`](analyses/agent-hosting.md) | где крутится цикл агента, у кого инициатива, кто платит |
 | [`analyses/roadmap.md`](analyses/roadmap.md) | куда двигаться дальше: три слоя, что припарковать, структура трекера |
+| [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
 | [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 63 открытых issue по группам |

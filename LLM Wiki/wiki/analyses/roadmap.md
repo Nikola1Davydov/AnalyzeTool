@@ -373,6 +373,7 @@ MCP, ни единого вызова модели в рантайме. Моде
 
 ## Связанное
 
+- [`platform-as-runtime.md`](platform-as-runtime.md) — рамка, объясняющая, почему слои именно такие
 - [`licensing-and-monetization.md`](licensing-and-monetization.md) — как продавать при открытом коде
 - [`checking-module.md`](checking-module.md) · [`mcp-surface-state.md`](mcp-surface-state.md) · [`agent-hosting.md`](agent-hosting.md)
 - [`backlog-map.md`](backlog-map.md) · [`../entities/shadow-index.md`](../entities/shadow-index.md)
