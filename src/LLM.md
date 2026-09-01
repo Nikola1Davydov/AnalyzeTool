@@ -476,6 +476,10 @@ To publish on GitHub, add `.github/workflows/release.yml` — then publishing is
 git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
 notifications for free:
 
+Once it is published, the repository itself is the install source: users reach it through Settings
+→ Catalog (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
+repository into "Install from repository…". Both routes download the zip from your release.
+
 ```yaml
 name: Release
 on:

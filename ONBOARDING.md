@@ -688,7 +688,8 @@ packages and your **Dev** folders separately, each row showing the version, whet
 commands / UI, an enable/disable switch, **Open folder**, and — for installed packages with an
 `updateFeed` — an update badge. There is also **Install from file…** for a `.zip`, a global
 **Reload**, the host **Environment** (Revit / SDK / plugin version), the **Extension paths** it
-scans, the **Commands** catalog (§5.2), and the **MCP server** controls.
+scans, the **Commands** catalog (§5.2), and the **MCP server** controls. The **Catalog** tab is the
+other direction — the repositories extensions can be installed *from* (§10).
 
 Two red tags mean different things, and the difference is the fix:
 
@@ -855,6 +856,41 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 **Release from CI.** With a `.github/workflows/release.yml` that runs `PackExtension` and attaches
 `artifacts/*.zip` to the release, publishing becomes `git tag v1.0.0 && git push --tags`. The
 generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
+
+
+**Getting listed.** Settings → **Catalog** is the "where do extensions come from" page: a list of
+repositories with their links, each with an **Install** button that downloads the package from the
+publisher's own release. Two ways onto it:
+
+- **The shipped list** — `src/AnalyseTool.Core/Features/Extensions/Catalog/catalog.json` in the
+  AnalyseTool repository. Open a PR with your entry.
+- **A local catalog** — `%LOCALAPPDATA%\AnalyseTool\catalog.json`, same shape. This is the one to
+  use for a company's internal extensions: point your people at your own repositories without
+  waiting for a plugin release. An entry whose `id` matches a shipped one replaces it.
+
+```json
+{
+  "entries": [
+    {
+      "id": "you.your-extension",
+      "name": "Your Extension",
+      "publisher": "You",
+      "description": "One line about what it does.",
+      "source": "github:you/your-repo",
+      "website": "https://github.com/you/your-repo",
+      "license": "MIT"
+    }
+  ]
+}
+```
+
+`source` is the same value as `updateFeed`, and `website` is what a reader clicks — an entry with
+only `website` still earns its place, it just says "download it yourself". Users who have a
+repository that is on no list at all can paste it into **Install from repository…**, which takes a
+GitHub URL, `owner/repo`, `github:owner/repo` or an https feed.
+
+Listing is a directory entry, not an endorsement: the package is always fetched from your release,
+and the user accepts the third-party disclaimer before anything is installed.
 
 Two traps worth knowing before your first release:
 

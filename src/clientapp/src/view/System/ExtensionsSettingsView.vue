@@ -249,42 +249,67 @@ async function setExtensionEnabled(row: ExtensionRow, enabled: boolean) {
   await Promise.all([load(), loadCommands()]);
 }
 
-// ---- Install from file: pick a zip, show the third-party disclaimer, then install.
-// The backend refuses without consent=true, so the dialog is not just decoration.
+// ---- Install: from a picked zip, or straight from a publisher's release. Both routes go through
+// the same third-party disclaimer — the backend refuses without consent=true, so the dialog is not
+// just decoration.
+type InstallOrigin =
+  | { kind: "file"; path: string }
+  | { kind: "source"; source: string; expectedId?: string | null; name?: string };
+
 const installDialogVisible = ref(false);
 const installBusy = ref(false);
 const installError = ref("");
-const installPath = ref("");
+const installOrigin = ref<InstallOrigin | null>(null);
 const installOverwrite = ref(false);
 
-async function pickPackageAndAskConsent() {
+/** What the disclaimer names as the thing about to be installed. */
+const installSubject = computed(() => {
+  const o = installOrigin.value;
+  if (!o) return "";
+  return o.kind === "file" ? o.path : o.name ? `${o.name} — ${o.source}` : o.source;
+});
+
+function askConsent(origin: InstallOrigin, overwrite = false) {
   installError.value = "";
-  installOverwrite.value = false;
+  installOverwrite.value = overwrite;
+  installOrigin.value = origin;
+  installDialogVisible.value = true;
+}
+
+async function pickPackageAndAskConsent() {
   try {
     const res = await invoke<{ path: string | null }>("BrowseForFile", {
       title: "Select an extension package",
       filter: "Extension package (*.zip)|*.zip",
     });
     if (!res?.path) return;
-    installPath.value = res.path;
-    installDialogVisible.value = true;
+    askConsent({ kind: "file", path: res.path });
   } catch (e) {
     console.error("File picker failed", e);
   }
 }
 
 async function confirmInstall() {
+  const origin = installOrigin.value;
+  if (!origin) return;
   installBusy.value = true;
   installError.value = "";
   try {
-    const res = await invoke<{ installed?: boolean; alreadyInstalled?: boolean }>(
-      "InstallExtensionFromFile",
-      {
-        path: installPath.value,
-        consent: true,
-        overwrite: installOverwrite.value,
-      },
-    );
+    const res =
+      origin.kind === "file"
+        ? await invoke<{ installed?: boolean; alreadyInstalled?: boolean }>(
+            "InstallExtensionFromFile",
+            { path: origin.path, consent: true, overwrite: installOverwrite.value },
+          )
+        : await invoke<{ installed?: boolean; alreadyInstalled?: boolean }>(
+            "InstallExtensionFromSource",
+            {
+              source: origin.source,
+              expectedId: origin.expectedId ?? null,
+              consent: true,
+              overwrite: installOverwrite.value,
+            },
+          );
     // Structured signal from the backend (not error-prose matching): same id already
     // installed — keep the dialog open and arm the explicit replace flow.
     if (res?.alreadyInstalled) {
@@ -294,12 +319,74 @@ async function confirmInstall() {
       return;
     }
     installDialogVisible.value = false;
-    await Promise.all([load(), loadPaths(), loadCommands()]);
+    await Promise.all([load(), loadPaths(), loadCommands(), loadCatalog()]);
   } catch (e) {
     installError.value = e instanceof Error ? e.message : String(e);
   } finally {
     installBusy.value = false;
   }
+}
+
+// ---- Catalog: the answer to "where do I get extensions". Names and repository links first —
+// that part works offline and is the whole point for a reader — with a one-click install on top
+// for the entries that publish releases. The list is the one shipped with the plugin plus the
+// user's own catalog.json; installs always download from the publisher, never from us.
+interface CatalogRow {
+  id: string;
+  name: string;
+  publisher?: string | null;
+  description?: string | null;
+  source?: string | null;
+  website?: string | null;
+  license?: string | null;
+  tags: string[];
+  userSupplied: boolean;
+  installed: boolean;
+  installedVersion?: string | null;
+  zone?: "managed" | "dev" | null;
+}
+
+const catalog = ref<CatalogRow[]>([]);
+const userCatalogPath = ref("");
+const catalogLoading = ref(false);
+
+async function loadCatalog() {
+  catalogLoading.value = true;
+  try {
+    const res = await invoke<{ entries: CatalogRow[]; userCatalogPath: string }>(
+      "GetExtensionCatalog",
+    );
+    catalog.value = res?.entries ?? [];
+    userCatalogPath.value = res?.userCatalogPath ?? "";
+  } catch (e) {
+    notifications.error(`Could not read the extension catalog: ${errorText(e)}`);
+  } finally {
+    catalogLoading.value = false;
+  }
+}
+
+function installFromCatalog(row: CatalogRow) {
+  if (!row.source) return;
+  askConsent(
+    { kind: "source", source: row.source, expectedId: row.id, name: row.name },
+    row.installed,
+  );
+}
+
+// ---- Install from a pasted repository: the same route, for anything not in the catalog.
+const sourceDialogVisible = ref(false);
+const sourceInput = ref("");
+
+function askForSource() {
+  sourceInput.value = "";
+  sourceDialogVisible.value = true;
+}
+
+function proceedWithSource() {
+  const source = sourceInput.value.trim();
+  if (!source) return;
+  sourceDialogVisible.value = false;
+  askConsent({ kind: "source", source });
 }
 
 // ---- Update feeds: manual check (network), then per-row badge + Update action.
@@ -585,6 +672,7 @@ async function setHostButtonVisible(row: HostButtonRow, visible: boolean) {
 
 onMounted(() => {
   load();
+  loadCatalog();
   loadPaths();
   loadMcp();
   loadCodeExec();
@@ -604,6 +692,7 @@ onMounted(() => {
     <Tabs value="extensions" lazy>
       <TabList>
         <Tab value="extensions">Extensions</Tab>
+        <Tab value="catalog">Catalog</Tab>
         <Tab value="commands">Commands</Tab>
         <Tab value="system">System</Tab>
       </TabList>
@@ -632,42 +721,6 @@ onMounted(() => {
             />
             <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
           </div>
-
-    <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48). -->
-    <Dialog
-      v-model:visible="installDialogVisible"
-      modal
-      header="Install third-party extension"
-      class="w-[34rem]"
-      :closable="!installBusy"
-      :closeOnEscape="!installBusy"
-    >
-      <div class="text-sm flex flex-col gap-3">
-        <div class="break-all text-surface-500">{{ installPath }}</div>
-        <p>
-          This package contains <b>third-party code</b> that will run inside Revit with full access
-          to your models and machine. Its <b>publisher is responsible</b> for what it does —
-          AnalyseTool does not review, endorse or guarantee third-party extensions. Install only if
-          you trust the source.
-        </p>
-        <p v-if="installError" class="text-red-500">{{ installError }}</p>
-      </div>
-      <template #footer>
-        <Button
-          label="Cancel"
-          text
-          severity="secondary"
-          :disabled="installBusy"
-          @click="installDialogVisible = false"
-        />
-        <Button
-          :label="installOverwrite ? 'Replace installed version' : 'I trust it — install'"
-          :severity="installOverwrite ? 'danger' : undefined"
-          :loading="installBusy"
-          @click="confirmInstall"
-        />
-      </template>
-    </Dialog>
 
     <!-- Delete confirmation, for both zones. -->
     <Dialog
@@ -1031,6 +1084,110 @@ onMounted(() => {
 
         </TabPanel>
 
+        <TabPanel value="catalog">
+          <!-- The directory: which repositories to get extensions from. Links first — that half works
+               offline and answers "where does this live" — with a one-click install where a
+               publisher ships releases. -->
+          <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-6">
+            <div class="flex items-start justify-between mb-4 gap-3">
+              <div>
+                <h2 class="text-sm font-bold">Where extensions come from</h2>
+                <p class="text-xs text-surface-500 max-w-2xl">
+                  Every entry is a public repository. <b>Install</b> downloads the package from the
+                  publisher's own release — AnalyseTool is only the courier and does not host, review
+                  or endorse third-party extensions.
+                </p>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <Button
+                  label="Install from repository…"
+                  icon="pi pi-cloud-download"
+                  size="small"
+                  severity="secondary"
+                  @click="askForSource"
+                />
+                <Button
+                  icon="pi pi-refresh"
+                  size="small"
+                  text
+                  severity="secondary"
+                  :loading="catalogLoading"
+                  v-tooltip.top="'Reload the catalog'"
+                  @click="loadCatalog"
+                />
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <div
+                v-for="row in catalog"
+                :key="row.id"
+                class="border border-surface-200 rounded-lg p-3 flex items-start justify-between gap-4"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-medium">{{ row.name }}</span>
+                    <Tag v-if="row.installed" value="installed" severity="success" />
+                    <Tag v-if="row.userSupplied" value="local catalog" severity="secondary" />
+                    <Tag v-for="tag in row.tags" :key="tag" :value="tag" severity="secondary" />
+                  </div>
+                  <div class="text-xs text-surface-500 mt-0.5">
+                    <span v-if="row.publisher">{{ row.publisher }}</span>
+                    <span v-if="row.license"> · {{ row.license }}</span>
+                    <span v-if="row.installedVersion"> · installed {{ row.installedVersion }}</span>
+                  </div>
+                  <p v-if="row.description" class="text-xs text-surface-600 mt-1">
+                    {{ row.description }}
+                  </p>
+                  <!-- The link is the part a person can act on without this window: it is where the
+                       code, the README and the releases are. -->
+                  <a
+                    v-if="safeLink(row.website)"
+                    :href="safeLink(row.website)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs font-mono break-all inline-flex items-center gap-1 mt-1"
+                  >
+                    <i class="pi pi-external-link text-[0.65rem]" />{{ row.website }}
+                  </a>
+                  <div v-else-if="row.source" class="text-xs font-mono text-surface-500 mt-1">
+                    {{ row.source }}
+                  </div>
+                </div>
+
+                <div class="shrink-0 flex flex-col items-end gap-1">
+                  <!-- A dev-zone hit is the author's own working copy of this id: installing the
+                       package on top would leave two extensions claiming one id. -->
+                  <Button
+                    v-if="row.source && row.zone !== 'dev'"
+                    :label="row.installed ? 'Reinstall' : 'Install'"
+                    :icon="row.installed ? 'pi pi-replay' : 'pi pi-download'"
+                    size="small"
+                    :severity="row.installed ? 'secondary' : undefined"
+                    @click="installFromCatalog(row)"
+                  />
+                  <span v-else-if="row.zone === 'dev'" class="text-xs text-surface-500">
+                    open as a dev copy
+                  </span>
+                  <span v-else class="text-xs text-surface-500">manual download</span>
+                </div>
+              </div>
+
+              <div v-if="!catalog.length && !catalogLoading" class="text-surface-500 text-sm p-4">
+                The catalog is empty. Add entries in the file below, or use
+                <b>Install from repository…</b>
+              </div>
+            </div>
+
+            <p class="text-xs text-surface-500 mt-4">
+              Own or company repositories go in
+              <span class="font-mono break-all">{{ userCatalogPath }}</span> — same shape as the
+              shipped list (<span class="font-mono">id, name, description, source, website</span>);
+              an entry with an existing id replaces the shipped one.
+            </p>
+          </section>
+        </TabPanel>
+
         <TabPanel value="commands">
     <!-- Commands: everything callable from a web extension via AT.invoke(name, payload). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-6">
@@ -1268,6 +1425,79 @@ onMounted(() => {
         </TabPanel>
       </TabPanels>
     </Tabs>
+
+    <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48).
+         Outside the tab panels — the catalog and the extension list both open it, and a lazy
+         TabPanel would unmount it under the user's hands. -->
+    <Dialog
+      v-model:visible="installDialogVisible"
+      modal
+      header="Install third-party extension"
+      class="w-[34rem]"
+      :closable="!installBusy"
+      :closeOnEscape="!installBusy"
+    >
+      <div class="text-sm flex flex-col gap-3">
+        <div class="break-all text-surface-500 font-mono text-xs">{{ installSubject }}</div>
+        <p>
+          This package contains <b>third-party code</b> that will run inside Revit with full access
+          to your models and machine. Its <b>publisher is responsible</b> for what it does —
+          AnalyseTool does not review, endorse or guarantee third-party extensions. Install only if
+          you trust the source.
+        </p>
+        <p v-if="installOrigin?.kind === 'source'" class="text-xs text-surface-500">
+          The package is downloaded from the publisher's own release, not from AnalyseTool.
+        </p>
+        <p v-if="installError" class="text-red-500">{{ installError }}</p>
+      </div>
+      <template #footer>
+        <Button
+          label="Cancel"
+          text
+          severity="secondary"
+          :disabled="installBusy"
+          @click="installDialogVisible = false"
+        />
+        <Button
+          :label="installOverwrite ? 'Replace installed version' : 'I trust it — install'"
+          :severity="installOverwrite ? 'danger' : undefined"
+          :loading="installBusy"
+          @click="confirmInstall"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Install from a repository the user names: anything not in the catalog. -->
+    <Dialog
+      v-model:visible="sourceDialogVisible"
+      modal
+      header="Install from a repository"
+      class="w-[34rem]"
+    >
+      <div class="text-sm flex flex-col gap-3">
+        <p class="text-surface-600">
+          Paste the repository of the extension. What gets installed is the package attached to its
+          latest release.
+        </p>
+        <InputText
+          v-model="sourceInput"
+          placeholder="https://github.com/owner/repo"
+          class="w-full"
+          autofocus
+          @keyup.enter="proceedWithSource"
+        />
+        <p class="text-xs text-surface-500">
+          Accepted: a GitHub repository URL, <span class="font-mono">owner/repo</span>,
+          <span class="font-mono">github:owner/repo</span>, or an https URL returning
+          <span class="font-mono">version</span> and
+          <span class="font-mono">downloadUrl</span>.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" @click="sourceDialogVisible = false" />
+        <Button label="Continue" :disabled="!sourceInput.trim()" @click="proceedWithSource" />
+      </template>
+    </Dialog>
 
     <CreateExtensionTemplateDrawer
       v-model:visible="templateDrawerVisible"
