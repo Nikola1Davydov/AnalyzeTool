@@ -136,6 +136,13 @@ function openEdit(row: ExtensionRow) {
   editDrawerVisible.value = true;
 }
 
+// Save already reloaded on the host; re-list so the row shows the new name. A function, not an
+// inline Promise.all in the template: Vue's template sandbox exposes only a whitelist of globals,
+// and Promise is not on it — the save went through and the handler then threw "reading 'all'".
+async function afterEdit() {
+  await Promise.all([load(), loadPaths()]);
+}
+
 async function load() {
   loading.value = true;
   try {
@@ -1148,12 +1155,10 @@ onMounted(() => {
 
     <CreateExtensionTemplateDrawer v-model:visible="templateDrawerVisible" @created="reload" />
 
-    <!-- Save already reloaded on the host; re-list so the row shows the new name and the ribbon
-         change is mirrored here. -->
     <EditExtensionDrawer
       v-model:visible="editDrawerVisible"
       :extensionId="editTargetId"
-      @saved="Promise.all([load(), loadPaths()])"
+      @saved="afterEdit"
     />
   </div>
 </template>
