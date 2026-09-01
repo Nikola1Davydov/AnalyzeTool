@@ -212,9 +212,9 @@ MCP, ни единого вызова модели в рантайме. Моде
 | | Что | Размер |
 | --- | --- | --- |
 | 1 | [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97): пройти по цепочке `InnerException`, добавить `Log.Error` с именем команды и аргументами, тип исключения в `hint` | часы |
-| 2 | **Включить прогон тестов в CI**: цель `Test` в NUKE, `Ci` зависит от неё. Это не написание тестов — проекты `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests` уже есть и просто не запускаются | часы |
+| 2 | **Включить прогон тестов в CI** ([#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128)): цель `Test` в NUKE, `Ci` зависит от неё. Это не написание тестов — проекты `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests` уже есть и просто не запускаются | часы |
 | 3 | [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98): воспроизвести один раз, прочитать настоящее исключение, починить, **закрепить тестом** | после первых двух — вероятно день |
-| 4 | `GetFamilyPreview`: пометить `HiddenFromMcp` одной строкой, пока нет блока изображения | минуты |
+| 4 | `GetFamilyPreview` ([#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129)): пометить `HiddenFromMcp` одной строкой, пока нет блока изображения | минуты |
 | 5 | [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100): слать `notifications/tools/list_changed` при перезагрузке расширений | день |
 | 6 | [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102): сначала выяснить, запрос из WebView не уходит или не получает ответа. Ограничить по времени | неизвестно, отсюда и таймбокс |
 
