@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Docking;
 using AnalyseTool.Core.Common.Extensions;
@@ -35,13 +35,15 @@ namespace AnalyseTool.App.Common.Extensions
         private const string PinnedPanelTitle = "Scripts";
 
         private static readonly HashSet<string> _createdTabs = new(StringComparer.OrdinalIgnoreCase);
-        // extension id -> (button, key of the panel it currently sits in)
+        // "extension id\nbutton index" -> (button, key of the panel it currently sits in). Keyed per
+        // BUTTON, not per extension: one manifest may declare several, and each is placed, moved and
+        // removed on its own.
         private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _extButtons =
             new(StringComparer.OrdinalIgnoreCase);
         // command name -> its button, for commands the USER pinned in the launcher. Kept apart from
-        // _extButtons because the two are keyed differently and answer to different owners: one
-        // extension has one manifest button, while a pin names a single command and may name one from
-        // an extension whose manifest we must not write, or from no extension at all.
+        // _extButtons because the two are keyed differently and answer to different owners: a manifest
+        // button belongs to an extension, while a pin names a single command and may name one from an
+        // extension whose manifest we must not write, or from no extension at all.
         private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _pinnedButtons =
             new(StringComparer.OrdinalIgnoreCase);
         // Built once, on the UI thread, the first time a pinned button needs it.
@@ -154,25 +156,34 @@ namespace AnalyseTool.App.Common.Extensions
             List<ExtensionDescriptor> found = ExtensionCatalog
                 .Scan(revitVersion)
                 .Where(d => d.HasUi && d.IsCompatibleWithHost && ExtensionStateStore.IsEnabled(d.Manifest.Id))
-                .Where(d => !UserTookButtonAway(d))
                 .ToList();
 
-            HashSet<string> foundIds = new(found.Select(d => d.Manifest.Id), StringComparer.OrdinalIgnoreCase);
-
-            RemoveStaleButtons(foundIds);
+            // Every button the manifests ask for, by ribbon key — the set the ribbon must end up
+            // holding. A button the user turned off in the launcher simply never enters it.
+            HashSet<string> wantedKeys = new(StringComparer.OrdinalIgnoreCase);
             foreach (ExtensionDescriptor descriptor in found)
-                SyncButton(descriptor);
+                for (int i = 0; i < descriptor.Manifest.Ui!.EffectiveButtons().Count; i++)
+                    if (!UserTookButtonAway(descriptor.Manifest.Ui!.EffectiveButtons()[i]))
+                        wantedKeys.Add(ButtonKey(descriptor.Manifest.Id, i));
+
+            RemoveStaleButtons(wantedKeys);
+            foreach (ExtensionDescriptor descriptor in found)
+                SyncButtons(descriptor);
 
             RefreshPinnedButtons(found);
             RemoveEmptyPanelsAndTabs();
         }
 
+        /// <summary>Ribbon key for one manifest button. The index is the identity: renaming a button
+        /// keeps its place on the ribbon, and only reordering moves it.</summary>
+        private static string ButtonKey(string extensionId, int index) => extensionId + "\n" + index;
+
         /// <summary>A manifest button the user turned off in the launcher. Only COMMAND buttons can be
         /// turned off there — the launcher lists commands, and a button that opens a page is not one,
         /// so a UI extension keeps its button no matter what the store says about its commands.</summary>
-        private static bool UserTookButtonAway(ExtensionDescriptor descriptor)
+        private static bool UserTookButtonAway(ExtensionButton button)
         {
-            string? command = descriptor.Manifest.Ui?.Button?.Command;
+            string? command = button.Command;
             return !string.IsNullOrWhiteSpace(command) && CommandButtons.Override(command!) == false;
         }
 
@@ -186,7 +197,8 @@ namespace AnalyseTool.App.Common.Extensions
         private static void RefreshPinnedButtons(IReadOnlyCollection<ExtensionDescriptor> shownExtensions)
         {
             HashSet<string> alreadyShown = new(
-                shownExtensions.Select(d => d.Manifest.Ui?.Button?.Command)
+                shownExtensions.SelectMany(d => d.Manifest.Ui!.EffectiveButtons())
+                    .Select(b => b.Command)
                     .Where(c => !string.IsNullOrWhiteSpace(c))
                     .Select(c => c!),
                 StringComparer.OrdinalIgnoreCase);
@@ -257,46 +269,68 @@ namespace AnalyseTool.App.Common.Extensions
 
         /// <summary>Removes the AdWindows buttons (and cached descriptors) of extensions that are no
         /// longer present in the latest scan.</summary>
-        private static void RemoveStaleButtons(HashSet<string> foundIds)
+        private static void RemoveStaleButtons(HashSet<string> wantedKeys)
         {
-            foreach (string id in _extButtons.Keys.ToList())
+            foreach (string key in _extButtons.Keys.ToList())
             {
-                if (foundIds.Contains(id)) continue;
+                if (wantedKeys.Contains(key)) continue;
 
-                (AdWin.RibbonButton button, string panelKey) = _extButtons[id];
+                (AdWin.RibbonButton button, string panelKey) = _extButtons[key];
                 if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? oldPanel))
                     oldPanel.Items.Remove(button);
-                _extButtons.Remove(id);
-                _descriptors.Remove(id);
+                _extButtons.Remove(key);
             }
+
+            // A descriptor is dropped only when the extension has NO buttons left, not when one of
+            // several went away.
+            foreach (string id in _descriptors.Keys.ToList())
+                if (!_extButtons.Keys.Any(k => k.StartsWith(id + "\n", StringComparison.OrdinalIgnoreCase)))
+                    _descriptors.Remove(id);
         }
 
-        /// <summary>Brings a single extension's button in sync: creates it if new, otherwise updates its
-        /// text/tooltip/icon and moves it when the manifest's tab/panel changed.</summary>
-        private static void SyncButton(ExtensionDescriptor descriptor)
+        /// <summary>Brings one extension's buttons in sync: creates what is new, updates
+        /// text/tooltip/icon on the rest, and moves any whose tab/panel changed in the manifest.</summary>
+        private static void SyncButtons(ExtensionDescriptor descriptor)
         {
             string id = descriptor.Manifest.Id;
             _descriptors[id] = descriptor; // refresh for click-time lookup
 
             ExtensionUi ui = descriptor.Manifest.Ui!;
-            ExtensionButton info = ui.Button!;
-            string tab = string.IsNullOrWhiteSpace(ui.Tab) ? DefaultTab : ui.Tab!;
-            string panelName = string.IsNullOrWhiteSpace(ui.Panel) ? ExtensionsPanelTitle : ui.Panel!;
-            string panelKey = tab + "\n" + panelName;
+            IReadOnlyList<ExtensionButton> buttons = ui.EffectiveButtons();
 
-            AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
-            if (source is null) return;
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                ExtensionButton info = buttons[i];
+                if (UserTookButtonAway(info)) continue;
 
-            ImageSource? icon = LoadIcon(descriptor, info.Icon);
+                // Placement falls back from the button to the extension to the host default, so a
+                // single-button manifest never repeats what ui.tab / ui.panel already said.
+                string tab = Coalesce(info.Tab, ui.Tab, DefaultTab);
+                string panelName = Coalesce(info.Panel, ui.Panel, ExtensionsPanelTitle);
+                string panelKey = tab + "\n" + panelName;
 
-            if (_extButtons.TryGetValue(id, out (AdWin.RibbonButton Button, string PanelKey) entry))
-                UpdateButton(id, entry, info, icon, source, panelKey);
-            else
-                _extButtons[id] = (CreateButton(id, info, icon, source), panelKey);
+                AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
+                if (source is null) continue;
+
+                string key = ButtonKey(id, i);
+                ImageSource? icon = LoadIcon(descriptor, info.Icon);
+
+                if (_extButtons.TryGetValue(key, out (AdWin.RibbonButton Button, string PanelKey) entry))
+                    UpdateButton(key, entry, info, icon, source, panelKey);
+                else
+                    _extButtons[key] = (CreateButton(id, i, info, icon, source), panelKey);
+            }
         }
 
+        /// <summary>First non-blank of the three: a per-button value overrides the extension's, which
+        /// overrides the host default.</summary>
+        private static string Coalesce(string? button, string? extension, string fallback) =>
+            !string.IsNullOrWhiteSpace(button) ? button!
+            : !string.IsNullOrWhiteSpace(extension) ? extension!
+            : fallback;
+
         /// <summary>Updates an existing button in place, relocating it to a new panel if its key changed.</summary>
-        private static void UpdateButton(string id, (AdWin.RibbonButton Button, string PanelKey) entry,
+        private static void UpdateButton(string key, (AdWin.RibbonButton Button, string PanelKey) entry,
             ExtensionButton info, ImageSource? icon, AdWin.RibbonPanelSource target, string panelKey)
         {
             if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
@@ -304,7 +338,7 @@ namespace AnalyseTool.App.Common.Extensions
                 if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
                     from.Items.Remove(entry.Button);
                 target.Items.Add(entry.Button);
-                _extButtons[id] = (entry.Button, panelKey);
+                _extButtons[key] = (entry.Button, panelKey);
             }
 
             entry.Button.Text = info.Name;
@@ -313,20 +347,20 @@ namespace AnalyseTool.App.Common.Extensions
         }
 
         /// <summary>Creates a new AdWindows button for an extension and adds it to the given panel.</summary>
-        private static AdWin.RibbonButton CreateButton(string id, ExtensionButton info,
+        private static AdWin.RibbonButton CreateButton(string id, int index, ExtensionButton info,
             ImageSource? icon, AdWin.RibbonPanelSource target)
         {
             // A button either INVOKES a command directly (command-only script extensions, where
             // ui.button.command is set) or OPENS the extension's WebView window (UI extensions).
             string? command = info.Command;
             RelayCommand handler = string.IsNullOrWhiteSpace(command)
-                ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp)))
+                ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, index, uiApp)))
                 : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
                     RunCommandFromRibbon(command!, uiApp, LauncherLists(id))));
 
             AdWin.RibbonButton button = new()
             {
-                Id = $"AnalyseTool.Ext.{id}",
+                Id = $"AnalyseTool.Ext.{id}.{index}",
                 Text = info.Name,
                 ShowText = true,
                 ShowImage = true,
@@ -442,31 +476,44 @@ namespace AnalyseTool.App.Common.Extensions
             TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
         }
 
-        private static void OpenExtension(string id, UIApplication uiApp)
+        private static void OpenExtension(string id, int index, UIApplication uiApp)
         {
             if (!_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor)) return;
 
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
 
-            // A dockable extension shows inside the shared pane (toggle); otherwise it opens its own window.
             ExtensionUi? ui = descriptor.Manifest.Ui;
-            if (ui?.Dockable == true)
+            IReadOnlyList<ExtensionButton> buttons = ui?.EffectiveButtons() ?? Array.Empty<ExtensionButton>();
+            ExtensionButton? info = index >= 0 && index < buttons.Count ? buttons[index] : null;
+
+            // Entry page and dockability are properties of the SURFACE, not of the extension: a manager
+            // opens as a window while its placement palette belongs in the dock. The button decides; the
+            // extension-level values are the fallback for the single-button form.
+            string entryHtml = !string.IsNullOrWhiteSpace(info?.EntryHtml) ? info!.EntryHtml!
+                : ui?.EntryHtml ?? "index.html";
+            bool dockable = info?.Dockable ?? ui?.Dockable ?? false;
+
+            // The window/pane key is per BUTTON, so two surfaces of one extension do not fight over the
+            // same window or toggle each other out of the dock.
+            string key = ButtonKey(id, index);
+
+            if (dockable)
             {
-                DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
+                DockPaneHost.ShowExtension(id, descriptor.Directory, ui?.DevUrl, entryHtml, key);
                 return;
             }
 
-            // One window per extension id — a second click focuses the open one.
-            if (_extWindows.TryGetValue(id, out Window? existing))
+            // One window per button — a second click focuses the open one.
+            if (_extWindows.TryGetValue(key, out Window? existing))
             {
                 Restore(existing);
                 return;
             }
 
-            Window window = new ExtensionWindow(descriptor);
-            window.Closed += (_, _) => _extWindows.Remove(id);
-            _extWindows[id] = window;
+            Window window = new ExtensionWindow(descriptor, entryHtml);
+            window.Closed += (_, _) => _extWindows.Remove(key);
+            _extWindows[key] = window;
             window.Show();
         }
 
@@ -713,9 +760,8 @@ namespace AnalyseTool.App.Common.Extensions
                 catch { /* fall through to the default */ }
             }
 
-            string label = string.IsNullOrWhiteSpace(descriptor.Manifest.Ui?.Button?.Name)
-                ? descriptor.Manifest.Id
-                : descriptor.Manifest.Ui!.Button!.Name;
+            string? firstName = descriptor.Manifest.Ui?.EffectiveButtons().FirstOrDefault()?.Name;
+            string label = string.IsNullOrWhiteSpace(firstName) ? descriptor.Manifest.Id : firstName!;
             return BuildDefaultIcon(label);
         }
 

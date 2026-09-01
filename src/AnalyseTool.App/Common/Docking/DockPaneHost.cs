@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.Core;
@@ -74,8 +74,12 @@ namespace AnalyseTool.App.Common.Docking
 
         /// <summary>Shows an extension's page in the shared pane, with toggle. Keyed by extension id so a
         /// second click on the same extension's button hides the pane.</summary>
-        public static void ShowExtension(string id, string directory, string? devUrl, string entryHtml) =>
-            Toggle("ext:" + id, p => p.ShowExtension(id, directory, devUrl, entryHtml));
+        /// <param name="contentKey">Identity of the CONTENT for toggling. Defaults to the extension id;
+        /// an extension with several buttons passes a per-button key so two of its surfaces do not
+        /// toggle each other out of the pane.</param>
+        public static void ShowExtension(string id, string directory, string? devUrl, string entryHtml,
+            string? contentKey = null) =>
+            Toggle("ext:" + (contentKey ?? id), p => p.ShowExtension(id, directory, devUrl, entryHtml));
 
         /// <summary>
         /// Toggles the pane for a piece of content (identified by <paramref name="contentKey"/>):

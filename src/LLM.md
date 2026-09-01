@@ -199,6 +199,41 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.button.name` | — | Button label (also the display name). |
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
 | `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
+| `schema` | — | Manifest FORMAT version, not yours. Absent = 1. Set `2` when you use `ui.buttons`. Older schemas keep loading. |
+
+### 3.1 Several buttons — `ui.buttons`
+
+One `ui.button` is right for one surface. An extension with **two** — say a manager window and a
+dockable placement palette — needs `ui.buttons`, because the page to open and whether it docks are
+properties of the SURFACE, not of the extension:
+
+```json
+{
+  "schema": 2,
+  "id": "acme.doors",
+  "version": "1.0.0",
+  "entryAssembly": "Acme.Doors.dll",
+  "ui": {
+    "tab": "AnalyseTool",
+    "panel": "Acme",
+    "buttons": [
+      { "name": "Manager", "entryHtml": "dist/index.html", "icon": "manager.png" },
+      { "name": "Palette", "entryHtml": "dist/palette.html", "dockable": true, "icon": "palette.png" }
+    ]
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `entryHtml` | Page for THIS button. Falls back to `ui.entryHtml`. |
+| `dockable` | Docking for THIS button. Falls back to `ui.dockable`. |
+| `tab` / `panel` | Placement for THIS button. Falls back to `ui.tab` / `ui.panel`. |
+| `order` | Sort order in the panel; equal values keep declaration order. |
+| `name` / `tooltip` / `icon` / `command` | As in the single-button form. |
+
+`ui.button` (singular) still works and is still the right choice for one surface — do not rewrite a
+working manifest. Use whichever fits; declaring both is not an error, `ui.buttons` simply wins.
 
 ---
 

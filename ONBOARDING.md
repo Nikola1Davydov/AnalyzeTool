@@ -173,6 +173,32 @@ shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
 | `ui.devUrl` | — | Dev server URL (Vite/HMR). When set, the window loads this instead of the built files. **Remove for release.** |
 | `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser) instead of a separate window. Click again to hide; another dockable button switches the pane's content. Picked up live via Reload. |
+| `schema` | — | Manifest FORMAT version, not the extension's. Absent = 1. Set `2` when using `ui.buttons`. The host keeps loading older schemas — a migration is an offer, never a requirement. |
+
+#### Several buttons on one extension
+
+`ui.button` describes one surface. An extension with two — a manager window and a dockable palette,
+say — declares `ui.buttons` instead, because the page to open and whether it docks belong to the
+SURFACE, not to the extension:
+
+```json
+"ui": {
+  "tab": "AnalyseTool",
+  "panel": "Acme",
+  "buttons": [
+    { "name": "Manager", "entryHtml": "dist/index.html" },
+    { "name": "Palette", "entryHtml": "dist/palette.html", "dockable": true }
+  ]
+}
+```
+
+Each entry may carry `entryHtml`, `dockable`, `tab`, `panel` and `order`, each falling back to the
+`ui.*` value when omitted — so a single-button manifest never repeats itself. `name`, `tooltip`,
+`icon` and `command` work exactly as in the singular form.
+
+The singular `ui.button` is not deprecated: for one surface it stays the clearer choice, and existing
+manifests need no change. When both are present, `ui.buttons` wins.
+
 | `ui.tab` | — | Ribbon tab to place the button on. Default `"AnalyseTool"`. |
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
 | `ui.button.name` | — | Button label — also used as the extension's display name (Settings list, window title). |

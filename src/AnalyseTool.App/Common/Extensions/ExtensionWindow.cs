@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Transport;
 using AnalyseTool.Core;
@@ -20,12 +20,16 @@ namespace AnalyseTool.App.Common.Extensions
     internal sealed class ExtensionWindow : Window
     {
         private readonly ExtensionDescriptor _extension;
+        private readonly string? _entryHtml;
         private readonly WebView2 _webView = new();
         private WebView2Transport? _transport;
 
-        public ExtensionWindow(ExtensionDescriptor extension)
+        /// <param name="entryHtml">Page to open. Null falls back to the manifest's ui.entryHtml — one
+        /// extension may declare several buttons, and each opens its own surface.</param>
+        public ExtensionWindow(ExtensionDescriptor extension, string? entryHtml = null)
         {
             _extension = extension;
+            _entryHtml = entryHtml;
             Title = BuildTitle(extension.Manifest);
             Width = 1100;
             Height = 750;
@@ -62,7 +66,7 @@ namespace AnalyseTool.App.Common.Extensions
                 host, _extension.Directory, CoreWebView2HostResourceAccessKind.Allow);
 
             // Accept sub-paths ("Acme/index.html"); tolerate backslashes and a leading slash.
-            string entryHtml = (_extension.Manifest.Ui?.EntryHtml ?? "index.html")
+            string entryHtml = (_entryHtml ?? _extension.Manifest.Ui?.EntryHtml ?? "index.html")
                 .Replace('\\', '/')
                 .TrimStart('/');
             _webView.CoreWebView2.Navigate($"https://{host}/{entryHtml}");

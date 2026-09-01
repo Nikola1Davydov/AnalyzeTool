@@ -9,6 +9,13 @@ namespace AnalyseTool.Core.Common.Extensions
     /// </summary>
     internal sealed record ExtensionManifest
     {
+        /// <summary>Manifest FORMAT version — not the extension's version. Absent means 1, so every
+        /// manifest written before this field stays valid. The host reads older schemas for the life of
+        /// a major: a migration is an offer, never a requirement. Without this field neither the host
+        /// nor an agent can tell an old plugin.json from a new one, which is the whole point (#127).</summary>
+        [JsonProperty("schema")]
+        public int Schema { get; init; } = 1;
+
         /// <summary>Stable unique id, also used as the command namespace prefix (e.g. "acme.tools").</summary>
         [JsonProperty("id")]
         public string Id { get; init; } = string.Empty;
@@ -83,9 +90,28 @@ namespace AnalyseTool.Core.Common.Extensions
         [JsonProperty("panel")]
         public string? Panel { get; init; }
 
-        /// <summary>Ribbon button definition.</summary>
+        /// <summary>Ribbon button definition — the SINGLE-button form (schema 1). Still supported and
+        /// still the right choice for an extension with one surface.</summary>
         [JsonProperty("button")]
         public ExtensionButton? Button { get; init; }
+
+        /// <summary>Several ribbon buttons, each able to open its own page in its own way. An extension
+        /// with two surfaces — a manager window and a dockable palette, say — cannot be expressed by
+        /// <see cref="Button"/> alone, because entry page and dockability live per BUTTON, not per
+        /// extension. Additive: when this is absent the singular form is used unchanged.</summary>
+        [JsonProperty("buttons")]
+        public IReadOnlyList<ExtensionButton>? Buttons { get; init; }
+
+        /// <summary>The buttons to build, from whichever form the manifest used. Ordered by
+        /// <see cref="ExtensionButton.Order"/>, then by declaration — so an author who does not care
+        /// about order gets the order they wrote.</summary>
+        public IReadOnlyList<ExtensionButton> EffectiveButtons()
+        {
+            if (Buttons is { Count: > 0 })
+                return Buttons.Select((b, i) => (b, i)).OrderBy(t => t.b.Order).ThenBy(t => t.i)
+                              .Select(t => t.b).ToList();
+            return Button is null ? Array.Empty<ExtensionButton>() : new[] { Button };
+        }
     }
 
     /// <summary>Ribbon button metadata for a JS extension. <see cref="Name"/> also serves as the
@@ -107,5 +133,31 @@ namespace AnalyseTool.Core.Common.Extensions
         /// (SaveAsCommand). When null, the button opens the extension's UI page.</summary>
         [JsonProperty("command")]
         public string? Command { get; init; }
+
+        // ---- Per-button overrides (schema 2). Null means "inherit from ui.*", so a single-button
+        // ---- manifest never has to repeat what it already said one level up.
+
+        /// <summary>Entry HTML for THIS button, overriding <see cref="ExtensionUi.EntryHtml"/>. Two
+        /// buttons of one extension normally open two different pages.</summary>
+        [JsonProperty("entryHtml")]
+        public string? EntryHtml { get; init; }
+
+        /// <summary>Whether THIS button shows in the shared dockable pane, overriding
+        /// <see cref="ExtensionUi.Dockable"/>. Dockability is a property of a surface, not of an
+        /// extension: a manager opens as a window while its placement palette belongs in the dock.</summary>
+        [JsonProperty("dockable")]
+        public bool? Dockable { get; init; }
+
+        /// <summary>Ribbon tab for THIS button, overriding <see cref="ExtensionUi.Tab"/>.</summary>
+        [JsonProperty("tab")]
+        public string? Tab { get; init; }
+
+        /// <summary>Ribbon panel for THIS button, overriding <see cref="ExtensionUi.Panel"/>.</summary>
+        [JsonProperty("panel")]
+        public string? Panel { get; init; }
+
+        /// <summary>Sort order within the panel; equal values keep declaration order.</summary>
+        [JsonProperty("order")]
+        public int Order { get; init; }
     }
 }
