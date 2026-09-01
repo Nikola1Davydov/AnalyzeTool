@@ -11,13 +11,22 @@ issue — не тикеты, а разобранные дизайн-заметк
 реальных сессий, отвергнутые альтернативы и явные пометки «не проверено».
 
 **Где:** [issues репозитория Nikola1Davydov/AnalyzeTool](https://github.com/Nikola1Davydov/AnalyzeTool/issues)
-**Снимки:** [`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue, тела ·
+**Снимки:**
+[`../../raw/github-issues-2026-09-01.md`](../../raw/github-issues-2026-09-01.md) — 91 issue, тела (актуальный) ·
+[`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue, предыдущий ·
 [`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — все 46 комментариев
 **Прочитан:** 2026-08-31 через публичный API (`/issues?state=all`), pull request'ы отфильтрованы
 
 ## Форма
 
-63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
+На 2026-09-01 — 91 issue, 66 открытых. Разница с предыдущим снимком: заведены
+[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127),
+[#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128) и
+[#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) — все три произведены из этой
+вики, а не приняты в неё. Комментариев по-прежнему 46, поэтому их снимок не пересобирался:
+дублировать 100 КБ без изменений незачем.
+
+Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:
 
 | Кластер | Issue | Что это |

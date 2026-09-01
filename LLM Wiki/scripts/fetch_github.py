@@ -47,17 +47,27 @@ def paged(path, repo, cap=20):
     return out
 
 
-def guard(path):
-    if os.path.exists(path):
+def guard(path, force=False):
+    """raw/ неизменяем: существующий снимок не трогаем. С --force пишем соседний
+    файл с порядковым номером, а старый остаётся на месте."""
+    if not os.path.exists(path):
+        return path
+    if not force:
         print(f"!! {os.path.basename(path)} уже существует — не перезаписываю (raw/ неизменяем).")
-        print("   Нужен свежий снимок — задайте другую дату: --date ГГГГ-ММ-ДД")
-        return False
-    return True
+        print("   Пересняли в тот же день? Добавьте --force — старый снимок останется рядом.")
+        return None
+    base, ext = os.path.splitext(path)
+    n = 2
+    while os.path.exists(f"{base}-{n}{ext}"):
+        n += 1
+    alt = f"{base}-{n}{ext}"
+    print(f"   {os.path.basename(path)} уже есть — пишу {os.path.basename(alt)}, старый не тронут.")
+    return alt
 
 
-def write_issues(repo, date):
-    out = os.path.join(RAW, f"github-issues-{date}.md")
-    if not guard(out):
+def write_issues(repo, date, force=False):
+    out = guard(os.path.join(RAW, f"github-issues-{date}.md"), force)
+    if not out:
         return
     print("Скачиваю issues…")
     data = [i for i in paged("issues?state=all", repo) if "pull_request" not in i]
@@ -77,9 +87,9 @@ def write_issues(repo, date):
     print(f"OK  {out}  ({len(data)} issue, {os.path.getsize(out)} байт)")
 
 
-def write_comments(repo, date):
-    out = os.path.join(RAW, f"github-issue-comments-{date}.md")
-    if not guard(out):
+def write_comments(repo, date, force=False):
+    out = guard(os.path.join(RAW, f"github-issue-comments-{date}.md"), force)
+    if not out:
         return
     print("Скачиваю комментарии…")
     data = paged("issues/comments", repo)
@@ -108,13 +118,15 @@ def main():
     ap.add_argument("--date", default=datetime.date.today().isoformat())
     ap.add_argument("--issues", action="store_true")
     ap.add_argument("--comments", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="пересъёмка в тот же день: пишет соседний файл с номером, старый остаётся")
     a = ap.parse_args()
     both = not (a.issues or a.comments)
     try:
         if a.issues or both:
-            write_issues(a.repo, a.date)
+            write_issues(a.repo, a.date, a.force)
         if a.comments or both:
-            write_comments(a.repo, a.date)
+            write_comments(a.repo, a.date, a.force)
     except urllib.error.HTTPError as e:
         print(f"HTTP {e.code}: {e.reason}")
         if e.code == 403:
