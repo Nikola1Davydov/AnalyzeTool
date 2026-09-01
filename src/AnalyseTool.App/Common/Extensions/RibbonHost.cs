@@ -111,40 +111,42 @@ namespace AnalyseTool.App.Common.Extensions
 
             // Everything else is small: two stacked columns of three in the Manage panel, so the tab
             // reads as one big button and a tidy block beside it. The split is by JOB, not by size:
-            // the left column is the plugin itself (reload, preferences, feedback), the right column
-            // is what you run and make (scripts, extensions, a new one). Extensions used to live
+            // the left column is what you use every day (scripts, preferences, feedback), the right
+            // column is the extension lifecycle (reload, manage, create). Extensions used to live
             // inside Settings — a manager you visit to work, buried under a page you configure once.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
-
-            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
-            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "AI and everything else about the plugin itself");
-            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
-                BugsCommandClass, "Report a bug or request a feature on GitHub");
-
-            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(reloadData, settingsData, bugsData);
-            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
-            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
-            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
 
             // The script launcher exists so that GENERATED commands do not each need a ribbon button of
             // their own — the ribbon holds one entry and the list behind it grows.
             PushButtonData scriptsData = MakeButtonData("AnalyseToolScripts", "Scripts", launcherPath,
                 ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote");
+            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
+                SettingsCommandClass, "AI and everything else about the plugin itself");
+            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
+                BugsCommandClass, "Report a bug or request a feature on GitHub");
+
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(scriptsData, settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE943", 16)); // Scripts — Code (U+E943)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
+
+            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
             PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
                 ExtensionsCommandClass, "Install, update and manage extensions");
             PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
                 NewExtensionCommandClass, "Create a new extension: a button, a page, C# commands");
 
-            IList<RibbonItem> workStack = managePanel.AddStackedItems(scriptsData, extensionsData, newExtensionData);
-            SetStackedImage(workStack, 0, BuildGlyphIcon("\uE943", 16)); // Scripts — Code (U+E943)
+            IList<RibbonItem> workStack = managePanel.AddStackedItems(reloadData, extensionsData, newExtensionData);
+            SetStackedImage(workStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
             SetStackedImage(workStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
             SetStackedImage(workStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
 
             // Scripts is togglable like the main button (a user without scripts can hide it); the rest of
             // the block is not — Settings must always stay reachable, and Reload with it.
-            RegisterStaticButton("AnalyseToolScripts", "Scripts", workStack.Count > 0 ? workStack[0] as PushButton : null);
+            // Scripts sits at the top of the LEFT column now — the registration must follow it, or the
+            // "hide Scripts" switch in Settings hides whatever stands first on the right instead.
+            RegisterStaticButton("AnalyseToolScripts", "Scripts", pluginStack.Count > 0 ? pluginStack[0] as PushButton : null);
             ApplyStaticButtonVisibility();
 
             // Dynamic extension buttons via AdWindows.
