@@ -60,16 +60,15 @@ namespace AnalyseTool.App.Common.Extensions
         // Open windows, so a second click focuses the existing one instead of stacking duplicates:
         // one window per extension button.
         //
-        // System pages are keyed by PAGE, not by route: "New extension" and "Extensions" are two
-        // ribbon buttons onto the same window, and the second must re-route the first rather than
-        // open a duplicate manager.
+        // The plugin's own pages (Settings, Extensions, New extension), one window each.
         private static readonly Dictionary<string, SystemWindow> _systemWindows =
             new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Window> _extWindows =
             new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>The host's togglable main buttons: key -> (display name, PushButton). The Manage
-        /// stack is not here on purpose — Settings must always stay reachable.</summary>
+        /// <summary>The host's togglable buttons: key -> (display name, PushButton). Only the main
+        /// button and Scripts — Reload, Settings and the rest of the Manage block are not here on
+        /// purpose, so Settings always stays reachable.</summary>
         private static readonly Dictionary<string, (string Name, PushButton Button)> _staticButtons =
             new(StringComparer.OrdinalIgnoreCase);
 
@@ -95,52 +94,54 @@ namespace AnalyseTool.App.Common.Extensions
             string revitVersion = app.ControlledApplication.VersionNumber; // year, e.g. "2025"
             Log.Information("Building ribbon for Revit {RevitVersion}", revitVersion);
 
-            // Static buttons via the official API.
+            // The one large button: the tool itself.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
             RegisterStaticButton("AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME,
                 AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                     MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png"));
-
-            // Second button: the script launcher. It exists so that GENERATED commands do not each need
-            // a ribbon button of their own — the ribbon holds one entry and the list behind it grows.
-            RegisterStaticButton("AnalyseToolScripts", "Scripts",
-                AddStaticButton(mainPanel, "AnalyseToolScripts", "Scripts", launcherPath,
-                    ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote",
-                    image: BuildGlyphIcon("\uE943"))); // Segoe MDL2 "Code"
-
-            ApplyStaticButtonVisibility();
 
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,
             // which is why one always-present host pane is registered here and its content is swapped by
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // The Manage panel, as two stacked columns of small buttons. The split is by JOB, not by
-            // size: the left column is the extension lifecycle (browse, create, reload), the right one
-            // is the plugin itself (preferences, feedback). Extensions used to live inside Settings —
-            // a manager you visit to work, buried under a page you configure once.
+            // Everything else is small: two stacked columns of three in the Manage panel, so the tab
+            // reads as one big button and a tidy block beside it. The split is by JOB, not by size:
+            // the left column is what you run and make (scripts, extensions, a new one), the right
+            // column is the plugin itself (reload, preferences, feedback). Extensions used to live
+            // inside Settings — a manager you visit to work, buried under a page you configure once.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
+            // The script launcher exists so that GENERATED commands do not each need a ribbon button of
+            // their own — the ribbon holds one entry and the list behind it grows.
+            PushButtonData scriptsData = MakeButtonData("AnalyseToolScripts", "Scripts", launcherPath,
+                ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote");
             PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
                 ExtensionsCommandClass, "Install, update and manage extensions");
             PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
-                NewExtensionCommandClass, "Create a new extension from a template");
+                NewExtensionCommandClass, "Create a new extension: a button, a page, C# commands");
+
+            IList<RibbonItem> workStack = managePanel.AddStackedItems(scriptsData, extensionsData, newExtensionData);
+            SetStackedImage(workStack, 0, BuildGlyphIcon("\uE943", 16)); // Scripts — Code (U+E943)
+            SetStackedImage(workStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(workStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
+
+            // Scripts is togglable like the main button (a user without scripts can hide it); the rest of
+            // the block is not — Settings must always stay reachable, and Reload with it.
+            RegisterStaticButton("AnalyseToolScripts", "Scripts", workStack.Count > 0 ? workStack[0] as PushButton : null);
+            ApplyStaticButtonVisibility();
+
             PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
                 ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
-
-            IList<RibbonItem> extStack = managePanel.AddStackedItems(extensionsData, newExtensionData, reloadData);
-            SetStackedImage(extStack, 0, BuildGlyphIcon("", 16)); // Extensions — Puzzle (U+EA86)
-            SetStackedImage(extStack, 1, BuildGlyphIcon("", 16)); // New — AddTo (U+ECC8)
-            SetStackedImage(extStack, 2, BuildGlyphIcon("", 16)); // Reload (U+E72C)
-
             PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "AI, ribbon buttons and everything else about the plugin itself");
+                SettingsCommandClass, "AI and everything else about the plugin itself");
             PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
                 BugsCommandClass, "Report a bug or request a feature on GitHub");
 
-            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(settingsData, bugsData);
-            SetStackedImage(pluginStack, 0, BuildGlyphIcon("", 16)); // Settings (U+E713)
-            SetStackedImage(pluginStack, 1, BuildGlyphIcon("", 16)); // Report a bug (U+EBE8)
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(reloadData, settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -507,7 +508,7 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
-        /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, ribbon buttons, about).</summary>
+        /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
         public static void OpenSettings(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "settings", "#/system/settings", "AnalyseTool — Settings", 880, 720);
 
@@ -515,13 +516,13 @@ namespace AnalyseTool.App.Common.Extensions
         public static void OpenExtensions(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "extensions", "#/system/extensions", "AnalyseTool — Extensions", 1000, 680);
 
-        /// <summary>Ribbon "New" button — the extension manager with the template form already open.
-        /// Same window as <see cref="OpenExtensions"/> on purpose: after creating one you want to see it
-        /// appear in the list behind the form.</summary>
+        /// <summary>Ribbon "New" button — a small window with nothing but the create-extension form.
+        /// Its own window, not the manager with a drawer over it: pressing "New" means "I want to make
+        /// one", and a list of everything else is noise behind that.</summary>
         public static void OpenNewExtension(UIApplication uiApp) =>
-            OpenSystemPage(uiApp, "extensions", "#/system/extensions?new=1", "AnalyseTool — Extensions", 1000, 680);
+            OpenSystemPage(uiApp, "new-extension", "#/system/new-extension", "AnalyseTool — New extension", 720, 840);
 
-        /// <summary>Opens (or focuses and re-routes) one of the plugin's own pages.</summary>
+        /// <summary>Opens (or focuses) one of the plugin's own pages.</summary>
         private static void OpenSystemPage(UIApplication uiApp, string key, string route, string title,
             double width, double height)
         {
@@ -530,7 +531,6 @@ namespace AnalyseTool.App.Common.Extensions
 
             if (_systemWindows.TryGetValue(key, out SystemWindow? existing))
             {
-                existing.Navigate(route);
                 Restore(existing);
                 return;
             }

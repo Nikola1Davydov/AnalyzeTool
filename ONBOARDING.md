@@ -93,9 +93,9 @@ so two extensions can't collide and a single **Reload** can swap one out.
 
 | | **Installed** | **Dev / Local** |
 | --- | --- | --- |
-| Where | `%LOCALAPPDATA%\AnalyseTool\extensions-dist\` | `%LOCALAPPDATA%\AnalyseTool\extensions\` + any roots you add in Settings |
+| Where | `%LOCALAPPDATA%\AnalyseTool\extensions-dist\` | `%LOCALAPPDATA%\AnalyseTool\extensions\` + any folders you add in Extensions → *Folders scanned* |
 | Owned by | the extension manager — install / remove / update | you; nothing is ever rewritten behind your back |
-| In Settings | **Installed** tab, with update badges | same list with a **Dev** badge |
+| In the Extensions window | **Installed** section, with update badges | **Your own** section, below it |
 
 As an author you work in the dev zone. The managed zone is what your users get when they install
 your `.zip`.
@@ -162,8 +162,8 @@ shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 | Field | Required | Notes |
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted (`acme.sample`). Becomes the command prefix and the folder name. |
-| `version` | ✔ | SemVer string. Shown in Settings and appended to the window title (`Name - 1.0.0`). This is the single source of truth for the extension's version — the packaging pipeline reads it. |
-| `entryAssembly` | — | DLL file name. **Omit for a UI-only or script extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in Settings → Environment. |
+| `version` | ✔ | SemVer string. Shown in the Extensions window and appended to the window title (`Name - 1.0.0`). This is the single source of truth for the extension's version — the packaging pipeline reads it. |
+| `entryAssembly` | — | DLL file name. **Omit for a UI-only or script extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in Settings → About. |
 | `description` | — | One line, shown in the extension listing. |
 | `publisher` | — | You or your company. Shown next to the extension name. |
 | `website` / `supportUrl` | — | Links shown in the listing. Recommended when publishing. |
@@ -210,7 +210,7 @@ manifests need no change. When both are present, `ui.buttons` wins.
 
 | `ui.tab` | — | Ribbon tab to place the button on. Default `"AnalyseTool"`. |
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
-| `ui.button.name` | — | Button label — also used as the extension's display name (Settings list, window title). |
+| `ui.button.name` | — | Button label — also used as the extension's display name (Extensions list, window title). |
 | `ui.button.tooltip` | — | Button tooltip. |
 | `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
 | `ui.button.command` | — | Run this command when the button is clicked, instead of opening `entryHtml`. Use it for a one-shot action that needs no page. |
@@ -289,7 +289,7 @@ Each build lands in its own `<year>\` folder, so run one command per Revit versi
 they accumulate side by side. (CI builds `samples/Acme.Sample` against the freshly packed SDK in
 exactly this mode — `-p:UseSdkPackage=true` — so this path stays verified.)
 
-> **Tip:** you don't have to write this by hand — **AnalyseTool tab → Settings → New template → C#**
+> **Tip:** you don't have to write this by hand — **AnalyseTool tab → New → C# commands**
 > scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
 > write commands for you).
 
@@ -593,7 +593,7 @@ Every **registered** command is callable from JS — `HiddenFromMcp` only hides 
 AI's tool list, not from `AT.invoke`. So `GetCommands` lists everything you can call, including
 other extensions' commands.
 
-For a readable, searchable view, open **AnalyseTool tab → Settings → Commands**: a live table of
+For a readable, searchable view, open **AnalyseTool tab → Settings → For developers — command reference**: a live table of
 every command with its source, description, payload shape and flags (read-only / destructive /
 MCP). That's the quickest way to browse what's available while you build.
 
@@ -675,16 +675,16 @@ release.**
    this — there is nothing to copy.
 3. **Load it:**
    - First time / new button: **restart Revit** (the static ribbon hook runs at startup).
-   - Already-known extension, changed code/manifest: open the **AnalyseTool tab → Settings →
-     Reload** (or the **Reload** ribbon button). No restart needed.
+   - Already-known extension, changed code/manifest: press the **Reload** ribbon button (also
+     inside the Extensions window). No restart needed.
 
 **Reload** does a true live reload: it re-reads the manifests, unloads the old collectible
 `AssemblyLoadContext`, and loads the new DLL bytes. DLLs are **byte-loaded** (read into memory),
 so the file on disk is never locked — you can overwrite the DLL while Revit is running, then
 Reload.
 
-The **Settings** page (AnalyseTool tab → Settings) is the extension manager. It lists **Installed**
-packages and your **Dev** folders separately, each row showing the version, whether it has C#
+The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Installed**
+packages and **Your own** folders separately, each row showing the version, whether it has C#
 commands / UI, an enable/disable switch, **Open folder**, and — for installed packages with an
 `updateFeed` — an update badge. There is also **Install from file…** for a `.zip`, a global
 **Reload**, the host **Environment** (Revit / SDK / plugin version), the **Extension paths** it
@@ -766,8 +766,10 @@ AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost TCP�
   a tool named `acme_sample_Hello`). Tool arguments are passed straight through as your command's
   JSON payload (the same thing `revitContext.Payload` deserializes).
 
-**To turn it on:** open the **AnalyseTool tab → Settings → MCP server**, pick a port, click
-**Start**, then copy the generated **Claude Desktop config** snippet into your client's MCP config.
+**To turn it on:** open the **AnalyseTool tab → Settings → Artificial intelligence**, switch on
+**External assistant**, then open **Connection details** and copy the generated **Claude Desktop
+config** snippet into your client's MCP config (the port lives there too). This is the *external*
+assistant — the model picked under **Built-in assistant** does not apply to it; the client brings its own.
 The snippet looks like:
 
 ```json
@@ -782,7 +784,7 @@ The snippet looks like:
 ```
 
 Notes:
-- **Copy the snippet from Settings, don't retype it.** The `--token` value is a per-machine secret
+- **Copy the snippet from Settings → Connection details, don't retype it.** The `--token` value is a per-machine secret
   that authorizes the client against Revit: the bridge listens on 127.0.0.1, which keeps the network
   out but not other processes running as you, so every request must carry the token. Calls without it
   are refused.
@@ -812,7 +814,7 @@ Two things worth knowing before you use it:
 - **It is off unless a person turns it on.** Writing and running C# is behind the code-execution
   switch in Settings, which is deliberately not something an agent can flip for itself — the command
   that sets it is hidden from MCP entirely.
-- **Where the script lands is your choice.** Settings names the dev folder new scripts are saved
+- **Where the script lands is your choice.** Extensions → *Folders scanned* names the dev folder new scripts are saved
   into, and refining a script that already exists writes it back to the folder it lives in — so a
   shared team folder registered as a source root keeps working, and a fix does not silently land in
   a different copy.
@@ -836,7 +838,7 @@ dotnet build -t:PackExtension
 
 It builds the project for Revit 2025/2026/2027 (narrow it with `-p:AnalyseToolPackYears=2025;2026`),
 lays out per-year DLLs in year subfolders with `plugin.json` / UI / assets at the root, and zips
-it to `artifacts/<id>-<version>.zip` — the format your users install via Settings →
+it to `artifacts/<id>-<version>.zip` — the format your users install via Extensions →
 **Install from file…**. Script- and UI-only extensions need no build at all: zip the folder.
 
 **`plugin.json` owns the version.** It travels inside the package and is what the installed
@@ -858,7 +860,7 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
 
 
-**Getting listed.** Settings → **Catalog** is the "where do extensions come from" page: a list of
+**Getting listed.** Extensions → **Find extensions** is the "where do extensions come from" page: a list of
 repositories with their links, each with an **Install** button that downloads the package from the
 publisher's own release. Two ways onto it:
 

@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-08-31
+updated: 2026-09-01
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -123,11 +123,28 @@ MCP-сервер, позволяющий внешнему агенту упра�
 (`CryptographicOperations.FixedTimeEquals`), а пустой настроенный токен означает отказ, а
 не открытую дверь.
 
-## Дыры
+## Блок конфигурации клиента
 
-> [!warning] не проверено
-> Точный блок конфигурации клиента, который выдаёт окно Settings, — в вики не перенесён.
-> Смотреть в `McpServerController.cs` и в UI настроек.
+Проверено по коду 2026-09-01, дыра закрыта. Блок собирает **фронтенд**, не хост:
+`clientConfig` в `src/clientapp/src/view/System/SettingsView.vue` из ответа `GetMcpStatus`
+(`serverExePath`, `port`, `token`). Форма:
+
+```json
+{ "mcpServers": { "analysetool-revit": {
+    "command": "<путь к AnalyseTool.Mcp.exe>",
+    "args": ["--port", "<порт>", "--token", "<токен>"] } } }
+```
+
+Где это в интерфейсе — после разделения настроек 2026-09-01: **Settings → Artificial
+intelligence → External assistant → Connection details** (свёрнуто; порт там же, менять
+можно только при выключенном сервере). Сам сервер включается тумблером на блоке
+«External assistant». Переключатель исполнения C# стоит **внутри того же блока** — по
+построению он относится только к внешнему агенту, встроенный код не исполняет.
+
+Блок намеренно назван «внешний ассистент», а не «MCP server»: в окне настроек рядом стоит
+выбор модели для *другого* направления (плагин как AI-клиент, см.
+[`ollama.md`](ollama.md)), и до разделения пользователь читал их как одну систему — ровно
+путаница, про которую предупреждает [`../overview.md`](../overview.md).
 
 ## Связанное
 

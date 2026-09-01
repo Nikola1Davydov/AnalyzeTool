@@ -27,10 +27,15 @@ const routes = [
     meta: { layout: "bare" },
   },
   {
-    // The extension manager. "?new=1" opens it with the create-from-template form already up —
-    // that is what the "New" ribbon button points at.
+    // The extension manager: installed, catalog, dev folders.
     path: "/system/extensions",
     component: () => import("@/view/System/ExtensionsView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
+    // The "New" ribbon button: a window that is nothing but the create-extension form.
+    path: "/system/new-extension",
+    component: () => import("@/view/System/NewExtensionView.vue"),
     meta: { layout: "bare" },
   },
 ];

@@ -11,7 +11,6 @@
  * where generated scripts land — sits in a collapsed panel at the bottom of the first tab.
  */
 import { ref, computed, onMounted, defineAsyncComponent } from "vue";
-import { useRoute } from "vue-router";
 import ToggleSwitch from "primevue/toggleswitch";
 import Tabs from "primevue/tabs";
 import TabList from "primevue/tablist";
@@ -28,7 +27,6 @@ const CreateExtensionTemplateDrawer = defineAsyncComponent(
 );
 
 const notifications = useNotificationStore();
-const route = useRoute();
 
 /** Message from a rejected invoke, ready to show. */
 function errorText(e: unknown): string {
@@ -492,10 +490,6 @@ onMounted(() => {
   load();
   loadCatalog();
   loadPaths();
-  // The "New" ribbon button is THIS window with the form already open — see RibbonHost.OpenNewExtension.
-  // A window of its own would have shown the form over an empty page; here the extension you just
-  // created appears in the list behind it.
-  if (route.query.new !== undefined) templateDrawerVisible.value = true;
 });
 </script>
 
@@ -1123,10 +1117,6 @@ onMounted(() => {
       </template>
     </Dialog>
 
-    <CreateExtensionTemplateDrawer
-      v-model:visible="templateDrawerVisible"
-      :extensionsRoot="data?.extensionsRoot"
-      @created="reload"
-    />
+    <CreateExtensionTemplateDrawer v-model:visible="templateDrawerVisible" @created="reload" />
   </div>
 </template>

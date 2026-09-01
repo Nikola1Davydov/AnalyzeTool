@@ -407,7 +407,7 @@ page sees only `window.AT`.
 - The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
   single-year extension works without year folders. Scripts and UI are version-independent and
   always live in the root.
-- Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
+- Changed code/manifest → **Reload** (the ribbon button, or inside the Extensions window). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 
 ### 7.0 Migrating an extension from the OLD layout
@@ -455,7 +455,7 @@ git tag v1.0.0 && git push --tags            # and on GitHub, with a Release att
 ```
 
 The tag must match `version` in `plugin.json`; the workflow fails the build otherwise, because a
-mismatch would leave the update badge in Settings permanently wrong. Delete the workflow if you
+mismatch would leave the update badge in the Extensions window permanently wrong. Delete the workflow if you
 distribute another way — nothing else depends on it.
 
 ### 7.1 Publish (optional)
@@ -469,15 +469,15 @@ dotnet build -t:PackExtension
 
 builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
 lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
-and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Settings →
+and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Extensions →
 "Install from file…". Script/UI-only extensions need no build: zip the folder itself.
 
 To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
 git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
 notifications for free:
 
-Once it is published, the repository itself is the install source: users reach it through Settings
-→ Catalog (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
+Once it is published, the repository itself is the install source: users reach it through Extensions
+→ Find extensions (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
 repository into "Install from repository…". Both routes download the zip from your release.
 
 ```yaml
@@ -630,7 +630,7 @@ means the click runs it, and an `InputType` means the click opens the launcher w
 on screen. Another reason a generated command should declare one.
 
 **Where saves land is also the user's call.** With no `targetRoot`, `SaveAsCommand` and
-`SaveExtensionUi` write into the folder chosen in Settings → Extension paths (tagged `scripts`),
+`SaveExtensionUi` write into the folder chosen in Extensions → Folders scanned (tagged `scripts`),
 which is the built-in dev root until the user picks another. Leave `targetRoot` empty unless the user
 names a folder — passing the default explicitly overrides a choice they made on purpose.
 

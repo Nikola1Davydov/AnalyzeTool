@@ -7,8 +7,8 @@
  * you do (install, update, create) or documentation you read. Those moved to the Extensions window,
  * and what is left fits on one screen.
  *
- * Three groups, named after the question a person is actually asking — "what do I see in Revit",
- * "what may the AI do", "what is this" — not after the subsystem behind them. Anything only an author
+ * Two groups, named after the question a person is actually asking — "what may the AI do",
+ * "what is this" — not after the subsystem behind them. Anything only an author
  * needs (port, token, client snippet, the command list) is one click down, never on the surface.
  */
 import { ref, computed, onMounted } from "vue";
@@ -77,44 +77,6 @@ async function openChangelog() {
 function openFolder(path: string | undefined) {
   if (!path) return;
   invoke("OpenFolder", { path }).catch((e) => console.error(e));
-}
-
-// --- Host ribbon buttons: hide/show the main buttons. UI-only — the commands behind them stay
-// registered (MCP, AT.invoke, dock).
-interface HostButtonRow {
-  key: string;
-  name: string;
-  visible: boolean;
-}
-const hostButtons = ref<HostButtonRow[]>([]);
-const hostButtonBusy = ref("");
-
-async function loadHostButtons() {
-  try {
-    const res = await invoke<{ buttons: HostButtonRow[] }>("GetHostButtons");
-    hostButtons.value = res?.buttons ?? [];
-  } catch (e) {
-    console.error("Failed to load host buttons", e);
-  }
-}
-
-// Optimistic, restored on failure: PrimeVue's ToggleSwitch holds its own internal value and only
-// re-reads the prop when the prop CHANGES, so leaving the row untouched after a rejected call left
-// the switch showing a state the host never accepted — silently.
-async function setHostButtonVisible(row: HostButtonRow, visible: boolean) {
-  const previous = row.visible;
-  row.visible = visible;
-  hostButtonBusy.value = row.key;
-  try {
-    await invoke("SetHostButtonVisible", { key: row.key, visible });
-  } catch (e) {
-    row.visible = previous;
-    hostButtonBusy.value = "";
-    notifications.error(`Could not ${visible ? "show" : "hide"} "${row.name}": ${errorText(e)}`);
-    return;
-  }
-  hostButtonBusy.value = "";
-  await loadHostButtons();
 }
 
 // --- C# code execution: gates the ad-hoc ExecuteRevitCode command (the AI scratchpad). -----------
@@ -268,7 +230,6 @@ async function loadCommands() {
 
 onMounted(() => {
   loadEnvironment();
-  loadHostButtons();
   loadCodeExec();
   loadMcp();
   loadCommands();
@@ -285,91 +246,63 @@ onMounted(() => {
       ribbon.
     </p>
 
-    <!-- 1. What you see in Revit -------------------------------------------------------------->
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <h2 class="text-base font-bold mb-1">What you see in Revit</h2>
-      <p class="text-xs text-surface-500 mb-3">
-        Hide the main buttons you don't use. This is UI-only — their commands stay available to
-        extensions, the dock and AI over MCP. Settings and Reload always stay visible.
-      </p>
-      <div class="flex flex-col gap-2 max-w-md">
-        <div
-          v-for="b in hostButtons"
-          :key="b.key"
-          class="flex items-center justify-between text-sm py-1"
-        >
-          <span>{{ b.name }}</span>
-          <ToggleSwitch
-            :modelValue="b.visible"
-            :disabled="hostButtonBusy === b.key"
-            @update:modelValue="setHostButtonVisible(b, !b.visible)"
-          />
-        </div>
-        <div v-if="!hostButtons.length" class="text-surface-500 text-xs">Not available.</div>
-      </div>
-    </section>
-
-    <!-- 2. AI ---------------------------------------------------------------------------------
-         Model, permission and connection are three answers to one question — "what may the AI do
-         in my Revit" — so they are one card, not three sections a screen apart. -->
+    <!-- 1. AI ---------------------------------------------------------------------------------
+         Two different assistants live behind the one word, and confusing them was easy: the model
+         picked here drives the BUILT-IN one (it works inside AnalyseTool's windows, on what the window
+         shows it), while the MCP toggle and the C# switch govern an EXTERNAL one (Claude Desktop and
+         the like, which bring their own model and call our commands from outside). So: two blocks, each
+         saying which one it is about, and each switch sitting with the assistant it applies to. -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
       <h2 class="text-base font-bold mb-1">Artificial intelligence</h2>
       <p class="text-xs text-surface-500 mb-4">
-        The model is shared across all AnalyseTool windows — changing it here applies everywhere.
+        There are two, and they are not the same thing. The <b>built-in assistant</b> works inside
+        AnalyseTool's windows on the model you pick below. An <b>external assistant</b> is an AI you
+        already use elsewhere, connected to Revit through AnalyseTool — it brings its own model.
       </p>
 
-      <AiModelPicker manage />
-
-      <!-- The one genuinely dangerous switch in the plugin. It gets its own frame so it can never
-           be skimmed past as another line in a list of preferences. -->
-      <div class="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="flex items-center gap-2">
-              <i class="pi pi-exclamation-triangle text-amber-600" />
-              <span class="font-semibold text-sm">Let the AI write and run C# in Revit</span>
-              <Tag
-                :value="codeExec ? 'on' : 'off'"
-                :severity="codeExec ? 'warn' : 'secondary'"
-              />
-            </div>
-            <p class="text-xs text-surface-600 mt-1">
-              The <code>ExecuteRevitCode</code> tool compiles and runs arbitrary C# in-process, with
-              full Revit API access to your models and machine. Off by default, and hidden from the
-              AI's tool list while off. Only turn it on for an AI client you trust.
-            </p>
-          </div>
-          <ToggleSwitch
-            :modelValue="codeExec"
-            :disabled="codeExecBusy"
-            class="shrink-0 mt-1"
-            @update:modelValue="setCodeExec($event)"
-          />
+      <!-- Built-in -->
+      <div class="rounded-lg border border-surface-200 p-3">
+        <div class="flex items-center gap-2 mb-1">
+          <i class="pi pi-sparkles text-primary-500" />
+          <span class="font-semibold text-sm">Built-in assistant</span>
+          <Tag value="inside AnalyseTool" severity="secondary" />
         </div>
+        <p class="text-xs text-surface-600 mb-3">
+          The AI buttons in the parameter windows: analyse a table, propose parameter edits, suggest
+          family and type names. It sees only what the window hands it and never touches the model on
+          its own — you review and apply. Runs on the model below: a local Ollama model, or a cloud
+          provider you add. Shared across all AnalyseTool windows.
+        </p>
+        <AiModelPicker manage />
       </div>
 
-      <!-- MCP as one switch. The port, the token and the client snippet are setup trivia: needed
-           once, by one person, and previously the largest block on the page. -->
-      <div class="mt-5 border-t border-surface-200 pt-4">
+      <!-- External -->
+      <div class="rounded-lg border border-surface-200 p-3 mt-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="flex items-center gap-2">
-              <span class="font-semibold text-sm">Connect an AI assistant</span>
+            <div class="flex items-center gap-2 mb-1">
+              <i class="pi pi-link text-primary-500" />
+              <span class="font-semibold text-sm">External assistant</span>
+              <Tag value="via MCP" severity="secondary" />
               <Tag
                 v-if="mcp"
                 :value="mcp.running ? `connected · port ${mcp.port}` : 'off'"
                 :severity="mcp.running ? 'success' : 'secondary'"
               />
             </div>
-            <p class="text-xs text-surface-600 mt-1">
-              Lets a client like Claude Desktop call every AnalyseTool command — built-in and from
-              your extensions — over the Model Context Protocol.
+            <p class="text-xs text-surface-600">
+              Claude Desktop, Cursor or any other client that speaks the Model Context Protocol. It
+              works the other way round: it <b>calls AnalyseTool's commands</b> — built-in and from
+              your extensions — to read and change the model, in your name, without a window. The
+              model picked above does not apply; the client uses its own. Both switches in this block
+              concern this assistant only.
             </p>
           </div>
           <ToggleSwitch
             :modelValue="!!mcp?.running"
             :disabled="mcpBusy"
             class="shrink-0 mt-1"
+            v-tooltip.left="'Allow external assistants to connect'"
             @update:modelValue="applyMcp(!mcp?.running)"
           />
         </div>
@@ -382,6 +315,8 @@ onMounted(() => {
           Last error: {{ mcp.lastError }}
         </div>
 
+        <!-- The port, the token and the client snippet are setup trivia: needed once, by one
+             person, and previously the largest block on the page. -->
         <Panel toggleable collapsed class="mt-3 settings-subpanel">
           <template #header>
             <span class="text-sm">Connection details</span>
@@ -419,10 +354,40 @@ onMounted(() => {
             </p>
           </div>
         </Panel>
+
+        <!-- The one genuinely dangerous switch in the plugin. It sits INSIDE the external block
+             because that is the only assistant it applies to — the built-in one never runs code —
+             and it gets its own frame so it can never be skimmed past as another preference. -->
+        <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle text-amber-600" />
+                <span class="font-semibold text-sm">Let the external assistant write and run C# in Revit</span>
+                <Tag
+                  :value="codeExec ? 'on' : 'off'"
+                  :severity="codeExec ? 'warn' : 'secondary'"
+                />
+              </div>
+              <p class="text-xs text-surface-600 mt-1">
+                Beyond the ready-made commands: the <code>ExecuteRevitCode</code> tool lets the
+                client compile and run arbitrary C# in-process, with full Revit API access to your
+                models and machine. Off by default, and hidden from the client's tool list while off.
+                Only turn it on for a client you trust.
+              </p>
+            </div>
+            <ToggleSwitch
+              :modelValue="codeExec"
+              :disabled="codeExecBusy"
+              class="shrink-0 mt-1"
+              @update:modelValue="setCodeExec($event)"
+            />
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- 3. About ------------------------------------------------------------------------------->
+    <!-- 2. About ------------------------------------------------------------------------------->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
       <h2 class="text-base font-bold mb-3">About</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
@@ -483,7 +448,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- 4. For developers: the full command reference. Kept, but one click down — it answers a
+    <!-- 3. For developers: the full command reference. Kept, but one click down — it answers a
          question ("what can I call from AT.invoke") that no one asks while changing a setting. -->
     <Panel toggleable collapsed class="mb-6">
       <template #header>

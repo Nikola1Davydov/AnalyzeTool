@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- 🧭 **Settings is no longer the extension manager.** The one window that held four tabs — extension lists, catalog, a command reference and the actual preferences — is now three doors on the ribbon, each named for what you do there. **Extensions** installs, updates, creates and removes; **Settings** is one short screen with the AI (model, the C# switch, the MCP connection as one toggle with the port and snippet folded away) and About; **New** is a small window with nothing but the create-extension form. Of the thirty-odd controls the old window showed, four were settings.
+- 🧩 **New extension: the whole manifest, no previews.** The create form asks for description, publisher, website, support link, update feed and — for a page — the ribbon button's tooltip, tab, panel and whether it opens in the dock. The id and tooltip follow the name until you edit them. The plugin.json and index.html previews are gone: the files are written to disk, where an editor shows them better than a text box did.
+- 🗂️ The folders scanned for extensions, and the full command reference, are still there — one click down under **For developers**, in the Extensions and Settings windows respectively.
+
 ## [1.5.0] / 2026-08-13
 
 - 🤖 **Ask your AI to write a command — and to fix one that is broken.** The generate → run → refine loop is closed: a connected agent can now overwrite a command it wrote earlier (a second attempt used to need a new id or a manual delete), read the C# back, see exactly why a script failed to compile, save an HTML/CSS/JS page together with the ribbon button that opens it, and read the authoring guide it is expected to follow. In practice: a colleague's script that does not work in your project is now something you can hand to your AI with "look at it and fix it".

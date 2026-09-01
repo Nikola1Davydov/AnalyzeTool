@@ -13,7 +13,7 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("ShowScriptLauncher", commandData.Application);
     }
 
-    /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
+    /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand
     {
@@ -29,7 +29,7 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("OpenExtensions", commandData.Application);
     }
 
-    /// <summary>Ribbon "New" button — the extension manager with the template form already open.</summary>
+    /// <summary>Ribbon "New" button — a small window with the create-extension form.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class NewExtensionCommand : IExternalCommand
     {
