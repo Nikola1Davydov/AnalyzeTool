@@ -256,6 +256,10 @@ MCP, ни единого вызова модели в рантайме. Моде
   [`licensing-and-monetization.md`](licensing-and-monetization.md). Делать их вместе дешевле,
   чем возвращаться.
 
+**Заодно добавляется версия схемы манифеста** — без неё ни хост, ни агент не могут заметить,
+что расширение написано по старому формату. Механика и правила миграции —
+[`../concepts/contract-evolution.md`](../concepts/contract-evolution.md).
+
 > [!warning] стоит проверить
 > В [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) упоминается «manifest v2,
 > install/update pipeline — done on `feature/extension-manager-foundation`». Возможно, часть

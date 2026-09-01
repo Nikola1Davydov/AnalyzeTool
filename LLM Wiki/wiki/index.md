@@ -43,6 +43,7 @@ updated: 2026-08-31
 | [`concepts/architecture-overview.md`](concepts/architecture-overview.md) | как фраза превращается в транзакцию Revit |
 | [`concepts/deterministic-core.md`](concepts/deterministic-core.md) | инвариант всех AI-планов: решает код, модель объясняет |
 | [`concepts/command-schema-contract.md`](concepts/command-schema-contract.md) | правила метаданных и описания как промпт-инжиниринг |
+| [`concepts/contract-evolution.md`](concepts/contract-evolution.md) | как менять контракт, когда по нему пишет агент |
 | [`concepts/agent-legibility.md`](concepts/agent-legibility.md) | сцепление по ключам и экономика контекста |
 | [`concepts/write-safety-and-approval.md`](concepts/write-safety-and-approval.md) | что стоит между намерением и изменённой моделью |
 | [`concepts/inbox-and-cards.md`](concepts/inbox-and-cards.md) | лента и карточки — единственная поверхность, где агент говорит |
