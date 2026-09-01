@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-08-31
+updated: 2026-09-02
 status: current
 sources: [../sources/analysetool-repo-docs.md]
 ---
@@ -102,7 +102,7 @@ sources: [../sources/analysetool-repo-docs.md]
 
 | Источник | Где |
 | --- | --- |
-| `ribbon` | `AnalyseTool.App/Common/Extensions/RibbonHost.cs:554` |
+| `ribbon` | `AnalyseTool.App/Common/Extensions/RibbonHost.cs:769` |
 | `webview2` | `AnalyseTool.App/Common/Transport/WebView2Transport.cs:86` |
 | `mcp` | `AnalyseTool.Mcp.Bridge/McpBridgeServer.cs:250` |
 
@@ -193,7 +193,8 @@ while (_queue.TryDequeue(out Action<UIApplication>? item)) { item(app); ... }
 Уточнение к разделу про конверт. `CancellationToken` действительно доходит до каждой
 команды, но **`RevitTaskHub.EnqueueAsync` не принимает токен вообще**: работа, уже отданная
 потоку Revit, доработает до конца. Отмена наблюдается только там, где команда сама её
-наблюдает — `PurgeFamilies` проверяет между чанками по 40, — поэтому прогон
+наблюдает — например `PurgeFamilies` расширения Family Manager проверяет между чанками
+по 40, — поэтому прогон
 останавливается на границе следующего шага, а не мгновенно.
 
 ## Чего здесь ещё нет

@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-09-01
+updated: 2026-09-02
 status: draft
 sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 ---
@@ -85,13 +85,15 @@ sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 
 Плюс два, которых нет в списке блокеров, но они того же класса:
 
-- **CI не запускает тесты вообще** (проверено). Проекты `AnalyseTool.Core.Tests` и
-  `AnalyseTool.Tools.Tests` есть, но `dotnet test` не вызывается нигде. Гардрейл, который
+- **CI не запускает тесты вообще** (проверено). Проектов `AnalyseTool.Core.Tests` и
+  `AnalyseTool.Tools.Tests` на `dev` нет — они живут на ветке `claude/pipelines-plan-f8jrgf`
+  (сверка 2026-09-02), — а `dotnet test` не вызывается нигде. Гардрейл, который
   никто не запускает, не гардрейл — и это фундамент под любой рефакторинг, который вы
   захотите сделать ради упрощения.
-- **Агент слеп**: `GetFamilyPreview` отдаёт base64-PNG текстом, а exe умеет только
+- ~~**Агент слеп**: `GetFamilyPreview` отдаёт base64-PNG текстом, а exe умеет только
   `TextContentBlock`. Килобайты контекста впустую. Либо починить, либо пометить
-  `HiddenFromMcp` — второе стоит одну строку.
+  `HiddenFromMcp` — второе стоит одну строку.~~ — снято 2026-09-01: команда ушла в
+  расширение вместе со слайсом семейств (63a1992), [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) закрыт.
 
 ### Слой 1 — общий фундамент. Обслуживает всё сразу
 
@@ -133,7 +135,7 @@ MCP, ни единого вызова модели в рантайме. Моде
 
 | Что                                                                                                                                                     | Почему не сейчас                                                                                                                               | Расчехляется, когда                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| MCP-протокол [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)–[#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)          | обслуживает ассистента, **на критическом пути продукта не стоит** (сказано в [#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119)) | ответ: поддерживает ли `ModelContextProtocol` 1.3.0 спеку `2026-07-28`. Один вопрос разблокирует шесть issue |
+| MCP-протокол [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)–[#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)          | обслуживает ассистента, **на критическом пути продукта не стоит** (сказано в [#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119)) | ответ получен 2026-09-02 ([`mcp-surface-state.md`](mcp-surface-state.md)): спеку `2026-07-28` SDK не знает, но Tasks, elicitation и list_changed уже есть. Расчехляется после этапов 1 и 2 |
 | Конвейеры [#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90)–[#92](https://github.com/Nikola1Davydov/AnalyzeTool/issues/92)                 | дизайн-документ сам вывел: декларативный артефакт оправдан для **правил**, а не для проверок вообще. Свод — другой артефакт, и он ближе        | появятся сценарии, которые кнопкой не выражаются                                                             |
 | Редактор узлов [#91](https://github.com/Nikola1Davydov/AnalyzeTool/issues/91)                                                                           | гейт уже стоит, и он ваш                                                                                                                       | файлы `.atpipe` ходят между людьми **и** просят править руками                                               |
 | Агент [#80](https://github.com/Nikola1Davydov/AnalyzeTool/issues/80), [#118](https://github.com/Nikola1Davydov/AnalyzeTool/issues/118)                  | упирается в коммерческий блокер: чем финансируется внешний мозг                                                                                | ответ про оплату плюс отгруженный модуль проверки (агент — фаза 5)                                           |
@@ -154,7 +156,7 @@ MCP, ни единого вызова модели в рантайме. Моде
 сломали». Всё остальное упрощение стоит делать **после** них: рефакторинг без тестов на
 базе, где ошибки не логируются, — самый дорогой способ провести неделю.
 
-**Оставить как есть.** Слои `Actions/ Ai/ Elements/ Families/`, контракт зависимостей,
+**Оставить как есть.** Слои `Actions/ Ai/ Elements/` (Family Manager с 2026-09-01 — расширение), контракт зависимостей,
 `CommandQueue` как единственная дверь. Проверено чтением: конструкция выдержала давление
 третьего клиента — все пять флагов, которые конвейеры хотели добавить в SDK, отпали, уцелел
 один `OutputType`, нужный MCP независимо. Это признак здоровой архитектуры, а не долга.
@@ -212,7 +214,7 @@ MCP, ни единого вызова модели в рантайме. Моде
 | | Что | Размер |
 | --- | --- | --- |
 | 1 | [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97): пройти по цепочке `InnerException`, добавить `Log.Error` с именем команды и аргументами, тип исключения в `hint` | часы |
-| 2 | **Включить прогон тестов в CI** ([#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128)): цель `Test` в NUKE, `Ci` зависит от неё. Это не написание тестов — проекты `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests` уже есть и просто не запускаются | часы |
+| 2 | **Включить прогон тестов в CI** ([#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128)): цель `Test` в NUKE, `Ci` зависит от неё. Это не написание тестов, но и не одно включение: на `dev` проектов `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests` нет (`git ls-files src/AnalyseTool.*.Tests` пуст), они живут на ветке `claude/pipelines-plan-f8jrgf` вместе с целью `RunTests`. Шаг — перенести проекты и цель с ветки, затем гонять их в CI | часы, плюс перенос |
 | 3 | [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98): воспроизвести один раз, прочитать настоящее исключение, починить, **закрепить тестом** | после первых двух — вероятно день |
 | 4 | ~~`GetFamilyPreview` ([#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129))~~ — снято 2026-09-01: слайс семейств целиком уехал в расширение (63a1992), команды в платформе нет, issue закрыт | — |
 | 5 | [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100): слать `notifications/tools/list_changed` при перезагрузке расширений | день |
@@ -265,10 +267,9 @@ push / stacked / pulldown, порядок, версия схемы — [#127](ht
 не могли заметить, что расширение написано по старому формату. Механика и правила миграции —
 [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md).
 
-> [!warning] стоит проверить
-> В [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) упоминается «manifest v2,
-> install/update pipeline — done on `feature/extension-manager-foundation`». Возможно, часть
-> этой работы уже сделана в той ветке; посмотреть до того, как начинать.
+Ветка `feature/extension-manager-foundation`, которую упоминает [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76),
+слита в `dev` целиком (`git branch --merged dev`), а её работа — менеджер расширений, манифест v2,
+конвейер установки и обновления — отгружена в 1.4.5 (`CHANGELOG.md`). Проверять там нечего.
 
 ### Про тесты: что рано, а что вовремя
 
@@ -337,7 +338,8 @@ push / stacked / pulldown, порядок, версия схемы — [#127](ht
 ### Чего не делать в первые месяцы
 
 Ветка MCP-протокола ждёт ответа на один вопрос — поддерживает ли `ModelContextProtocol`
-1.3.0 спеку `2026-07-28`. **Проверить это стоит один раз и записать** (полчаса), но строить
+1.3.0 спеку `2026-07-28`. **Проверено 2026-09-02 и записано** в
+[`mcp-surface-state.md`](mcp-surface-state.md): спеку — нет, Tasks, elicitation и list_changed — да. Строить
 на этом ничего не нужно, пока не отгружены этапы 1 и 2.
 
 Не начинать с теневого индекса, потому что он самая интересная часть. Не строить

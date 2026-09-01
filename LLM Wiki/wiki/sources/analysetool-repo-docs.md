@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-08-31
+updated: 2026-09-02
 status: draft
 ---
 
@@ -22,9 +22,9 @@ status: draft
 | Путь | Что это |
 | --- | --- |
 | `CLAUDE.md` | инструкции для AI-ассистентов: контракт зависимостей, сборка, гардрейлы |
-| `AGENTS.md` | то же содержание, для агентов, читающих `AGENTS.md` |
+| `AGENTS.md` | то же содержание, для агентов, читающих `AGENTS.md` — но дрейфует от `CLAUDE.md`: на `dev` @ 45a2c09 ещё перечислял слайс `Families/` и старую раскладку деплоя Acme (`extensions\<year>\`); в рабочей копии 2026-09-02 поправлен, правка пока не закоммичена. Второй файл с тем же содержанием отстаёт первым |
 | `ONBOARDING.md` | гайд автора расширений. Он же README пакета SDK на NuGet, он же зеркалится в GitHub Wiki |
-| `src/LLM.md` | инструкции «вставь в ИИ» для написания расширений. Вшит ресурсом в `AnalyseTool.Core` и отдаётся дословно командой `CreateExtensionTemplate` |
+| `src/LLM.md` | инструкции «вставь в ИИ» для написания расширений. Вшит ресурсом в `AnalyseTool.Core` и отдаётся дословно командой `CreateExtensionTemplate` (в папку нового расширения) и `GetAuthoringGuide` (`src/AnalyseTool.Core/Features/Extensions/GetAuthoringGuide.cs`, агенту через MCP). Рядом, в `src/AnalyseTool.Core/Features/Extensions/Templates/`, — csproj и `.gitignore`, а теперь и `readme.md.txt` с `workflow.yml.txt` |
 | `docs/extension-platform-design.md` | дизайн платформы расширений |
 | `CHANGELOG.md` | едет рядом с DLL плагина; окно Settings его показывает |
 
@@ -56,10 +56,13 @@ headless) и `src/build/Check-Schemas.ps1` (контракт схемы кома
 
 ## Дыры
 
-> [!warning] не проверено
-> Пока не прочитаны вглубь: внутренности `CommandQueue`, блок конфигурации
-> MCP-клиента, семантика выгрузки ALC у расширений. Соответствующие страницы поэтому
-> помечены заглушками.
+Три дыры прошлого прохода закрыты (2026-09-02): внутренности `CommandQueue` —
+[`../entities/command-queue.md`](../entities/command-queue.md); блок конфигурации MCP-клиента —
+[`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md); выгрузка ALC —
+`src/AnalyseTool.Core/Common/Extensions/ExtensionLoadContext.cs` (`isCollectible: true`, чтобы
+Reload мог выгрузить и заменить DLL) и `src/AnalyseTool.Core/Common/Extensions/ExtensionLoader.cs`
+(`context.Unload()` при перезагрузке), при этом `AnalyseTool.Sdk` хоста расшаривается расширениям
+ради идентичности типов.
 
 ## Связанное
 

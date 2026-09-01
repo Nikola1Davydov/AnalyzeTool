@@ -41,6 +41,8 @@ Platform Services) — issue, заведённые уже ПОСЛЕ съёмк�
 в [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64), [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) и [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) отписан статус «что из
 этого уже отгружено». Открытых стало **64**. В `raw/` этого нет — заберёт следующий снимок.
 
+**2026-09-02, по итогам [сверки](../analyses/audit-2026-09-02.md):** закрыты [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48), [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64), [#89](https://github.com/Nikola1Davydov/AnalyzeTool/issues/89) (отгружены), [#45](https://github.com/Nikola1Davydov/AnalyzeTool/issues/45), [#114](https://github.com/Nikola1Davydov/AnalyzeTool/issues/114) (ушли с Family Manager в другой репозиторий), [#52](https://github.com/Nikola1Davydov/AnalyzeTool/issues/52), [#53](https://github.com/Nikola1Davydov/AnalyzeTool/issues/53) (поглощены); статус и сужение отписаны в #83, #88, #106, #77, #84, #76, #128, #90–#92, #72, #74. Открытых **57**. Тоже не в `raw/`.
+
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:
 

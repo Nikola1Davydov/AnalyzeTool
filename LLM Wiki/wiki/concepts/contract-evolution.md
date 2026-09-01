@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-09-01
+updated: 2026-09-02
 status: draft
 sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 ---
@@ -39,7 +39,11 @@ layout» начинается словами: *если вас просят об
 Отсюда и берётся вопрос «агент не видит, как обновлять»: **видеть нечего.**
 
 Заведено как [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127), **закрыт 2026-09-01**: поле `schema` в манифесте с
-e1ded76, а `ui.buttons` (e233aa3) — первое расширение схемы 2. Ниже — постановка, по которой
+e1ded76, а `ui.buttons` (e233aa3) — первое расширение схемы 2. Отгружено наполовину (сверка
+2026-09-02): поле есть (`src/AnalyseTool.Core/Common/Extensions/ExtensionManifest.cs`), но ни один
+канал его не сообщает — `GetExtensionDiagnostics`, `GetInstalledExtensions` и окно Extensions
+(`src/clientapp/src/view/System/ExtensionsView.vue`) слова `schema` не содержат, а в `src/LLM.md`
+нет раздела миграции по образцу §7.0. Ниже — постановка, по которой
 это сделано; что добавить, и добавить **до** первого расширения схемы:
 
 - поле `"schema": 1` в `plugin.json`; отсутствие = 1, поэтому все существующие файлы
@@ -69,9 +73,10 @@ e1ded76, а `ui.buttons` (e233aa3) — первое расширение схе�
 Все четыре растут из одного поля `schema`. Без него ни один из каналов не может ничего
 сказать.
 
-Заметьте, что три из четырёх уже существуют: `GetExtensionDiagnostics` и
-`UpdateExtensionManifest` — MCP-команды, а §7.0 — готовый образец раздела. Не хватает
-именно признака.
+Заметьте, что три из четырёх существуют как команды и образец: `GetExtensionDiagnostics` и
+`UpdateExtensionManifest` — MCP-команды, а §7.0 — готовый образец раздела. Признак с
+2026-09-01 тоже есть — не хватает того, чтобы каналы его **читали**: ни диагностика, ни
+список, ни окно пока не говорят «манифест схемы 1, актуальная 2».
 
 ## Правила самой миграции
 
@@ -82,9 +87,11 @@ e1ded76, а `ui.buttons` (e233aa3) — первое расширение схе�
 - **Не мигрировать молча.** Предпросмотр и подтверждение. Молча переписать чужой
   `plugin.json` — это ровно `SavePipeline`, писавший `SerializeObject(doc)` и стиравший
   всё, чего не знал: улику уничтожает акт сохранения.
-- **Незнакомые ключи обязаны пережить миграцию.** `[JsonExtensionData]`, как в
-  `PipelineNode`. Файл, написанный против более поздней сборки, должен загружаться, а не
-  терять поля.
+- **Незнакомые ключи обязаны пережить миграцию.** В манифесте это выполнено, но не через
+  `[JsonExtensionData]`, как в `PipelineNode`, а тем, что `ExtensionManifestWriter`
+  (`src/AnalyseTool.Core/Common/Extensions/ExtensionManifestWriter.cs`) не пересобирает файл
+  из модели, а правит разобранный `JObject` на месте: незнакомое поле просто не трогается.
+  Файл, написанный против более поздней сборки, должен загружаться, а не терять поля.
 - **Писать исходный текст, а не свою модель его.** Разбирать — чтобы проверить; сохранять —
   переформатировав, но не пересобирая.
 - **Аддитивно.** `ui.button` в единственном числе продолжает работать рядом с `ui.buttons`.
@@ -134,3 +141,4 @@ SDK, `RELEASE_CHECKLIST.md`.
 - [`command-schema-contract.md`](command-schema-contract.md) — контракт, который читает модель
 - [`../analyses/roadmap.md`](../analyses/roadmap.md) — типы кнопок как первый случай применения
 - [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md)
+- [`../entities/extension-manifest.md`](../entities/extension-manifest.md) — справочник схемы, поле `schema` и кто пишет манифест

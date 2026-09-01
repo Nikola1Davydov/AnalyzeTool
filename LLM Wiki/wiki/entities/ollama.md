@@ -1,7 +1,7 @@
 ---
 type: entity
 updated: 2026-08-31
-status: stub
+status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
 

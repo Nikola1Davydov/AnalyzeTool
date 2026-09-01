@@ -38,7 +38,7 @@ ProjectReference плюс одна строка `InternalsVisibleTo`, без и�
 | --- | --- |
 | `AnalyseTool.Sdk` | публичный контракт: `IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`, `IProgressAware` — пять файлов, это вся поверхность |
 | `AnalyseTool.Core` | платформа: `CommandQueue`, `CommandDispatcher`, загрузчик расширений, Roslyn-скриптинг, `CoreServices`. Headless |
-| `AnalyseTool.Tools` | встроенные команды вертикальными слайсами: `Actions/ Ai/ Elements/ Families/` |
+| `AnalyseTool.Tools` | встроенные команды вертикальными слайсами: `Actions/ Ai/ Elements/` (слайса `Families/` нет с 2026-09-01: Family Manager — расширение, 63a1992) |
 | `AnalyseTool.Mcp.Bridge` | TCP-транспорт внутри Revit |
 | `AnalyseTool.Mcp` | внешний stdio-exe с MCP |
 

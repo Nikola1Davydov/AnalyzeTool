@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-09-02
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -102,13 +102,17 @@ sources: [../sources/github-issues.md]
 необратимое.
 
 **Проверено по коду 2026-08-31 — работа доехала до `dev`, и дальше, чем описывает
-issue.** `CollectingFailuresPreprocessor` живёт в
-`src/AnalyseTool.Tools/Shared/FailureHandling.cs` и применяется в восьми местах:
-`SetDataToParameters`, `IsolationInRevit`, `PlaceFamilyInstance`, `FamilyActionsService`
-(четырежды), `LibraryService`. `SwallowWarningsPreprocessor` в репозитории **не
-осталось вовсе** — то есть пункт «мигрировать слайс Families», который issue оставлял
-в «остаётся сделать», выполнен, и два препроцессора больше не сосуществуют. Флаг
-`Destructive = true` стоит на всех девяти перечисленных командах.
+issue; пересчитано 2026-09-02 после выноса Family Manager.** `CollectingFailuresPreprocessor`
+живёт в `src/AnalyseTool.Tools/Shared/FailureHandling.cs`, и в платформе у него осталось
+**два** места применения: `src/AnalyseTool.Tools/Actions/Features/SetDataToParameters.cs` и
+`src/AnalyseTool.Tools/Actions/Features/IsolationInRevit.cs`. Остальные шесть —
+`PlaceFamilyInstance`, `FamilyActionsService` (четырежды), `LibraryService` — уехали вместе со
+слайсом семейств в расширение FamilyManager (63a1992), и туда же семь команд с
+`Destructive = true` из списка выше; в платформе флаг несут `SetDataToParameters`,
+`OllamaEditParameters` и команды управления расширениями. `SwallowWarningsPreprocessor` в
+репозитории **не осталось вовсе** — пункт «мигрировать слайс Families», который issue
+оставлял в «остаётся сделать», был выполнен ещё до выноса, и два препроцессора больше не
+сосуществуют.
 
 Пометка issue «не скомпилировано и не запущено» относилась к моменту написания и
 устарела дважды: код на `dev`, и он **проверен нагрузкой**.

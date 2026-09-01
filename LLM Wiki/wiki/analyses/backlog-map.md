@@ -7,7 +7,7 @@ sources: [../sources/github-issues.md]
 
 # Карта открытого бэклога
 
-64 открытых issue (снимок 2026-09-01, минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
+57 открытых issue (снимок 2026-09-01, минус семь закрытых 2026-09-02 по [сверке](audit-2026-09-02.md), минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
 AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
@@ -160,8 +160,8 @@ issue. Ниже — состав.
 ## Платформа, не AI
 
 ~~[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста~~ — закрыт 2026-09-01, отгружен (e1ded76; разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
-[#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних ·
-[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений (отгружен, с 2026-09-01 своё окно; статус отписан в issue) ·
+~~[#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних~~ (закрыт 2026-09-02; остатки в #72 и #87) ·
+~~[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений~~ (закрыт 2026-09-02, отгружен) ·
 [#72](https://github.com/Nikola1Davydov/AnalyzeTool/issues/72) лицензирование ·
 [#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) реестр (половина «Available» есть как каталог в плагине; открыт вопрос, нужен ли отдельный репозиторий) ·
 [#81](https://github.com/Nikola1Davydov/AnalyzeTool/issues/81) публикация SDK ·

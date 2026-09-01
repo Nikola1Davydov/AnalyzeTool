@@ -65,7 +65,7 @@ CI, NuGet и генератором шаблона расширений; вто�
 ├── src/               ← ../src — весь код плагина
 │   ├── AnalyseTool.Sdk/          публичный контракт, пять файлов
 │   ├── AnalyseTool.Core/         CommandQueue, диспетчер, загрузчик расширений, скриптинг
-│   ├── AnalyseTool.Tools/        встроенные команды слайсами: Actions/ Ai/ Elements/ Families/
+│   ├── AnalyseTool.Tools/        встроенные команды слайсами: Actions/ Ai/ Elements/ (Families/ нет с 2026-09-01 — Family Manager стал расширением)
 │   ├── AnalyseTool.Mcp/          внешний stdio-exe с MCP
 │   ├── AnalyseTool.Mcp.Bridge/   TCP-транспорт внутри Revit
 │   ├── AnalyseTool.App/          хост: окна, лента, WebView2

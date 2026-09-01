@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-09-01
+updated: 2026-09-02
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -39,8 +39,9 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `RenameFamily*`, `LoadLibraryFamilies`, `PlaceFamilyInstance`, `DeleteFamilyElements`,
 `PurgeFamilies`, `PurgeFamilyTypes`, `SetInstancesWorkset`) переехали с ним — в списке
 инструментов они появляются только с установленным расширением, под его префиксом.
-Зарегистрированных команд стало 51 вместо 68. `GetWorksets` и `GetTypeParameters` остались:
-они не про семейства и переехали в `Elements`.
+Зарегистрированных команд в платформе сегодня 64 (`[RevitCommand]` по `src`, сверка 2026-09-02),
+из них 39 помечены `HiddenFromMcp` и агенту не видны — см. «Чего агент не видит» ниже.
+`GetWorksets` и `GetTypeParameters` остались: они не про семейства и переехали в `Elements`.
 
 Следствие для вики: всё, что выше и ниже сказано о размещении семейств и о `Destructive`
 на командах Family Manager ([`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md),
@@ -80,6 +81,35 @@ MCP-сервер, позволяющий внешнему агенту упра�
 Обратите внимание на форму: несколько расширений держат пару из команды `Pick*` и
 команды, которая потребляет выбор. Это паттерн для работы, требующей человека в
 контуре: агент просит выбрать в Revit и затем действует по выбранному.
+
+## Чего агент не видит
+
+Правило в `src/AnalyseTool.Mcp.Bridge/McpBridgeServer.cs` одно, `IsAvailableToAi`:
+
+`ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(name))`
+
+`ExposeToMcp` — это `!HiddenFromMcp` из атрибута (`CommandDispatcher.cs`). А переключатель C#
+в Settings прячет **набор**, не один инструмент: `ExecuteRevitCode`, `SaveAsCommand`,
+`GetScriptSource`, `SaveExtensionUi`, `UpdateExtensionManifest`, `ReloadExtensions` — читать
+исходник скрипта значит отдать код с машины пользователя, а перезагрузка — шаг, которым
+написанный код вступает в силу. Выключенный инструмент отвечает `NotAvailable` с подсказкой
+попросить человека, а не «неизвестная команда».
+
+Скрытые 39 (сверка 2026-09-02 по `HiddenFromMcp = true`):
+
+| Группа | Команды |
+| --- | --- |
+| AI-провайдеры и Ollama (`Tools/Ai`) | `AiGetProviders`, `AiSaveProvider`, `AiDeleteProvider`, `AiGetModels`, `OllamaAnalyse`, `OllamaEditParameters`, `OllamaGetModels`, `OllamaSuggestName`, `OllamaSuggestNames`, `OllamaSuggestTemplate` |
+| Управление расширениями (`Core/Features/Extensions`) | пути `GetExtensionPaths`, `AddExtensionPath`, `RemoveExtensionPath`, `SetAuthoringRoot`; обновления `CheckExtensionUpdates`, `UpdateExtension`; каталог `GetExtensionCatalog`; установка `InstallExtensionFromFile`, `InstallExtensionFromSource`; удаление `RemoveExtension`, `RemoveDevExtension`; `SetExtensionEnabled`; форма Edit `GetExtensionManifest`, `EditExtensionManifest`; `CreateExtensionTemplate`, `OpenFolder`, `SetCommandButton`, `GetCommands` |
+| Исполнение кода (`Core/Features/Scripting`) | `GetCodeExecutionStatus`, `SetCodeExecution` — ИИ не может выдать себе право |
+| Сам MCP (`Mcp.Bridge/Features`) | `GetMcpStatus`, `SetMcpServer` |
+| Диалоги и кнопки хоста (`App/Features`) | `BrowseForFile`, `BrowseForFolder`, `PickFolder`, `GetChangelog`, `GetHostButtons`, `SetHostButtonVisible` |
+| Тяжёлый UI-ответ (`Tools/Elements`) | `GetDataByCategoryName` — все параметры каждого элемента; агенту вместо неё `GetElements` / `GetCategoryParameters` |
+
+Видимых остаётся 25, при выключенном переключателе C# — 19. `CheckUpdate`
+(`src/AnalyseTool.App/Features/CheckUpdate.cs`: App, `ReadOnly`, не скрыт) по коду должен быть
+среди них, но в каталоге, снятом с живой сессии выше, его нет — **проверить вживую**, попадает
+ли он в `tools/list`.
 
 ## Что бридж делает для вызывающего, который угадывает
 
@@ -159,3 +189,4 @@ intelligence → External assistant → Connection details** (свёрнуто; 
 - [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) — что сломано и в каком порядке чинить
 - [`../concepts/architecture-overview.md`](../concepts/architecture-overview.md) · [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md)
 - [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) · [`../overview.md`](../overview.md)
+- [`extension-manifest.md`](extension-manifest.md) — манифест, из которого растут инструменты расширений · [`ribbon-host.md`](ribbon-host.md) — `ribbon`, третий источник той же очереди

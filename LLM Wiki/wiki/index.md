@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-08-31
+updated: 2026-09-02
 ---
 
 # Индекс
@@ -21,7 +21,7 @@ updated: 2026-08-31
 
 | Страница | Что это |
 | --- | --- |
-| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 88 issue, самый плотный источник здесь |
+| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 91 issue, самый плотный источник здесь |
 | [`sources/pipeline-design-doc.md`](sources/pipeline-design-doc.md) | дизайн конвейеров с ветки — единственный источник с замерами в живом Revit |
 | [`sources/karpathy-llm-wiki-pattern.md`](sources/karpathy-llm-wiki-pattern.md) | паттерн, на котором построена вики, и как мы его адаптировали |
 | [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) | обзор документации репозитория и AI-значимых проектов |
@@ -36,6 +36,8 @@ updated: 2026-08-31
 | [`entities/project-folder.md`](entities/project-folder.md) | папка как интерфейс, шина сообщений и хранилище свода |
 | [`entities/general-folder.md`](entities/general-folder.md) | ярус бюро: общие источники без своей вики, и почему так |
 | [`entities/ollama.md`](entities/ollama.md) | локальный вывод и почему это не просто дешёвый тариф |
+| [`entities/ribbon-host.md`](entities/ribbon-host.md) | лента: панель Manage, три системных окна, стопки — дело панели |
+| [`entities/extension-manifest.md`](entities/extension-manifest.md) | справочник `plugin.json`: схема 2, кнопки, кто и как его пишет |
 
 ## Концепции
 
@@ -62,7 +64,8 @@ updated: 2026-08-31
 | [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
-| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 64 открытых issue по группам |
+| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 57 открытых issue по группам |
+| [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md) | сверка issue и вики с кодом: семь выводов, что закрыть, что сузить, что править |
 
 ## Известные дыры
 
@@ -78,15 +81,10 @@ updated: 2026-08-31
 - **Устройство редактора конвейеров** ([#91](https://github.com/Nikola1Davydov/AnalyzeTool/issues/91))
   из дизайн-документа не взято: порты, идентификаторы узлов, компоновка канвы. Это UI за
   гейтом, и в охват вики он не попадает — но если гейт откроется, читать оттуда.
-- **Спека MCP `2026-07-28` не подтверждена** —
-  [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) работал по пересказу
-  release candidate, и его гейт-вопрос (поддерживает ли `ModelContextProtocol` 1.3.0)
-  открыт.
-- **Внутренности транспорта** — порт, привязка, поведение при двух Revit, блок
-  конфигурации клиента — не подтверждены в
-  [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md).
 - **Ничего не измерено.** Ни сравнения провайдеров, ни набора eval'ов, ни базы по
   вызовам на задачу, кроме двух цифр из
   [#84](https://github.com/Nikola1Davydov/AnalyzeTool/issues/84) и
   [#105](https://github.com/Nikola1Davydov/AnalyzeTool/issues/105).
-Дыры пересчитаны проходом lint 2026-08-31, см. [`log.md`](log.md).
+Дыры пересчитаны проходом lint 2026-09-02, см. [`log.md`](log.md): транспорт MCP и блок
+конфигурации клиента подтверждены по коду, гейт-вопрос про SDK MCP отвечен в
+[`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md).

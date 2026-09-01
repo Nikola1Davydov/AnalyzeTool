@@ -1288,3 +1288,48 @@ Platform Services; четыре шва закладываются сейчас, 
 неясным выводом второго числа, править вслепую не стал.
 
 Линт до правок: чисто. После — см. следующий прогон.
+
+## 2026-09-02 — query: сверка всех issue и всей вики с кодом
+
+Два параллельных прохода: 64 открытых issue против `dev` @ 45a2c09 и 33 страницы против
+того же кода, каждое утверждение — открытием файла. Результат — страница
+[`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md): семь выводов, семь issue
+на закрытие, десять на сужение, двадцать устаревших утверждений в вики.
+
+Три находки меняют планы, а не только текст: тестовых проектов на `dev` нет (они на ветке
+конвейеров, вместе с кодом #88–#92, которая отстала на 83 коммита); SDK MCP 1.3.0 не
+знает спеку `2026-07-28`, но уже несёт Tasks, elicitation и list_changed — половина ветки
+MCP разблокирована; удаление Family Manager не разнесено ни по трекеру, ни по вики.
+
+Правки в другие страницы не вносил — список в разделе «Что править в вики», это отдельный
+проход линта после решения по issue.
+
+## 2026-09-02 — lint: правки по сверке
+
+Применён список «Что править в вики» из [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md),
+каждая правка — после открытия файла. Механически: `Families/` убран из [`../CLAUDE.md`](../CLAUDE.md),
+[`concepts/architecture-overview.md`](concepts/architecture-overview.md) и
+[`analyses/roadmap.md`](analyses/roadmap.md); `RibbonHost.cs:554` → `:769`; счётчик 88 → 91 и
+два закрытых «не подтверждено» в [`index.md`](index.md); `ollama.md` — draft; front matter и
+вкладка «Find extensions» в [`concepts/extension-distribution.md`](concepts/extension-distribution.md);
+шесть дыр и седьмая в [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md);
+ветка `feature/extension-manager-foundation` слита, тестовые проекты только на ветке конвейеров
+(roadmap, [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md)); гейт-вопрос про
+`ModelContextProtocol` 1.3.0 закрыт ответом; противоречие про #89 и семейные примеры в
+[`concepts/command-schema-contract.md`](concepts/command-schema-contract.md); остаток по полю
+`schema` и `JObject` вместо `[JsonExtensionData]` в [`concepts/contract-evolution.md`](concepts/contract-evolution.md);
+дрейф `AGENTS.md`, `GetAuthoringGuide` и закрытые дыры в [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md);
+палитра семейств как паттерн расширения, а не платформы.
+
+Содержательно: два места `CollectingFailuresPreprocessor` вместо восьми в
+[`concepts/write-safety-and-approval.md`](concepts/write-safety-and-approval.md); `PurgeFamilies`
+как команда расширения в [`entities/command-queue.md`](entities/command-queue.md); 64 команды,
+39 скрытых, точное правило `IsAvailableToAi` и инвентарь скрытых в
+[`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md).
+
+Две новые сущности: [`entities/ribbon-host.md`](entities/ribbon-host.md) (панель Manage, три
+системных окна, `PackStacks`) и [`entities/extension-manifest.md`](entities/extension-manifest.md)
+(справочник схемы 2, `ManifestEdit`, кто пишет манифест).
+
+Не проверено вживую: попадает ли `CheckUpdate` в `tools/list` — по коду должен, в снятом
+каталоге его нет.

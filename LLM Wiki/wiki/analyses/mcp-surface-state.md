@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-09-01
+updated: 2026-09-02
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -136,7 +136,7 @@ OneDrive. Ничего не ломается; общая папка команд
 модели, содержит больше пригодного к действию, чем два десятка вызовов `GetElements`. Для
 ревью вида и для размещения это меняет класс решаемых задач.
 
-## Тесты есть — их просто никто не запускает
+## Тесты есть на ветке — на `dev` их нет, и никто не запускает
 
 Заведено [#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128).
 
@@ -146,8 +146,10 @@ OneDrive. Ничего не ломается; общая папка команд
 размещать такие тесты негде: `AnalyseTool.Test` — один `UnitTest1.cs`, ссылающийся на
 `AnalyseTool.App`, то есть тянущий Revit. **Это устарело.**
 
-**Проверено по коду 2026-08-31:** в `dev` есть `AnalyseTool.Core.Tests` и
-`AnalyseTool.Tools.Tests` — Revit-free по построению, ровно тот дом, которого не хватало.
+**Поправка 2026-09-02:** на `dev` проектов `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests`
+нет — `git ls-files src/AnalyseTool.*.Tests` пуст, на диске только сиротские `bin/obj`. Они живут
+на ветке `claude/pipelines-plan-f8jrgf` вместе с целью `RunTests` (b1ac574): Revit-free по
+построению, ровно тот дом, которого не хватало, — но его ещё надо перенести.
 
 Но настоящая проблема оказалась другой и хуже, и её называет
 [`../sources/pipeline-design-doc.md`](../sources/pipeline-design-doc.md): **CI не запускает
@@ -165,15 +167,19 @@ OneDrive. Ничего не ломается; общая папка команд
 меняет спека MCP `2026-07-28`. Два пункта бэклога становятся устаревшими (sampling и
 уведомления логирования — оба уже сделаны рекомендованным способом), один получает
 более дешёвый ответ, и приходит Tasks — та возможность, которую три issue обходили без
-имени. **Гейт-вопрос не отвечен:** поддерживает ли `ModelContextProtocol` 1.3.0,
-закреплённый в `src/Directory.Packages.props`, спеку `2026-07-28`? Пока нет ответа,
-ничего не начинается.
-
-> [!warning] не проверено
-> [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) прямо говорит, что
-> его источник — пересказ *release candidate*, а не финальной спеки, и что
-> `modelcontextprotocol.io` был недоступен из среды написания. Проверять, прежде чем
-> на этом строить.
+имени. **Гейт-вопрос отвечен 2026-09-02.** `ModelContextProtocol` 1.3.0, закреплённый в
+`src/Directory.Packages.props`, спеку `2026-07-28` **не** поддерживает: в
+`ModelContextProtocol.Core.xml` пакета (`%USERPROFILE%\.nuget\packages\modelcontextprotocol.core\1.3.0\lib\net8.0\`)
+нет ни `requestState`, ни `ttlMs`, ни `cacheScope`, а ревизии протокола, на которые он
+ссылается, — 2024-11-05, 2025-03-26 и 2025-11-25, ни одной 2026 года. Но там уже есть
+`tasks/get|cancel|list|result`, `McpTaskStatus.InputRequired`, `ElicitRequestParams`,
+`ImageContentBlock` и `ToolListChangedNotification`. Значит на уровне API разблокированы
+[#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed),
+[#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110)
+(прогресс, отмена, Tasks) и форма elicitation для
+[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106); ждут только те, кому буквально
+нужна `2026-07-28` — [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)
+(ttl/cacheScope) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111).
 
 Уточнение объёма к [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111): его
 собственный комментарий признаёт, что цитата в теле issue устарела. `GetElements` уже
