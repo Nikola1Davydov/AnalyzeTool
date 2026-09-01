@@ -1,5 +1,5 @@
 {
-  "$comment": "The curated list of extension repositories shown in Settings -> Extensions -> Get more. Shipped with the plugin; users and companies can add their own entries in %LOCALAPPDATA%\AnalyseTool\catalog.json using the same shape (an entry with an existing id replaces the shipped one). AnalyseTool is only the courier - packages are always downloaded from the publisher's own release.",
+  "$comment": "The curated list of extension repositories shown in Settings -> Catalog. Shipped with the plugin; users and companies can add their own entries in catalog.json inside the AnalyseTool profile folder, using the same shape (an entry with an existing id replaces the shipped one). AnalyseTool is only the courier - packages are always downloaded from the publisher own release.",
   "entries": [
     {
       "id": "analysetool.family-manager",

@@ -349,15 +349,21 @@ interface CatalogRow {
 const catalog = ref<CatalogRow[]>([]);
 const userCatalogPath = ref("");
 const catalogLoading = ref(false);
+const catalogError = ref("");
 
 async function loadCatalog() {
   catalogLoading.value = true;
   try {
-    const res = await invoke<{ entries: CatalogRow[]; userCatalogPath: string }>(
-      "GetExtensionCatalog",
-    );
+    const res = await invoke<{
+      entries: CatalogRow[];
+      userCatalogPath: string;
+      error?: string | null;
+    }>("GetExtensionCatalog");
     catalog.value = res?.entries ?? [];
     userCatalogPath.value = res?.userCatalogPath ?? "";
+    // A file that failed to parse is a note above a working list, not a toast over an empty
+    // page — the entries that did parse are still usable.
+    catalogError.value = res?.error ?? "";
   } catch (e) {
     notifications.error(`Could not read the extension catalog: ${errorText(e)}`);
   } finally {
@@ -1116,6 +1122,13 @@ onMounted(() => {
                   @click="loadCatalog"
                 />
               </div>
+            </div>
+
+            <div
+              v-if="catalogError"
+              class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+            >
+              <i class="pi pi-exclamation-triangle mr-1" />{{ catalogError }}
             </div>
 
             <div class="flex flex-col gap-3">

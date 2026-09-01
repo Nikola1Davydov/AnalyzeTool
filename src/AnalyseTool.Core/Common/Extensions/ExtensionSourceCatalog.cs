@@ -28,6 +28,14 @@ namespace AnalyseTool.Core.Common.Extensions
         [JsonIgnore] public bool UserSupplied { get; init; }
     }
 
+    /// <summary>What <see cref="ExtensionSourceCatalog.Load"/> found, plus whatever it could
+    /// not read. A broken catalog is a note beside a working page, never the page itself:
+    /// the shipped file failing is our bug, the user's file failing is a typo, and in both
+    /// cases the entries that DID parse are still worth showing.</summary>
+    internal sealed record ExtensionCatalogResult(
+        IReadOnlyList<ExtensionCatalogEntry> Entries,
+        string? Error);
+
     /// <summary>
     /// The curated list of extension repositories offered in Settings. Two sources, in order:
     /// the list shipped inside the plugin, then <c>%LOCALAPPDATA%\AnalyseTool\catalog.json</c> —
@@ -46,50 +54,56 @@ namespace AnalyseTool.Core.Common.Extensions
         /// can name the file even when it does not exist yet.</summary>
         public static string UserCatalogPath => Path.Combine(PathProvider.ProfilePath, "catalog.json");
 
-        public static IReadOnlyList<ExtensionCatalogEntry> Load()
+        public static ExtensionCatalogResult Load()
         {
             Dictionary<string, ExtensionCatalogEntry> byId = new(StringComparer.OrdinalIgnoreCase);
+            List<string> problems = new();
 
-            foreach (ExtensionCatalogEntry e in ReadShipped())
+            foreach (ExtensionCatalogEntry e in Read(ReadShipped, "the shipped catalog", problems))
                 byId[e.Id] = e;
 
-            foreach (ExtensionCatalogEntry e in ReadUser())
+            foreach (ExtensionCatalogEntry e in Read(ReadUser, UserCatalogPath, problems))
                 byId[e.Id] = e with { UserSupplied = true };
 
-            return byId.Values
-                       .OrderBy(e => e.UserSupplied) // shipped first, then the local additions
-                       .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
-                       .ToList();
+            return new ExtensionCatalogResult(
+                byId.Values
+                    .OrderBy(e => e.UserSupplied) // shipped first, then the local additions
+                    .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList(),
+                problems.Count == 0 ? null : string.Join(" ", problems));
+        }
+
+        private static IEnumerable<ExtensionCatalogEntry> Read(
+            Func<IEnumerable<ExtensionCatalogEntry>> read, string what, List<string> problems)
+        {
+            try
+            {
+                return read();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not read {What}", what);
+                problems.Add($"Could not read {what}: {ex.Message}");
+                return Array.Empty<ExtensionCatalogEntry>();
+            }
         }
 
         private static IEnumerable<ExtensionCatalogEntry> ReadShipped()
         {
             using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName);
             if (stream is null)
-            {
-                Log.Warning("Extension catalog resource {Resource} is missing from the assembly.", ResourceName);
-                return Array.Empty<ExtensionCatalogEntry>();
-            }
+                throw new InvalidOperationException(
+                    $"the catalog resource {ResourceName} is missing from the assembly");
 
             using StreamReader reader = new(stream);
-            return Parse(reader.ReadToEnd(), ResourceName);
+            return Parse(reader.ReadToEnd(), ResourceName).ToList(); // materialise INSIDE the try
         }
 
         private static IEnumerable<ExtensionCatalogEntry> ReadUser()
         {
             string path = UserCatalogPath;
             if (!File.Exists(path)) return Array.Empty<ExtensionCatalogEntry>();
-
-            try
-            {
-                return Parse(File.ReadAllText(path), path);
-            }
-            catch (Exception ex)
-            {
-                // A hand-edited file must never take the page down — the shipped list still shows.
-                Log.Warning(ex, "Could not read the user extension catalog at {Path}", path);
-                return Array.Empty<ExtensionCatalogEntry>();
-            }
+            return Parse(File.ReadAllText(path), path).ToList();
         }
 
         private static IEnumerable<ExtensionCatalogEntry> Parse(string json, string origin)

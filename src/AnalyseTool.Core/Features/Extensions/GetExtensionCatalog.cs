@@ -23,7 +23,9 @@ namespace AnalyseTool.Core.Features.Extensions
                 .GroupBy(d => d.Manifest.Id, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            object[] entries = ExtensionSourceCatalog.Load().Select(e =>
+            ExtensionCatalogResult catalog = ExtensionSourceCatalog.Load();
+
+            object[] entries = catalog.Entries.Select(e =>
             {
                 installed.TryGetValue(e.Id, out ExtensionDescriptor? d);
                 return (object)new
@@ -49,6 +51,9 @@ namespace AnalyseTool.Core.Features.Extensions
             {
                 entries,
                 userCatalogPath = ExtensionSourceCatalog.UserCatalogPath,
+                // A catalog file that failed to parse is reported BESIDE the entries that did,
+                // not as a failed command: one broken file must not cost the whole page.
+                error = catalog.Error,
             });
         }
     }
