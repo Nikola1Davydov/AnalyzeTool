@@ -25,7 +25,7 @@ VAULT   = os.path.dirname(SCRIPTS)
 REPO    = os.path.dirname(VAULT)
 
 CODE_EXT = r"\.(cs|ps1|vue|ts|js|props|yml|yaml|targets|csproj|sln|json|md)(:[\d\-,]+)?$"
-CODE_DIR = r"^(src|docs|\.github|samples|img|libs)/"
+CODE_DIR = r"^(src|docs|\.github|samples|img|libs|AnalyseTool\.[A-Za-z]+)/"
 # Плейсхолдеры из примеров в тексте — не пути.
 SKIP = {"path/File.cs", "kebab-case.md", "wiki/Home.md", "wiki/Writing-extensions-with-AI.md"}
 
@@ -34,6 +34,10 @@ RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json"}
 
 # Существуют, но не в текущей ветке. Значение — где искать; это не ошибка.
 ELSEWHERE = {"docs/pipeline-design.md": "ветка claude/pipelines-plan-f8jrgf"}
+
+# Соседние репозитории проекта: вики цитирует и их. Путь вида
+# "AnalyseTool.FamilyManager/ui/src/bootstrap.ts" ищется рядом с основным репозиторием.
+SIBLINGS = ["AnalyseTool.FamilyManager"]
 
 # Дыры: термин -> страница, которая им владеет (None = владельца нет).
 # Дополняйте по мере роста вики.
@@ -88,6 +92,12 @@ def check_orphans(pages):
             and os.path.normpath(p) not in linked]
 
 def resolve(bare):
+    # Соседний репозиторий: путь начинается с его имени.
+    for sib in SIBLINGS:
+        if bare.startswith(sib + "/"):
+            p = os.path.join(os.path.dirname(REPO), bare.replace("/", os.sep))
+            return bare if os.path.exists(p) else None
+
     cands = [bare] if re.match(CODE_DIR, bare) else [bare, "src/" + bare]
     for c in cands:
         if os.path.exists(os.path.join(REPO, c.replace("/", os.sep))):
