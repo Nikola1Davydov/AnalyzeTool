@@ -597,6 +597,27 @@ For a readable, searchable view, open **AnalyseTool tab → Settings → Command
 every command with its source, description, payload shape and flags (read-only / destructive /
 MCP). That's the quickest way to browse what's available while you build.
 
+### 5.2a Your page is a separate application
+
+`window.AT` is the entire contract between the host and your page. The page loads in its own
+WebView, from its own document, as its own bundle — the host injects the bridge and nothing else.
+There is no shared component library, no shared theme, no shared stylesheet and no global component
+registrations to inherit.
+
+Practically that means three things:
+
+- **Import every UI component in the file that renders it.** A component that is not registered does
+  not raise an error; it renders nothing. The symptom is a page that looks half-built while the
+  console stays clean — the hardest kind of bug to attribute.
+- **Ship a stylesheet that sets the page background.** Without one the page inherits the WebView
+  default rather than anything of the host's.
+- **Choose your own theme.** Looking like part of the product is a good goal; reading the host's
+  settings is not possible, and copying its setup file creates a dependency that breaks silently the
+  day that file changes.
+
+It is the same rule the C# side states, one layer up: a command sees only the SDK, a page sees only
+`window.AT`.
+
 ### 5.3 Building a framework app (Vite)
 
 Ship the built `dist` contents next to `plugin.json`. The one gotcha: the page loads from a

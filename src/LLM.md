@@ -370,6 +370,25 @@ const { commands } = await window.AT.invoke("GetCommands");
   **rejects** with the error message.
 - Built with a framework: set Vite `base: "./"` (relative assets) and ship `dist` next to `plugin.json`.
 
+### Your page is a separate application
+
+**`window.AT` is the ENTIRE contract.** Your page runs in its own WebView, its own document, its own
+bundle. The host injects the bridge and nothing else: no component library, no theme, no stylesheet,
+no global registrations, no CSS variables.
+
+So the page must bring everything it renders with:
+
+- **import every UI component you use, in the file that uses it.** Do not assume a component is
+  registered globally — a component that is not registered does not throw, it renders *nothing*, and
+  the result is a page that looks half-built with a clean console;
+- **ship your own stylesheet**, including a page background. Without one you inherit the WebView
+  default, which is not the host's;
+- **pick your own theme.** Matching the host visually is fine and welcome — reading its settings is
+  not possible and copying its setup file is a dependency that breaks silently when it changes.
+
+This is the frontend half of the rule the C# side already states: a command sees only the SDK, and a
+page sees only `window.AT`.
+
 ---
 
 ## 7. Deploy & reload
