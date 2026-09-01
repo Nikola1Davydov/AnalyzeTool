@@ -443,6 +443,21 @@ Rules for the conversion — they cover every case:
 Do NOT delete the old folder as part of the migration — leave that to the user; both layouts load,
 so nothing breaks while both exist.
 
+### 7.0a Releasing from GitHub
+
+A C# extension created by the template ships `.github/workflows/ci.yml`. It builds every Revit year
+and, on a `v*` tag, publishes the packed zip as a GitHub Release — the same zip
+`updateFeed` points at, so tagging IS the release:
+
+```
+dotnet build -c Release -t:PackExtension     # the same thing, locally
+git tag v1.0.0 && git push --tags            # and on GitHub, with a Release attached
+```
+
+The tag must match `version` in `plugin.json`; the workflow fails the build otherwise, because a
+mismatch would leave the update badge in Settings permanently wrong. Delete the workflow if you
+distribute another way — nothing else depends on it.
+
 ### 7.1 Publish (optional)
 
 For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole

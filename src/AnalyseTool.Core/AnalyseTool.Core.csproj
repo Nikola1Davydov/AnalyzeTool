@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
@@ -47,6 +47,9 @@
                           WithCulture="false" />
         <EmbeddedResource Include="Features\Extensions\Templates\gitignore.txt"
                           LogicalName="AnalyseTool.Core.Templates.gitignore.txt"
+                          WithCulture="false" />
+        <EmbeddedResource Include="Features\Extensions\Templates\workflow.yml.txt"
+                          LogicalName="AnalyseTool.Core.Templates.workflow.yml.txt"
                           WithCulture="false" />
         <EmbeddedResource Include="..\LLM.md"
                           LogicalName="AnalyseTool.Core.Templates.LLM.md"

@@ -94,9 +94,7 @@ namespace AnalyseTool.App.Common.Extensions
                 AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                     MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png"));
 
-
-
-            // Fourth button: the script launcher. It exists so that GENERATED commands do not each need
+            // Second button: the script launcher. It exists so that GENERATED commands do not each need
             // a ribbon button of their own — the ribbon holds one entry and the list behind it grows.
             RegisterStaticButton("AnalyseToolScripts", "Scripts",
                 AddStaticButton(mainPanel, "AnalyseToolScripts", "Scripts", launcherPath,

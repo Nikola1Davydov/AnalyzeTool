@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core;
 using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Extensions;
@@ -113,6 +113,17 @@ namespace AnalyseTool.Core.Features.Extensions
                 string gitignorePath = Path.Combine(extensionRoot, ".gitignore");
                 File.WriteAllText(gitignorePath, ReadTemplate(GitignoreResource));
                 filesCreated.Add(gitignorePath);
+
+                // A GitHub workflow that builds every Revit year and publishes the zip on a version
+                // tag. C# flavours only, because PackExtension is an MSBuild target and a script or
+                // UI-only folder has no project for it to run in. Without this an author has
+                // PackExtension locally and nothing that calls it where releases are made — the gap
+                // that turned up the first time this extension pipeline was walked end to end.
+                string workflowDir = Path.Combine(extensionRoot, ".github", "workflows");
+                Directory.CreateDirectory(workflowDir);
+                string workflowPath = Path.Combine(workflowDir, "ci.yml");
+                File.WriteAllText(workflowPath, ReadTemplate(WorkflowResource));
+                filesCreated.Add(workflowPath);
             }
 
             // LLM.md — for EVERY flavour, not just C#: the guide covers C#, script and JS/UI authoring,
@@ -143,6 +154,7 @@ namespace AnalyseTool.Core.Features.Extensions
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
+        private const string WorkflowResource = "AnalyseTool.Core.Templates.workflow.yml.txt";
 
         /// <summary>
         /// Template texts are EMBEDDED RESOURCES, not C# string literals. The csproj is then real XML

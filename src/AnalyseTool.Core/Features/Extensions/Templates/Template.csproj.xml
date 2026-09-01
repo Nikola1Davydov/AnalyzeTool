@@ -3,8 +3,16 @@
     <!-- The Revit year drives everything below: the output folder, the API packages and the runtime.
          Retarget by editing this one number — or without editing at all:
              dotnet build -p:RevitVersion=2026
-         (a command-line property overrides this one), so per-year builds stack up side by side. -->
-    <RevitVersion>__RevitVersion__</RevitVersion>
+         (a command-line property overrides this one), so per-year builds stack up side by side.
+
+         The Configuration lines matter for PACKAGING: the SDK's PackExtension target builds one child
+         process per year through the configurations "Release R25/R26/R27". A project that only reads
+         the property below builds every one of them for the templated year, and packing fails on a
+         TargetFramework mismatch. Both routes have to work. -->
+    <RevitVersion Condition="$(Configuration.Contains('R27'))">2027</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' and $(Configuration.Contains('R26'))">2026</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' and $(Configuration.Contains('R25'))">2025</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">__RevitVersion__</RevitVersion>
 
     <!-- Not a free choice: the Nice3point package for a year is built for that year's runtime, so a
          net8 project referencing the 2027 package fails restore (NU1202). -->
