@@ -379,6 +379,16 @@ function installFromCatalog(row: CatalogRow) {
   );
 }
 
+// Uninstall from the catalog card: the same dialog and the same command as the extension
+// list. The catalog knows an id, the remove flow wants the installed row — that lookup is the
+// whole difference, and duplicating the flow for it would mean two ways to delete one thing.
+function removeFromCatalog(row: CatalogRow) {
+  const installed = data.value?.extensions.find(
+    (e) => e.id.toLowerCase() === row.id.toLowerCase() && e.zone === "managed",
+  );
+  if (installed) askRemove(installed);
+}
+
 // ---- Install from a pasted repository: the same route, for anything not in the catalog.
 const sourceDialogVisible = ref(false);
 const sourceInput = ref("");
@@ -470,7 +480,7 @@ async function confirmRemove() {
   try {
     await invoke(target.zone === "dev" ? "RemoveDevExtension" : "RemoveExtension", { id: target.id });
     removeDialogVisible.value = false;
-    await Promise.all([load(), loadPaths(), loadCommands()]);
+    await Promise.all([load(), loadPaths(), loadCommands(), loadCatalog()]);
   } catch (e) {
     removeError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -727,46 +737,6 @@ onMounted(() => {
             />
             <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
           </div>
-
-    <!-- Delete confirmation, for both zones. -->
-    <Dialog
-      v-model:visible="removeDialogVisible"
-      modal
-      :header="removeTarget?.zone === 'dev' ? 'Delete extension' : 'Uninstall extension'"
-      class="w-[28rem]"
-    >
-      <div class="text-sm flex flex-col gap-3">
-        <p>
-          Remove <b>{{ removeTarget?.name || removeTarget?.id }}</b> and delete its folder? This
-          cannot be undone.
-        </p>
-        <!-- The path, for dev folders only. An installed package sits where the manager put it; one of
-             your own could be anywhere, including a folder you share with your team. -->
-        <p v-if="removeTarget?.zone === 'dev'" class="text-xs text-surface-500 break-all font-mono">
-          {{ removeTarget?.directory }}
-        </p>
-        <p v-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'" class="text-amber-600">
-          This is a compiled extension — its source project is somewhere else, but the built output
-          here goes.
-        </p>
-        <p v-if="removeError" class="text-red-500">{{ removeError }}</p>
-      </div>
-      <template #footer>
-        <Button
-          label="Cancel"
-          text
-          severity="secondary"
-          :disabled="removeBusy"
-          @click="removeDialogVisible = false"
-        />
-        <Button
-          :label="removeTarget?.zone === 'dev' ? 'Delete' : 'Uninstall'"
-          severity="danger"
-          :loading="removeBusy"
-          @click="confirmRemove"
-        />
-      </template>
-    </Dialog>
 
     <!-- Extension paths: the source roots scanned for the running Revit version (default + user-added). -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
@@ -1183,6 +1153,18 @@ onMounted(() => {
                     open as a dev copy
                   </span>
                   <span v-else class="text-xs text-surface-500">manual download</span>
+                  <!-- Installing and uninstalling belong to the same card: finding an extension
+                       here and then hunting for it in another tab to remove it is one place too
+                       many for one thing. -->
+                  <Button
+                    v-if="row.installed && row.zone === 'managed'"
+                    label="Uninstall"
+                    icon="pi pi-trash"
+                    size="small"
+                    text
+                    severity="danger"
+                    @click="removeFromCatalog(row)"
+                  />
                 </div>
               </div>
 
@@ -1476,6 +1458,46 @@ onMounted(() => {
           :severity="installOverwrite ? 'danger' : undefined"
           :loading="installBusy"
           @click="confirmInstall"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Delete confirmation, for both zones. -->
+    <Dialog
+      v-model:visible="removeDialogVisible"
+      modal
+      :header="removeTarget?.zone === 'dev' ? 'Delete extension' : 'Uninstall extension'"
+      class="w-[28rem]"
+    >
+      <div class="text-sm flex flex-col gap-3">
+        <p>
+          Remove <b>{{ removeTarget?.name || removeTarget?.id }}</b> and delete its folder? This
+          cannot be undone.
+        </p>
+        <!-- The path, for dev folders only. An installed package sits where the manager put it; one of
+             your own could be anywhere, including a folder you share with your team. -->
+        <p v-if="removeTarget?.zone === 'dev'" class="text-xs text-surface-500 break-all font-mono">
+          {{ removeTarget?.directory }}
+        </p>
+        <p v-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'" class="text-amber-600">
+          This is a compiled extension — its source project is somewhere else, but the built output
+          here goes.
+        </p>
+        <p v-if="removeError" class="text-red-500">{{ removeError }}</p>
+      </div>
+      <template #footer>
+        <Button
+          label="Cancel"
+          text
+          severity="secondary"
+          :disabled="removeBusy"
+          @click="removeDialogVisible = false"
+        />
+        <Button
+          :label="removeTarget?.zone === 'dev' ? 'Delete' : 'Uninstall'"
+          severity="danger"
+          :loading="removeBusy"
+          @click="confirmRemove"
         />
       </template>
     </Dialog>
