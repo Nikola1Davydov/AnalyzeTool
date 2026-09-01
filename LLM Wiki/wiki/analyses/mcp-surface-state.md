@@ -121,7 +121,7 @@ OneDrive. Ничего не ломается; общая папка команд
 
 `GetFamilyPreview` рендерит PNG-миниатюру и возвращает её строкой
 `"data:image/png;base64," + Convert.ToBase64String(...)`
-(`Families/Features/GetFamilyPreview.cs:61`). Команда **не помечена** `HiddenFromMcp`,
+(`AnalyseTool.FamilyManager/extension/Features/GetFamilyPreview.cs`, после выноса). Команда **не помечена** `HiddenFromMcp`,
 то есть выставлена агенту. А `AnalyseTool.Mcp/Program.cs` умеет собирать только
 `TextContentBlock` (строки 133 и 149) — блока изображения там нет.
 

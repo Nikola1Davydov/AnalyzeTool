@@ -14,7 +14,8 @@ issue — не тикеты, а разобранные дизайн-заметк
 **Снимки:**
 [`../../raw/github-issues-2026-09-01.md`](../../raw/github-issues-2026-09-01.md) — 91 issue, тела (актуальный) ·
 [`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue, предыдущий ·
-[`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — все 46 комментариев
+[`../../raw/github-issue-comments-2026-09-01.md`](../../raw/github-issue-comments-2026-09-01.md) — 49 комментариев на 25 issue (актуальный) ·
+[`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — 46 комментариев, предыдущий
 **Прочитан:** 2026-08-31 через публичный API (`/issues?state=all`), pull request'ы отфильтрованы
 
 ## Форма
@@ -23,8 +24,16 @@ issue — не тикеты, а разобранные дизайн-заметк
 [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127),
 [#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128) и
 [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129) — все три произведены из этой
-вики, а не приняты в неё. Комментариев по-прежнему 46, поэтому их снимок не пересобирался:
-дублировать 100 КБ без изменений незачем.
+вики, а не приняты в неё.
+
+Комментарии пересняты 2026-09-01: 49 против 46. Новых три, все от 2026-09-01 —
+[#125](https://github.com/Nikola1Davydov/AnalyzeTool/issues/125) получил первый комментарий
+(мультипроектность), и два ушли в
+[#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119) как ссылки на карту плана.
+
+**Дыра снимка.** Те два комментария ссылаются на **#131** (worker) и **#132** (ACC / Autodesk
+Platform Services) — issue, заведённые уже ПОСЛЕ съёмки тел за 2026-09-01. В `raw/` их нет, и
+всё, что вики о них знает, — эти две ссылки. Следующий снимок тел их заберёт.
 
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:

@@ -49,6 +49,7 @@ TERMS = {
     "порог прерывания":  (r"порог[а-я]* прерывания",                  "wiki/concepts/proactivity-budget.md"),
     "папка проекта":     (r"папк[а-я]+ проекта",                      "wiki/entities/project-folder.md"),
     "конвейер":          (r"конвейер",                                "wiki/sources/pipeline-design-doc.md"),
+    "генеральная папка": (r"генеральн[а-я]+ папк[а-я]+",                "wiki/entities/general-folder.md"),
 }
 
 def wiki_pages():
@@ -77,7 +78,7 @@ def check_links(pages):
 
 def check_orphans(pages):
     linked = set()
-    for entry in ("wiki/index.md", "wiki/overview.md", "wiki/log.md", "CLAUDE.md"):
+    for entry in ("wiki/index.md", "wiki/overview.md", "wiki/log.md", "CLAUDE.md", "README.md"):
         p = os.path.join(VAULT, entry)
         if not os.path.exists(p):
             continue
@@ -119,6 +120,10 @@ def check_code_paths(pages):
         for m in re.finditer(r"`([^`\n]+)`", read(p)):
             t = m.group(1).strip()
             if t in SKIP or t in RUNTIME or "<" in t or ">" in t:
+                continue
+            # Путь с переменной окружения (%LOCALAPPDATA%\...) — это машина пользователя,
+            # а не артефакт репозитория: искать его в исходниках бессмысленно по определению.
+            if "%" in t:
                 continue
             if t.startswith("../") or t.endswith("/") or "→" in t or "->" in t or " " in t:
                 continue
