@@ -1,0 +1,2 @@
+# 110 columns, matching the line length the C# in this repository is written to.
+max_width = 110

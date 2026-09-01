@@ -14,9 +14,10 @@ WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools comman
 | --- | --- | --- |
 | `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. |
 | `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn scripting, `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
-| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/`, `Families/` — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
+| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Dwg/`, `Elements/`, `Families/` — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
 | `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
 | `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
+| `AnalyseTool.Dwg.Sidecar` | none (Rust crate) | Out-of-process DWG/DXF **reader** (`analysetool-dwg.exe`), so Revit never opens a DWG. Same stdio-JSON pattern as `AnalyseTool.Mcp`; the wire contract is mirrored by hand in `Tools/Dwg/Infrastructure/DwgWire.cs`. Built by cargo from `PluginAssets.targets` into `<plugin>\dwg\`; **a missing Rust toolchain is a warning, not a build error**. See its own README. |
 | `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
 | `AnalyseTool.Launcher` | App (+ Mcp build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
 
@@ -26,6 +27,7 @@ Hard rules:
 - Commands touch the Revit model **only** inside `IRevitContext.RunInRevitAsync`. Core code gets the Revit version from `CoreServices.RevitVersion`, never from an ambient `Context`.
 - Transports never talk to `CommandDispatcher`; they enqueue `CommandRequest`s into `CoreServices.Queue` (carries command, payload, source, ct, progress, optional pre-execution gate).
 - `SharedData/ToolData` is compiled into several assemblies and must stay `internal` (a public copy causes CS0433).
+- The DWG sidecar is spoken to over a **process boundary only** — never linked in. That is what keeps a parser panic on a malformed DWG from taking Revit down, and it is why `Tools/Dwg` needs no reference beyond the Sdk. Change the wire shape and you change it twice, in `wire.rs` and `DwgWire.cs`, on purpose.
 - Namespaces follow project names (`AnalyseTool.Core.*`, `AnalyseTool.Tools.*`, `AnalyseTool.App.*`).
 
 ## Building
@@ -39,6 +41,7 @@ powershell -File src/build/Check-Boundaries.ps1
 powershell -File src/build/Check-Schemas.ps1
 ```
 
+- The Rust sidecar builds with `cargo build --release` in `src/AnalyseTool.Dwg.Sidecar` (`cargo test` covers the protocol against a real DWG it writes itself). The plugin build does this for you when cargo is on PATH; without it, everything else still builds and the DWG commands answer `sidecar_missing`.
 - Configurations: `Debug|Release R25/R26/R27` → TFM `net8.0-windows` (R25/26) / `net10.0-windows` (R27), from `src/AnalyseTool.Sdk/build/AnalyseTool.Extension.props`.
 - NuGet versions are centralized in `src/Directory.Packages.props` (CPM). `samples/` is deliberately OUTSIDE CPM — it simulates an external extension author. Floating Revit API versions use `VersionOverride`.
 - Shared MSBuild deploy logic (MCP exe + clientapp/dist copying) lives in `src/PluginAssets.targets`.

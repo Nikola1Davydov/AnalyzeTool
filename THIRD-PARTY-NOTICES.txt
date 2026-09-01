@@ -39,6 +39,45 @@ ModelContextProtocol (C# SDK)                    MIT
   Copyright (c) Model Context Protocol contributors
   https://github.com/modelcontextprotocol/csharp-sdk
 
+Rust components (shipped in the plugin folder as analysetool-dwg.exe)
+---------------------------------------------------------------------
+
+The out-of-process DWG/DXF reader is a Rust binary that statically links the
+crates below. The exact resolved set is recorded in
+src/AnalyseTool.Dwg.Sidecar/Cargo.lock; this list is generated from
+`cargo metadata --filter-platform x86_64-pc-windows-msvc`.
+
+acadrust                                         MPL-2.0
+  Copyright (c) Hakan AK
+  https://github.com/hakanaktt/acadrust
+  Mozilla Public License 2.0 — a file-level copyleft: the source of its files,
+  including any that were modified, must be made available. No file of it is
+  modified in this product; it is used exactly as published on crates.io, and
+  the source is available at the address above.
+
+nalgebra                                         BSD-3-Clause
+  Copyright (c) 2013, Sebastien Crozet
+  https://github.com/dimforge/nalgebra
+  (its companion crates nalgebra-macros, simba and approx are Apache-2.0)
+
+encoding_rs                                      (Apache-2.0 OR MIT) AND BSD-3-Clause
+  Copyright Mozilla Foundation
+  https://github.com/hsivonen/encoding_rs
+
+zlib-rs                                          Zlib
+  https://github.com/trifectatechfoundation/zlib-rs
+
+serde, serde_json, thiserror, anyhow, flate2, indexmap, hashbrown, ahash,
+bitflags, num-traits and further support crates  MIT OR Apache-2.0
+
+nom, simd-adler32, zmij                          MIT
+byteorder, memchr                                Unlicense OR MIT
+bytemuck, safe_arch, wide, miniz_oxide           Zlib OR Apache-2.0 OR MIT
+ryu                                              Apache-2.0 OR BSL-1.0
+zerocopy                                         BSD-2-Clause OR Apache-2.0 OR MIT
+adler2                                           0BSD OR MIT OR Apache-2.0
+unicode-ident                                    (MIT OR Apache-2.0) AND Unicode-3.0
+
 Web frontend components (bundled into the clientapp)
 ----------------------------------------------------
 
@@ -106,3 +145,12 @@ copyright notice given for that component):
 Apache License 2.0 (applies to each component marked "Apache-2.0" above):
   see the LICENSE file in this distribution or
   http://www.apache.org/licenses/LICENSE-2.0
+
+Mozilla Public License 2.0 (applies to acadrust):
+  https://mozilla.org/MPL/2.0/
+  A copy of the license text is distributed with the crate's own source at
+  https://github.com/hakanaktt/acadrust.
+
+The remaining licenses named above (BSD-2-Clause, BSD-3-Clause, Zlib, 0BSD,
+BSL-1.0, Unlicense, Unicode-3.0) are permissive; each crate carries its own
+license text in the source archive published on crates.io.

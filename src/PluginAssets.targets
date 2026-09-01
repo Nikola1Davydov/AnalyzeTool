@@ -21,6 +21,44 @@
     <Copy SourceFiles="@(ATMcpFiles)" DestinationFolder="$(OutputPath)\mcp\%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
+  <!-- The out-of-process DWG/DXF reader ships in a "dwg" subfolder; DwgSidecarClient looks for
+       <plugin>\dwg\analysetool-dwg.exe. It is a Rust binary, so it is built by cargo rather than by
+       MSBuild, and ALWAYS in release: a debug build of the codec parses a large drawing an order of
+       magnitude slower, and the binary is identical either way.
+
+       A missing Rust toolchain is a WARNING, not an error. Rust is needed only by this one optional
+       reader, and failing the whole plugin build over it would make every contributor install a
+       toolchain to work on something unrelated. Without it the DWG commands answer sidecar_missing
+       with instructions, and nothing else is affected. -->
+  <Target Name="ATBuildAndCopyDwgSidecar" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
+    <PropertyGroup>
+      <ATDwgSidecarDir>$(MSBuildThisFileDirectory)AnalyseTool.Dwg.Sidecar</ATDwgSidecarDir>
+      <ATDwgSidecarExe>$(ATDwgSidecarDir)\target\release\analysetool-dwg.exe</ATDwgSidecarExe>
+    </PropertyGroup>
+
+    <Exec Command="cargo --version" WorkingDirectory="$(ATDwgSidecarDir)" ContinueOnError="true"
+          IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="ATCargoProbe" />
+    </Exec>
+
+    <Warning Condition="'$(ATCargoProbe)' != '0'"
+             Text="Rust toolchain not found — skipping the DWG reader (analysetool-dwg). The DWG commands will report sidecar_missing until you install Rust from https://rustup.rs and rebuild; the rest of the plugin is unaffected." />
+
+    <Message Condition="'$(ATCargoProbe)' == '0'" Text="Building the DWG reader (cargo build --release)..." Importance="high" />
+    <Exec Condition="'$(ATCargoProbe)' == '0'" Command="cargo build --release" WorkingDirectory="$(ATDwgSidecarDir)"
+          ContinueOnError="true" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="ATCargoBuild" />
+    </Exec>
+
+    <Warning Condition="'$(ATCargoProbe)' == '0' And '$(ATCargoBuild)' != '0'"
+             Text="The DWG reader failed to build (cargo exit code $(ATCargoBuild)) — see the output above. The rest of the plugin is unaffected." />
+
+    <ItemGroup>
+      <ATDwgSidecarFiles Include="$(ATDwgSidecarExe)" Condition="Exists('$(ATDwgSidecarExe)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ATDwgSidecarFiles)" DestinationFolder="$(OutputPath)\dwg" SkipUnchangedFiles="true" />
+  </Target>
+
   <!-- The compiled web frontend (clientapp/dist) is served from the plugin folder in Release. -->
   <Target Name="ATCopyClientAppDist" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
     <Message Text="Copying clientapp/dist into the plugin folder..." Importance="high" />

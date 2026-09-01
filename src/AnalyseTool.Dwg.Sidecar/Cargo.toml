@@ -1,0 +1,40 @@
+# The out-of-process DWG/DXF reader.
+#
+# Why a separate process in Rust at all: reading DWG needs a codec, and the options are ODA/Teigha
+# (paid membership), Autodesk RealDWG (restricted), or Revit's own importer — which is exactly the
+# thing this feature exists to avoid. `acadrust` is a pure-Rust DWG/DXF codec under MPL-2.0, a
+# file-level copyleft that a plugin may link without becoming copyleft itself (obligations attach
+# only to modified MPL files, and we modify none).
+#
+# It is a process, not a P/Invoke library, for the same reason AnalyseTool.Mcp is: a malformed DWG
+# that panics the parser must not take Revit down with it, and a JSON pipe needs no `unsafe` shim.
+# The protocol is deliberately the same shape as OpenCADStudio's `--serve` (one JSON object per
+# line over stdio), so the backend can be swapped for that app later without touching the C# side.
+
+[package]
+name = "analysetool-dwg"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "Apache-2.0"
+publish = false
+description = "Out-of-process DWG/DXF reader for the AnalyseTool Revit add-in"
+
+[[bin]]
+name = "analysetool-dwg"
+path = "src/main.rs"
+
+[lib]
+name = "analysetool_dwg"
+path = "src/lib.rs"
+
+[dependencies]
+acadrust = { version = "0.4.1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
