@@ -76,9 +76,10 @@ namespace AnalyseTool.App.Common.Extensions
         /// after a dash when present — e.g. "Sample Extension - 1.0.0".</summary>
         private static string BuildTitle(ExtensionManifest manifest)
         {
-            string name = string.IsNullOrWhiteSpace(manifest.Ui?.Button?.Name)
+            string? firstButton = manifest.Ui?.EffectiveButtons().FirstOrDefault()?.Name;
+            string name = string.IsNullOrWhiteSpace(firstButton)
                 ? manifest.Id
-                : manifest.Ui!.Button!.Name;
+                : firstButton!;
             return string.IsNullOrWhiteSpace(manifest.Version) ? name : $"{name} - {manifest.Version}";
         }
 

@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 
@@ -28,7 +28,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 .Select(d => new
                 {
                     id = d.Manifest.Id,
-                    name = string.IsNullOrWhiteSpace(d.Manifest.Ui?.Button?.Name) ? d.Manifest.Id : d.Manifest.Ui!.Button!.Name,
+                    name = FirstButton(d)?.Name is { Length: > 0 } n ? n : d.Manifest.Id,
                     version = d.Manifest.Version,
                     // Manifest v2 vendor metadata (all optional).
                     description = d.Manifest.Description,
@@ -89,7 +89,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
         private static string? LoadIconDataUri(ExtensionDescriptor descriptor)
         {
-            string? relative = descriptor.Manifest.Icon ?? descriptor.Manifest.Ui?.Button?.Icon;
+            string? relative = descriptor.Manifest.Icon ?? FirstButton(descriptor)?.Icon;
             if (string.IsNullOrWhiteSpace(relative)) return null;
 
             try
@@ -104,5 +104,10 @@ namespace AnalyseTool.Core.Features.Extensions
                 return null; // icon is best-effort, never fail the listing
             }
         }
+
+        /// <summary>The button that represents the extension in listings: the first one it declares,
+        /// whichever manifest form it used.</summary>
+        private static ExtensionButton? FirstButton(ExtensionDescriptor descriptor) =>
+            descriptor.Manifest.Ui?.EffectiveButtons().FirstOrDefault();
     }
 }

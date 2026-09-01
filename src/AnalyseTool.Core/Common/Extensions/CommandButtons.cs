@@ -89,7 +89,11 @@ namespace AnalyseTool.Core.Common.Extensions
             HashSet<string> declared = new(StringComparer.OrdinalIgnoreCase);
             foreach (ExtensionDescriptor descriptor in found)
             {
-                string? command = descriptor.Manifest.Ui?.Button?.Command;
+                // Any manifest button may name a command, so all of them are checked — with ui.buttons
+                // the command could sit on the second entry as easily as the first.
+                string? command = descriptor.Manifest.Ui?.EffectiveButtons()
+                    .Select(b => b.Command)
+                    .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
                 if (!string.IsNullOrWhiteSpace(command)) declared.Add(command!.Trim());
             }
             return declared;
