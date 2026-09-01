@@ -1,11 +1,8 @@
-﻿using AnalyseTool.Tools.Ai;
-using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 
-namespace AnalyseTool.Tools.Families
+namespace AnalyseTool.Tools.Elements
 {
     /// <summary>
     /// Read-only: non-empty type parameters for a batch of family types in one call. Backs the manager's
@@ -28,7 +25,7 @@ namespace AnalyseTool.Tools.Families
             List<long> ids = req?.TypeIds ?? [];
 
             return ctx.RunInRevitAsync<object?>(app =>
-                new FamiliesService().GetTypeParameters(app.ActiveUIDocument.Document, ids));
+                new TypeAndWorksetService().GetTypeParameters(app.ActiveUIDocument.Document, ids));
         }
 
         internal sealed class Request

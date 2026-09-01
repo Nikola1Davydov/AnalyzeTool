@@ -4,21 +4,6 @@ using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Launcher.RevitCommands
 {
-    /// <summary>Ribbon "Family Control" button — opens the family browser/QC window.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class FamilyControlCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("OpenFamilyControl", commandData.Application);
-    }
-
-    /// <summary>Ribbon "Palette" button — shows the dockable family placement palette.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class FamilyPaletteCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
-    }
 
     /// <summary>Ribbon "Scripts" button — shows the dockable launcher listing every registered command.</summary>
     [Transaction(TransactionMode.Manual)]

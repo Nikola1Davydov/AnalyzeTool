@@ -1,7 +1,6 @@
-﻿using AnalyseTool.Sdk;
+using AnalyseTool.Sdk;
 using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;

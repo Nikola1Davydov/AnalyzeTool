@@ -68,7 +68,7 @@ namespace AnalyseTool.App.Common.Docking
             };
         }
 
-        /// <summary>Shows a built-in clientapp route (e.g. "#/families-dock") in the pane, with toggle.</summary>
+        /// <summary>Shows a built-in clientapp route (e.g. "#/scripts") in the pane, with toggle.</summary>
         public static void ShowRoute(string route) =>
             Toggle("route:" + route, p => p.ShowRoute(route));
 

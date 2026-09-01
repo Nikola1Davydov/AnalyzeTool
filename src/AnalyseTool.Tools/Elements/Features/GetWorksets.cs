@@ -1,10 +1,7 @@
-﻿using AnalyseTool.Tools.Ai;
-using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 
-namespace AnalyseTool.Tools.Families
+namespace AnalyseTool.Tools.Elements
 {
     /// <summary>
     /// Read-only list of the document's user worksets (id, name, open/editable flags, owner). Returns
@@ -22,6 +19,6 @@ namespace AnalyseTool.Tools.Families
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
             ctx.RunInRevitAsync<object?>(app =>
-                new FamiliesService().GetWorksets(app.ActiveUIDocument.Document));
+                new TypeAndWorksetService().GetWorksets(app.ActiveUIDocument.Document));
     }
 }

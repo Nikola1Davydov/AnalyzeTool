@@ -12,12 +12,6 @@ const routes = [
   { path: "/about", component: () => import("@/view/AboutView.vue") },
   { path: "/parameterFilledEmptyPage", component: () => import("@/view/ParameterFilledEmptyView.vue") },
   { path: "/parametervaluecheck", component: () => import("@/view/ParameterValueCheckView.vue") },
-  { path: "/families", component: () => import("@/view/FamiliesView.vue"), meta: { layout: "bare" } },
-  {
-    path: "/families-dock",
-    component: () => import("@/view/Families/FamilyPaletteView.vue"),
-    meta: { layout: "bare" },
-  },
   { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
