@@ -159,5 +159,35 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>Sort order within the panel; equal values keep declaration order.</summary>
         [JsonProperty("order")]
         public int Order { get; init; }
+
+        /// <summary>Ribbon shape: <c>push</c> (default, a normal large button), <c>stacked</c> (small
+        /// button sharing a row — consecutive stacked entries fill rows of three, the Revit
+        /// convention), or <c>pulldown</c> (a button whose <see cref="Items"/> drop down under it).
+        /// Unknown values fall back to <c>push</c>: a manifest written against a later host must still
+        /// produce a usable ribbon, not an empty one.</summary>
+        [JsonProperty("kind")]
+        public string? Kind { get; init; }
+
+        /// <summary>Entries of a <c>pulldown</c>. Ignored for other kinds. A child behaves like any
+        /// button — it may open a page or run a command — but carries no placement of its own, since
+        /// it lives inside its parent.</summary>
+        [JsonProperty("items")]
+        public IReadOnlyList<ExtensionButton>? Items { get; init; }
+
+        /// <summary>Normalised <see cref="Kind"/>.</summary>
+        public ButtonKind ResolvedKind => Kind?.Trim().ToLowerInvariant() switch
+        {
+            "stacked" => ButtonKind.Stacked,
+            "pulldown" => ButtonKind.Pulldown,
+            _ => ButtonKind.Push,
+        };
+    }
+
+    /// <summary>Ribbon shape of a manifest button.</summary>
+    internal enum ButtonKind
+    {
+        Push,
+        Stacked,
+        Pulldown,
     }
 }

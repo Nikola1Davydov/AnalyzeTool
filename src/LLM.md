@@ -230,7 +230,30 @@ properties of the SURFACE, not of the extension:
 | `dockable` | Docking for THIS button. Falls back to `ui.dockable`. |
 | `tab` / `panel` | Placement for THIS button. Falls back to `ui.tab` / `ui.panel`. |
 | `order` | Sort order in the panel; equal values keep declaration order. |
+| `kind` | `push` (default) · `stacked` · `pulldown`. Unknown values fall back to `push`. |
+| `items` | Entries of a `pulldown`. Ignored for other kinds. |
 | `name` / `tooltip` / `icon` / `command` | As in the single-button form. |
+
+**`stacked`** — consecutive stacked entries fill rows of three, the shape Revit's own stacked items
+make; a fourth starts a new row. Placement comes from the first entry of a run, because a row cannot
+straddle two panels.
+
+**`pulldown`** — the head opens the list rather than running the first entry. Children behave like
+any button (a page or a `command`) but carry no placement of their own, since they live inside the
+parent.
+
+```json
+"buttons": [
+  { "name": "Manager", "entryHtml": "dist/index.html" },
+  { "name": "Palette", "entryHtml": "dist/palette.html", "dockable": true },
+  { "name": "Rename", "kind": "stacked", "command": "acme.doors.Rename" },
+  { "name": "Purge",  "kind": "stacked", "command": "acme.doors.Purge" },
+  { "name": "Export", "kind": "pulldown", "items": [
+      { "name": "Excel", "command": "acme.doors.ExportExcel" },
+      { "name": "CSV",   "command": "acme.doors.ExportCsv" }
+  ]}
+]
+```
 
 `ui.button` (singular) still works and is still the right choice for one surface — do not rewrite a
 working manifest. Use whichever fits; declaring both is not an error, `ui.buttons` simply wins.
