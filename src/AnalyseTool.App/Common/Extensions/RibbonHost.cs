@@ -111,10 +111,22 @@ namespace AnalyseTool.App.Common.Extensions
 
             // Everything else is small: two stacked columns of three in the Manage panel, so the tab
             // reads as one big button and a tidy block beside it. The split is by JOB, not by size:
-            // the left column is what you run and make (scripts, extensions, a new one), the right
-            // column is the plugin itself (reload, preferences, feedback). Extensions used to live
+            // the left column is the plugin itself (reload, preferences, feedback), the right column
+            // is what you run and make (scripts, extensions, a new one). Extensions used to live
             // inside Settings — a manager you visit to work, buried under a page you configure once.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
+
+            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
+                SettingsCommandClass, "AI and everything else about the plugin itself");
+            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
+                BugsCommandClass, "Report a bug or request a feature on GitHub");
+
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(reloadData, settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
 
             // The script launcher exists so that GENERATED commands do not each need a ribbon button of
             // their own — the ribbon holds one entry and the list behind it grows.
@@ -134,18 +146,6 @@ namespace AnalyseTool.App.Common.Extensions
             // the block is not — Settings must always stay reachable, and Reload with it.
             RegisterStaticButton("AnalyseToolScripts", "Scripts", workStack.Count > 0 ? workStack[0] as PushButton : null);
             ApplyStaticButtonVisibility();
-
-            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
-            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "AI and everything else about the plugin itself");
-            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
-                BugsCommandClass, "Report a bug or request a feature on GitHub");
-
-            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(reloadData, settingsData, bugsData);
-            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
-            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
-            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
