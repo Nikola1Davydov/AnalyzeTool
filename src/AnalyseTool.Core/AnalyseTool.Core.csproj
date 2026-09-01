@@ -48,6 +48,9 @@
         <EmbeddedResource Include="Features\Extensions\Templates\gitignore.txt"
                           LogicalName="AnalyseTool.Core.Templates.gitignore.txt"
                           WithCulture="false" />
+        <EmbeddedResource Include="Features\Extensions\Templates\readme.md.txt"
+                          LogicalName="AnalyseTool.Core.Templates.readme.md.txt"
+                          WithCulture="false" />
         <EmbeddedResource Include="Features\Extensions\Templates\workflow.yml.txt"
                           LogicalName="AnalyseTool.Core.Templates.workflow.yml.txt"
                           WithCulture="false" />

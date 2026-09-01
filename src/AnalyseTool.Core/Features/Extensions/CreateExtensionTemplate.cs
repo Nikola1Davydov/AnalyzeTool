@@ -126,6 +126,15 @@ namespace AnalyseTool.Core.Features.Extensions
                 filesCreated.Add(workflowPath);
             }
 
+            // README.md — for EVERY flavour. LLM.md answers "how do I write a command"; this answers
+            // "what do I do with the folder", and above all that PUBLISHING MEANS PUSHING A TAG. That
+            // fact lives in the workflow's condition and in the guide, and a person opening the folder
+            // would meet neither. An author who does not know it pushes, sees a green build, finds no
+            // release, and has nothing to tell them why.
+            string readmePath = Path.Combine(extensionRoot, "README.md");
+            File.WriteAllText(readmePath, ReadTemplate(ReadmeResource).Replace("__ExtensionId__", payload.PluginJson.Id ?? safeFolderName));
+            filesCreated.Add(readmePath);
+
             // LLM.md — for EVERY flavour, not just C#: the guide covers C#, script and JS/UI authoring,
             // and a UI-only author needs the AT.invoke contract just as much as a C# author needs
             // IRevitTask.
@@ -155,6 +164,7 @@ namespace AnalyseTool.Core.Features.Extensions
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
         private const string WorkflowResource = "AnalyseTool.Core.Templates.workflow.yml.txt";
+        private const string ReadmeResource = "AnalyseTool.Core.Templates.readme.md.txt";
 
         /// <summary>
         /// Template texts are EMBEDDED RESOURCES, not C# string literals. The csproj is then real XML
