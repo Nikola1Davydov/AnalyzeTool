@@ -85,6 +85,7 @@ AI-конструкция стоит на одной идее: **в платфо
 
 ## Связанное
 
+- [`analyses/roadmap.md`](analyses/roadmap.md) — порядок работ, сведённый из всего бэклога
 - [`index.md`](index.md) — всё, что есть в этой вики
 - [`analyses/backlog-map.md`](analyses/backlog-map.md) — все 63 открытых issue по группам
 - [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) · [`sources/github-issues.md`](sources/github-issues.md)
