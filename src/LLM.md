@@ -235,9 +235,11 @@ properties of the SURFACE, not of the extension:
 | `items` | Entries of a `pulldown`. Ignored for other kinds. |
 | `name` / `tooltip` / `icon` / `command` | As in the single-button form. |
 
-**`stacked`** — consecutive stacked entries fill rows of three, the shape Revit's own stacked items
-make; a fourth starts a new row. Placement comes from the first entry of a run, because a row cannot
-straddle two panels.
+**`stacked`** — a small button. The host lays ALL small buttons of a panel into columns of three, the
+shape Revit's own stacked items make — across extensions, ordered by `order`, then extension id,
+then declaration, after the panel's large buttons. So one small button from each of two extensions
+stands in one column, not two. Placement comes from the first entry of a run, because a column
+cannot straddle two panels.
 
 **`pulldown`** — the head opens the list rather than running the first entry. Children behave like
 any button (a page or a `command`) but carry no placement of their own, since they live inside the

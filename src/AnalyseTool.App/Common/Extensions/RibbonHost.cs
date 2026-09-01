@@ -38,8 +38,12 @@ namespace AnalyseTool.App.Common.Extensions
         // "extension id\nbutton index" -> (button, key of the panel it currently sits in). Keyed per
         // BUTTON, not per extension: one manifest may declare several, and each is placed, moved and
         // removed on its own.
-        private static readonly Dictionary<string, (AdWin.RibbonItem Item, string PanelKey, string Signature)> _extButtons =
+        private static readonly Dictionary<string, ExtEntry> _extButtons =
             new(StringComparer.OrdinalIgnoreCase);
+        // Stacked columns we assembled per panel — rebuilt from scratch on every refresh, so they are
+        // tracked only to be removed. Keyed like _adwPanels.
+        private static readonly Dictionary<string, List<AdWin.RibbonRowPanel>> _packedRows =
+            new(StringComparer.Ordinal);
         // command name -> its button, for commands the USER pinned in the launcher. Kept apart from
         // _extButtons because the two are keyed differently and answer to different owners: a manifest
         // button belongs to an extension, while a pin names a single command and may name one from an
@@ -172,6 +176,7 @@ namespace AnalyseTool.App.Common.Extensions
                 SyncButtons(descriptor);
 
             RefreshPinnedButtons(found);
+            PackStacks();
             RemoveEmptyPanelsAndTabs();
         }
 
@@ -184,9 +189,10 @@ namespace AnalyseTool.App.Common.Extensions
         }
 
         /// <summary>Splits a manifest's buttons into ribbon items. Consecutive <c>stacked</c> entries
-        /// fill rows of three (the Revit convention); everything else stands alone. Buttons the user
-        /// turned off in the launcher are dropped BEFORE grouping, so turning one off closes the gap
-        /// instead of leaving a hole in a row.</summary>
+        /// form one run (laid into columns of three by <see cref="PackStacks"/>, together with the
+        /// other extensions' small buttons on the same panel); everything else stands alone. Buttons
+        /// the user turned off in the launcher are dropped BEFORE grouping, so turning one off closes
+        /// the gap instead of leaving a hole in a column.</summary>
         private static List<ButtonGroup> GroupButtons(ExtensionDescriptor descriptor)
         {
             string id = descriptor.Manifest.Id;
@@ -201,7 +207,7 @@ namespace AnalyseTool.App.Common.Extensions
                 List<ExtensionButton> infos = new() { live[i].Info };
                 int firstIndex = live[i].Index;
                 if (live[i].Info.ResolvedKind == ButtonKind.Stacked)
-                    while (++i < live.Count && live[i].Info.ResolvedKind == ButtonKind.Stacked && infos.Count < 3)
+                    while (++i < live.Count && live[i].Info.ResolvedKind == ButtonKind.Stacked)
                         infos.Add(live[i].Info);
                 else
                     i++;
@@ -323,10 +329,10 @@ namespace AnalyseTool.App.Common.Extensions
             {
                 if (wantedKeys.Contains(key)) continue;
 
-                (AdWin.RibbonItem item, string panelKey, _) = _extButtons[key];
-                if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? oldPanel))
-                    oldPanel.Items.Remove(item);
-                _extButtons.Remove(key);
+                ExtEntry gone = _extButtons[key];
+                if (gone.Item is not null && _adwPanels.TryGetValue(gone.PanelKey, out AdWin.RibbonPanelSource? oldPanel))
+                    oldPanel.Items.Remove(gone.Item);
+                _extButtons.Remove(key); // a stacked run leaves through PackStacks, which rebuilds the columns
             }
 
             // A descriptor is dropped only when the extension has NO buttons left, not when one of
@@ -360,27 +366,40 @@ namespace AnalyseTool.App.Common.Extensions
                 AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
                 if (source is null) continue;
 
-                if (_extButtons.TryGetValue(group.Key, out (AdWin.RibbonItem Item, string PanelKey, string Signature) entry)
+                if (_extButtons.TryGetValue(group.Key, out ExtEntry? entry)
                     && string.Equals(entry.Signature, group.Signature, StringComparison.Ordinal))
                 {
-                    // Same content: at most it moved to another panel.
+                    // Same content: at most it moved to another panel. A stacked run is not placed by
+                    // this method at all — PackStacks lays it out wherever PanelKey now says.
                     if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
                     {
-                        if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
-                            from.Items.Remove(entry.Item);
-                        source.Items.Add(entry.Item);
-                        _extButtons[group.Key] = (entry.Item, panelKey, entry.Signature);
+                        if (entry.Item is not null)
+                        {
+                            if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
+                                from.Items.Remove(entry.Item);
+                            source.Items.Add(entry.Item);
+                        }
+                        _extButtons[group.Key] = entry with { PanelKey = panelKey };
                     }
                     continue;
                 }
 
-                if (_extButtons.TryGetValue(group.Key, out entry)
+                if (_extButtons.TryGetValue(group.Key, out entry) && entry.Item is not null
                     && _adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? previous))
                     previous.Items.Remove(entry.Item);
 
+                if (first.ResolvedKind == ButtonKind.Stacked)
+                {
+                    // Small buttons are a PANEL's business, not the extension's: two extensions with one
+                    // small button each want one column of two, not two columns of one. So the run is
+                    // only remembered here; PackStacks builds the columns once every panel is known.
+                    _extButtons[group.Key] = new ExtEntry(null, BuildStacked(descriptor, group), panelKey, group.Signature);
+                    continue;
+                }
+
                 AdWin.RibbonItem built = BuildGroup(descriptor, group);
                 source.Items.Add(built);
-                _extButtons[group.Key] = (built, panelKey, group.Signature);
+                _extButtons[group.Key] = new ExtEntry(built, null, panelKey, group.Signature);
             }
         }
 
@@ -391,20 +410,6 @@ namespace AnalyseTool.App.Common.Extensions
 
             switch (group.First.ResolvedKind)
             {
-                case ButtonKind.Stacked:
-                {
-                    // Small buttons stacked in one column — the shape Revit's own AddStackedItems makes.
-                    AdWin.RibbonRowPanel row = new();
-                    for (int n = 0; n < group.Infos.Count; n++)
-                    {
-                        if (n > 0) row.Items.Add(new AdWin.RibbonRowBreak());
-                        ExtensionButton info = group.Infos[n];
-                        row.Items.Add(MakeButton(id, group.Key + ":" + n, info,
-                            LoadIcon(descriptor, info.Icon), small: true));
-                    }
-                    return row;
-                }
-
                 case ButtonKind.Pulldown:
                 {
                     ExtensionButton info = group.First;
@@ -439,6 +444,79 @@ namespace AnalyseTool.App.Common.Extensions
                         LoadIcon(descriptor, group.First.Icon), small: false);
             }
         }
+
+        /// <summary>The small buttons of a stacked run, built but not placed — see <see cref="PackStacks"/>.</summary>
+        private static List<StackedButton> BuildStacked(ExtensionDescriptor descriptor, ButtonGroup group)
+        {
+            string id = descriptor.Manifest.Id;
+            List<StackedButton> buttons = new(group.Infos.Count);
+            for (int n = 0; n < group.Infos.Count; n++)
+            {
+                ExtensionButton info = group.Infos[n];
+                buttons.Add(new StackedButton(
+                    MakeButton(id, group.Key + ":" + n, info, LoadIcon(descriptor, info.Icon), small: true),
+                    info.Order, id, n));
+            }
+            return buttons;
+        }
+
+        /// <summary>
+        /// Lays out every panel's small buttons as columns of three — the shape Revit's own
+        /// <c>AddStackedItems</c> makes — regardless of which extension each button came from.
+        ///
+        /// Ownership and layout are different questions. An extension owns its buttons (they come and go
+        /// with it), but a COLUMN is the panel's: the user who marks one button "small" in two
+        /// extensions expects them under each other, and the manifest of either cannot say so. Rebuilt
+        /// from scratch on every refresh, which is cheap and makes removal trivial — a run that left
+        /// _extButtons is simply not there the next time the columns are built.
+        ///
+        /// Order within a panel: the button's <c>order</c>, then the extension id, then declaration —
+        /// so one extension's consecutive small buttons stay together, and two extensions interleave
+        /// only when their authors asked for it with explicit orders. Columns go after the panel's
+        /// large items.
+        /// </summary>
+        private static void PackStacks()
+        {
+            foreach ((string panelKey, AdWin.RibbonPanelSource panel) in _adwPanels)
+            {
+                if (_packedRows.TryGetValue(panelKey, out List<AdWin.RibbonRowPanel>? old))
+                {
+                    foreach (AdWin.RibbonRowPanel row in old) panel.Items.Remove(row);
+                    old.Clear();
+                }
+
+                List<StackedButton> buttons = _extButtons.Values
+                    .Where(e => e.Stacked is not null && string.Equals(e.PanelKey, panelKey, StringComparison.Ordinal))
+                    .SelectMany(e => e.Stacked!)
+                    .OrderBy(b => b.Order)
+                    .ThenBy(b => b.ExtensionId, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(b => b.Index)
+                    .ToList();
+                if (buttons.Count == 0) continue;
+
+                List<AdWin.RibbonRowPanel> rows = _packedRows.TryGetValue(panelKey, out List<AdWin.RibbonRowPanel>? list)
+                    ? list : (_packedRows[panelKey] = new List<AdWin.RibbonRowPanel>());
+
+                for (int i = 0; i < buttons.Count; i += 3)
+                {
+                    AdWin.RibbonRowPanel row = new();
+                    for (int n = i; n < Math.Min(i + 3, buttons.Count); n++)
+                    {
+                        if (n > i) row.Items.Add(new AdWin.RibbonRowBreak());
+                        row.Items.Add(buttons[n].Button);
+                    }
+                    panel.Items.Add(row);
+                    rows.Add(row);
+                }
+            }
+        }
+
+        /// <summary>One ribbon entry of an extension: either an item placed directly on its panel
+        /// (large button, pulldown) or a run of small buttons that <see cref="PackStacks"/> places.</summary>
+        private sealed record ExtEntry(AdWin.RibbonItem? Item, List<StackedButton>? Stacked, string PanelKey, string Signature);
+
+        /// <summary>A small button with what the packer sorts by.</summary>
+        private sealed record StackedButton(AdWin.RibbonButton Button, int Order, string ExtensionId, int Index);
 
         /// <summary>First non-blank of the three: a per-button value overrides the extension's, which
         /// overrides the host default.</summary>

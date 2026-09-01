@@ -109,6 +109,35 @@ function buildState(row: ExtensionRow): { label: string; tip: string } {
   };
 }
 
+// What an extension is MADE OF, as one tag. "C#" alone hid the difference that matters most in the
+// dev list: a script is a .cs the host compiles at load (edit, Reload, done), a DLL is a project you
+// build yourself — and the two fail in different ways.
+function kindTag(row: ExtensionRow): { label: string; severity: string; tip: string; icon: string } {
+  switch (row.kind) {
+    case "script":
+      return {
+        label: "Script",
+        severity: "info",
+        tip: "C# script (.cs) compiled by AnalyseTool at load — edit the file and Reload.",
+        icon: "pi pi-code",
+      };
+    case "dll":
+      return {
+        label: "DLL",
+        severity: "contrast",
+        tip: "Compiled project — build it (dotnet build) and Reload.",
+        icon: "pi pi-box",
+      };
+    default:
+      return {
+        label: "Page",
+        severity: "warn",
+        tip: "HTML/JS page only, no C#.",
+        icon: "pi pi-window-maximize",
+      };
+  }
+}
+
 // Two zones, two sections: installed packages (manager-owned) vs the user's own dev folders.
 const managedExtensions = computed(() =>
   (data.value?.extensions ?? []).filter((e) => e.zone === "managed"),
@@ -649,8 +678,13 @@ onMounted(() => {
               </Column>
               <Column header="Type">
                 <template #body="{ data: row }">
-                  <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
-                  <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
+                  <Tag
+                    :value="kindTag(row).label"
+                    :severity="kindTag(row).severity"
+                    class="mr-1"
+                    v-tooltip.top="kindTag(row).tip"
+                  />
+                  <Tag v-if="row.hasUi && row.kind !== 'js'" value="UI" severity="warn" class="mr-1" />
                   <Tag
                     v-if="!row.compatible"
                     :value="buildState(row).label"
@@ -740,8 +774,9 @@ onMounted(() => {
                     <div
                       v-else
                       class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
+                      v-tooltip.top="kindTag(row).tip"
                     >
-                      <i class="pi pi-wrench" />
+                      <i :class="kindTag(row).icon" />
                     </div>
                     <div>
                       <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
@@ -758,8 +793,13 @@ onMounted(() => {
               <Column field="version" header="Version" />
               <Column header="Type">
                 <template #body="{ data: row }">
-                  <Tag v-if="row.hasCommands" value="C#" severity="info" class="mr-1" />
-                  <Tag v-if="row.hasUi" value="UI" severity="warn" class="mr-1" />
+                  <Tag
+                    :value="kindTag(row).label"
+                    :severity="kindTag(row).severity"
+                    class="mr-1"
+                    v-tooltip.top="kindTag(row).tip"
+                  />
+                  <Tag v-if="row.hasUi && row.kind !== 'js'" value="UI" severity="warn" class="mr-1" />
                   <Tag
                     v-if="row.legacyLayout"
                     value="Legacy layout"
