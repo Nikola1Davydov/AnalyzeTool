@@ -21,8 +21,16 @@ const routes = [
     meta: { layout: "bare" },
   },
   {
+    // The plugin's own preferences — one screen, no tabs. Extensions are a window of their own.
     path: "/system/settings",
-    component: () => import("@/view/System/ExtensionsSettingsView.vue"),
+    component: () => import("@/view/System/SettingsView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
+    // The extension manager. "?new=1" opens it with the create-from-template form already up —
+    // that is what the "New" ribbon button points at.
+    path: "/system/extensions",
+    component: () => import("@/view/System/ExtensionsView.vue"),
     meta: { layout: "bare" },
   },
 ];

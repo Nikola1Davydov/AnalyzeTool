@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Docking;
 using AnalyseTool.Core.Common.Extensions;
@@ -28,6 +28,8 @@ namespace AnalyseTool.App.Common.Extensions
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
+        private const string ExtensionsCommandClass = "AnalyseTool.Launcher.RevitCommands.ExtensionsCommand";
+        private const string NewExtensionCommandClass = "AnalyseTool.Launcher.RevitCommands.NewExtensionCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
         private const string PinnedPanelTitle = "Scripts";
@@ -57,7 +59,12 @@ namespace AnalyseTool.App.Common.Extensions
             new(StringComparer.OrdinalIgnoreCase);
         // Open windows, so a second click focuses the existing one instead of stacking duplicates:
         // one window per extension button.
-        private static Window? _settingsWindow;
+        //
+        // System pages are keyed by PAGE, not by route: "New extension" and "Extensions" are two
+        // ribbon buttons onto the same window, and the second must re-route the first rather than
+        // open a duplicate manager.
+        private static readonly Dictionary<string, SystemWindow> _systemWindows =
+            new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Window> _extWindows =
             new(StringComparer.OrdinalIgnoreCase);
 
@@ -108,20 +115,32 @@ namespace AnalyseTool.App.Common.Extensions
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
+            // The Manage panel, as two stacked columns of small buttons. The split is by JOB, not by
+            // size: the left column is the extension lifecycle (browse, create, reload), the right one
+            // is the plugin itself (preferences, feedback). Extensions used to live inside Settings —
+            // a manager you visit to work, buried under a page you configure once.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
-            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "Show where extensions live and how to add them");
+            PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
+                ExtensionsCommandClass, "Install, update and manage extensions");
+            PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
+                NewExtensionCommandClass, "Create a new extension from a template");
             PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
                 ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+
+            IList<RibbonItem> extStack = managePanel.AddStackedItems(extensionsData, newExtensionData, reloadData);
+            SetStackedImage(extStack, 0, BuildGlyphIcon("", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(extStack, 1, BuildGlyphIcon("", 16)); // New — AddTo (U+ECC8)
+            SetStackedImage(extStack, 2, BuildGlyphIcon("", 16)); // Reload (U+E72C)
+
+            PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
+                SettingsCommandClass, "AI, ribbon buttons and everything else about the plugin itself");
             PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
                 BugsCommandClass, "Report a bug or request a feature on GitHub");
 
-            IList<RibbonItem> stacked = managePanel.AddStackedItems(settingsData, reloadData, bugsData);
-            SetStackedImage(stacked, 0, BuildGlyphIcon("", 16)); // Settings (U+E713)
-            SetStackedImage(stacked, 1, BuildGlyphIcon("", 16)); // Reload (U+E72C)
-            SetStackedImage(stacked, 2, BuildGlyphIcon("", 16)); // Report a bug (U+EBE8)
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("", 16)); // Report a bug (U+EBE8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -488,20 +507,37 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
-        public static void OpenSettings(UIApplication uiApp)
+        /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, ribbon buttons, about).</summary>
+        public static void OpenSettings(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "settings", "#/system/settings", "AnalyseTool — Settings", 880, 720);
+
+        /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
+        public static void OpenExtensions(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "extensions", "#/system/extensions", "AnalyseTool — Extensions", 1000, 680);
+
+        /// <summary>Ribbon "New" button — the extension manager with the template form already open.
+        /// Same window as <see cref="OpenExtensions"/> on purpose: after creating one you want to see it
+        /// appear in the list behind the form.</summary>
+        public static void OpenNewExtension(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "extensions", "#/system/extensions?new=1", "AnalyseTool — Extensions", 1000, 680);
+
+        /// <summary>Opens (or focuses and re-routes) one of the plugin's own pages.</summary>
+        private static void OpenSystemPage(UIApplication uiApp, string key, string route, string title,
+            double width, double height)
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
 
-            if (_settingsWindow is not null)
+            if (_systemWindows.TryGetValue(key, out SystemWindow? existing))
             {
-                Restore(_settingsWindow);
+                existing.Navigate(route);
+                Restore(existing);
                 return;
             }
 
-            Window window = new SettingsWindow();
-            window.Closed += (_, _) => _settingsWindow = null;
-            _settingsWindow = window;
+            SystemWindow window = new(route, title, width, height);
+            window.Closed += (_, _) => _systemWindows.Remove(key);
+            _systemWindows[key] = window;
             window.Show();
         }
 

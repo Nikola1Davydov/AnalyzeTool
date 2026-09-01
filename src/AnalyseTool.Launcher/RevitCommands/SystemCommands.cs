@@ -1,4 +1,4 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
@@ -19,6 +19,22 @@ namespace AnalyseTool.Launcher.RevitCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
             => App.InvokeRibbon("OpenSettings", commandData.Application);
+    }
+
+    /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class ExtensionsCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenExtensions", commandData.Application);
+    }
+
+    /// <summary>Ribbon "New" button — the extension manager with the template form already open.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class NewExtensionCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenNewExtension", commandData.Application);
     }
 
     /// <summary>Ribbon "Reload" button — reloads extensions.</summary>
