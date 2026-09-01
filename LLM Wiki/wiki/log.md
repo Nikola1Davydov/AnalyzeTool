@@ -819,3 +819,31 @@ headless, починка вытеснения специализированны
 
 В [`analyses/roadmap.md`](analyses/roadmap.md) к пункту про типы кнопок добавлено, что версия
 схемы едет тем же изменением.
+
+---
+
+## 2026-08-31 — заведён #127 (версия схемы манифеста)
+
+Первый issue, созданный из вики обратно в трекер:
+[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) — «Manifest has no schema
+version, so nothing can tell an old plugin.json from a new one».
+
+Написан по-английски, под семью контрактных issue
+([#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48),
+[#75](https://github.com/Nikola1Davydov/AnalyzeTool/issues/75),
+[#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76),
+[#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87)), а не продуктовых — его читают
+внешние авторы расширений.
+
+Содержание взято из [`concepts/contract-evolution.md`](concepts/contract-evolution.md):
+разбор по коду, перечень уже существующего и простаивающего, одно поле `schema` с отсутствием
+= 1, аргумент «гайд читают по решению» со ссылкой на
+[#84](https://github.com/Nikola1Davydov/AnalyzeTool/issues/84), таблица четырёх каналов,
+четыре правила миграции из инцидента с `SavePipeline`, чеклист и критерий готовности.
+
+Ссылки на номер проставлены в `contract-evolution.md`, `analyses/roadmap.md` и
+`analyses/backlog-map.md`.
+
+Заметка о процессе: это первый раз, когда вики сработала в обратную сторону — не приняла
+источник, а произвела из синтеза материал для трекера. Стоит повторять: разбор в вики
+получается плотнее, чем черновик issue с нуля, потому что уже связан со всем остальным.

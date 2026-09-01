@@ -141,6 +141,8 @@ issue. Ниже — состав.
 
 ## Платформа, не AI
 
+[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста
+(заведён 2026-08-31, разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
 [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних ·
 [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений ·
 [#72](https://github.com/Nikola1Davydov/AnalyzeTool/issues/72) лицензирование ·
