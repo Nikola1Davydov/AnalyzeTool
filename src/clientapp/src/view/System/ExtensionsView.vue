@@ -145,6 +145,29 @@ const managedExtensions = computed(() =>
 const devExtensions = computed(() =>
   (data.value?.extensions ?? []).filter((e) => e.zone !== "managed"),
 );
+
+// ---- Finding your own: a session with an agent can leave a dozen folders behind, and by then the
+// list is a wall. Text matches name, id and description; the kind filter is the same split the tag
+// shows. Both are local UI state — nothing here asks the host.
+const devSearch = ref("");
+const devKind = ref<"all" | ExtensionRow["kind"]>("all");
+const devKindOptions = [
+  { label: "All", value: "all" },
+  { label: "Script", value: "script" },
+  { label: "DLL", value: "dll" },
+  { label: "Page", value: "js" },
+];
+const filteredDevExtensions = computed(() => {
+  const q = devSearch.value.trim().toLowerCase();
+  return devExtensions.value.filter(
+    (e) =>
+      (devKind.value === "all" || e.kind === devKind.value) &&
+      (!q ||
+        (e.name ?? "").toLowerCase().includes(q) ||
+        e.id.toLowerCase().includes(q) ||
+        (e.description ?? "").toLowerCase().includes(q)),
+  );
+});
 const loading = ref(true);
 
 const paths = ref<PathRow[]>([]);
@@ -757,11 +780,31 @@ onMounted(() => {
 
           <!-- Development: the user's own folders (default dev root + added paths). Reload-driven. -->
           <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
-            <h2 class="text-sm font-bold mb-3">
-              Your own
-              <span class="text-surface-500 font-normal">— folders you edit, reloaded live</span>
-            </h2>
-            <DataTable :value="devExtensions" :loading="loading" dataKey="id" class="text-sm">
+            <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h2 class="text-sm font-bold">
+                Your own
+                <span class="text-surface-500 font-normal">— folders you edit, reloaded live</span>
+                <span v-if="devExtensions.length" class="text-surface-400 font-normal ml-1">
+                  ({{ filteredDevExtensions.length }}/{{ devExtensions.length }})
+                </span>
+              </h2>
+              <!-- Search and kind filter, shown once there is enough to lose something in. -->
+              <div v-if="devExtensions.length > 3" class="flex items-center gap-2">
+                <SelectButton
+                  v-model="devKind"
+                  :options="devKindOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :allowEmpty="false"
+                  size="small"
+                />
+                <IconField>
+                  <InputIcon class="pi pi-search" />
+                  <InputText v-model="devSearch" placeholder="Search…" size="small" class="w-48" />
+                </IconField>
+              </div>
+            </div>
+            <DataTable :value="filteredDevExtensions" :loading="loading" dataKey="id" class="text-sm">
               <Column header="Extension">
                 <template #body="{ data: row }">
                   <div class="flex items-start gap-3">
@@ -866,7 +909,15 @@ onMounted(() => {
               </Column>
               <template #empty>
                 <div class="text-surface-500 p-4">
-                  None yet — press <b>New extension</b>, or drop a folder into the dev root.
+                  <template v-if="devExtensions.length">
+                    Nothing matches.
+                    <button type="button" class="underline" @click="devSearch = ''; devKind = 'all'">
+                      Clear the filter
+                    </button>
+                  </template>
+                  <template v-else>
+                    None yet — press <b>New extension</b>, or drop a folder into the dev root.
+                  </template>
                 </div>
               </template>
             </DataTable>
