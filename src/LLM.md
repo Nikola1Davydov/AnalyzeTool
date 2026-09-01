@@ -191,6 +191,7 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `version` | ✔ | SemVer string. |
 | `description` / `publisher` / `website` / `supportUrl` | — | Vendor metadata shown in the extension listing. Recommended when publishing. |
 | `icon` | — | Extension-level PNG (relative path) for listings; falls back to `ui.button.icon`. |
+| `ui.button.icon` | — | PNG beside `plugin.json`, **or** `glyph:E8A9` — a Segoe MDL2 Assets code point, the same source the host's own buttons use. Crisp at any DPI and nothing to ship. No icon at all draws a letter. |
 | `updateFeed` | — | Update source: an HTTPS URL returning `{version, downloadUrl}`, or `github:owner/repo` (latest release, zip asset). Only for published extensions. |
 | `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. Resolved in the Revit-year subfolder first (`2025\`), then the folder root. |
 | `ui` | — | **Omit** for a command-only extension (callable from JS/MCP but no button). |

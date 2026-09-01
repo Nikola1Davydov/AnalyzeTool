@@ -192,6 +192,10 @@ SURFACE, not to the extension:
 }
 ```
 
+An icon is either a PNG beside `plugin.json` or `glyph:E8A9` — a Segoe MDL2 Assets code point, the
+same source the host draws its own buttons from. The glyph form ships nothing and stays crisp at any
+DPI; omit the icon entirely and the button gets a letter.
+
 Each entry may also carry `kind` — `push` (default), `stacked` or `pulldown`. Consecutive `stacked`
 entries fill rows of three, the shape Revit's own stacked items make; a `pulldown` lists its `items`
 under one head and does not run the first of them on click. An unknown `kind` falls back to `push`,

@@ -830,10 +830,25 @@ namespace AnalyseTool.App.Common.Extensions
         }
 
         /// <summary>Loads the button icon from the file named in the manifest (which must sit next to
-        /// plugin.json). Falls back to a generated default icon when the path is missing or invalid.</summary>
+        /// plugin.json), or renders a Segoe MDL2 glyph when the value is <c>glyph:E8A9</c>. Falls back
+        /// to a generated default icon when neither works.
+        /// <para>The glyph form exists because the host had a capability its extensions did not: the
+        /// built-in buttons are drawn from the system icon font and stay crisp at any DPI, while an
+        /// extension could only ship a PNG or accept a letter. Found while moving the Family Manager
+        /// out — an extension replacing a built-in button could not reproduce its icon.</para></summary>
         private static ImageSource LoadIcon(ExtensionDescriptor descriptor, string? icon)
         {
-            if (!string.IsNullOrWhiteSpace(icon))
+            // "glyph:E8A9" — a Segoe MDL2 Assets code point, the same source the host's own buttons use.
+            if (!string.IsNullOrWhiteSpace(icon) && icon!.StartsWith("glyph:", StringComparison.OrdinalIgnoreCase))
+            {
+                string code = icon.Substring("glyph:".Length).Trim().TrimStart('U', 'u', '+');
+                if (int.TryParse(code, System.Globalization.NumberStyles.HexNumber,
+                                 System.Globalization.CultureInfo.InvariantCulture, out int cp))
+                    return BuildGlyphIcon(char.ConvertFromUtf32(cp));
+                // Unparseable code point falls through to the default icon rather than throwing: a
+                // manifest typo must not cost the extension its button.
+            }
+            else if (!string.IsNullOrWhiteSpace(icon))
             {
                 try
                 {
