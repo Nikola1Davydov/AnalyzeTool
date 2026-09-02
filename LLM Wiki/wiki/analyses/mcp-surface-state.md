@@ -111,7 +111,8 @@ ExecuteRevitCode failed — …` с payload. [#97](https://github.com/Nikola1Dav
 
 **[#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — закрыт 2026-09-02**,
 [#104](https://github.com/Nikola1Davydov/AnalyzeTool/issues/104),
-[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) — это задача долгих
+**[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) — закрыт 2026-09-02 вечером** (job в бридже, handle через 60 с,
+`GetJobResult`/`CancelJob`; вместе с #108/#109, #110 закрыт без Tasks из спеки — в SDK их нет) — это задача долгих
 вызовов с трёх сторон; см.
 [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md). Для #102 ответ
 оказался на стороне страницы: хост принимает сообщения WebView на UI-потоке Revit, и пока
@@ -225,7 +226,7 @@ et10.0\`) ссылается на
 ревизии 2024-11-05, 2025-01-12, 2025-03-26, 2025-06-18, 2025-11-25 **и 2026-07-28**, а
 `RequestState`, `ttlMs`, `CacheScope` в нём есть. Итог: **гейта больше нет.** На уровне
 API разблокирована вся ветка — [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed, и дешёвый вариант через
-`ttlMs`), [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) (прогресс, отмена, Tasks), elicitation для
+`ttlMs`), ~~[#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) (прогресс, отмена, Tasks)~~ — сделаны 2026-09-02 вечером, Tasks заменены job'ами, elicitation для
 [#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106), [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111). Живой запуск на 2.2.0 проверен 2026-09-02:
 exe работал в сессиях весь день и под stdio-тестами яруса 2 (`src/AnalyseTool.Tests/Mcp/`).
 
@@ -264,9 +265,9 @@ exe работал в сессиях весь день и под stdio-тест�
    [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — цикл авторства и UI
    (оба закрыты 2026-09-02)
 4. ~~вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)~~ снят,
-   затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
+   ~~затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
    отмена ([#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109)), Tasks
-   ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))
+   ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))~~ — закрыты 2026-09-02 вечером
 5. ~~поля читаемости ([#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113))~~ — закрыт 2026-09-02:
    `builtInCategory`/`levelId` на элементе, `spec`/`unit` у параметров, `categories` в обзоре;
    ресурсная таблица категорий и метрика «вызовов на задачу» остались в #84

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -10,11 +11,13 @@ namespace AnalyseTool.Tests.Mcp;
 /// <summary>
 /// The in-Revit half of the MCP transport, faked: a loopback listener that speaks the same envelope
 /// (McpWire) the real bridge does and answers from a canned catalog. It lets the published exe be
-/// driven end to end — tools/list, tools/call, errors, the catalog stamp — with no Revit anywhere.
+/// driven end to end — tools/list, tools/call, errors, the catalog stamp, progress frames, cancel and
+/// stored results — with no Revit anywhere.
 ///
 /// One connection per request, exactly like the real thing: the exe opens a socket, writes one JSON
-/// value, reads one JSON value, closes. Every reply carries the current <see cref="Stamp"/>, so a
-/// test can move it and watch the exe notice.
+/// value, reads what comes back, closes. Every reply carries the current <see cref="Stamp"/>, so a
+/// test can move it and watch the exe notice. An invoke is a JOB here too: it runs on when the exe
+/// closes the socket early, and a "result" request on a later connection finds its outcome.
 /// </summary>
 internal sealed class FakeBridge : IAsyncDisposable
 {
@@ -28,6 +31,7 @@ internal sealed class FakeBridge : IAsyncDisposable
 
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource _cts = new();
+    private readonly ConcurrentDictionary<string, Job> _jobs = new();
     private Task? _loop;
 
     public int Port { get; private set; }
@@ -41,7 +45,14 @@ internal sealed class FakeBridge : IAsyncDisposable
     public Func<string, JToken?, (JToken? Result, JObject? Error)> OnInvoke { get; set; } =
         (_, _) => (new JObject { ["ok"] = true }, null);
 
+    /// <summary>The long form, for tests about progress and cancellation: gets a progress sink and the
+    /// job's token, and may take its time. When set, it wins over <see cref="OnInvoke"/>.</summary>
+    public Func<string, JToken?, IProgress<(double Fraction, string? Message)>, CancellationToken, Task<(JToken? Result, JObject? Error)>>? OnInvokeAsync { get; set; }
+
     public List<(string Command, JToken? Payload)> Invocations { get; } = new();
+
+    /// <summary>Ids the exe asked to cancel, in order.</summary>
+    public List<string> Cancellations { get; } = new();
 
     public FakeBridge Start()
     {
@@ -71,6 +82,19 @@ internal sealed class FakeBridge : IAsyncDisposable
             JObject req = JObject.Parse(request);
             string? id = (string?)req[McpWire.Id];
             string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
+            SemaphoreSlim writeLock = new(1, 1);
+
+            async Task WriteAsync(JObject frame)
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(frame.ToString(Formatting.None));
+                await writeLock.WaitAsync();
+                try
+                {
+                    await stream.WriteAsync(bytes);
+                    await stream.FlushAsync();
+                }
+                finally { writeLock.Release(); }
+            }
 
             JObject reply = new() { [McpWire.Id] = id };
             if (type == McpWire.TypeVersion)
@@ -93,20 +117,90 @@ internal sealed class FakeBridge : IAsyncDisposable
                     })),
                 };
             }
+            else if (type == McpWire.TypeCancel)
+            {
+                lock (Cancellations) Cancellations.Add(id ?? string.Empty);
+                bool cancelled = id is not null && _jobs.TryGetValue(id, out Job? job) && job.Finished is null;
+                if (cancelled) _jobs[id!].Cancellation.Cancel();
+                reply[McpWire.Result] = new JObject { [McpWire.Cancelled] = cancelled };
+            }
+            else if (type == McpWire.TypeResult)
+            {
+                reply[McpWire.Result] = id is not null && _jobs.TryGetValue(id, out Job? job)
+                    ? job.Describe()
+                    : new JObject { [McpWire.JobStatus] = McpWire.JobStates.Unknown };
+            }
             else
             {
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken? payload = req[McpWire.Payload];
                 lock (Invocations) Invocations.Add((command, payload));
-                (JToken? result, JObject? error) = OnInvoke(command, payload);
+
+                Job job = new(command);
+                if (id is not null) _jobs[id] = job;
+                Progress<(double, string?)> progress = new(p =>
+                    _ = SafeWriteAsync(WriteAsync, new JObject
+                    {
+                        [McpWire.Id] = id,
+                        [McpWire.Progress] = new JObject
+                        {
+                            [McpWire.ProgressFraction] = p.Item1,
+                            [McpWire.ProgressMessage] = p.Item2,
+                        },
+                    }));
+
+                (JToken? result, JObject? error) = OnInvokeAsync is not null
+                    ? await OnInvokeAsync(command, payload, progress, job.Cancellation.Token)
+                    : OnInvoke(command, payload);
+                if (job.Cancellation.IsCancellationRequested && error is null)
+                    error = new JObject { [McpWire.ErrorCode] = McpWire.Codes.Cancelled, [McpWire.ErrorMessage] = "The call was cancelled before it finished." };
+                job.Finish(result, error);
                 if (error is not null) reply[McpWire.Error] = error;
                 else reply[McpWire.Result] = result ?? JValue.CreateNull();
             }
             reply[McpWire.Catalog] = Stamp;
+            await SafeWriteAsync(WriteAsync, reply);
+        }
+    }
 
-            byte[] bytes = Encoding.UTF8.GetBytes(reply.ToString(Formatting.None));
-            await stream.WriteAsync(bytes);
-            await stream.FlushAsync();
+    private static async Task SafeWriteAsync(Func<JObject, Task> write, JObject frame)
+    {
+        try { await write(frame); }
+        catch { /* the exe closed the socket — the job goes on, exactly like the real bridge */ }
+    }
+
+    private sealed class Job
+    {
+        public Job(string command) => Command = command;
+        public string Command { get; }
+        public CancellationTokenSource Cancellation { get; } = new();
+        public DateTime Started { get; } = DateTime.UtcNow;
+        public DateTime? Finished { get; private set; }
+        public JToken? Result { get; private set; }
+        public JObject? Error { get; private set; }
+
+        public void Finish(JToken? result, JObject? error)
+        {
+            Result = result;
+            Error = error;
+            Finished = DateTime.UtcNow;
+        }
+
+        public JObject Describe()
+        {
+            string status = Finished is null ? McpWire.JobStates.Running
+                : Error is null ? McpWire.JobStates.Done
+                : (string?)Error[McpWire.ErrorCode] == McpWire.Codes.Cancelled ? McpWire.JobStates.Cancelled
+                : McpWire.JobStates.Failed;
+            JObject answer = new()
+            {
+                [McpWire.JobStatus] = status,
+                [McpWire.JobCommand] = Command,
+                [McpWire.JobSeconds] = Math.Round(((Finished ?? DateTime.UtcNow) - Started).TotalSeconds, 1),
+            };
+            if (Result is not null) answer[McpWire.JobResult] = Result;
+            if (Error is not null) answer[McpWire.JobError] = Error;
+            return answer;
         }
     }
 

@@ -41,7 +41,9 @@ public class McpExeTests
         {
             // Names are sanitized for clients that refuse dots; the description starts with the tool
             // name for clients whose search indexes descriptions only.
-            await Assert.That(byName.Keys).IsEquivalentTo(new[] { "GetThings", "GetNames", "acme_x_Run" });
+            // Plus the exe's own two, about calls rather than about Revit (GetJobResult, CancelJob).
+            await Assert.That(byName.Keys).IsEquivalentTo(new[] { "GetThings", "GetNames", "acme_x_Run", "GetJobResult", "CancelJob" });
+            await Assert.That((string)byName["GetJobResult"]["description"]!).StartsWith("GetJobResult: ");
             await Assert.That((string)byName["GetThings"]["description"]!).StartsWith("GetThings: ");
             // outputSchema only where the answer is an object — a bare array can never be structuredContent.
             await Assert.That(byName["GetThings"]["outputSchema"]).IsNotNull();
@@ -73,6 +75,107 @@ public class McpExeTests
         // The payload reached the bridge unchanged, under the real command name.
         await Assert.That(bridge.Invocations.Select(i => i.Command)).Contains("GetThings");
         await Assert.That((int?)bridge.Invocations.First(i => i.Command == "GetThings").Payload?["limit"]).IsEqualTo(5);
+    }
+
+    [Test, Timeout(60_000)]
+    public async Task Progress_frames_become_progress_notifications_when_the_client_sent_a_token(CancellationToken ct)
+    {
+        await using FakeBridge bridge = NewBridge();
+        bridge.OnInvokeAsync = async (_, _, progress, _) =>
+        {
+            progress.Report((0.5, "half"));
+            await Task.Delay(100);
+            progress.Report((1.0, "done"));
+            await Task.Delay(100);
+            return (new JObject { ["ok"] = true, ["count"] = 2 }, null);
+        };
+        await using McpExe exe = McpExe.Start(bridge.Port);
+        await exe.InitializeAsync();
+        await exe.RequestAsync("tools/list");
+
+        JObject reply = await exe.RequestAsync("tools/call", new JObject
+        {
+            ["name"] = "GetThings",
+            ["arguments"] = new JObject(),
+            ["_meta"] = new JObject { ["progressToken"] = "p1" },
+        });
+        JObject? notification = await exe.WaitForNotificationAsync("notifications/progress", TimeSpan.FromSeconds(5));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That((int)reply["structuredContent"]!["count"]!).IsEqualTo(2);
+            await Assert.That(notification).IsNotNull();
+            await Assert.That((string)notification!["params"]!["progressToken"]!).IsEqualTo("p1");
+            await Assert.That((double)notification["params"]!["progress"]!).IsEqualTo(50);
+            await Assert.That((string?)notification["params"]!["message"]).IsEqualTo("half");
+        }
+    }
+
+    [Test, Timeout(60_000)]
+    public async Task A_cancelled_request_cancels_the_call_in_the_bridge(CancellationToken ct)
+    {
+        await using FakeBridge bridge = NewBridge();
+        TaskCompletionSource<bool> tokenTripped = new();
+        bridge.OnInvokeAsync = async (_, _, _, token) =>
+        {
+            try { await Task.Delay(TimeSpan.FromSeconds(30), token); }
+            catch (OperationCanceledException) { tokenTripped.TrySetResult(true); }
+            return (null, null);
+        };
+        await using McpExe exe = McpExe.Start(bridge.Port);
+        await exe.InitializeAsync();
+        await exe.RequestAsync("tools/list");
+
+        int id = await exe.BeginRequestAsync("tools/call", new JObject { ["name"] = "GetThings", ["arguments"] = new JObject() });
+        await Task.Delay(500);
+        await exe.NotifyAsync("notifications/cancelled", new JObject { ["requestId"] = id, ["reason"] = "user changed their mind" });
+
+        // The cancellation crossed both hops: the exe told the bridge which id to stop, and the
+        // command's own token was tripped. (Whether the SDK still delivers a reply for a cancelled
+        // request is its business, so the reply is not asserted on.)
+        bool tripped = await tokenTripped.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        using (Assert.Multiple())
+        {
+            await Assert.That(tripped).IsTrue();
+            await Assert.That(bridge.Cancellations).IsNotEmpty();
+        }
+    }
+
+    [Test, Timeout(60_000)]
+    public async Task A_slow_call_hands_back_a_job_and_its_result_is_collected_later(CancellationToken ct)
+    {
+        await using FakeBridge bridge = NewBridge();
+        bridge.OnInvokeAsync = async (_, _, _, token) =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), token);
+            return (new JObject { ["ok"] = true, ["count"] = 7 }, null);
+        };
+        // One second of patience instead of sixty: the call outlives it, the exe hands back a handle.
+        await using McpExe exe = McpExe.Start(bridge.Port, "test-token", "--handle-after", "1");
+        await exe.InitializeAsync();
+        await exe.RequestAsync("tools/list");
+
+        JObject handed = await exe.RequestAsync("tools/call", new JObject { ["name"] = "GetThings", ["arguments"] = new JObject() });
+        string text = (string)handed["content"]![0]!["text"]!;
+        await Assert.That((bool?)handed["isError"] ?? false).IsFalse();
+        await Assert.That(text).Contains("\"status\":\"running\"");
+        string jobId = (string)JObject.Parse(text.Split('\n')[0])["jobId"]!;
+
+        // Collected on a later, separate connection — the one that asked is long closed.
+        JObject? collected = null;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            JObject answer = await exe.RequestAsync("tools/call", new JObject { ["name"] = "GetJobResult", ["arguments"] = new JObject { ["jobId"] = jobId } });
+            string answerText = (string)answer["content"]![0]!["text"]!;
+            if (answerText.Contains("\"count\": 7")) { collected = answer; break; }
+            await Assert.That(answerText).Contains("running");
+            await Task.Delay(500);
+        }
+        await Assert.That(collected).IsNotNull();
+
+        // Nothing to cancel once it is done — and the answer says so instead of pretending.
+        JObject cancel = await exe.RequestAsync("tools/call", new JObject { ["name"] = "CancelJob", ["arguments"] = new JObject { ["jobId"] = jobId } });
+        await Assert.That((string)cancel["content"]![0]!["text"]!).Contains("\"cancelled\":false");
     }
 
     [Test, Timeout(60_000)]
@@ -108,7 +211,9 @@ public class McpExeTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(((JArray)list["tools"]!).Count).IsEqualTo(0);
+            // No Revit, no Revit tools: only the exe's own two, which keep a way back to a job started
+            // before Revit went away.
+            await Assert.That(((JArray)list["tools"]!).Select(t => (string)t["name"]!)).IsEquivalentTo(new[] { "GetJobResult", "CancelJob" });
             await Assert.That((bool?)call["isError"]).IsEqualTo(true);
             await Assert.That((string)call["content"]![0]!["text"]!).StartsWith("[revit_unreachable]");
         }

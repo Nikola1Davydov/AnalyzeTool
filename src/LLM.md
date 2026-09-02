@@ -76,7 +76,10 @@ namespace AnalyseTool.Sdk
 
     // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
     // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
-    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }.
+    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }. Over MCP the same
+    // reports reach the AI client as notifications/progress, and a command that runs longer than a
+    // minute is handed back to the client as a job it collects with GetJobResult — so report progress:
+    // an agent that sees movement waits instead of retrying.
     // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
     // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
     public sealed record ProgressInfo(double Fraction, string? Message = null);

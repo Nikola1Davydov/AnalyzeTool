@@ -14,6 +14,10 @@ using System.Text.RegularExpressions;
 int port = ParsePort(args) ?? AnalyseTool.Mcp.McpWire.DefaultPort;
 // The bridge refuses requests without it; Settings generates the config snippet that supplies it.
 string token = ParseOption(args, "--token") ?? string.Empty;
+// After this many seconds a still-running call is handed back as a job handle instead of being
+// waited for (#99, #110). 0 = wait the whole invoke timeout. Overridable for tests and for clients
+// whose own tool timeout is known to be shorter than the default.
+TimeSpan handleAfter = TimeSpan.FromSeconds(double.TryParse(ParseOption(args, "--handle-after"), out double seconds) ? seconds : 60);
 
 // Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
 // client's MCP server log so it's unambiguous which build is running and which port it targets.
@@ -22,7 +26,7 @@ if (token.Length == 0)
     Console.Error.WriteLine("[AnalyseTool.Mcp] no --token argument: Revit will reject every call. " +
                             "Copy the configuration snippet from AnalyseTool Settings → MCP server.");
 
-RevitBridgeClient bridge = new RevitBridgeClient(port, token);
+RevitBridgeClient bridge = new RevitBridgeClient(port, token, handleAfter);
 
 // What tools/list decided about each (sanitized) tool name, for CallTool to act on: the real Revit
 // command behind it, and whether it advertised an outputSchema — a promise the call then has to keep
@@ -78,7 +82,40 @@ builder.Services
 
         try
         {
-            JsonNode? result = await bridge.InvokeAsync(command, payload, ct);
+            // The two tools this exe answers itself, about calls rather than about Revit: they are
+            // how a caller reaches a call it could not wait for (#99) or wants stopped (#109).
+            if (string.Equals(command, JobTools.GetResult, StringComparison.Ordinal))
+                return await AnswerJobResultAsync(payload, ct);
+            if (string.Equals(command, JobTools.Cancel, StringComparison.Ordinal))
+                return await AnswerCancelAsync(payload, ct);
+
+            // Progress: a command that reports it (IProgressAware) reaches the client as
+            // notifications/progress, but only when the client asked by sending a progressToken —
+            // a notification nobody correlates is noise on the wire (#108).
+            ProgressToken? progressToken = context.Params?.ProgressToken;
+            McpServer session = context.Server;
+            IProgress<(double Fraction, string? Message)>? progress = progressToken is null ? null
+                : new Progress<(double Fraction, string? Message)>(p =>
+                    _ = session.NotifyProgressAsync(progressToken.Value, new ProgressNotificationValue
+                    {
+                        Progress = (float)Math.Round(p.Fraction * 100, 1),
+                        Total = 100,
+                        Message = p.Message,
+                    }, cancellationToken: CancellationToken.None));
+
+            RevitBridgeClient.InvokeOutcome outcome = await bridge.InvokeAsync(command, payload, progress, ct);
+            if (outcome.RunningJobId is { } jobId)
+            {
+                // Not an error: the command runs on in Revit; this is its handle. Said in prose AND as
+                // JSON, because the tool declared no schema for this shape and a client reading only
+                // structuredContent would see nothing.
+                await NotifyIfCatalogChangedAsync(ct);
+                return new CallToolResult
+                {
+                    Content = { new TextContentBlock { Text = RunningHandle(command, jobId) } },
+                };
+            }
+            JsonNode? result = outcome.Result;
             string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
 
             // The text block stays unconditionally: it is what every client can read, including the ones
@@ -96,6 +133,17 @@ builder.Services
             // "the list just changed", and the client learns it before its next turn.
             await NotifyIfCatalogChangedAsync(ct);
             return callResult;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The client sent notifications/cancelled: the bridge has been told (InvokeAsync does that
+            // before rethrowing), so the command stops, not only the wait. The SDK may drop this reply
+            // as belonging to a cancelled request; it is still the truthful one to give.
+            return new CallToolResult
+            {
+                IsError = true,
+                Content = { new TextContentBlock { Text = $"[{McpWire.Codes.Cancelled}] The call was cancelled by the client; Revit was told to stop it." } },
+            };
         }
         catch (Exception ex)
         {
@@ -195,6 +243,15 @@ async Task<ListToolsResult> BuildToolListAsync(CancellationToken ct)
             Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {Describe(ex)}");
         }
 
+    // The exe's own two tools ride on every listing, reachable or not: with Revit down they answer
+    // revit_unreachable like everything else, and a client that cached them keeps a way back to a
+    // job it started before Revit went away.
+    foreach (Tool own in JobTools.Describe())
+    {
+        bindings[own.Name] = new ToolBinding(own.Name, false);
+        tools.Add(own);
+    }
+
     // Published only now: until this assignment, callers still see the previous listing whole.
     toolBindings = bindings;
     listedCatalog = bridge.LastCatalog;
@@ -234,6 +291,65 @@ async Task NotifyIfCatalogChangedAsync(CancellationToken ct)
         notifyGate.Release();
     }
 }
+
+// GetJobResult: the stored outcome of a call, rendered as the call itself would have been.
+async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationToken ct)
+{
+    string? jobId = payload?[JobTools.JobIdField]?.GetValue<string>();
+    if (string.IsNullOrWhiteSpace(jobId))
+        return Error($"[{McpWire.Codes.InvalidArguments}] jobId is required — it is the id a running call handed back.");
+    JsonNode? job = await bridge.GetJobResultAsync(jobId, ct);
+    string status = job?[McpWire.JobStatus]?.GetValue<string>() ?? McpWire.JobStates.Unknown;
+    string? command = job?[McpWire.JobCommand]?.GetValue<string>();
+    double seconds = job?[McpWire.JobSeconds]?.GetValue<double>() ?? 0;
+    switch (status)
+    {
+        case McpWire.JobStates.Done:
+            return new CallToolResult
+            {
+                Content = { new TextContentBlock { Text = job![McpWire.JobResult]?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null" } },
+            };
+        case McpWire.JobStates.Running:
+            return new CallToolResult
+            {
+                Content = { new TextContentBlock { Text = $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\",\"seconds\":{seconds}}}\n" +
+                    $"'{command}' is still running in Revit ({seconds:0}s so far). Call GetJobResult again later, or CancelJob to stop it." } },
+            };
+        case McpWire.JobStates.Failed:
+        case McpWire.JobStates.Cancelled:
+        {
+            JsonNode? error = job?[McpWire.JobError];
+            string code = error?[McpWire.ErrorCode]?.GetValue<string>() ?? McpWire.Codes.CommandFailed;
+            string message = error?[McpWire.ErrorMessage]?.GetValue<string>() ?? $"'{command}' {status}.";
+            string? hint = error?[McpWire.ErrorHint]?.GetValue<string>();
+            return Error(string.IsNullOrWhiteSpace(hint) ? $"[{code}] {message}" : $"[{code}] {message}\nHint: {hint}");
+        }
+        default:
+            return Error($"[{McpWire.JobStates.Unknown}] No call with jobId \"{jobId}\" — it never ran, or its result is older than the retention window (one hour).");
+    }
+
+    static CallToolResult Error(string text) => new() { IsError = true, Content = { new TextContentBlock { Text = text } } };
+}
+
+async Task<CallToolResult> AnswerCancelAsync(JsonNode? payload, CancellationToken ct)
+{
+    string? jobId = payload?[JobTools.JobIdField]?.GetValue<string>();
+    if (string.IsNullOrWhiteSpace(jobId))
+        return new CallToolResult { IsError = true, Content = { new TextContentBlock { Text = $"[{McpWire.Codes.InvalidArguments}] jobId is required." } } };
+    bool cancelled = await bridge.CancelJobAsync(jobId, ct);
+    return new CallToolResult
+    {
+        Content = { new TextContentBlock { Text = cancelled
+            ? $"{{\"cancelled\":true}}\nRevit was told to stop job \"{jobId}\". Its final state will be 'cancelled' — or 'done' if it finished first."
+            : $"{{\"cancelled\":false}}\nNothing to cancel: job \"{jobId}\" is not running (finished, unknown, or already cancelled)." } },
+    };
+}
+
+static string RunningHandle(string command, string jobId) =>
+    $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\"}}\n" +
+    $"'{command}' is still running in Revit and was not waited for any longer. It keeps running; " +
+    $"call GetJobResult with jobId \"{jobId}\" to collect its result (kept for one hour), GetQueueStatus to see " +
+    "it running, or CancelJob to stop it. Do not start the same command again meanwhile.";
 
 // The watcher for changes no reply will ever carry: a client that connected while Revit was closed
 // holds an empty list and has nothing to call, so no reply would ever bring it the stamp; and a Revit
@@ -370,6 +486,55 @@ static string Describe(Exception ex)
 
     string text = $"[{bridge.Code}] {bridge.Message}";
     return string.IsNullOrWhiteSpace(bridge.Hint) ? text : $"{text}\nHint: {bridge.Hint}";
+}
+
+/// <summary>
+/// The exe's own tools, about calls rather than about Revit. Named like the commands so a caller does
+/// not need to know which process answers; the names cannot collide with a Revit command, which
+/// would be listed under a sanitized name that never equals these (a registration named
+/// GetJobResult would be shadowed — acceptable, and unlikely).
+/// </summary>
+static class JobTools
+{
+    public const string GetResult = "GetJobResult";
+    public const string Cancel = "CancelJob";
+    public const string JobIdField = "jobId";
+
+    public static IEnumerable<Tool> Describe()
+    {
+        JsonElement input = JsonSerializer.SerializeToElement(new Dictionary<string, object>
+        {
+            ["type"] = "object",
+            ["properties"] = new Dictionary<string, object>
+            {
+                [JobIdField] = new Dictionary<string, object>
+                {
+                    ["type"] = "string",
+                    ["description"] = "The jobId a running call handed back (or that a timeout hint named).",
+                },
+            },
+            ["required"] = new[] { JobIdField },
+        });
+        yield return new Tool
+        {
+            Name = GetResult,
+            Description = $"{GetResult}: Collects the result of a Revit command that was handed back as a running job " +
+                          "(a call answering { status: \"running\", jobId }) or whose call timed out. Returns the command's " +
+                          "own result once it finished; while it runs, { status: \"running\", seconds } — call again later. " +
+                          "Results are kept for one hour. Read-only, answers instantly even while Revit is busy.",
+            InputSchema = input,
+            Annotations = new ToolAnnotations { Title = GetResult, ReadOnlyHint = true },
+        };
+        yield return new Tool
+        {
+            Name = Cancel,
+            Description = $"{Cancel}: Stops a running Revit command by the jobId a call handed back. The command sees its " +
+                          "cancellation token; work already committed stays. Returns { cancelled: true } when it was running. " +
+                          "Answers instantly even while Revit is busy.",
+            InputSchema = input,
+            Annotations = new ToolAnnotations { Title = Cancel, ReadOnlyHint = false, DestructiveHint = false },
+        };
+    }
 }
 
 /// <summary>What tools/list decided about one tool name: the Revit command it maps back to, and whether

@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-09-02
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -46,7 +46,38 @@ sources: [../sources/github-issues.md]
   предел, выбранный как наименее плохое число, с записанным обоснованием: *щедро
   намеренно, потому что таймаут, срабатывающий на легитимной работе, хуже, чем никакого*.
 
-## Три ответа, по возрастанию цены
+## Что построено 2026-09-02 — один заход на провод
+
+[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99), [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108), [#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109) и [#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) закрыты одним изменением `McpWire`
+(`src/AnalyseTool.Mcp.Bridge/McpWire.cs`) и его двух половин:
+
+- **Прогресс.** На соединении вызова перед ответом идут кадры `{ id, progress: { fraction, message } }`;
+  бридж привязывает `CommandRequest.Progress` к каждому MCP-вызову (не чаще кадра в 200 мс),
+  exe режет поток на кадры (`JsonFrameReader` в `src/AnalyseTool.Mcp/RevitBridgeClient.cs` — два
+  кадра могут прийти одним чтением, и старое «копить, пока не распарсится» на этом зависло бы) и
+  шлёт `notifications/progress`, только если клиент прислал `progressToken`.
+- **Отмена.** Тип запроса `cancel` с id вызова на отдельном соединении; бридж держит
+  `CancellationTokenSource` на вызов в полёте. `notifications/cancelled` от клиента доходит до
+  токена команды в Revit — останавливается работа, а не только ожидание.
+- **Job вместо Tasks.** Каждый invoke в бридже — запись с исходом (результат, ошибка, отмена),
+  хранится час, до 200 штук, независимо от того, жив ли вызывающий. Exe через 60 с
+  (`--handle-after`) перестаёт ждать и отдаёт `{ status: "running", jobId }` — не ошибка; свои
+  инструменты exe `GetJobResult` и `CancelJob` собирают или останавливают его, и они в списке даже
+  при недоступном Revit. Подсказка десятиминутного таймаута тоже называет jobId.
+
+**Почему не Tasks из спеки.** `ModelContextProtocol` 2.2.0 — SDK со спекой 2026-07-28 — **не
+содержит Tasks API вовсе**: в `ModelContextProtocol.Core.xml` нет ни `McpTask*`, ни `tasks/*`,
+даже экспериментальной формы 2025-11-25, которую нёс 1.3.0 (проверено 2026-09-02). Строить
+согласуемое расширение вручную поверх SDK ради клиентов, которые его не объявляют, — не то, что
+стоило делать. Два обычных инструмента дают ту же суть любому клиенту сегодня; если SDK привезёт
+Tasks, запись job ложится на них тонким адаптером — новый маленький issue, не #110.
+
+Тесты яруса 2 (`src/AnalyseTool.Tests/Mcp/McpExeTests.cs`): кадр прогресса становится
+уведомлением с токеном клиента; отменённый запрос доходит до токена команды в фальшивом бридже;
+трёхсекундный вызов при `--handle-after 1` возвращает handle, `GetJobResult` на новых соединениях
+отвечает «running», потом результат, `CancelJob` на завершённом — `cancelled: false`.
+
+## Три ответа, по возрастанию цены — как это виделось до постройки
 
 **Прогресс** ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)) — самое
 дешёвое на всей дорожной карте, потому что оба конца уже есть. `IProgressAware` в SDK с
@@ -89,3 +120,4 @@ sources: [../sources/github-issues.md]
 ## Связанное
 
 - [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) · [`write-safety-and-approval.md`](write-safety-and-approval.md)
+- [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md) — глаголы провода и два собственных инструмента exe

@@ -21,7 +21,7 @@ internal sealed class McpExe : IAsyncDisposable
 
     public string Stderr { get { lock (_stderr) return _stderr.ToString(); } }
 
-    public static McpExe Start(int bridgePort, string token = "test-token")
+    public static McpExe Start(int bridgePort, string token = "test-token", params string[] extraArgs)
     {
         // <src>/AnalyseTool.Tests/bin/<cfg>/net8.0-windows/  ->  <src>/AnalyseTool.Mcp/bin/<cfg>/net8.0/AnalyseTool.Mcp.dll
         string testBin = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
@@ -43,6 +43,7 @@ internal sealed class McpExe : IAsyncDisposable
         psi.ArgumentList.Add(dll);
         psi.ArgumentList.Add("--port"); psi.ArgumentList.Add(bridgePort.ToString());
         psi.ArgumentList.Add("--token"); psi.ArgumentList.Add(token);
+        foreach (string extra in extraArgs) psi.ArgumentList.Add(extra);
 
         Process process = Process.Start(psi) ?? throw new InvalidOperationException("dotnet did not start");
         McpExe exe = new(process);
@@ -101,7 +102,40 @@ internal sealed class McpExe : IAsyncDisposable
         }
     }
 
-    public Task NotifyAsync(string method) => SendAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = method });
+    public Task NotifyAsync(string method, JObject? @params = null)
+    {
+        JObject msg = new() { ["jsonrpc"] = "2.0", ["method"] = method };
+        if (@params is not null) msg["params"] = @params;
+        return SendAsync(msg);
+    }
+
+    /// <summary>Sends a request WITHOUT waiting — for a test that wants to cancel it, or to watch
+    /// what happens while it is in flight. Pair with <see cref="WaitForReplyAsync"/>.</summary>
+    public async Task<int> BeginRequestAsync(string method, JObject? @params = null)
+    {
+        int id = Interlocked.Increment(ref _nextId);
+        JObject msg = new() { ["jsonrpc"] = "2.0", ["id"] = id, ["method"] = method };
+        if (@params is not null) msg["params"] = @params;
+        await SendAsync(msg);
+        return id;
+    }
+
+    /// <summary>The whole reply (result or error) for a request begun earlier; null when the timeout
+    /// passes without one — which after a cancellation is a legitimate outcome.</summary>
+    public async Task<JObject?> WaitForReplyAsync(int id, TimeSpan timeout)
+    {
+        using CancellationTokenSource cts = new(timeout);
+        try
+        {
+            while (true)
+            {
+                JObject reply = await ReadAsync(cts.Token);
+                if ((int?)reply["id"] == id) return reply;
+                if (reply["method"] is not null) _sideNotifications.Enqueue(reply);
+            }
+        }
+        catch (OperationCanceledException) { return null; }
+    }
 
     private readonly Queue<JObject> _sideNotifications = new();
 

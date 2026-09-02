@@ -57,7 +57,9 @@ Platform Services) — issue, заведённые уже ПОСЛЕ съёмк�
 
 **Позже тем же вечером, из сессии:** закрыт [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) (гейт снят, строки таблицы разошлись по
 своим issue), [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111) сужен до трёх инструментов с массивом в корне и пяти пунктов; ещё позже закрыт
-[#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113) — третий срез отгружен, остаток ушёл в #84. Открытых **52**.
+[#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113) — третий срез отгружен, остаток ушёл в #84; и кластер долгих вызовов
+[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99), [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108), [#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109), [#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) — одним изменением провода, #110 без Tasks из спеки
+(в SDK 2.2.0 их нет). Открытых **48**.
 Не в `raw/` — заберёт следующий снимок.
 
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
