@@ -41,6 +41,12 @@
     <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
     <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
     <ProjectReference Include="..\AnalyseTool.Mcp.Bridge\AnalyseTool.Mcp.Bridge.csproj" />
+    <!-- Build order only: the tier-2 tests start the exe from its build output over stdio. Not
+         referenced as an assembly (it is an exe on a different TFM), not copied. -->
+    <ProjectReference Include="..\AnalyseTool.Mcp\AnalyseTool.Mcp.csproj">
+      <Private>false</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

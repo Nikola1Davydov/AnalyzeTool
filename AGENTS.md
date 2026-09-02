@@ -52,7 +52,7 @@ nobody runs in CI.
 | Tier | Project | Needs | Runs |
 | --- | --- | --- | --- |
 | 1 — Revit-free | `src/AnalyseTool.Tests` (TUnit) | nothing; the plugin assemblies load because the Revit API is compile-only | CI, every push (`RunTests` in NUKE, part of `Ci`) |
-| 2 — MCP without Revit | same project (planned): a fake bridge on `McpWire` + the published exe over stdio | nothing | CI |
+| 2 — MCP without Revit | same project, `Mcp/`: a fake bridge on `McpWire` + the exe driven over stdio (tools/list, structuredContent, error text, `list_changed`) | nothing | CI |
 | 3 — inside Revit | `src/AnalyseTool.Test` (Nice3point.TUnit.Revit; re-scaffold from the `revit-tunit` template) | a licensed Revit | on demand, on a machine with Revit |
 
 Rules: every fixed bug gets a test on its tier; a command's core is a function of a `Document` (or of
