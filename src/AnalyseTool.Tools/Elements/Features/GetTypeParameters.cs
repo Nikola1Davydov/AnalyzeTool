@@ -13,8 +13,10 @@ namespace AnalyseTool.Tools.Elements
         Description = "Returns ALL type parameters (display values, empty ones included) for a batch of " +
                       "element types. Read-only. Payload: { typeIds: [long] } — type ids from GetElements " +
                       "with elementKind \"types\". Returns { types: [{ typeId, parameters: [{ name, value, id, " +
-                      "builtInParameter }] }] }; 'id' tells two parameters of one name apart and is what " +
-                      "SetDataToParameters takes. Cost: reads only the given types — cheap.",
+                      "builtInParameter, spec, unit }] }] }; 'id' tells two parameters of one name apart and is what " +
+                      "SetDataToParameters takes; 'spec' says what the value means (length, area, number, string...) " +
+                      "and 'unit' the document unit a numeric value is in (millimeters, feet...). " +
+                      "Cost: reads only the given types — cheap.",
         ReadOnly = true,
         InputType = typeof(GetTypeParameters.Request),
         OutputType = typeof(TypeParametersResult))]
