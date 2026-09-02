@@ -9,6 +9,7 @@
 - 🏷️ **Scripts, DLLs and pages are told apart in the list.** One tag per row — **Script** (a `.cs` the host compiles at load), **DLL** (a project you build) or **Page** — with a matching icon and a tooltip saying what to do when it breaks, instead of the same "C#" on both kinds.
 - 🔍 **Search and filter your own extensions.** Once the *Your own* list holds more than three, it gets a search box (name, id, description) and a Script / DLL / Page filter — a session with an agent can leave a dozen folders behind.
 - 🔢 **`order` now works.** Changing a button's order did nothing: it was not part of what the ribbon compares on Reload, so the buttons were never rebuilt, and large buttons were never sorted at all. Now `order` moves large and small buttons alike within their panel, across extensions — lower first, and 0 (no preference) after every numbered one, so typing 1 puts a button first instead of last.
+- 🔘 **A new extension's button appears before its C# is built.** A template is page + C#, and until you ran `dotnet build` the whole extension used to be hidden from the ribbon as "not built" — you had just created something and nothing happened. Now the buttons that open a page show at once; only buttons that would run a command from the missing DLL stay hidden until it exists.
 - 🗂️ The folders scanned for extensions, and the full command reference, are still there — one click down under **For developers**, in the Extensions and Settings windows respectively.
 
 ## [1.5.0] / 2026-08-13

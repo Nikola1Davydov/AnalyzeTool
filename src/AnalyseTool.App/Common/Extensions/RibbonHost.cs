@@ -160,12 +160,15 @@ namespace AnalyseTool.App.Common.Extensions
         {
             if (AdWin.ComponentManager.Ribbon is null) return; // ribbon not ready yet
 
-            // Incompatible extensions (a declared DLL with no build for this Revit year) and
-            // user-disabled ones get no button: their commands never load, so the UI would only
-            // produce dead invokes. Both stay visible in the Settings listing.
+            // User-disabled extensions get no button. An extension whose declared DLL has no build for
+            // this Revit year keeps the buttons that open a PAGE — the page needs no DLL, and a freshly
+            // created template (page + C#, not yet built) used to vanish from the ribbon, which read as
+            // "I created something and nothing happened". Only its COMMAND buttons are held back (see
+            // GroupButtons): a click on one of those would invoke a command that never loaded.
             List<ExtensionDescriptor> found = ExtensionCatalog
                 .Scan(revitVersion)
-                .Where(d => d.HasUi && d.IsCompatibleWithHost && ExtensionStateStore.IsEnabled(d.Manifest.Id))
+                .Where(d => d.HasUi && ExtensionStateStore.IsEnabled(d.Manifest.Id)
+                            && (d.IsCompatibleWithHost || d.OpensPage))
                 .ToList();
 
             // Every button the manifests ask for, by ribbon key — the set the ribbon must end up
@@ -201,6 +204,9 @@ namespace AnalyseTool.App.Common.Extensions
             List<(ExtensionButton Info, int Index)> live = descriptor.Manifest.Ui!.EffectiveButtons()
                 .Select((b, i) => (Info: b, Index: i))
                 .Where(t => !UserTookButtonAway(t.Info))
+                // No DLL for this Revit year: a page still opens, a command would not — only the
+                // page buttons stay (the reason the descriptor is here at all, see RefreshExtensionButtons).
+                .Where(t => descriptor.IsCompatibleWithHost || string.IsNullOrWhiteSpace(t.Info.Command))
                 .ToList();
 
             List<ButtonGroup> groups = new();

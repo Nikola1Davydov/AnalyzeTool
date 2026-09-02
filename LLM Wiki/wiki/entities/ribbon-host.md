@@ -81,3 +81,12 @@ Scripts — не окно, а док-панель: `ShowScriptLauncher` пока
 - [`extension-manifest.md`](extension-manifest.md) — откуда берутся кнопки и их формы
 - [`command-queue.md`](command-queue.md) — `ribbon` как один из трёх источников очереди
 - [`analysetool-mcp-server.md`](analysetool-mcp-server.md) · [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)
+
+## Несобранная DLL прячет не всё
+
+С 2026-09-02 расширение, чья `entryAssembly` не собрана для этого года Revit, **не исчезает**
+с ленты: кнопки, открывающие страницу, показываются (странице DLL не нужна), скрыты только
+кнопки с `command` — они звали бы команду, которая не загрузилась. Повод: шаблон «страница +
+C#» сразу после создания выглядел как «создал — и ничего не появилось».
+`RibbonHost.RefreshExtensionButtons` (фильтр `IsCompatibleWithHost || OpensPage`) и
+`GroupButtons` (отсев командных кнопок).
