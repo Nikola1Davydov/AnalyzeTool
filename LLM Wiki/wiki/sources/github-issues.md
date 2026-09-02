@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-09-01
+updated: 2026-09-02
 status: current
 ---
 
@@ -12,10 +12,12 @@ issue — не тикеты, а разобранные дизайн-заметк
 
 **Где:** [issues репозитория Nikola1Davydov/AnalyzeTool](https://github.com/Nikola1Davydov/AnalyzeTool/issues)
 **Снимки:**
-[`../../raw/github-issues-2026-09-01.md`](../../raw/github-issues-2026-09-01.md) — 91 issue, тела (актуальный) ·
-[`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue, предыдущий ·
-[`../../raw/github-issue-comments-2026-09-01.md`](../../raw/github-issue-comments-2026-09-01.md) — 49 комментариев на 25 issue (актуальный) ·
-[`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — 46 комментариев, предыдущий
+[`../../raw/github-issues-2026-09-02.md`](../../raw/github-issues-2026-09-02.md) — 94 issue, тела (актуальный) ·
+[`../../raw/github-issues-2026-09-01.md`](../../raw/github-issues-2026-09-01.md) — 91 issue ·
+[`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue ·
+[`../../raw/github-issue-comments-2026-09-02.md`](../../raw/github-issue-comments-2026-09-02.md) — 86 комментариев на 44 issue (актуальный) ·
+[`../../raw/github-issue-comments-2026-09-01.md`](../../raw/github-issue-comments-2026-09-01.md) — 49 на 25 ·
+[`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — 46
 **Прочитан:** 2026-08-31 через публичный API (`/issues?state=all`), pull request'ы отфильтрованы
 
 ## Форма
@@ -34,6 +36,7 @@ issue — не тикеты, а разобранные дизайн-заметк
 **Дыра снимка.** Те два комментария ссылаются на **#131** (worker) и **#132** (ACC / Autodesk
 Platform Services) — issue, заведённые уже ПОСЛЕ съёмки тел за 2026-09-01. В `raw/` их нет, и
 всё, что вики о них знает, — эти две ссылки. Следующий снимок тел их заберёт.
+*Заполнена 2026-09-02: тела обоих в снимке, вплетены (см. ниже).*
 
 **После снимка, тем же вечером (2026-09-01), из сессии, а не из снимка:** закрыты
 [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) (версия схемы манифеста — отгружена, e1ded76) и
@@ -42,6 +45,15 @@ Platform Services) — issue, заведённые уже ПОСЛЕ съёмк�
 этого уже отгружено». Открытых стало **64**. В `raw/` этого нет — заберёт следующий снимок.
 
 **2026-09-02, по итогам [сверки](../analyses/audit-2026-09-02.md):** закрыты [#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48), [#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64), [#89](https://github.com/Nikola1Davydov/AnalyzeTool/issues/89) (отгружены), [#45](https://github.com/Nikola1Davydov/AnalyzeTool/issues/45), [#114](https://github.com/Nikola1Davydov/AnalyzeTool/issues/114) (ушли с Family Manager в другой репозиторий), [#52](https://github.com/Nikola1Davydov/AnalyzeTool/issues/52), [#53](https://github.com/Nikola1Davydov/AnalyzeTool/issues/53) (поглощены); статус и сужение отписаны в #83, #88, #106, #77, #84, #76, #128, #90–#92, #72, #74. Открытых **57**. Тоже не в `raw/`.
+
+**Снимок 2026-09-02 (вечер):** 94 issue, **54 открытых**. Против снимка 2026-09-01 три новых —
+[#131](https://github.com/Nikola1Davydov/AnalyzeTool/issues/131) (worker и движок правил без Revit API) и [#132](https://github.com/Nikola1Davydov/AnalyzeTool/issues/132) (ACC / APS: четыре шва сейчас), тела
+которых закрыли дыру выше, и [#133](https://github.com/Nikola1Davydov/AnalyzeTool/issues/133) — план встроенного агента, произведён из этой вики
+([`../analyses/built-in-agent-plan.md`](../analyses/built-in-agent-plan.md)). Пятнадцать закрытий, все
+за этот день: семь по сверке (выше), #97, #98, #100, #101, #102, #127, #128, #129 — починены и
+отгружены на `dev`. Комментарии: 86 на 44 issue против 49 на 25; все 37 новых — статусные записи из
+рабочей сессии 2026-09-02 (обоснования закрытий, сужения, итоги живых проверок), ни одного
+человеческого — вплетать из них нечего, вики их и породила.
 
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:
