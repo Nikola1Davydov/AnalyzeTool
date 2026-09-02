@@ -1,4 +1,4 @@
-using AnalyseTool.App.Common.Dispatch;
+﻿using AnalyseTool.App.Common.Dispatch;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Sdk;
 using Microsoft.Web.WebView2.Core;
@@ -54,6 +54,15 @@ namespace AnalyseTool.App.Common.Transport
         {
             WebViewMessage? request = JsonConvert.DeserializeObject<WebViewMessage>(args.WebMessageAsJson);
             if (request == null) return;
+
+            // Ping is answered here and now: this handler runs on the WebView's UI thread — Revit's — so
+            // reaching this line IS the fact the page is asking about. Nothing to enqueue, nothing to log:
+            // one of these arrives every tenth of a second from every open window.
+            if (string.Equals(request.Type, WebMessageTypeEnum.Ping.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                Post(JsonConvert.SerializeObject(new WebViewMessage { Type = "Pong", Command = "Ping", Id = request.Id }));
+                return;
+            }
 
             // Cancel carries no work of its own: it names an id and returns. The command it interrupts
             // still answers through the normal path, so there is exactly one way a call finishes.

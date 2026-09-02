@@ -38,6 +38,8 @@ export const enum MessageType {
   Response = "Response",
   /** Abandon an in-flight Request by its Id. The host still answers the original call. */
   Cancel = "Cancel",
+  /** "Are you receiving?" — answered with a Pong from the host's receive handler, before any queue. */
+  Ping = "Ping",
 }
 
 // --- AT.invoke: correlated request/response over the same WebView channel -------------------
@@ -85,6 +87,55 @@ export function oldestPendingAge(now: number = Date.now()): number {
   return oldest;
 }
 
+// --- Heartbeat: a Ping every tenth of a second, so the stall is noticed within half a second and not
+// whenever the next real call happens to be sent (the idle status poll is ten seconds apart, which
+// made the first version of the busy bar appear up to thirteen seconds late). At most one Ping is
+// outstanding: while the host is held, nothing more is sent, and the age of that one Ping is the
+// measurement. The host answers from its receive handler without touching the queue, so this is
+// the cheapest round trip there is and it is never logged.
+const HEARTBEAT_MS = 100;
+let pingSentAt: number | null = null;
+let heartbeatTimer: number | null = null;
+let heartbeatUsers = 0;
+// A host that has never answered a Ping is a host that does not know the message (a page deployed
+// ahead of its DLL, which happens whenever Revit holds the old one during a build). Until the first
+// Pong the heartbeat proves nothing, and hostStallMs falls back to the pending calls alone.
+let heartbeatArmed = false;
+
+function sendPing() {
+  if (pingSentAt !== null) return; // the previous one has not come back — that is the signal
+  const webview = (window as any).chrome?.webview;
+  if (!webview) return;
+  ensureInvokeListener();
+  pingSentAt = Date.now();
+  webview.postMessage({ Type: MessageType.Ping, Command: "Ping", Payload: null, Id: "hb" });
+}
+
+/** Starts the heartbeat (reference-counted: every component that reads hostStallMs calls this). */
+export function startHeartbeat(): void {
+  heartbeatUsers++;
+  if (heartbeatTimer !== null) return;
+  heartbeatTimer = window.setInterval(sendPing, HEARTBEAT_MS);
+  sendPing();
+}
+
+export function stopHeartbeat(): void {
+  heartbeatUsers = Math.max(0, heartbeatUsers - 1);
+  if (heartbeatUsers > 0 || heartbeatTimer === null) return;
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
+  pingSentAt = null;
+}
+
+/**
+ * Milliseconds the host has been silent: the age of the unanswered Ping, or of the oldest unanswered
+ * call, whichever is longer. 0 when the host is answering.
+ */
+export function hostStallMs(now: number = Date.now()): number {
+  const ping = heartbeatArmed && pingSentAt !== null ? now - pingSentAt : 0;
+  return Math.max(ping, oldestPendingAge(now));
+}
+
 function ensureInvokeListener(): void {
   const webview = (window as any).chrome?.webview;
   if (!webview || webview.__atInvokeAttached) return;
@@ -98,6 +149,12 @@ function ensureInvokeListener(): void {
     // so any view can listen without importing a bus: window.addEventListener("at:DocumentChanged", …).
     if (message.Type === "Event") {
       window.dispatchEvent(new CustomEvent(`at:${message.Command}`, { detail: message.Payload }));
+      return;
+    }
+
+    if (message.Type === "Pong") {
+      pingSentAt = null;
+      heartbeatArmed = true;
       return;
     }
 

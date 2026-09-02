@@ -15,6 +15,10 @@ namespace AnalyseTool.App.Common.Bootstrap
     /// Initialize everything lives in <see cref="CoreServices"/>, the single registry.</summary>
     internal static class AnalyseToolBootstrap
     {
+        // Kept alive here: a Timer with no reference is collected, and with it the push.
+        private static System.Threading.Timer? _availabilityWatcher;
+        private static bool _lastBlocked;
+
         public static void Initialize(UIApplication uiApp)
         {
             if (CoreServices.IsInitialized) return;
@@ -69,6 +73,20 @@ namespace AnalyseTool.App.Common.Bootstrap
             queue.RunningChanged += () =>
                 Common.Transport.WebView2Transport.BroadcastEvent(
                     "QueueChanged", Core.Features.Extensions.GetQueueStatus.Snapshot());
+
+            // Availability push: "Revit is busy with another action" (a dialog, an edit mode, a native
+            // command) is detected by the Idling stamp within ~1.5 s, but until now it reached a window
+            // only when that window next polled — up to ten seconds in idle, which read as "the bar is
+            // slow". The watcher pushes the same snapshot the moment the verdict flips either way; a
+            // held UI thread cannot deliver it, and for that case the page has its own heartbeat.
+            _availabilityWatcher = new System.Threading.Timer(_ =>
+            {
+                bool blocked = Core.Features.Extensions.GetQueueStatus.IsBlocked();
+                if (blocked == _lastBlocked) return;
+                _lastBlocked = blocked;
+                Common.Transport.WebView2Transport.BroadcastEvent(
+                    "QueueChanged", Core.Features.Extensions.GetQueueStatus.Snapshot());
+            }, null, 250, 250);
 
             // Revit-availability stamping runs in the host's single permanent Idling handler
             // (DockPaneHost.OnIdling, hooked at OnStartup). Freshen the stamp here once: Initialize
