@@ -203,7 +203,7 @@ declaration, after the panel's large buttons; a `pulldown` lists its `items`
 under one head and does not run the first of them on click. An unknown `kind` falls back to `push`,
 so a manifest written against a later host still produces a usable ribbon.
 
-Each entry may carry `entryHtml`, `dockable`, `tab`, `panel` and `order`, each falling back to the
+Each entry may carry `entryHtml`, `dockable`, `tab`, `panel` and `order` (lower first; 0 = no preference, sorted after the numbered ones — for large and small buttons alike), each falling back to the
 `ui.*` value when omitted — so a single-button manifest never repeats itself. `name`, `tooltip`,
 `icon` and `command` work exactly as in the singular form.
 

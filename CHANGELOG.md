@@ -8,6 +8,7 @@
 - 🧱 **Small buttons stack across extensions.** A button marked `stacked` used to form a column only with its own extension's neighbours, so two extensions with one small button each stood side by side as two columns of one. Columns are now laid out per ribbon panel: every small button on a panel, whoever it belongs to, goes into columns of three — ordered by `order`, then extension id, then declaration — after the panel's large buttons.
 - 🏷️ **Scripts, DLLs and pages are told apart in the list.** One tag per row — **Script** (a `.cs` the host compiles at load), **DLL** (a project you build) or **Page** — with a matching icon and a tooltip saying what to do when it breaks, instead of the same "C#" on both kinds.
 - 🔍 **Search and filter your own extensions.** Once the *Your own* list holds more than three, it gets a search box (name, id, description) and a Script / DLL / Page filter — a session with an agent can leave a dozen folders behind.
+- 🔢 **`order` now works.** Changing a button's order did nothing: it was not part of what the ribbon compares on Reload, so the buttons were never rebuilt, and large buttons were never sorted at all. Now `order` moves large and small buttons alike within their panel, across extensions — lower first, and 0 (no preference) after every numbered one, so typing 1 puts a button first instead of last.
 - 🗂️ The folders scanned for extensions, and the full command reference, are still there — one click down under **For developers**, in the Extensions and Settings windows respectively.
 
 ## [1.5.0] / 2026-08-13

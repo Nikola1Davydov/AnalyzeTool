@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
@@ -167,7 +167,7 @@ namespace AnalyseTool.Core.Features.Extensions
             [Description("Button shape: \"push\" (large, the default), \"stacked\" (small, three per column) or \"pulldown\". Omit to leave it.")]
             public string? Kind { get; set; }
 
-            [Description("Sort order within the panel; 0 means unspecified. Omit to leave it.")]
+            [Description("Sort order within the panel: lower comes first; 0 means no preference and goes after the numbered ones. Omit to leave it.")]
             public int? Order { get; set; }
 
             [Description("Open the page in the shared dock pane instead of its own window. Omit to leave it.")]

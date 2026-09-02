@@ -230,7 +230,7 @@ properties of the SURFACE, not of the extension:
 | `entryHtml` | Page for THIS button. Falls back to `ui.entryHtml`. |
 | `dockable` | Docking for THIS button. Falls back to `ui.dockable`. |
 | `tab` / `panel` | Placement for THIS button. Falls back to `ui.tab` / `ui.panel`. |
-| `order` | Sort order in the panel; equal values keep declaration order. |
+| `order` | Sort order in the panel: lower first; equal values keep declaration order; 0 (unset) goes after every stated value. Applies to large and small buttons alike, across extensions. |
 | `kind` | `push` (default) · `stacked` · `pulldown`. Unknown values fall back to `push`. |
 | `items` | Entries of a `pulldown`. Ignored for other kinds. |
 | `name` / `tooltip` / `icon` / `command` | As in the single-button form. |

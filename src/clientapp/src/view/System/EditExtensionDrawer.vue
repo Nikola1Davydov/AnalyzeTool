@@ -253,7 +253,7 @@ watch(
               class="w-24"
               :disabled="!data.editable"
             />
-            <small class="text-surface-500">0 = as declared.</small>
+            <small class="text-surface-500">Lower comes first. 0 = no preference, after the numbered ones.</small>
           </div>
         </div>
         <div v-if="data.hasUi" class="flex items-center justify-between gap-3">

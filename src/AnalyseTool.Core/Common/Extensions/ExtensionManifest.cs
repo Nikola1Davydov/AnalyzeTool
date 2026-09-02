@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace AnalyseTool.Core.Common.Extensions
 {
@@ -108,7 +108,9 @@ namespace AnalyseTool.Core.Common.Extensions
         public IReadOnlyList<ExtensionButton> EffectiveButtons()
         {
             if (Buttons is { Count: > 0 })
-                return Buttons.Select((b, i) => (b, i)).OrderBy(t => t.b.Order).ThenBy(t => t.i)
+                // 0 = no preference, and no preference sorts AFTER every stated order — the same rule
+                // the host applies across extensions on a panel (RibbonHost.Rank).
+                return Buttons.Select((b, i) => (b, i)).OrderBy(t => t.b.Order == 0 ? int.MaxValue : t.b.Order).ThenBy(t => t.i)
                               .Select(t => t.b).ToList();
             return Button is null ? Array.Empty<ExtensionButton>() : new[] { Button };
         }
@@ -156,7 +158,8 @@ namespace AnalyseTool.Core.Common.Extensions
         [JsonProperty("panel")]
         public string? Panel { get; init; }
 
-        /// <summary>Sort order within the panel; equal values keep declaration order.</summary>
+        /// <summary>Sort order within the panel: lower comes first, equal values keep declaration
+        /// order, and 0 (unset) goes after every stated value.</summary>
         [JsonProperty("order")]
         public int Order { get; init; }
 

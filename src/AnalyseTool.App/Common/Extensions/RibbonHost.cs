@@ -185,7 +185,7 @@ namespace AnalyseTool.App.Common.Extensions
         /// <summary>One ribbon item to build: a single button, or a run of stacked ones sharing a row.
         /// Grouping lives in ONE place because two passes need the same answer — the pass that decides
         /// which ribbon items must exist, and the pass that builds them.</summary>
-        private sealed record ButtonGroup(string Key, IReadOnlyList<ExtensionButton> Infos, string Signature)
+        private sealed record ButtonGroup(string Key, IReadOnlyList<ExtensionButton> Infos, string Signature, int FirstIndex)
         {
             public ExtensionButton First => Infos[0];
         }
@@ -214,16 +214,19 @@ namespace AnalyseTool.App.Common.Extensions
                 else
                     i++;
 
-                groups.Add(new ButtonGroup(ButtonKey(id, firstIndex), infos, Signature(infos)));
+                groups.Add(new ButtonGroup(ButtonKey(id, firstIndex), infos, Signature(infos), firstIndex));
             }
             return groups;
         }
 
         /// <summary>Everything about a group that, when changed, means the ribbon item must be rebuilt
         /// rather than relabelled. Cheap to compute and compared as one string.</summary>
+        /// <para><c>Order</c> is in here although it changes no visual of the button itself: the
+        /// packer sorts the copies it was handed at build time, so an order edit that did not
+        /// rebuild the entry was silently ignored.</para>
         private static string Signature(IReadOnlyList<ExtensionButton> infos) =>
             string.Join("|", infos.Select(b =>
-                $"{b.ResolvedKind}:{b.Name}:{b.Tooltip}:{b.Icon}:{b.Command}:" +
+                $"{b.ResolvedKind}:{b.Name}:{b.Tooltip}:{b.Icon}:{b.Command}:{b.Order}:" +
                 string.Join(",", (b.Items ?? Array.Empty<ExtensionButton>()).Select(c => c.Name + "/" + c.Command))));
 
         /// <summary>Ribbon key for one manifest button. The index is the identity: renaming a button
@@ -395,13 +398,14 @@ namespace AnalyseTool.App.Common.Extensions
                     // Small buttons are a PANEL's business, not the extension's: two extensions with one
                     // small button each want one column of two, not two columns of one. So the run is
                     // only remembered here; PackStacks builds the columns once every panel is known.
-                    _extButtons[group.Key] = new ExtEntry(null, BuildStacked(descriptor, group), panelKey, group.Signature);
+                    _extButtons[group.Key] = new ExtEntry(null, BuildStacked(descriptor, group), panelKey, group.Signature,
+                        first.Order, id, group.FirstIndex);
                     continue;
                 }
 
                 AdWin.RibbonItem built = BuildGroup(descriptor, group);
                 source.Items.Add(built);
-                _extButtons[group.Key] = new ExtEntry(built, null, panelKey, group.Signature);
+                _extButtons[group.Key] = new ExtEntry(built, null, panelKey, group.Signature, first.Order, id, group.FirstIndex);
             }
         }
 
@@ -487,10 +491,25 @@ namespace AnalyseTool.App.Common.Extensions
                     old.Clear();
                 }
 
+                // Large items first, in the same order the columns use. They were added in scan
+                // order by SyncButtons; here they are moved to the front of the panel in rank order,
+                // so `order` means the same thing for a large button as for a small one. Anything
+                // that is not ours (pinned command buttons) keeps its place behind them.
+                int position = 0;
+                foreach (ExtEntry entry in _extButtons.Values
+                             .Where(e => e.Item is not null && string.Equals(e.PanelKey, panelKey, StringComparison.Ordinal))
+                             .OrderBy(e => Rank(e.Order))
+                             .ThenBy(e => e.ExtensionId, StringComparer.OrdinalIgnoreCase)
+                             .ThenBy(e => e.Index))
+                {
+                    panel.Items.Remove(entry.Item!);
+                    panel.Items.Insert(position++, entry.Item!);
+                }
+
                 List<StackedButton> buttons = _extButtons.Values
                     .Where(e => e.Stacked is not null && string.Equals(e.PanelKey, panelKey, StringComparison.Ordinal))
                     .SelectMany(e => e.Stacked!)
-                    .OrderBy(b => b.Order)
+                    .OrderBy(b => Rank(b.Order))
                     .ThenBy(b => b.ExtensionId, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(b => b.Index)
                     .ToList();
@@ -515,7 +534,13 @@ namespace AnalyseTool.App.Common.Extensions
 
         /// <summary>One ribbon entry of an extension: either an item placed directly on its panel
         /// (large button, pulldown) or a run of small buttons that <see cref="PackStacks"/> places.</summary>
-        private sealed record ExtEntry(AdWin.RibbonItem? Item, List<StackedButton>? Stacked, string PanelKey, string Signature);
+        private sealed record ExtEntry(AdWin.RibbonItem? Item, List<StackedButton>? Stacked, string PanelKey, string Signature,
+            int Order, string ExtensionId, int Index);
+
+        /// <summary>The panel sort key. <c>order</c> 0 means "no preference", and no preference goes
+        /// AFTER every stated one: a person who types 1 into one button expects it first, not
+        /// behind everything that never said.</summary>
+        private static int Rank(int order) => order == 0 ? int.MaxValue : order;
 
         /// <summary>A small button with what the packer sorts by.</summary>
         private sealed record StackedButton(AdWin.RibbonButton Button, int Order, string ExtensionId, int Index);
