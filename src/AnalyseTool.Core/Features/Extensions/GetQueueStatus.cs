@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Sdk;
 
@@ -11,7 +11,7 @@ namespace AnalyseTool.Core.Features.Extensions
     /// </summary>
     [RevitCommand(
         Description = "Returns what AnalyseTool is doing right now: { running: [{ command, source, " +
-                      "seconds }], pendingRevitWork, waitingSeconds, waitingForUser }. waitingForUser=true " +
+                      "seconds, progress?: { fraction, message } }], pendingRevitWork, waitingSeconds, waitingForUser }. waitingForUser=true " +
                       "means Revit cannot execute queued work — the user is in a modal dialog or an edit " +
                       "mode. AI agents: check this before starting heavy commands and wait while busy. " +
                       "Read-only, answers instantly even when Revit is blocked.",
@@ -36,6 +36,7 @@ namespace AnalyseTool.Core.Features.Extensions
                     command = r.Command,
                     source = r.Source,
                     seconds = Math.Round((now - r.StartedUtc).TotalSeconds, 1),
+                    progress = r.Progress is null ? null : new { fraction = r.Progress.Fraction, message = r.Progress.Message },
                 })
                 .ToList();
 

@@ -42,6 +42,10 @@ namespace AnalyseTool.App.Common.Transport
             _attached.TryRemove(this, out _);
         }
 
+        /// <summary>How many windows/panes are attached right now — the activity indicator shows a
+        /// window's own calls only when no window is left to show them.</summary>
+        public static int AttachedCount => _attached.Count;
+
         /// <summary>Pushes an Event to EVERY attached window/pane (e.g. "QueueChanged"). Safe from any
         /// thread — posting marshals to each WebView's dispatcher.</summary>
         public static void BroadcastEvent(string name, object? payload = null)

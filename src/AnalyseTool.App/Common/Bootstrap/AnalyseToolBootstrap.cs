@@ -1,4 +1,4 @@
-using AnalyseTool.App.Common.Extensions;
+﻿using AnalyseTool.App.Common.Extensions;
 using AnalyseTool.Core;
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
@@ -73,6 +73,11 @@ namespace AnalyseTool.App.Common.Bootstrap
             queue.RunningChanged += () =>
                 Common.Transport.WebView2Transport.BroadcastEvent(
                     "QueueChanged", Core.Features.Extensions.GetQueueStatus.Snapshot());
+
+            // The host's own sign of activity, for the person at Revit: a small window that appears
+            // when a command runs without a window of its own to report it (an agent over MCP), with
+            // progress and a Cancel that reaches the command through the queue.
+            Common.Activity.ActivityIndicator.Initialize(queue);
 
             // Availability push: "Revit is busy with another action" (a dialog, an edit mode, a native
             // command) is detected by the Idling stamp within ~1.5 s, but until now it reached a window

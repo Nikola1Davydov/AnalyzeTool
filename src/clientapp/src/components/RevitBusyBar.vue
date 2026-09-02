@@ -21,7 +21,7 @@ import { invoke, hostStallMs, startHeartbeat, stopHeartbeat } from "@/RevitBridg
 // receive handler, checked every quarter second from a plain timer that the host cannot block.
 
 interface QueueStatus {
-  running: { command: string; source: string; seconds: number }[];
+  running: { command: string; source: string; seconds: number; progress?: { fraction: number; message?: string | null } | null }[];
   pendingRevitWork: number;
   waitingSeconds: number;
   waitingForUser: boolean;
@@ -167,6 +167,7 @@ onUnmounted(() => {
             ({{ longest.source }})</span
           >
           · {{ runningSeconds }}s
+          <span v-if="longest?.progress?.message" class="text-surface-500"> · {{ longest.progress.message }}</span>
           <span v-if="status!.running.length > 1" class="text-surface-400">
             · +{{ status!.running.length - 1 }} more</span
           >
