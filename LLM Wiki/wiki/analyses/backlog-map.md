@@ -7,7 +7,7 @@ sources: [../sources/github-issues.md]
 
 # Карта открытого бэклога
 
-57 открытых issue (снимок 2026-09-01, минус семь закрытых 2026-09-02 по [сверке](audit-2026-09-02.md), минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
+55 открытых issue (снимок 2026-09-01, минус семь закрытых 2026-09-02 по [сверке](audit-2026-09-02.md), минус #97 и #98 — починены и подтверждены вживую в тот же день, минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
 AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
@@ -15,7 +15,7 @@ AI-кластеры развёрнуты в других страницах ви
 
 | Кластер | Issue | Где |
 | --- | --- | --- |
-| Дефекты и протокол MCP | 83–85, 97–113, 128 (129 закрыт: команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
+| Дефекты и протокол MCP | 83–85, 99–113, 128 (97 и 98 закрыты 2026-09-02 по полевому тесту; 129 — команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
 | Агент и где он крутится | 80, 115–118 | [`agent-hosting.md`](agent-hosting.md), [`../concepts/proactivity-budget.md`](../concepts/proactivity-budget.md) |
 | Безопасность и одобрение | 88, 106, 123, 126 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 | Лента, карточки, порог | 79, 80, 116, 118, 122, 126 | [`../concepts/inbox-and-cards.md`](../concepts/inbox-and-cards.md) |

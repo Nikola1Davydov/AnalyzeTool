@@ -65,7 +65,7 @@ updated: 2026-09-02
 | [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
-| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 57 открытых issue по группам |
+| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 55 открытых issue по группам |
 | [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md) | сверка issue и вики с кодом: семь выводов, что закрыть, что сузить, что править |
 
 ## Известные дыры

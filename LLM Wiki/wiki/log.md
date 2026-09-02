@@ -1361,3 +1361,13 @@ dc99dbc поднял `ModelContextProtocol` до 2.2.0, и его xml ссыла
 параметрах категорий и типов, per-item ошибки в `SetDataToParameters`, виды без листов и
 псевдовидов, `ignoredIds` в выделении, имя инструмента в начале описания. Ничего не
 подтверждено вживую — Revit закрыт.
+
+## 2026-09-02 — живая проверка правок по полевому тесту
+
+Revit подключён, тот же клиент, та же модель. Всё, что утром было «не подтверждено вживую»,
+подтверждено: `GetElements` отвечает (причина #98 — `required` на nullable-полях в
+outputSchema — снята), #97 пишет в лог и отдаёт корневое исключение, `id` в
+`GetCategoryParameters` и `GetTypeParameters`, `problems[]` в `SetDataToParameters`,
+`ignoredIds`, виды без листов. #97 и #98 закрыты, открытых 55. Страницы
+[`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md) и
+[`sources/field-test-2026-09-02.md`](sources/field-test-2026-09-02.md) поправлены.
