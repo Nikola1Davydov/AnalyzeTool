@@ -167,8 +167,11 @@ static string BuildStamp()
 {
     System.Reflection.Assembly asm = System.Reflection.Assembly.GetExecutingAssembly();
     string ver = asm.GetName().Version?.ToString() ?? "?";
+    // Single-file publish leaves Assembly.Location empty; the process path is the bundle itself,
+    // whose timestamp is the build time we want to show.
+    string? path = string.IsNullOrEmpty(asm.Location) ? Environment.ProcessPath : asm.Location;
     string built;
-    try { built = System.IO.File.GetLastWriteTime(asm.Location).ToString("yyyy-MM-dd HH:mm:ss"); }
+    try { built = System.IO.File.GetLastWriteTime(path!).ToString("yyyy-MM-dd HH:mm:ss"); }
     catch { built = "?"; }
     return $"v{ver} built {built}";
 }

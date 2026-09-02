@@ -1385,3 +1385,10 @@ outputSchema — снята), #97 пишет в лог и отдаёт корн�
 `didYouMean`; `GetModelOverview` отдаёт `categories[{name, builtInCategory, count}]`;
 `GetCategoriesInRevit` отсылает к нему. `GetDataByCategoryName` (скрыта от ИИ, кормит UI)
 не тронута. Не проверено вживую — деплой ждёт перезапуска Revit.
+
+## 2026-09-02 — query: что взять из шаблона McpServer1
+
+Сравнили `dotnet new mcpserver` (34 строки) с нашим exe. Взято: self-contained single-file
+публикация exe (см. [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md)).
+Отложено как решение: `.mcp/server.json` и публикация в реестр MCP через NuGet/`dnx`. Не взято:
+атрибутная регистрация инструментов и логирование через `AddConsole`.
