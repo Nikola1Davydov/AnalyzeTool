@@ -53,6 +53,33 @@ namespace AnalyseTool.App.Common.Activity
             _dispatcher = Dispatcher.CurrentDispatcher;
             queue.RunningChanged += () => OnUiThread(Refresh);
             queue.ProgressReported += (_, _) => OnUiThread(Refresh);
+            // Already on the UI thread, by construction: the hub raises it inside the external event.
+            RevitTaskHub.WorkStarting += ShowBeforeRevitWork;
+        }
+
+        /// <summary>The Revit thread is about to be taken by a command: show now, delay or not, and
+        /// paint before returning — once the work starts nothing renders until it ends. A quick read
+        /// pays a brief flash for this; a two-minute transaction gets its sign, which is the case the
+        /// window exists for.</summary>
+        private static void ShowBeforeRevitWork()
+        {
+            try
+            {
+                RunningCommand? current = Relevant();
+                if (current is null || current.Id == _hiddenForRun) return;
+                _busySince ??= DateTime.UtcNow - ShowDelay;
+                ActivityWindow window = _window ??= new ActivityWindow();
+                window.Describe(current, (DateTime.UtcNow - current.StartedUtc).TotalSeconds);
+                if (!window.IsVisible) window.Show();
+                EnsureTimer();
+                // Flush the render queue: a nested dispatcher frame that returns as soon as the
+                // pending Render-priority work — this window's first paint — has run.
+                _dispatcher?.Invoke(() => { }, DispatcherPriority.Render);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Activity indicator failed to show before Revit work");
+            }
         }
 
         private static void OnUiThread(Action action)
