@@ -1482,3 +1482,13 @@ sidecar не строим, эскалация — смена провайдер�
 открытых для MCP, три (`GetCategoriesInRevit`, `GetCadImports`, `GetWarningsInRevit`), а не одна —
 проверка 2026-08-31 смотрела не все слайсы. Снято «не проверено» про живой запуск на 2.2.0.
 Открытых issue: 53.
+
+## 2026-09-02 — #113 закрыт: ключи и единицы в ответах
+
+Третий срез: `builtInCategory` и `levelId` в `ElementSummary`, `spec`/`unit` в `CategoryParameterInfo`
+и у параметров типа (общий `DescribeUnits` в `ParameterExtensions`; единица — экранная единица
+документа, в которой сборка и читает, и пишет числа, о чём теперь говорит и описание
+`SetDataToParameters`). Два теста в Revit: стены отвечают `OST_Walls` и id уровня, высота стены —
+`length`/`millimeters`, Comments — `string` без единицы. Ярус 1 контрактом схем принял новые
+nullable-поля без правок. Остаток §4/§5 — в #84. Roadmap: слой 1 и этап 2 пункт 1 отмечены
+сделанными. Открытых issue: 52.

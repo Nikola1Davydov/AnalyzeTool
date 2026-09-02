@@ -267,8 +267,9 @@ exe работал в сессиях весь день и под stdio-тест�
    затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
    отмена ([#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109)), Tasks
    ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))
-5. поля читаемости ([#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113)) —
-   работы по протоколу не требуют, и это блокирующая зависимость модуля проверки
+5. ~~поля читаемости ([#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113))~~ — закрыт 2026-09-02:
+   `builtInCategory`/`levelId` на элементе, `spec`/`unit` у параметров, `categories` в обзоре;
+   ресурсная таблица категорий и метрика «вызовов на задачу» остались в #84
 
 ## Связанное
 

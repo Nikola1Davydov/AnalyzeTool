@@ -9,8 +9,10 @@ namespace AnalyseTool.Tools.Elements
     [RevitCommand(
         Description = "Returns the parameters available on elements of a Revit category, sampled from a " +
                       "representative element: { category, builtInCategory, count, parameters: [{ id, " +
-                      "builtInParameter, name, storageType, isReadOnly, isType }], error, didYouMean }. " +
-                      "'id' is what SetDataToParameters takes. Identify the category by the language-" +
+                      "builtInParameter, name, storageType, spec, unit, isReadOnly, isType }], error, didYouMean }. " +
+                      "'id' is what SetDataToParameters takes; 'spec' says what the value means (length, area, " +
+                      "number, string…) and 'unit' the document unit every value is read and written in " +
+                      "(millimeters, feet…). Identify the category by the language-" +
                       "independent builtInCategory (e.g. \"OST_Walls\", from GetModelOverview.categories) — " +
                       "the localised name works too but is a guess on a German model. Read-only. Cost: " +
                       "samples one element instead of scanning the category.",

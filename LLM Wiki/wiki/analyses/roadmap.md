@@ -99,7 +99,7 @@ sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 
 | | Что | Кому нужно |
 | --- | --- | --- |
-| [#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113) | ответы несут `BuiltInCategory`, `levelId`, единицы | **блокирующая зависимость** свода правил (правило «категория Wände» непереносимо) + агент. Протокольной работы не требует |
+| ~~[#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113)~~ сделано 2026-09-02 | ответы несут `BuiltInCategory`, `levelId`, единицы | **блокирующая зависимость** свода правил (правило «категория Wände» непереносимо) + агент. Протокольной работы не требует |
 | [#80](https://github.com/Nikola1Davydov/AnalyzeTool/issues/80) частично | теневой индекс | инвентарь, проверка, headless, агент, снапшоты |
 | — | **инвентарь на индексе** | см. «ключевой камень» |
 
@@ -306,7 +306,7 @@ push / stacked / pulldown, порядок, версия схемы — [#127](ht
 
 | | Что | Размер |
 | --- | --- | --- |
-| 1 | [#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113): `builtInCategory` в `categoryCounts` и `ElementSummary`, `levelId` рядом с `level`, `builtInParameter` и спецификация в `CategoryParameterInfo` | дни. Решить по дороге вопрос о ломающем изменении формы `categoryCounts` — дополнительная параллельная карта уродливее, но бесплатна |
+| 1 | *Сделано 2026-09-02 в три среза (`categories` рядом с `categoryCounts` — аддитивно, ломать форму не пришлось; `builtInCategory`/`levelId` на элементе; `spec`/`unit` у параметров категории и типа); остаток §4 (таблица как ресурс) ушёл в #84 P2, метрика §5 — #84 P1.* [#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113): `builtInCategory` в `categoryCounts` и `ElementSummary`, `levelId` рядом с `level`, `builtInParameter` и спецификация в `CategoryParameterInfo` | дни. Решить по дороге вопрос о ломающем изменении формы `categoryCounts` — дополнительная параллельная карта уродливее, но бесплатна |
 | 2 | Проверить за минуту: регенерируется ли `Document.CreationGUID` при Save As ([#85](https://github.com/Nikola1Davydov/AnalyzeTool/issues/85)) | минуты, но до индекса |
 | 3 | Теневой индекс: LiteDB, ключ по идентичности модели, фоновая сборка чанками, инвалидация по `DocumentChanged` | **недели** |
 | 4 | Инвентарь на индексе: один экран с переключателем, распределения, состояния | **недели** |

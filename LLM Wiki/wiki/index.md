@@ -21,7 +21,7 @@ updated: 2026-09-02
 
 | Страница | Что это |
 | --- | --- |
-| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 94 issue, 53 открытых, самый плотный источник здесь |
+| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 94 issue, 52 открытых, самый плотный источник здесь |
 | [`sources/pipeline-design-doc.md`](sources/pipeline-design-doc.md) | дизайн конвейеров с ветки — единственный источник с замерами в живом Revit |
 | [`sources/karpathy-llm-wiki-pattern.md`](sources/karpathy-llm-wiki-pattern.md) | паттерн, на котором построена вики, и как мы его адаптировали |
 | [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) | обзор документации репозитория и AI-значимых проектов |

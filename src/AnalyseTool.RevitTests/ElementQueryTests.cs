@@ -28,6 +28,39 @@ public sealed class ElementQueryTests : SeededModel
     }
 
     [Test]
+    public async Task Elements_carry_the_keys_that_join_them_to_the_overview()
+    {
+        // #113: the identifiers the answer already held and used to drop — the built-in category name
+        // beside the localised one, and the level's id beside its name.
+        ElementsResult result = _service.GetElementSummaries(Document, new ElementQuery { BuiltInCategory = "OST_Walls" });
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Elements.All(e => e.BuiltInCategory == "OST_Walls")).IsTrue();
+            await Assert.That(result.Elements.All(e => e.LevelId == Level.Id.Value)).IsTrue();
+            await Assert.That(result.Elements.All(e => e.Level == Level.Name)).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Category_parameters_say_what_a_number_means_and_in_which_unit()
+    {
+        // A wall's unconnected height is a length; a metric seed document displays lengths in millimetres —
+        // and that display unit is the one every value is read and written in.
+        CategoryParametersResult result = _service.GetCategoryParameters(Document, new ElementQuery { BuiltInCategory = "OST_Walls" });
+        CategoryParameterInfo height = result.Parameters.Single(p => p.BuiltInParameter == nameof(BuiltInParameter.WALL_USER_HEIGHT_PARAM));
+        CategoryParameterInfo comments = result.Parameters.Single(p => p.BuiltInParameter == nameof(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(height.Spec).IsEqualTo("length");
+            await Assert.That(height.Unit).IsEqualTo("millimeters");
+            await Assert.That(comments.Spec).IsEqualTo("string");
+            await Assert.That(comments.Unit).IsNull();
+        }
+    }
+
+    [Test]
     public async Task Limit_truncates_and_says_so()
     {
         ElementsResult result = _service.GetElementSummaries(Document, new ElementQuery { BuiltInCategory = "OST_Walls", Limit = 2 });

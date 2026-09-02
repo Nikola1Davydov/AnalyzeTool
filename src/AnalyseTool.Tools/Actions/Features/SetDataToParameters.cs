@@ -14,7 +14,9 @@ namespace AnalyseTool.Tools.Actions
                       "parameterId, reason }] } — 'skipped' counts items whose element or parameter was not found, " +
                       "was read-only, could not take the value, or that the mode filtered out; 'problems' names the " +
                       "ones that failed with a reason. One bad item never fails the batch: the others are written " +
-                      "and committed. Parameter ids come from GetCategoryParameters ('id'). Cost: one transaction " +
+                      "and committed. Parameter ids come from GetCategoryParameters ('id'); a numeric value is taken " +
+                      "in the document unit that command reports as 'unit' (2400 means 2400 mm on a metric model, " +
+                      "not feet). Cost: one transaction " +
                       "over the given items.",
         Destructive = true,
         InputType = typeof(SetDataToParameters.SetDataToParametersDto),

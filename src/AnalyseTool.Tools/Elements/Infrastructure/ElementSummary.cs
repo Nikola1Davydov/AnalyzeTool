@@ -15,8 +15,20 @@ namespace AnalyseTool.Tools.Elements
         [JsonProperty("category")]
         public string Category { get; init; } = string.Empty;
 
+        /// <summary>The BuiltInCategory name ("OST_Walls") beside the localised <see cref="Category"/> — the
+        /// identifier GetElements asks for and, until #113, never told anyone. Null for a category that is
+        /// not a built-in one (a subcategory, an imported one).</summary>
+        [JsonProperty("builtInCategory", NullValueHandling = NullValueHandling.Ignore)]
+        public string? BuiltInCategory { get; init; }
+
         [JsonProperty("level")]
         public string Level { get; init; } = string.Empty;
+
+        /// <summary>The level's id — the join to GetModelOverview.levels, which the NAME alone cannot make
+        /// (two levels may share one). Same defect and same fix as <see cref="FamilyId"/>. Null when the element
+        /// has no level, which is itself informative (types, views, most annotation).</summary>
+        [JsonProperty("levelId", NullValueHandling = NullValueHandling.Ignore)]
+        public long? LevelId { get; init; }
 
         [JsonProperty("isType")]
         public bool IsType { get; init; }
@@ -110,6 +122,17 @@ namespace AnalyseTool.Tools.Elements
 
         [JsonProperty("storageType")]
         public string StorageType { get; init; } = string.Empty;
+
+        /// <summary>What the value means: "length", "area", "angle", "number", "string", "yesno"… — the short
+        /// form of Revit's spec id. <see cref="StorageType"/> "Double" alone cannot say that 2400 is a length.</summary>
+        [JsonProperty("spec", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Spec { get; init; }
+
+        /// <summary>For a measurable spec, the unit every value of this parameter is read and written in —
+        /// the document's display unit ("millimeters", "feet", "squareMeters"). The difference between a
+        /// 2400 mm wall and a 2400 ft one when SetDataToParameters writes in bulk. Null when not measurable.</summary>
+        [JsonProperty("unit", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Unit { get; init; }
 
         [JsonProperty("isReadOnly")]
         public bool IsReadOnly { get; init; }

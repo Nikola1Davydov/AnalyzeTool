@@ -146,7 +146,9 @@ namespace AnalyseTool.Tools.Elements
                     Id = el.Id.Value,
                     Name = el.Name,
                     Category = el.Category?.Name ?? string.Empty,
+                    BuiltInCategory = BuiltInName(el.Category),
                     Level = doc.GetElement(el.LevelId)?.Name ?? string.Empty,
+                    LevelId = el.LevelId == ElementId.InvalidElementId ? null : el.LevelId.Value,
                     IsType = el is ElementType,
                     FamilyId = familyId,
                     FamilyName = familyName,
@@ -303,6 +305,15 @@ namespace AnalyseTool.Tools.Elements
         private Category? ResolveCategory(Document doc, string category) =>
             GetModelCategories(doc).FirstOrDefault(x => x.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>"OST_Walls" for a built-in category, null for anything else — the enum name is the
+        /// language-independent id; a value the enum does not define has no name to give.</summary>
+        private static string? BuiltInName(Category? category)
+        {
+            if (category == null) return null;
+            BuiltInCategory bic = category.BuiltInCategory;
+            return bic == BuiltInCategory.INVALID || !Enum.IsDefined(typeof(BuiltInCategory), bic) ? null : bic.ToString();
+        }
+
         private static Dictionary<string, string> ExtractParameters(Element el, HashSet<string> wanted)
         {
             Dictionary<string, string> pars = new();
@@ -323,12 +334,15 @@ namespace AnalyseTool.Tools.Elements
                 string name = p.Definition?.Name ?? string.Empty;
                 if (name.Length == 0 || map.ContainsKey(name)) continue;
                 bool builtIn = ParameterUtils.IsBuiltInParameter(p.Id);
+                (string? spec, string? unit) = p.DescribeUnits();
                 map[name] = new CategoryParameterInfo
                 {
                     Id = p.Id.Value,
                     BuiltInParameter = builtIn ? ((BuiltInParameter)p.Id.Value).ToString() : null,
                     Name = name,
                     StorageType = p.StorageType.ToString(),
+                    Spec = spec,
+                    Unit = unit,
                     IsReadOnly = p.IsReadOnly,
                     IsType = isType
                 };

@@ -49,8 +49,10 @@ namespace AnalyseTool.Tools.Elements
                 if (string.IsNullOrEmpty(value) && !includeEmpty) continue;
                 // The id disambiguates: a type can carry two parameters of one name (Kategorie ×2, or the
                 // H/V layout pair Abstand/Layout/Innentyp…), and a name alone cannot say which is which.
+                (string? spec, string? unit) = p.DescribeUnits();
                 list.Add(new FamilyParameterInfo(p.Definition.Name, value, p.Id.Value,
-                    ParameterUtils.IsBuiltInParameter(p.Id) ? ((BuiltInParameter)p.Id.Value).ToString() : null));
+                    ParameterUtils.IsBuiltInParameter(p.Id) ? ((BuiltInParameter)p.Id.Value).ToString() : null,
+                    spec, unit));
             }
             return list.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
@@ -83,7 +85,9 @@ namespace AnalyseTool.Tools.Elements
         [property: JsonProperty("name")] string Name,
         [property: JsonProperty("value")] string Value,
         [property: JsonProperty("id")] long Id = 0,
-        [property: JsonProperty("builtInParameter", NullValueHandling = NullValueHandling.Ignore)] string? BuiltInParameter = null);
+        [property: JsonProperty("builtInParameter", NullValueHandling = NullValueHandling.Ignore)] string? BuiltInParameter = null,
+        [property: JsonProperty("spec", NullValueHandling = NullValueHandling.Ignore)] string? Spec = null,
+        [property: JsonProperty("unit", NullValueHandling = NullValueHandling.Ignore)] string? Unit = null);
 
     public sealed record TypeParametersInfo(
         [property: JsonProperty("typeId")] long TypeId,

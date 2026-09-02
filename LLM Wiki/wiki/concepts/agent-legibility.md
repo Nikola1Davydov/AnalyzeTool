@@ -86,7 +86,10 @@ Wände», ломается на любой другой языковой уст�
 выражаться через `BuiltInCategory` и встроенные параметры.
 
 Это поднимает [#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113) из
-удобства для агента в фундамент продукта. Два механизма идентичности, одна цель:
+удобства для агента в фундамент продукта. *Поля отгружены 2026-09-02 (issue закрыт):
+`builtInCategory` и `levelId` в `ElementSummary`, `spec` и `unit` в `CategoryParameterInfo` и у
+параметров типа — `src/AnalyseTool.Tools/Shared/ParameterExtensions.cs`, `DescribeUnits`; единица —
+экранная единица документа, в которой сборка читает и пишет каждое число.* Два механизма идентичности, одна цель:
 встроенное — через `BuiltInParameter`, общие параметры — через GUID
 ([#121](https://github.com/Nikola1Davydov/AnalyzeTool/issues/121)).
 
