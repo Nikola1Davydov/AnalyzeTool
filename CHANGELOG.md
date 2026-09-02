@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- 📤 **Array-rooted answers are structured content too (#111).** `GetCategoriesInRevit`, `GetCadImports` and `GetWarningsInRevit` return a JSON array, and the MCP server used to list them without an `outputSchema` and answer with text only, because structured content had to be an object. The 2026-07-28 spec lifted that (and the SDK with it), so the three now advertise their array schema and answer with `structuredContent` like every other tool.
+
 ## [1.5.1] / 2026-09-02
 
 - 🧭 **Settings is no longer the extension manager.** The one window that held four tabs — extension lists, catalog, a command reference and the actual preferences — is now three doors on the ribbon, each named for what you do there. **Extensions** installs, updates, creates and removes; **Settings** is one short screen with the AI (model, the C# switch, the MCP connection as one toggle with the port and snippet folded away) and About; **New** is a small window with nothing but the create-extension form. Of the thirty-odd controls the old window showed, four were settings.

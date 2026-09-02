@@ -45,16 +45,16 @@ public class McpExeTests
             await Assert.That(byName.Keys).IsEquivalentTo(new[] { "GetThings", "GetNames", "acme_x_Run", "GetJobResult", "CancelJob" });
             await Assert.That((string)byName["GetJobResult"]["description"]!).StartsWith("GetJobResult: ");
             await Assert.That((string)byName["GetThings"]["description"]!).StartsWith("GetThings: ");
-            // outputSchema only where the answer is an object — a bare array can never be structuredContent.
+            // outputSchema for objects AND arrays (#111): the array-rooted refusal is history since spec 2026-07-28.
             await Assert.That(byName["GetThings"]["outputSchema"]).IsNotNull();
-            await Assert.That(byName["GetNames"]["outputSchema"]).IsNull();
+            await Assert.That((string)byName["GetNames"]["outputSchema"]!["type"]!).IsEqualTo("array");
             await Assert.That((bool)byName["GetThings"]["annotations"]!["readOnlyHint"]!).IsTrue();
             await Assert.That((bool)byName["acme_x_Run"]["annotations"]!["destructiveHint"]!).IsTrue();
         }
     }
 
     [Test, Timeout(60_000)]
-    public async Task A_call_returns_text_always_and_structured_content_for_objects(CancellationToken ct)
+    public async Task A_call_returns_text_always_and_structured_content_for_objects_and_arrays(CancellationToken ct)
     {
         await using FakeBridge bridge = NewBridge();
         await using McpExe exe = McpExe.Start(bridge.Port);
@@ -69,7 +69,8 @@ public class McpExeTests
             await Assert.That((bool?)things["isError"] ?? false).IsFalse();
             await Assert.That((string)things["content"]![0]!["text"]!).Contains("\"count\": 2");
             await Assert.That((int)things["structuredContent"]!["count"]!).IsEqualTo(2);
-            await Assert.That(names["structuredContent"]).IsNull();
+            // An array-rooted answer is structuredContent too (#111), matching the array outputSchema it listed under.
+            await Assert.That(names["structuredContent"]!.Select(t => (string)t!)).IsEquivalentTo(new[] { "a", "b" });
             await Assert.That((string)names["content"]![0]!["text"]!).Contains("\"a\"");
         }
         // The payload reached the bridge unchanged, under the real command name.

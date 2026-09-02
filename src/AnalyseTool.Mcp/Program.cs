@@ -123,12 +123,12 @@ builder.Services
             // that ignore structured output entirely.
             CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
 
-            // Structured content ONLY where the tool promised a schema at listing time and the answer
-            // really is an object. Promising a schema and then not delivering is the one way to be worse
-            // than saying nothing, and a JSON array — which several of our commands return — cannot be
-            // structuredContent at all.
-            if (binding is { HasOutputSchema: true } && result is JsonObject resultObject)
-                callResult.StructuredContent = resultObject.Deserialize<JsonElement>();
+            // Structured content ONLY where the tool promised a schema at listing time. Promising a
+            // schema and then not delivering is the one way to be worse than saying nothing. Any JSON
+            // value qualifies since spec 2026-07-28 (SEP-2106) — an array-rooted answer included, which
+            // three of our tools give (#111); before that, structuredContent had to be an object.
+            if (binding is { HasOutputSchema: true } && result is not null)
+                callResult.StructuredContent = result.Deserialize<JsonElement>();
 
             // The reply carried the bridge's stamp; a SaveAsCommand reply is the very one that says
             // "the list just changed", and the client learns it before its next turn.
@@ -225,7 +225,7 @@ async Task<ListToolsResult> BuildToolListAsync(CancellationToken ct)
 
                     // Only when the command really declared an object-shaped result. See the helper for
                     // why an array-returning command is skipped even though it HAS a schema.
-                    bool declaresResult = DeclaresObjectResult(entry?[McpWire.OutputSchema]);
+                    bool declaresResult = DeclaresResult(entry?[McpWire.OutputSchema]);
                     if (declaresResult)
                         tool.OutputSchema = entry![McpWire.OutputSchema]!.Deserialize<JsonElement>();
 
@@ -461,25 +461,25 @@ static JsonElement FreeFormObjectSchema()
 /// <summary>
 /// Whether a command's declared result schema can be advertised as a tool's outputSchema.
 ///
-/// Three cases are refused, each for its own reason:
+/// Two cases are refused, each for its own reason:
 /// <list type="bullet">
 /// <item>a command that declared nothing arrives as the empty object schema
 /// (<c>{"type":"object","properties":{}}</c>) — advertising that would promise structure and describe
 /// none;</item>
 /// <item>the free-form fallback the bridge substitutes for an oversized schema has no properties either,
-/// and promising a shape it does not describe buys nothing;</item>
-/// <item><b>an array-rooted schema</b> — several commands legitimately return a JSON array
-/// (GetElements, GetCategoriesInRevit…), and structuredContent is defined as an OBJECT, so such a tool
-/// cannot honour the promise no matter what. Its shape stays in the description and in the text block.
-/// Making those commands wrap their answer in <c>{ items: [...] }</c> would fix it, at the cost of a
-/// breaking change for the frontend that reads them — a separate decision, not one to smuggle in
-/// here.</item>
+/// and promising a shape it does not describe buys nothing.</item>
 /// </list>
+/// A third refusal — an array-rooted schema — is history: until spec 2026-07-28 structuredContent had
+/// to be an object, so GetCategoriesInRevit, GetCadImports and GetWarningsInRevit answered as text
+/// only. SEP-2106 lifted that, and the SDK's Tool.OutputSchema says the root need not be an object
+/// any more (#111). An array schema with items is a real promise and is kept.
 /// </summary>
-static bool DeclaresObjectResult(JsonNode? schema)
+static bool DeclaresResult(JsonNode? schema)
 {
     if (schema is not JsonObject obj) return false;
-    if (obj["type"]?.GetValue<string>() != "object") return false;
+    string? type = obj["type"]?.GetValue<string>();
+    if (type == "array") return obj["items"] is not null;
+    if (type != "object") return false;
     return obj["properties"] is JsonObject properties && properties.Count > 0;
 }
 
