@@ -1,4 +1,4 @@
-using SharedData;
+﻿using SharedData;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -17,3 +17,5 @@ using System.Runtime.CompilerServices;
 // project, nothing else in Core changes.
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
 [assembly: InternalsVisibleTo("AnalyseTool.Mcp.Bridge")]
+// The Revit-free test project reads the schema builder and the manifest writer as they are.
+[assembly: InternalsVisibleTo("AnalyseTool.Tests")]

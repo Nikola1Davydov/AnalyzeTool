@@ -44,6 +44,30 @@ powershell -File src/build/Check-Schemas.ps1
 - Shared MSBuild deploy logic (MCP exe + clientapp/dist copying) lives in `src/PluginAssets.targets`.
 - Releases go through NUKE (`src/build`, run `src/build.cmd`) — targets: BuildClientApp → BuildLauncher → CreateInstaller/CreateBundle → PublishGitHub.
 
+## Testing
+
+Three tiers, split by what they need — and the split is the point: a test that needs Revit is a test
+nobody runs in CI.
+
+| Tier | Project | Needs | Runs |
+| --- | --- | --- | --- |
+| 1 — Revit-free | `src/AnalyseTool.Tests` (TUnit) | nothing; the plugin assemblies load because the Revit API is compile-only | CI, every push (`RunTests` in NUKE, part of `Ci`) |
+| 2 — MCP without Revit | same project (planned): a fake bridge on `McpWire` + the published exe over stdio | nothing | CI |
+| 3 — inside Revit | `src/AnalyseTool.Test` (Nice3point.TUnit.Revit; re-scaffold from the `revit-tunit` template) | a licensed Revit | on demand, on a machine with Revit |
+
+Rules: every fixed bug gets a test on its tier; a command's core is a function of a `Document` (or of
+plain data) so it can be tested on tier 1 or 3 without `UIApplication` — tests inside Revit never
+touch `RevitAPIUI`. Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
+must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
+button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher.
+
+```powershell
+dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
+```
+
+`dotnet test` runs in Microsoft.Testing.Platform mode (repo-root `global.json`, `test.runner`), which
+the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not as a positional path.
+
 ## Guardrails (CI: .github/workflows/ci.yml)
 
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.

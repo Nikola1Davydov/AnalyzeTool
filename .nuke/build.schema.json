@@ -28,6 +28,7 @@
         "BuildLauncher",
         "CheckBoundaries",
         "CheckCoreResources",
+        "CheckSchemas",
         "Ci",
         "Clean",
         "CleanFailedRelease",
@@ -36,6 +37,7 @@
         "CreateInstaller",
         "PackSdk",
         "PublishGitHub",
+        "RunTests",
         "TestExtensionTemplate",
         "TestSdkPackage",
         "ValidateReleaseVersion"

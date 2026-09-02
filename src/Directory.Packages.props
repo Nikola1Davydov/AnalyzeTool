@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <!--
     Central Package Management: every project under src/ takes package VERSIONS from this file;
     the .csproj files declare only WHICH packages they use. One source of truth — the split into
@@ -38,6 +38,11 @@
     <!-- Tests -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Nice3point.TUnit.Revit" Version="2026.0.4" />
+    <!-- One runner for every tier: the in-Revit project needs TUnit (Nice3point.TUnit.Revit 2026.0.4
+         pins 1.12.111), so the Revit-free project uses the same version. -->
+    <PackageVersion Include="TUnit" Version="1.12.111" />
+    <!-- Schema contract test: validates the JSON the host writes against the schema it publishes. -->
+    <PackageVersion Include="NJsonSchema" Version="11.1.0" />
     <PackageVersion Include="NUnit" Version="3.13.3" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.10.0" />
     <!-- Installer -->

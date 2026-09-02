@@ -1,4 +1,4 @@
-using SharedData;
+﻿using SharedData;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -14,3 +14,4 @@ using System.Runtime.CompilerServices;
 // The host bootstrap registers this assembly's commands (typeof(...).Assembly) and a few host
 // features still touch internal models; keep internal so extensions can't bind.
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
+[assembly: InternalsVisibleTo("AnalyseTool.Tests")]

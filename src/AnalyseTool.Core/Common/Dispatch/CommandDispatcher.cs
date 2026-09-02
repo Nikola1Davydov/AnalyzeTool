@@ -132,7 +132,7 @@ namespace AnalyseTool.Core.Common.Dispatch
         /// every interesting edge uncheckable. The cap now lives with the consumer that wants it —
         /// see <see cref="SchemaListing"/>.</para>
         /// </summary>
-        private static string BuildSchema(Type? type)
+        internal static string BuildSchema(Type? type)
         {
             try
             {
@@ -154,7 +154,7 @@ namespace AnalyseTool.Core.Common.Dispatch
         /// validates nothing. A property that may be null is, by our own serialization rule, a property
         /// that may be missing — and the schema has to say so.
         /// </summary>
-        private static string RelaxNullableRequired(string schemaJson)
+        internal static string RelaxNullableRequired(string schemaJson)
         {
             JToken root = JToken.Parse(schemaJson);
             Relax(root);

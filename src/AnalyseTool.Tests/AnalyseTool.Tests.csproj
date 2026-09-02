@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Revit-FREE test project — tier 1 of the test strategy (see CLAUDE.md, "Testing").
+
+    Everything here runs under plain `dotnet test` on any machine, including the CI runner, because it
+    never touches a Revit type at run time. The plugin projects take the Revit API COMPILE-ONLY through
+    the shared props (ExcludeAssets=runtime), so their assemblies load fine without Revit; a test that
+    reached a Revit type would fail loudly here — which is the point of the split. Anything that needs a
+    Document lives in AnalyseTool.Test (Nice3point.TUnit.Revit, runs inside Revit, not in CI).
+
+    TUnit rather than NUnit so that all tiers share one runner: the in-Revit project is TUnit by
+    necessity (Nice3point.TUnit.Revit), and two frameworks for one codebase is one too many.
+
+    SharedData is deliberately NOT imported: it compiles ToolData into every importing project, and Core
+    grants this assembly InternalsVisibleTo — two internal ToolData types would be CS0433. Nothing here
+    needs it.
+  -->
+  <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- TUnit runs on Microsoft.Testing.Platform. `dotnet test` drives it in MTP mode, switched on by
+         the repo-root global.json ("test": { "runner": "Microsoft.Testing.Platform" }); the .NET 10
+         SDK refuses the old VSTest bridge. In that mode the project goes in through the project option, not as a positional path. -->
+    <RootNamespace>AnalyseTool.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="NJsonSchema" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Mcp.Bridge\AnalyseTool.Mcp.Bridge.csproj" />
+  </ItemGroup>
+
+</Project>
