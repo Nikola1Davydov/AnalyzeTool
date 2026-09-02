@@ -1,12 +1,9 @@
 ﻿using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Ai;
-using AnalyseTool.Tools.Elements;
 using AnalyseTool.Tools.Shared;
-using Autodesk.Revit.DB;
+using AnalyseTool.Tools.Ai;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
-using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Tools.Actions
 {
@@ -30,104 +27,20 @@ namespace AnalyseTool.Tools.Actions
             if (list == null)
                 return Task.FromResult<object?>(new SetDataResult(false, 0, 0, "Empty payload.", Array.Empty<TransactionWarning>()));
 
+            // The command is the shell; the write itself is ParameterWriteService, a function of the
+            // Document — testable inside Revit without a UIApplication.
+            List<ParameterWriteService.Item?> items = list.Items
+                .Select(i => i is null ? null : new ParameterWriteService.Item(i.ElementId, i.Id, i.Value))
+                .ToList();
+            ParameterWriteService.Mode mode = list.Mode switch
+            {
+                SetDataMode.OnlyIfEmpty => ParameterWriteService.Mode.OnlyIfEmpty,
+                SetDataMode.SkipIfEqual => ParameterWriteService.Mode.SkipIfEqual,
+                _ => ParameterWriteService.Mode.Overwrite,
+            };
+
             return ctx.RunInRevitAsync<object?>(app =>
-            {
-                Document doc = app.ActiveUIDocument.Document;
-
-                using Transaction transaction = new Transaction(doc, "Set data to parameters");
-                transaction.Start();
-                // Without this a Revit warning raises a MODAL dialog on the Revit thread and the whole
-                // platform waits for a click that, in a batch, nobody is there to give.
-                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
-
-                int written = 0, skipped = 0;
-                List<WriteProblem> problems = new();
-                foreach (SetParamItem parameterData in list.Items)
-                {
-                    if (parameterData == null) { skipped++; continue; }
-                    try
-                    {
-                        if (SetData(doc, parameterData, list.Mode)) written++;
-                        else skipped++;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Per item, not per batch: a value that cannot be converted for ONE parameter
-                        // (a string into an ElementId, say) used to throw out of the loop, and the
-                        // transaction never committed — 499 good writes gone for one bad one, with
-                        // nothing saying which. The item is skipped, named, and the batch goes on.
-                        skipped++;
-                        problems.Add(new WriteProblem(parameterData.ElementId, parameterData.Id, ex.Message));
-                    }
-                }
-
-                transaction.Commit();
-
-                // Counted and reported rather than silently dropped: an unattended caller has no other
-                // way to learn that 40 of its 500 writes never landed.
-                return new SetDataResult(true, written, skipped, null, failures.Warnings,
-                    problems.Count == 0 ? null : problems);
-            });
-        }
-
-        /// <summary>Returns true when the value was actually written; false when the element or parameter
-        /// was not found, the parameter is read-only, or <paramref name="mode"/> filtered the write out.</summary>
-        private bool SetData(Document doc, SetParamItem parameterData, SetDataMode mode)
-        {
-            Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
-            if (revitElement == null) return false;
-
-            Parameter? parameter = null;
-
-            if (ParameterUtils.IsBuiltInParameter(new ElementId(parameterData.Id)))
-            {
-                BuiltInParameter builtInParameter = (BuiltInParameter)parameterData.Id;
-                parameter = revitElement.get_Parameter(builtInParameter);
-            }
-            else
-            {
-                foreach (Parameter elementParameter in revitElement.Parameters)
-                {
-                    if (elementParameter?.Id != null && elementParameter.Id.Value == parameterData.Id)
-                    {
-                        parameter = elementParameter;
-                        break;
-                    }
-                }
-
-                if (parameter == null)
-                {
-                    ParameterElement? parameterElement = doc.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
-                    Definition? definition = parameterElement?.GetDefinition();
-
-                    if (definition != null)
-                    {
-                        parameter = revitElement.get_Parameter(definition);
-                    }
-                }
-            }
-
-            if (parameter == null || parameter.IsReadOnly) return false;
-
-            return SetData(parameter, parameterData.Value, mode);
-        }
-
-        /// <summary>Returns false when <paramref name="mode"/> filtered the write out — the caller counts
-        /// that as skipped, not written. These modes are also what makes a node re-runnable: a pipeline
-        /// run is not atomic, so a mutating step must tolerate the state having moved under it.</summary>
-        private bool SetData(Parameter parameter, string value, SetDataMode mode)
-        {
-            switch (mode)
-            {
-                case SetDataMode.Overwrite:
-                    break;
-                case SetDataMode.OnlyIfEmpty when parameter.HasValue:
-                    return false;
-                case SetDataMode.SkipIfEqual when parameter.GetParameterValue() == value:
-                    return false;
-            }
-            parameter.SetParameterValue(value);
-            return true;
+                new ParameterWriteService().Write(app.ActiveUIDocument.Document, items, mode));
         }
 
         internal sealed record SetDataToParametersDto()

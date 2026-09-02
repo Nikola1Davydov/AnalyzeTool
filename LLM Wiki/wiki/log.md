@@ -1430,3 +1430,14 @@ Revit пропускаются с указанием на ярус 3. Урок �
 список инструментов, structuredContent, текст ошибки с кодом и подсказкой, недоступный Revit,
 `list_changed` после вызова с новым штампом и от одного фонового опроса. Весь прогон — 98 тестов за
 12 с. Слой, где #98 жил три недели без единого теста, теперь под контролем.
+
+## 2026-09-02 — тесты: ярус 3 внутри Revit, план закрыт
+
+`AnalyseTool.Test` пересоздан из `revit-tunit` (Nice3point.Revit.Sdk, конфигурации `Debug.R25`,
+`Nice3point.TUnit.Revit` плавающей версии по году; из сборки решения исключён). `SeededModel`:
+пустой проект, уровень, четыре стены. Четырнадцать тестов на сервисах — `GetElementSummaries`,
+`GetCategoryParameters`, `GetViewsAndSheets`, `GetTypeParameters`, `ParameterWriteService` (запись
+вынесена из команды ради этого) — прошли в настоящем Revit 2025 за 26 с. Две ловушки по дороге:
+пространство имён `AnalyseTool.Test` затеняет `HookType.Test` в `[Before(Test)]` (шаблонный образец
+с именем на `.Test` не компилируется сам), и `TypeAndWorksetService` внутренний — IVT. Итог дня по
+тестам: 92 без Revit в CI + 6 MCP по stdio + 14 в Revit по запросу.

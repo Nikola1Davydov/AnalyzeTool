@@ -15,3 +15,4 @@ using System.Runtime.CompilerServices;
 // features still touch internal models; keep internal so extensions can't bind.
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
 [assembly: InternalsVisibleTo("AnalyseTool.Tests")]
+[assembly: InternalsVisibleTo("AnalyseTool.Test")] // the in-Revit tests reach the services the commands delegate to
