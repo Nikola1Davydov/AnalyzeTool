@@ -394,7 +394,7 @@ pull request'ы отфильтрованы.
   невыполненным — `OutputType` встречается в 54 файлах и обеспечивается CI, значит типы
   результата по слайсам сделаны.
 - К [#105](https://github.com/Nikola1Davydov/AnalyzeTool/issues/105) добавлено, что
-  тестировать негде: `AnalyseTool.Test` — один `UnitTest1.cs`, ссылающийся на
+  тестировать негде: `AnalyseTool.Test` — один заглушку UnitTest1 (удалена 2026-09-02, проект пересоздан из revit-tunit), ссылающийся на
   `AnalyseTool.App`, то есть тянущий Revit (подтверждено по коду).
 
 Исходная дыра ingest закрыта. Остались: тела закрытых issue и `docs/pipeline-design.md`

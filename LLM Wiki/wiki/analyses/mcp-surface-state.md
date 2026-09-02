@@ -178,7 +178,7 @@ OneDrive. Ничего не ломается; общая папка команд
 К [#105](https://github.com/Nikola1Davydov/AnalyzeTool/issues/105) («тест, который реально
 зовёт каждую MCP-команду»). Комментарий к
 [#70](https://github.com/Nikola1Davydov/AnalyzeTool/issues/70) от 01.08.2026 говорил, что
-размещать такие тесты негде: `AnalyseTool.Test` — один `UnitTest1.cs`, ссылающийся на
+размещать такие тесты негде: `AnalyseTool.Test` — один заглушку UnitTest1 (удалена 2026-09-02, проект пересоздан из revit-tunit), ссылающийся на
 `AnalyseTool.App`, то есть тянущий Revit. **Это устарело.**
 
 **Поправка 2026-09-02:** на `dev` проектов `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests`
