@@ -168,6 +168,9 @@ headless-доступ, ни обратная петля из чата, ни ша
 > ([#85](https://github.com/Nikola1Davydov/AnalyzeTool/issues/85)). Минутный эксперимент
 > закрывает оба.
 
+*Снято 2026-09-02: `CreationGUID` при Save As не регенерируется, копия наследует его —
+тест `src/AnalyseTool.RevitTests/DocumentIdentityTests.cs`; ключ идентичности — GUID плюс путь.*
+
 ## Связанное
 
 - [`shadow-index.md`](shadow-index.md) — та же идентичность модели, тот же запрет на RVT

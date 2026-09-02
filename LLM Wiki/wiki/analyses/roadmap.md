@@ -307,7 +307,7 @@ push / stacked / pulldown, порядок, версия схемы — [#127](ht
 | | Что | Размер |
 | --- | --- | --- |
 | 1 | *Сделано 2026-09-02 в три среза (`categories` рядом с `categoryCounts` — аддитивно, ломать форму не пришлось; `builtInCategory`/`levelId` на элементе; `spec`/`unit` у параметров категории и типа); остаток §4 (таблица как ресурс) ушёл в #84 P2, метрика §5 — #84 P1.* [#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113): `builtInCategory` в `categoryCounts` и `ElementSummary`, `levelId` рядом с `level`, `builtInParameter` и спецификация в `CategoryParameterInfo` | дни. Решить по дороге вопрос о ломающем изменении формы `categoryCounts` — дополнительная параллельная карта уродливее, но бесплатна |
-| 2 | Проверить за минуту: регенерируется ли `Document.CreationGUID` при Save As ([#85](https://github.com/Nikola1Davydov/AnalyzeTool/issues/85)) | минуты, но до индекса |
+| 2 | *Сделано 2026-09-02, тестом в Revit: не регенерируется, копия наследует GUID — ключ плюс путь.* Проверить за минуту: регенерируется ли `Document.CreationGUID` при Save As ([#85](https://github.com/Nikola1Davydov/AnalyzeTool/issues/85)) | минуты, но до индекса |
 | 3 | Теневой индекс: LiteDB, ключ по идентичности модели, фоновая сборка чанками, инвалидация по `DocumentChanged` | **недели** |
 | 4 | Инвентарь на индексе: один экран с переключателем, распределения, состояния | **недели** |
 
