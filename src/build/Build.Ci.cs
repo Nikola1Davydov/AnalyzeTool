@@ -1,4 +1,4 @@
-using Nuke.Common;
+﻿using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
@@ -26,13 +26,20 @@ sealed partial class Build
     AbsolutePath SdkProject => RootDirectory / "src" / "AnalyseTool.Sdk" / "AnalyseTool.Sdk.csproj";
     AbsolutePath SampleProject => RootDirectory / "samples" / "Acme.Sample" / "Acme.Sample.csproj";
 
+    /// <summary>The Revit-free test projects — the ones a CI runner without Revit can execute. The
+    /// in-Revit project (AnalyseTool.RevitTests) is deliberately not here; it needs a licensed Revit.</summary>
+    AbsolutePath[] TestProjects =>
+    [
+        RootDirectory / "src" / "AnalyseTool.Tests" / "AnalyseTool.Tests.csproj",
+    ];
+
     /// <summary>Dependency contract + headless invariant — same script devs run locally.</summary>
     Target CheckBoundaries => _ => _
         .Executes(() =>
         {
             AbsolutePath script = RootDirectory / "src" / "build" / "Check-Boundaries.ps1";
             ProcessTasks
-                .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\"", RootDirectory)
+                .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File {script}", RootDirectory)
                 .AssertZeroExitCode();
         });
 
@@ -46,7 +53,7 @@ sealed partial class Build
         {
             AbsolutePath script = RootDirectory / "src" / "build" / "Check-Schemas.ps1";
             ProcessTasks
-                .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\"", RootDirectory)
+                .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File {script}", RootDirectory)
                 .AssertZeroExitCode();
         });
 
@@ -55,6 +62,20 @@ sealed partial class Build
     /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
     /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
     /// </summary>
+    /// <summary>Runs the Revit-free tests. Before this target existed, "the two Test targets" checked
+    /// the SDK package and the extension template — not one line of platform code (#128).</summary>
+    Target RunTests => _ => _
+        .DependsOn(CheckBoundaries)
+        .Executes(() =>
+        {
+            // MTP mode of `dotnet test` (global.json: "test.runner"): the project goes in as --project,
+            // and the old VSTest-style positional path is refused by the .NET 10 SDK. Plain invocation
+            // rather than DotNetTest(), whose settings model is the VSTest one. No quotes by hand: the
+            // argument handler quotes values with spaces itself (a repo path with a space taught us).
+            foreach (AbsolutePath project in TestProjects)
+                DotNet($"test --project {project} -c {"Debug R25"}", workingDirectory: RootDirectory);
+        });
+
     Target CompileCi => _ => _
         .DependsOn(CheckBoundaries, CheckSchemas)
         .Executes(() =>
@@ -137,6 +158,6 @@ sealed partial class Build
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
+        .DependsOn(CompileCi, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

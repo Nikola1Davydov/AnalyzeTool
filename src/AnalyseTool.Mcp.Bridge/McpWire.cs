@@ -1,4 +1,4 @@
-namespace AnalyseTool.Mcp
+﻿namespace AnalyseTool.Mcp
 {
     /// <summary>
     /// Wire contract of the localhost TCP bridge between the two halves of the MCP subsystem:
@@ -7,8 +7,15 @@ namespace AnalyseTool.Mcp
     /// csproj), so renaming a field breaks the build instead of silently breaking the wire.
     ///
     /// Shapes:
-    ///   request  { id, token, type: "invoke"|"list", command?, payload? }
+    ///   request  { id, token, type: "invoke"|"list"|"version"|"cancel"|"result", command?, payload? }
     ///   response { id, result } | { id, error: { code, message, hint? } }
+    ///   interim  { id, progress: { fraction, message? } }   — zero or more, BEFORE the response of an
+    ///            invoke, on the same connection (#108)
+    ///   cancel   { type: "cancel", id: <call id> } on a NEW connection → { result: { cancelled } } (#109)
+    ///   result   { type: "result", id: <call id> } → { result: { status, command, seconds, result?, error? } }
+    ///            — the stored outcome of a call whose connection is gone (#99);
+    ///            { type: "result", list: true } → { result: { jobs: [{ id, status, command, seconds }] } }
+    ///            — the recent calls, newest first, for a caller that lost its handle
     ///   list result: { commands: [ { name, source, description, readOnly, destructive,
     ///                                inputSchema, outputSchema } ] }
     ///
@@ -39,6 +46,55 @@ namespace AnalyseTool.Mcp
         // Request types
         public const string TypeInvoke = "invoke";
         public const string TypeList = "list";
+        /// <summary>Asks for nothing but the catalog stamp — the cheapest possible request, for a client
+        /// polling "did the tool set change while I was not looking".</summary>
+        public const string TypeVersion = "version";
+
+        /// <summary>Stamped onto EVERY reply (result and error alike): an opaque string that changes
+        /// whenever the set of commands an AI may call changes — extensions reloaded, the C# switch
+        /// flipped. The exe compares it with the one it listed under and, on a difference, re-lists and
+        /// tells the client (tools/list_changed). It is the only signal that crosses the wire in the
+        /// server→client direction, and it rides on replies because the bridge cannot initiate.</summary>
+        public const string Catalog = "catalog";
+
+        /// <summary>Stops the call with this id. The bridge holds a CancellationTokenSource per call in
+        /// flight; the command sees its token cancelled and the original call answers Codes.Cancelled.
+        /// Sent on a connection of its own, because the call's own connection is busy waiting.</summary>
+        public const string TypeCancel = "cancel";
+        /// <summary>Asks for the stored outcome of an earlier call by its id. The bridge keeps every
+        /// invoke's outcome for a while (JobRetention) whether or not anybody was still connected to
+        /// receive it — so a client that gave up at four minutes, or a chat the user closed, can still
+        /// collect what Revit finished (#99).</summary>
+        public const string TypeResult = "result";
+        /// <summary>On a "result" request: not one call but the recent ones, newest first. A client whose
+        /// own timeout swallowed the handle (a tool call that never returned) has no id to quote — this
+        /// is how it finds it.</summary>
+        public const string List = "list";
+        public const string Jobs = "jobs";
+        /// <summary>An interim frame on an invoke's connection: { id, progress: { fraction, message } }.
+        /// A frame carrying this field is never the reply; the reader keeps reading.</summary>
+        public const string Progress = "progress";
+        public const string ProgressFraction = "fraction";
+        public const string ProgressMessage = "message";
+
+        // "result" / "cancel" reply fields
+        public const string JobStatus = "status";
+        public const string JobCommand = "command";
+        public const string JobSeconds = "seconds";
+        public const string JobResult = "result";
+        public const string JobError = "error";
+        public const string Cancelled = "cancelled";
+
+        /// <summary>What a stored call is doing, for the "result" reply. Closed set, like the codes.</summary>
+        public static class JobStates
+        {
+            public const string Running = "running";
+            public const string Done = "done";
+            public const string Failed = "failed";
+            public const string Cancelled = "cancelled";
+            /// <summary>No call by that id: never seen, or older than the retention window.</summary>
+            public const string Unknown = "unknown";
+        }
 
         // "list" result fields
         public const string Commands = "commands";

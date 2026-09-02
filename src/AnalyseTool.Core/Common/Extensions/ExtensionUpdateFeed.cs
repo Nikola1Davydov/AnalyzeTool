@@ -25,11 +25,44 @@ namespace AnalyseTool.Core.Common.Extensions
         private static readonly Regex GithubRef = new(@"^github:(?<owner>[A-Za-z0-9_.-]+)/(?<repo>[A-Za-z0-9_.-]+)$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        // A repository link is what a person has in their hand — from the catalog, a README or a
+        // colleague. Accepting only "github:owner/repo" would make the common paste fail with a
+        // parser message, so the pasted forms are folded onto the same branch instead. The API
+        // endpoint is included because it is the one URL people reach for when they read "an https
+        // feed" and think of GitHub — and following it as a plain JSON feed fails, since the release
+        // JSON carries tag_name/assets, not {version, downloadUrl}.
+        private static readonly Regex GithubUrl = new(
+            @"^https://(?:www\.)?github\.com/(?<owner>[A-Za-z0-9_.-]+)/(?<repo>[A-Za-z0-9_.-]+?)(?:\.git)?/?$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex GithubApiUrl = new(
+            @"^https://api\.github\.com/repos/(?<owner>[A-Za-z0-9_.-]+)/(?<repo>[A-Za-z0-9_.-]+)/releases/latest/?$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ShorthandRef = new(
+            @"^(?<owner>[A-Za-z0-9_.-]+)/(?<repo>[A-Za-z0-9_.-]+)$",
+            RegexOptions.Compiled);
+
+        /// <summary>Folds the forms a person can paste — a repository URL, the releases API URL,
+        /// bare <c>owner/repo</c> — onto the canonical <c>github:owner/repo</c>. Anything else is
+        /// returned trimmed and judged by <see cref="ResolveAsync"/>.</summary>
+        public static string Normalize(string source)
+        {
+            source = (source ?? string.Empty).Trim();
+
+            foreach (Regex pattern in new[] { GithubUrl, GithubApiUrl, ShorthandRef })
+            {
+                Match m = pattern.Match(source);
+                if (m.Success)
+                    return $"github:{m.Groups["owner"].Value}/{m.Groups["repo"].Value}";
+            }
+
+            return source;
+        }
+
         /// <param name="extensionId">The id the feed was declared for — used to pick the right asset
         /// when a release carries several zips.</param>
         public static async Task<ExtensionUpdateInfo> ResolveAsync(string feed, string extensionId, CancellationToken ct)
         {
-            feed = feed.Trim();
+            feed = Normalize(feed);
 
             Match github = GithubRef.Match(feed);
             if (github.Success)

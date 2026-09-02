@@ -1,4 +1,4 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
@@ -76,6 +76,16 @@ namespace AnalyseTool.Tools.Elements
                         activeView.ViewType.ToString(),
                         (activeView as ViewPlan)?.GenLevel?.Id.Value);
 
+                // The same counts with the language-independent key beside the localised one, so a
+                // caller can go straight to builtInCategory for GetElements / GetCategoryParameters
+                // without ever typing "Wände". The name->count map stays for the callers that read it.
+                List<CategoryCount> categories = modelCategories
+                    .Where(c => categoryCounts.TryGetValue(c.Name, out int n) && n > 0)
+                    .Select(c => new CategoryCount(c.Name, c.BuiltInCategory.ToString(), categoryCounts[c.Name]))
+                    .OrderByDescending(c => c.Count)
+                    .ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+
                 return new ModelOverview(
                     doc.Title,
                     doc.Application.VersionNumber,
@@ -85,6 +95,7 @@ namespace AnalyseTool.Tools.Elements
                     activeViewInfo,
                     levels,
                     categoryCounts,
+                    categories,
                     hasTopography);
             });
 
@@ -157,5 +168,13 @@ namespace AnalyseTool.Tools.Elements
         [property: JsonProperty("activeView")] ActiveViewInfo? ActiveView,
         [property: JsonProperty("levels")] IReadOnlyList<LevelInfo> Levels,
         [property: JsonProperty("categoryCounts")] IReadOnlyDictionary<string, int> CategoryCounts,
+        [property: JsonProperty("categories")] IReadOnlyList<CategoryCount> Categories,
         [property: JsonProperty("hasTopography")] bool HasTopography);
+
+    /// <summary>One model category that has instances: the localised name a person sees, the
+    /// BuiltInCategory a command should be given, and how many instances there are.</summary>
+    internal sealed record CategoryCount(
+        [property: JsonProperty("name")] string Name,
+        [property: JsonProperty("builtInCategory")] string BuiltInCategory,
+        [property: JsonProperty("count")] int Count);
 }

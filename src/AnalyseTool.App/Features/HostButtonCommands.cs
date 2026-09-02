@@ -54,7 +54,7 @@ namespace AnalyseTool.App.Features
 
         internal sealed record Request
         {
-            [Description("Button key from GetHostButtons (e.g. \"AnalyseToolFamilies\").")]
+            [Description("Button key from GetHostButtons (e.g. \"AnalyseToolScripts\").")]
             public string Key { get; set; } = string.Empty;
 
             [Description("True to show, false to hide the ribbon button.")]

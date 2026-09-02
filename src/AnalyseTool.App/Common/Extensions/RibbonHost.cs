@@ -24,24 +24,30 @@ namespace AnalyseTool.App.Common.Extensions
     internal static class RibbonHost
     {
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
-        private const string FamilyControlCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyControlCommand";
-        private const string FamilyPaletteCommandClass = "AnalyseTool.Launcher.RevitCommands.FamilyPaletteCommand";
         private const string ScriptsCommandClass = "AnalyseTool.Launcher.RevitCommands.ScriptsCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
+        private const string ExtensionsCommandClass = "AnalyseTool.Launcher.RevitCommands.ExtensionsCommand";
+        private const string NewExtensionCommandClass = "AnalyseTool.Launcher.RevitCommands.NewExtensionCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
         private const string PinnedPanelTitle = "Scripts";
 
         private static readonly HashSet<string> _createdTabs = new(StringComparer.OrdinalIgnoreCase);
-        // extension id -> (button, key of the panel it currently sits in)
-        private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _extButtons =
+        // "extension id\nbutton index" -> (button, key of the panel it currently sits in). Keyed per
+        // BUTTON, not per extension: one manifest may declare several, and each is placed, moved and
+        // removed on its own.
+        private static readonly Dictionary<string, ExtEntry> _extButtons =
             new(StringComparer.OrdinalIgnoreCase);
+        // Stacked columns we assembled per panel — rebuilt from scratch on every refresh, so they are
+        // tracked only to be removed. Keyed like _adwPanels.
+        private static readonly Dictionary<string, List<AdWin.RibbonRowPanel>> _packedRows =
+            new(StringComparer.Ordinal);
         // command name -> its button, for commands the USER pinned in the launcher. Kept apart from
-        // _extButtons because the two are keyed differently and answer to different owners: one
-        // extension has one manifest button, while a pin names a single command and may name one from
-        // an extension whose manifest we must not write, or from no extension at all.
+        // _extButtons because the two are keyed differently and answer to different owners: a manifest
+        // button belongs to an extension, while a pin names a single command and may name one from an
+        // extension whose manifest we must not write, or from no extension at all.
         private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _pinnedButtons =
             new(StringComparer.OrdinalIgnoreCase);
         // Built once, on the UI thread, the first time a pinned button needs it.
@@ -56,14 +62,17 @@ namespace AnalyseTool.App.Common.Extensions
         private static readonly Dictionary<string, ExtensionDescriptor> _descriptors =
             new(StringComparer.OrdinalIgnoreCase);
         // Open windows, so a second click focuses the existing one instead of stacking duplicates:
-        // one Family Manager window, and one window per extension id.
-        private static Window? _familyWindow;
-        private static Window? _settingsWindow;
+        // one window per extension button.
+        //
+        // The plugin's own pages (Settings, Extensions, New extension), one window each.
+        private static readonly Dictionary<string, SystemWindow> _systemWindows =
+            new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Window> _extWindows =
             new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>The host's togglable main buttons: key -> (display name, PushButton). The Manage
-        /// stack is not here on purpose — Settings must always stay reachable.</summary>
+        /// <summary>The host's togglable buttons: key -> (display name, PushButton). Only the main
+        /// button and Scripts — Reload, Settings and the rest of the Manage block are not here on
+        /// purpose, so Settings always stays reachable.</summary>
         private static readonly Dictionary<string, (string Name, PushButton Button)> _staticButtons =
             new(StringComparer.OrdinalIgnoreCase);
 
@@ -89,53 +98,56 @@ namespace AnalyseTool.App.Common.Extensions
             string revitVersion = app.ControlledApplication.VersionNumber; // year, e.g. "2025"
             Log.Information("Building ribbon for Revit {RevitVersion}", revitVersion);
 
-            // Static buttons via the official API.
+            // The one large button: the tool itself.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
             RegisterStaticButton("AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME,
                 AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
                     MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png"));
-
-            // Second top-level button, sitting next to the main one: the Family Manager window.
-            RegisterStaticButton("AnalyseToolFamilies", "Family Manager",
-                AddStaticButton(mainPanel, "AnalyseToolFamilies", "Family Manager", launcherPath,
-                    FamilyControlCommandClass, "Browse, audit and manage the families in this project",
-                    image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (grid)
-
-            // Third button next to the others: the dockable placement palette (types grouped by family,
-            // click a type to place it). Uses the same launcher slot pattern as the other static buttons.
-            RegisterStaticButton("AnalyseToolPalette", "Component",
-                AddStaticButton(mainPanel, "AnalyseToolPalette", "Component", launcherPath,
-                    FamilyPaletteCommandClass, "Place a component — dockable family palette",
-                    image: BuildGlyphIcon(""))); // Segoe MDL2 "ViewAll" (list)
-
-            // Fourth button: the script launcher. It exists so that GENERATED commands do not each need
-            // a ribbon button of their own — the ribbon holds one entry and the list behind it grows.
-            RegisterStaticButton("AnalyseToolScripts", "Scripts",
-                AddStaticButton(mainPanel, "AnalyseToolScripts", "Scripts", launcherPath,
-                    ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote",
-                    image: BuildGlyphIcon("\uE943"))); // Segoe MDL2 "Code"
-
-            ApplyStaticButtonVisibility();
 
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,
             // which is why one always-present host pane is registered here and its content is swapped by
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // Settings / Reload / Report-a-bug as one 3-high stacked column of small buttons.
+            // Everything else is small: two stacked columns of three in the Manage panel, so the tab
+            // reads as one big button and a tidy block beside it. The split is by JOB, not by size:
+            // the left column is what you use every day (scripts, preferences, feedback), the right
+            // column is the extension lifecycle (reload, manage, create). Extensions used to live
+            // inside Settings — a manager you visit to work, buried under a page you configure once.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
+            // The script launcher exists so that GENERATED commands do not each need a ribbon button of
+            // their own — the ribbon holds one entry and the list behind it grows.
+            PushButtonData scriptsData = MakeButtonData("AnalyseToolScripts", "Scripts", launcherPath,
+                ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote");
             PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "Show where extensions live and how to add them");
-            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+                SettingsCommandClass, "AI and everything else about the plugin itself");
             PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
                 BugsCommandClass, "Report a bug or request a feature on GitHub");
 
-            IList<RibbonItem> stacked = managePanel.AddStackedItems(settingsData, reloadData, bugsData);
-            SetStackedImage(stacked, 0, BuildGlyphIcon("", 16)); // Settings (U+E713)
-            SetStackedImage(stacked, 1, BuildGlyphIcon("", 16)); // Reload (U+E72C)
-            SetStackedImage(stacked, 2, BuildGlyphIcon("", 16)); // Report a bug (U+EBE8)
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(scriptsData, settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE943", 16)); // Scripts — Code (U+E943)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
+
+            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+            PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
+                ExtensionsCommandClass, "Install, update and manage extensions");
+            PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
+                NewExtensionCommandClass, "Create a new extension: a button, a page, C# commands");
+
+            IList<RibbonItem> workStack = managePanel.AddStackedItems(reloadData, extensionsData, newExtensionData);
+            SetStackedImage(workStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
+            SetStackedImage(workStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(workStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
+
+            // Scripts is togglable like the main button (a user without scripts can hide it); the rest of
+            // the block is not — Settings must always stay reachable, and Reload with it.
+            // Scripts sits at the top of the LEFT column now — the registration must follow it, or the
+            // "hide Scripts" switch in Settings hides whatever stands first on the right instead.
+            RegisterStaticButton("AnalyseToolScripts", "Scripts", pluginStack.Count > 0 ? pluginStack[0] as PushButton : null);
+            ApplyStaticButtonVisibility();
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -148,31 +160,95 @@ namespace AnalyseTool.App.Common.Extensions
         {
             if (AdWin.ComponentManager.Ribbon is null) return; // ribbon not ready yet
 
-            // Incompatible extensions (a declared DLL with no build for this Revit year) and
-            // user-disabled ones get no button: their commands never load, so the UI would only
-            // produce dead invokes. Both stay visible in the Settings listing.
+            // User-disabled extensions get no button. An extension whose declared DLL has no build for
+            // this Revit year keeps the buttons that open a PAGE — the page needs no DLL, and a freshly
+            // created template (page + C#, not yet built) used to vanish from the ribbon, which read as
+            // "I created something and nothing happened". Only its COMMAND buttons are held back (see
+            // GroupButtons): a click on one of those would invoke a command that never loaded.
             List<ExtensionDescriptor> found = ExtensionCatalog
                 .Scan(revitVersion)
-                .Where(d => d.HasUi && d.IsCompatibleWithHost && ExtensionStateStore.IsEnabled(d.Manifest.Id))
-                .Where(d => !UserTookButtonAway(d))
+                .Where(d => d.HasUi && ExtensionStateStore.IsEnabled(d.Manifest.Id)
+                            && (d.IsCompatibleWithHost || d.OpensPage))
                 .ToList();
 
-            HashSet<string> foundIds = new(found.Select(d => d.Manifest.Id), StringComparer.OrdinalIgnoreCase);
+            // Every button the manifests ask for, by ribbon key — the set the ribbon must end up
+            // holding. A button the user turned off in the launcher simply never enters it.
+            HashSet<string> wantedKeys = new(
+                found.SelectMany(GroupButtons).Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
 
-            RemoveStaleButtons(foundIds);
+            RemoveStaleButtons(wantedKeys);
             foreach (ExtensionDescriptor descriptor in found)
-                SyncButton(descriptor);
+                SyncButtons(descriptor);
 
             RefreshPinnedButtons(found);
+            PackStacks();
             RemoveEmptyPanelsAndTabs();
         }
+
+        /// <summary>One ribbon item to build: a single button, or a run of stacked ones sharing a row.
+        /// Grouping lives in ONE place because two passes need the same answer — the pass that decides
+        /// which ribbon items must exist, and the pass that builds them.</summary>
+        private sealed record ButtonGroup(string Key, IReadOnlyList<ExtensionButton> Infos, string Signature, int FirstIndex)
+        {
+            public ExtensionButton First => Infos[0];
+        }
+
+        /// <summary>Splits a manifest's buttons into ribbon items. Consecutive <c>stacked</c> entries
+        /// form one run (laid into columns of three by <see cref="PackStacks"/>, together with the
+        /// other extensions' small buttons on the same panel); everything else stands alone. Buttons
+        /// the user turned off in the launcher are dropped BEFORE grouping, so turning one off closes
+        /// the gap instead of leaving a hole in a column.</summary>
+        private static List<ButtonGroup> GroupButtons(ExtensionDescriptor descriptor)
+        {
+            string id = descriptor.Manifest.Id;
+            List<(ExtensionButton Info, int Index)> live = descriptor.Manifest.Ui!.EffectiveButtons()
+                .Select((b, i) => (Info: b, Index: i))
+                .Where(t => !UserTookButtonAway(t.Info))
+                // No DLL for this Revit year: a page still opens, a command would not — only the
+                // page buttons stay (the reason the descriptor is here at all, see RefreshExtensionButtons).
+                .Where(t => descriptor.IsCompatibleWithHost || string.IsNullOrWhiteSpace(t.Info.Command))
+                .ToList();
+
+            List<ButtonGroup> groups = new();
+            for (int i = 0; i < live.Count;)
+            {
+                List<ExtensionButton> infos = new() { live[i].Info };
+                int firstIndex = live[i].Index;
+                if (live[i].Info.ResolvedKind == ButtonKind.Stacked)
+                    while (++i < live.Count && live[i].Info.ResolvedKind == ButtonKind.Stacked)
+                        infos.Add(live[i].Info);
+                else
+                    i++;
+
+                groups.Add(new ButtonGroup(ButtonKey(id, firstIndex), infos, Signature(infos), firstIndex));
+            }
+            return groups;
+        }
+
+        /// <summary>Everything about a group that, when changed, means the ribbon item must be rebuilt
+        /// rather than relabelled. Cheap to compute and compared as one string.</summary>
+        /// <para><c>Order</c> is in here although it changes no visual of the button itself: the
+        /// packer sorts the copies it was handed at build time, so an order edit that did not
+        /// rebuild the entry was silently ignored.</para>
+        private static string Signature(IReadOnlyList<ExtensionButton> infos) =>
+            string.Join("|", infos.Select(b =>
+                $"{b.ResolvedKind}:{b.Name}:{b.Tooltip}:{b.Icon}:{b.Command}:{b.Order}:" +
+                string.Join(",", (b.Items ?? Array.Empty<ExtensionButton>()).Select(c => c.Name + "/" + c.Command))));
+
+        /// <summary>Ribbon key for one manifest button. The index is the identity: renaming a button
+        /// keeps its place on the ribbon, and only reordering moves it.</summary>
+        /// <summary>Separator inside composite ribbon keys. A newline cannot occur in an extension
+        /// id, a tab name or a panel name, so a composite key can never be ambiguous.</summary>
+        private const string KeySeparator = "\n";
+
+        private static string ButtonKey(string extensionId, int index) => extensionId + KeySeparator + index;
 
         /// <summary>A manifest button the user turned off in the launcher. Only COMMAND buttons can be
         /// turned off there — the launcher lists commands, and a button that opens a page is not one,
         /// so a UI extension keeps its button no matter what the store says about its commands.</summary>
-        private static bool UserTookButtonAway(ExtensionDescriptor descriptor)
+        private static bool UserTookButtonAway(ExtensionButton button)
         {
-            string? command = descriptor.Manifest.Ui?.Button?.Command;
+            string? command = button.Command;
             return !string.IsNullOrWhiteSpace(command) && CommandButtons.Override(command!) == false;
         }
 
@@ -186,7 +262,8 @@ namespace AnalyseTool.App.Common.Extensions
         private static void RefreshPinnedButtons(IReadOnlyCollection<ExtensionDescriptor> shownExtensions)
         {
             HashSet<string> alreadyShown = new(
-                shownExtensions.Select(d => d.Manifest.Ui?.Button?.Command)
+                shownExtensions.SelectMany(d => d.Manifest.Ui!.EffectiveButtons())
+                    .Select(b => b.Command)
                     .Where(c => !string.IsNullOrWhiteSpace(c))
                     .Select(c => c!),
                 StringComparer.OrdinalIgnoreCase);
@@ -257,87 +334,258 @@ namespace AnalyseTool.App.Common.Extensions
 
         /// <summary>Removes the AdWindows buttons (and cached descriptors) of extensions that are no
         /// longer present in the latest scan.</summary>
-        private static void RemoveStaleButtons(HashSet<string> foundIds)
+        private static void RemoveStaleButtons(HashSet<string> wantedKeys)
         {
-            foreach (string id in _extButtons.Keys.ToList())
+            foreach (string key in _extButtons.Keys.ToList())
             {
-                if (foundIds.Contains(id)) continue;
+                if (wantedKeys.Contains(key)) continue;
 
-                (AdWin.RibbonButton button, string panelKey) = _extButtons[id];
-                if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? oldPanel))
-                    oldPanel.Items.Remove(button);
-                _extButtons.Remove(id);
-                _descriptors.Remove(id);
+                ExtEntry gone = _extButtons[key];
+                if (gone.Item is not null && _adwPanels.TryGetValue(gone.PanelKey, out AdWin.RibbonPanelSource? oldPanel))
+                    oldPanel.Items.Remove(gone.Item);
+                _extButtons.Remove(key); // a stacked run leaves through PackStacks, which rebuilds the columns
             }
+
+            // A descriptor is dropped only when the extension has NO buttons left, not when one of
+            // several went away.
+            foreach (string id in _descriptors.Keys.ToList())
+                if (!_extButtons.Keys.Any(k => k.StartsWith(id + KeySeparator, StringComparison.OrdinalIgnoreCase)))
+                    _descriptors.Remove(id);
         }
 
-        /// <summary>Brings a single extension's button in sync: creates it if new, otherwise updates its
-        /// text/tooltip/icon and moves it when the manifest's tab/panel changed.</summary>
-        private static void SyncButton(ExtensionDescriptor descriptor)
+        /// <summary>Brings one extension's ribbon items in sync. A group whose content changed is
+        /// rebuilt rather than patched: a row of stacked buttons or a pulldown has children, and
+        /// editing those in place is more code than recreating them on a Reload nobody watches.</summary>
+        private static void SyncButtons(ExtensionDescriptor descriptor)
         {
             string id = descriptor.Manifest.Id;
             _descriptors[id] = descriptor; // refresh for click-time lookup
 
             ExtensionUi ui = descriptor.Manifest.Ui!;
-            ExtensionButton info = ui.Button!;
-            string tab = string.IsNullOrWhiteSpace(ui.Tab) ? DefaultTab : ui.Tab!;
-            string panelName = string.IsNullOrWhiteSpace(ui.Panel) ? ExtensionsPanelTitle : ui.Panel!;
-            string panelKey = tab + "\n" + panelName;
 
-            AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
-            if (source is null) return;
-
-            ImageSource? icon = LoadIcon(descriptor, info.Icon);
-
-            if (_extButtons.TryGetValue(id, out (AdWin.RibbonButton Button, string PanelKey) entry))
-                UpdateButton(id, entry, info, icon, source, panelKey);
-            else
-                _extButtons[id] = (CreateButton(id, info, icon, source), panelKey);
-        }
-
-        /// <summary>Updates an existing button in place, relocating it to a new panel if its key changed.</summary>
-        private static void UpdateButton(string id, (AdWin.RibbonButton Button, string PanelKey) entry,
-            ExtensionButton info, ImageSource? icon, AdWin.RibbonPanelSource target, string panelKey)
-        {
-            if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
+            foreach (ButtonGroup group in GroupButtons(descriptor))
             {
-                if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
-                    from.Items.Remove(entry.Button);
-                target.Items.Add(entry.Button);
-                _extButtons[id] = (entry.Button, panelKey);
-            }
+                ExtensionButton first = group.First;
 
-            entry.Button.Text = info.Name;
-            entry.Button.ToolTip = info.Tooltip;
-            if (icon != null) { entry.Button.Image = icon; entry.Button.LargeImage = icon; }
+                // Placement falls back from the button to the extension to the host default, so a
+                // single-button manifest never repeats what ui.tab / ui.panel already said. A stacked
+                // run takes its placement from the first entry — a row cannot straddle two panels.
+                string tab = Coalesce(first.Tab, ui.Tab, DefaultTab);
+                string panelName = Coalesce(first.Panel, ui.Panel, ExtensionsPanelTitle);
+                string panelKey = tab + KeySeparator + panelName;
+
+                AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(tab, panelName, panelKey);
+                if (source is null) continue;
+
+                if (_extButtons.TryGetValue(group.Key, out ExtEntry? entry)
+                    && string.Equals(entry.Signature, group.Signature, StringComparison.Ordinal))
+                {
+                    // Same content: at most it moved to another panel. A stacked run is not placed by
+                    // this method at all — PackStacks lays it out wherever PanelKey now says.
+                    if (!string.Equals(entry.PanelKey, panelKey, StringComparison.Ordinal))
+                    {
+                        if (entry.Item is not null)
+                        {
+                            if (_adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? from))
+                                from.Items.Remove(entry.Item);
+                            source.Items.Add(entry.Item);
+                        }
+                        _extButtons[group.Key] = entry with { PanelKey = panelKey };
+                    }
+                    continue;
+                }
+
+                if (_extButtons.TryGetValue(group.Key, out entry) && entry.Item is not null
+                    && _adwPanels.TryGetValue(entry.PanelKey, out AdWin.RibbonPanelSource? previous))
+                    previous.Items.Remove(entry.Item);
+
+                if (first.ResolvedKind == ButtonKind.Stacked)
+                {
+                    // Small buttons are a PANEL's business, not the extension's: two extensions with one
+                    // small button each want one column of two, not two columns of one. So the run is
+                    // only remembered here; PackStacks builds the columns once every panel is known.
+                    _extButtons[group.Key] = new ExtEntry(null, BuildStacked(descriptor, group), panelKey, group.Signature,
+                        first.Order, id, group.FirstIndex);
+                    continue;
+                }
+
+                AdWin.RibbonItem built = BuildGroup(descriptor, group);
+                source.Items.Add(built);
+                _extButtons[group.Key] = new ExtEntry(built, null, panelKey, group.Signature, first.Order, id, group.FirstIndex);
+            }
         }
 
-        /// <summary>Creates a new AdWindows button for an extension and adds it to the given panel.</summary>
-        private static AdWin.RibbonButton CreateButton(string id, ExtensionButton info,
-            ImageSource? icon, AdWin.RibbonPanelSource target)
+        /// <summary>Builds the ribbon item for a group, by kind.</summary>
+        private static AdWin.RibbonItem BuildGroup(ExtensionDescriptor descriptor, ButtonGroup group)
+        {
+            string id = descriptor.Manifest.Id;
+
+            switch (group.First.ResolvedKind)
+            {
+                case ButtonKind.Pulldown:
+                {
+                    ExtensionButton info = group.First;
+                    AdWin.RibbonSplitButton pulldown = new()
+                    {
+                        Id = "AnalyseTool.Ext." + group.Key.Replace(KeySeparator, "."),
+                        Text = info.Name,
+                        ShowText = true,
+                        ShowImage = true,
+                        Size = AdWin.RibbonItemSize.Large,
+                        Orientation = System.Windows.Controls.Orientation.Vertical,
+                        ToolTip = info.Tooltip,
+                        // A pulldown, not a split button: the head opens the list rather than running
+                        // the first entry, which is what an author asking for "pulldown" means.
+                        IsSplit = false,
+                        IsSynchronizedWithCurrentItem = false,
+                    };
+                    ImageSource? head = LoadIcon(descriptor, info.Icon);
+                    if (head != null) { pulldown.Image = head; pulldown.LargeImage = head; }
+
+                    // Children are NOT in EffectiveButtons() — they live inside their parent — so they
+                    // get a key derived from it rather than a position in that list.
+                    IReadOnlyList<ExtensionButton> children = info.Items ?? Array.Empty<ExtensionButton>();
+                    for (int n = 0; n < children.Count; n++)
+                        pulldown.Items.Add(MakeButton(id, group.Key + ":" + n, children[n],
+                            LoadIcon(descriptor, children[n].Icon), small: true));
+                    return pulldown;
+                }
+
+                default:
+                    return MakeButton(id, group.Key, group.First,
+                        LoadIcon(descriptor, group.First.Icon), small: false);
+            }
+        }
+
+        /// <summary>The small buttons of a stacked run, built but not placed — see <see cref="PackStacks"/>.</summary>
+        private static List<StackedButton> BuildStacked(ExtensionDescriptor descriptor, ButtonGroup group)
+        {
+            string id = descriptor.Manifest.Id;
+            List<StackedButton> buttons = new(group.Infos.Count);
+            for (int n = 0; n < group.Infos.Count; n++)
+            {
+                ExtensionButton info = group.Infos[n];
+                buttons.Add(new StackedButton(
+                    MakeButton(id, group.Key + ":" + n, info, LoadIcon(descriptor, info.Icon), small: true),
+                    info.Order, id, n));
+            }
+            return buttons;
+        }
+
+        /// <summary>
+        /// Lays out every panel's small buttons as columns of three — the shape Revit's own
+        /// <c>AddStackedItems</c> makes — regardless of which extension each button came from.
+        ///
+        /// Ownership and layout are different questions. An extension owns its buttons (they come and go
+        /// with it), but a COLUMN is the panel's: the user who marks one button "small" in two
+        /// extensions expects them under each other, and the manifest of either cannot say so. Rebuilt
+        /// from scratch on every refresh, which is cheap and makes removal trivial — a run that left
+        /// _extButtons is simply not there the next time the columns are built.
+        ///
+        /// Order within a panel: the button's <c>order</c>, then the extension id, then declaration —
+        /// so one extension's consecutive small buttons stay together, and two extensions interleave
+        /// only when their authors asked for it with explicit orders. Columns go after the panel's
+        /// large items.
+        /// </summary>
+        private static void PackStacks()
+        {
+            foreach ((string panelKey, AdWin.RibbonPanelSource panel) in _adwPanels)
+            {
+                if (_packedRows.TryGetValue(panelKey, out List<AdWin.RibbonRowPanel>? old))
+                {
+                    foreach (AdWin.RibbonRowPanel row in old) panel.Items.Remove(row);
+                    old.Clear();
+                }
+
+                // Large items first, in the same order the columns use. They were added in scan
+                // order by SyncButtons; here they are moved to the front of the panel in rank order,
+                // so `order` means the same thing for a large button as for a small one. Anything
+                // that is not ours (pinned command buttons) keeps its place behind them.
+                int position = 0;
+                foreach (ExtEntry entry in _extButtons.Values
+                             .Where(e => e.Item is not null && string.Equals(e.PanelKey, panelKey, StringComparison.Ordinal))
+                             .OrderBy(e => Rank(e.Order))
+                             .ThenBy(e => e.ExtensionId, StringComparer.OrdinalIgnoreCase)
+                             .ThenBy(e => e.Index))
+                {
+                    panel.Items.Remove(entry.Item!);
+                    panel.Items.Insert(position++, entry.Item!);
+                }
+
+                List<StackedButton> buttons = _extButtons.Values
+                    .Where(e => e.Stacked is not null && string.Equals(e.PanelKey, panelKey, StringComparison.Ordinal))
+                    .SelectMany(e => e.Stacked!)
+                    .OrderBy(b => Rank(b.Order))
+                    .ThenBy(b => b.ExtensionId, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(b => b.Index)
+                    .ToList();
+                if (buttons.Count == 0) continue;
+
+                List<AdWin.RibbonRowPanel> rows = _packedRows.TryGetValue(panelKey, out List<AdWin.RibbonRowPanel>? list)
+                    ? list : (_packedRows[panelKey] = new List<AdWin.RibbonRowPanel>());
+
+                for (int i = 0; i < buttons.Count; i += 3)
+                {
+                    AdWin.RibbonRowPanel row = new();
+                    for (int n = i; n < Math.Min(i + 3, buttons.Count); n++)
+                    {
+                        if (n > i) row.Items.Add(new AdWin.RibbonRowBreak());
+                        row.Items.Add(buttons[n].Button);
+                    }
+                    panel.Items.Add(row);
+                    rows.Add(row);
+                }
+            }
+        }
+
+        /// <summary>One ribbon entry of an extension: either an item placed directly on its panel
+        /// (large button, pulldown) or a run of small buttons that <see cref="PackStacks"/> places.</summary>
+        private sealed record ExtEntry(AdWin.RibbonItem? Item, List<StackedButton>? Stacked, string PanelKey, string Signature,
+            int Order, string ExtensionId, int Index);
+
+        /// <summary>The panel sort key. <c>order</c> 0 means "no preference", and no preference goes
+        /// AFTER every stated one: a person who types 1 into one button expects it first, not
+        /// behind everything that never said.</summary>
+        private static int Rank(int order) => order == 0 ? int.MaxValue : order;
+
+        /// <summary>A small button with what the packer sorts by.</summary>
+        private sealed record StackedButton(AdWin.RibbonButton Button, int Order, string ExtensionId, int Index);
+
+        /// <summary>First non-blank of the three: a per-button value overrides the extension's, which
+        /// overrides the host default.</summary>
+        private static string Coalesce(string? button, string? extension, string fallback) =>
+            !string.IsNullOrWhiteSpace(button) ? button!
+            : !string.IsNullOrWhiteSpace(extension) ? extension!
+            : fallback;
+
+        /// <summary>Creates one AdWindows button. Does NOT add it anywhere — the caller decides
+        /// whether it goes on a panel, into a stacked row or under a pulldown.</summary>
+        /// <param name="small">Small buttons sit in rows and under pulldowns; large ones stand alone.</param>
+        private static AdWin.RibbonButton MakeButton(string id, string key, ExtensionButton info,
+            ImageSource? icon, bool small)
         {
             // A button either INVOKES a command directly (command-only script extensions, where
-            // ui.button.command is set) or OPENS the extension's WebView window (UI extensions).
+            // command is set) or OPENS the extension's page (UI extensions).
             string? command = info.Command;
             RelayCommand handler = string.IsNullOrWhiteSpace(command)
-                ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, uiApp)))
+                ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, key, info, uiApp)))
                 : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
                     RunCommandFromRibbon(command!, uiApp, LauncherLists(id))));
 
             AdWin.RibbonButton button = new()
             {
-                Id = $"AnalyseTool.Ext.{id}",
+                Id = "AnalyseTool.Ext." + key.Replace(KeySeparator, "."),
                 Text = info.Name,
                 ShowText = true,
                 ShowImage = true,
-                Size = AdWin.RibbonItemSize.Large,
-                Orientation = System.Windows.Controls.Orientation.Vertical,
+                Size = small ? AdWin.RibbonItemSize.Standard : AdWin.RibbonItemSize.Large,
+                Orientation = small
+                    ? System.Windows.Controls.Orientation.Horizontal
+                    : System.Windows.Controls.Orientation.Vertical,
                 ToolTip = info.Tooltip,
                 CommandHandler = handler,
             };
             if (icon != null) { button.Image = icon; button.LargeImage = icon; }
-
-            target.Items.Add(button);
             return button;
         }
 
@@ -371,39 +619,36 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
-        public static void OpenSettings(UIApplication uiApp)
+        /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
+        public static void OpenSettings(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "settings", "#/system/settings", "AnalyseTool — Settings", 880, 720);
+
+        /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
+        public static void OpenExtensions(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "extensions", "#/system/extensions", "AnalyseTool — Extensions", 1000, 680);
+
+        /// <summary>Ribbon "New" button — a small window with nothing but the create-extension form.
+        /// Its own window, not the manager with a drawer over it: pressing "New" means "I want to make
+        /// one", and a list of everything else is noise behind that.</summary>
+        public static void OpenNewExtension(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "new-extension", "#/system/new-extension", "AnalyseTool — New extension", 720, 840);
+
+        /// <summary>Opens (or focuses) one of the plugin's own pages.</summary>
+        private static void OpenSystemPage(UIApplication uiApp, string key, string route, string title,
+            double width, double height)
         {
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
 
-            if (_settingsWindow is not null)
+            if (_systemWindows.TryGetValue(key, out SystemWindow? existing))
             {
-                Restore(_settingsWindow);
+                Restore(existing);
                 return;
             }
 
-            Window window = new SettingsWindow();
-            window.Closed += (_, _) => _settingsWindow = null;
-            _settingsWindow = window;
-            window.Show();
-        }
-
-        /// <summary>Ribbon "Family Control" button — opens the family browser/QC window (#/families).
-        /// Single instance: a second click focuses the existing window instead of opening another.</summary>
-        public static void OpenFamilyControl(UIApplication uiApp)
-        {
-            AnalyseToolBootstrap.Initialize(uiApp);
-            if (!WebView2Runtime.EnsureOrWarn()) return;
-
-            if (_familyWindow is not null)
-            {
-                Restore(_familyWindow);
-                return;
-            }
-
-            Window window = new AnalyseTool.App.Common.Extensions.FamilyControlWindow();
-            window.Closed += (_, _) => _familyWindow = null;
-            _familyWindow = window;
+            SystemWindow window = new(route, title, width, height);
+            window.Closed += (_, _) => _systemWindows.Remove(key);
+            _systemWindows[key] = window;
             window.Show();
         }
 
@@ -414,17 +659,8 @@ namespace AnalyseTool.App.Common.Extensions
             window.Activate();
         }
 
-        /// <summary>Ribbon "Palette" button — shows the dockable family placement palette (#/families-dock).
-        /// Initializes the host first (so the pane's transport has a dispatcher) then shows/routes the pane.</summary>
-        public static void ShowFamilyPalette(UIApplication uiApp)
-        {
-            AnalyseToolBootstrap.Initialize(uiApp);
-            if (!WebView2Runtime.EnsureOrWarn()) return;
-            DockPaneHost.ShowRoute("#/families-dock");
-        }
-
         /// <summary>Ribbon "Scripts" button — shows the dockable command launcher (#/scripts). Same
-        /// pattern as the family palette: initialize the host so the pane's transport has a dispatcher,
+        /// pattern the dockable extensions use: initialize the host so the pane's transport has a dispatcher,
         /// then route the single registered pane.</summary>
         public static void ShowScriptLauncher(UIApplication uiApp)
         {
@@ -442,31 +678,40 @@ namespace AnalyseTool.App.Common.Extensions
             TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
         }
 
-        private static void OpenExtension(string id, UIApplication uiApp)
+        private static void OpenExtension(string id, string key, ExtensionButton info, UIApplication uiApp)
         {
             if (!_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor)) return;
 
             AnalyseToolBootstrap.Initialize(uiApp);
             if (!WebView2Runtime.EnsureOrWarn()) return;
 
-            // A dockable extension shows inside the shared pane (toggle); otherwise it opens its own window.
             ExtensionUi? ui = descriptor.Manifest.Ui;
-            if (ui?.Dockable == true)
+
+            // Entry page and dockability are properties of the SURFACE, not of the extension: a manager
+            // opens as a window while its placement palette belongs in the dock. The button decides; the
+            // extension-level values are the fallback for the single-button form. The button object is
+            // captured at build time, so a pulldown child — which appears in no top-level list — is
+            // resolved exactly like any other.
+            string entryHtml = !string.IsNullOrWhiteSpace(info.EntryHtml) ? info.EntryHtml!
+                : ui?.EntryHtml ?? "index.html";
+            bool dockable = info.Dockable ?? ui?.Dockable ?? false;
+
+            if (dockable)
             {
-                DockPaneHost.ShowExtension(id, descriptor.Directory, ui.DevUrl, ui.EntryHtml);
+                DockPaneHost.ShowExtension(id, descriptor.Directory, ui?.DevUrl, entryHtml, key);
                 return;
             }
 
-            // One window per extension id — a second click focuses the open one.
-            if (_extWindows.TryGetValue(id, out Window? existing))
+            // One window per button — a second click focuses the open one.
+            if (_extWindows.TryGetValue(key, out Window? existing))
             {
                 Restore(existing);
                 return;
             }
 
-            Window window = new ExtensionWindow(descriptor);
-            window.Closed += (_, _) => _extWindows.Remove(id);
-            _extWindows[id] = window;
+            Window window = new ExtensionWindow(descriptor, entryHtml);
+            window.Closed += (_, _) => _extWindows.Remove(key);
+            _extWindows[key] = window;
             window.Show();
         }
 
@@ -688,10 +933,25 @@ namespace AnalyseTool.App.Common.Extensions
         }
 
         /// <summary>Loads the button icon from the file named in the manifest (which must sit next to
-        /// plugin.json). Falls back to a generated default icon when the path is missing or invalid.</summary>
+        /// plugin.json), or renders a Segoe MDL2 glyph when the value is <c>glyph:E8A9</c>. Falls back
+        /// to a generated default icon when neither works.
+        /// <para>The glyph form exists because the host had a capability its extensions did not: the
+        /// built-in buttons are drawn from the system icon font and stay crisp at any DPI, while an
+        /// extension could only ship a PNG or accept a letter. Found while moving the Family Manager
+        /// out — an extension replacing a built-in button could not reproduce its icon.</para></summary>
         private static ImageSource LoadIcon(ExtensionDescriptor descriptor, string? icon)
         {
-            if (!string.IsNullOrWhiteSpace(icon))
+            // "glyph:E8A9" — a Segoe MDL2 Assets code point, the same source the host's own buttons use.
+            if (!string.IsNullOrWhiteSpace(icon) && icon!.StartsWith("glyph:", StringComparison.OrdinalIgnoreCase))
+            {
+                string code = icon.Substring("glyph:".Length).Trim().TrimStart('U', 'u', '+');
+                if (int.TryParse(code, System.Globalization.NumberStyles.HexNumber,
+                                 System.Globalization.CultureInfo.InvariantCulture, out int cp))
+                    return BuildGlyphIcon(char.ConvertFromUtf32(cp));
+                // Unparseable code point falls through to the default icon rather than throwing: a
+                // manifest typo must not cost the extension its button.
+            }
+            else if (!string.IsNullOrWhiteSpace(icon))
             {
                 try
                 {
@@ -713,9 +973,8 @@ namespace AnalyseTool.App.Common.Extensions
                 catch { /* fall through to the default */ }
             }
 
-            string label = string.IsNullOrWhiteSpace(descriptor.Manifest.Ui?.Button?.Name)
-                ? descriptor.Manifest.Id
-                : descriptor.Manifest.Ui!.Button!.Name;
+            string? firstName = descriptor.Manifest.Ui?.EffectiveButtons().FirstOrDefault()?.Name;
+            string label = string.IsNullOrWhiteSpace(firstName) ? descriptor.Manifest.Id : firstName!;
             return BuildDefaultIcon(label);
         }
 

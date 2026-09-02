@@ -1,4 +1,4 @@
-﻿using AnalyseTool.App.Common.Bootstrap;
+using AnalyseTool.App.Common.Bootstrap;
 using AnalyseTool.App.Common.Extensions;
 using AnalyseTool.App.Common.Transport;
 using AnalyseTool.Core.Common;
@@ -13,7 +13,7 @@ namespace AnalyseTool.App.Common.Docking
 {
     /// <summary>
     /// The single WebView2 surface hosted inside Revit's one AnalyseTool dockable pane. Its content is a
-    /// navigation, not a new pane: a built-in screen is a clientapp hash route (e.g. <c>#/families-dock</c>),
+    /// navigation, not a new pane: a built-in screen is a clientapp hash route (e.g. <c>#/scripts</c>),
     /// and an extension is its own page served over a private virtual host — the same WebView hosts both,
     /// so features AND extensions share the dock without per-extension pane registration.
     ///
@@ -32,17 +32,18 @@ namespace AnalyseTool.App.Common.Docking
         private bool _docEventsWired;
 
         // Deferred navigation: set by ShowRoute/ShowExtension, applied once the WebView is ready (or
-        // immediately if it already is). Defaults to the family placement palette.
+        // immediately if it already is). Defaults to the script launcher — the pane's only built-in
+        // content since the family palette moved into its own extension.
         private Action? _navigate;
 
         public AnalyseToolDockPane()
         {
             Content = _webView;
-            ShowRoute("#/families-dock");
+            ShowRoute("#/scripts");
             Loaded += (_, _) => _ = InitializeAsync();
         }
 
-        /// <summary>Points the pane at a built-in clientapp hash route (e.g. "#/families-dock").</summary>
+        /// <summary>Points the pane at a built-in clientapp hash route (e.g. "#/scripts").</summary>
         public void ShowRoute(string route)
         {
             string hash = route.StartsWith("#") ? route : "#" + route;

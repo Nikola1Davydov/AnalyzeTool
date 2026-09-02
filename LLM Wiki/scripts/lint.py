@@ -25,7 +25,7 @@ VAULT   = os.path.dirname(SCRIPTS)
 REPO    = os.path.dirname(VAULT)
 
 CODE_EXT = r"\.(cs|ps1|vue|ts|js|props|yml|yaml|targets|csproj|sln|json|md)(:[\d\-,]+)?$"
-CODE_DIR = r"^(src|docs|\.github|samples|img|libs)/"
+CODE_DIR = r"^(src|docs|\.github|samples|img|libs|AnalyseTool\.[A-Za-z]+)/"
 # Плейсхолдеры из примеров в тексте — не пути.
 SKIP = {"path/File.cs", "kebab-case.md", "wiki/Home.md", "wiki/Writing-extensions-with-AI.md"}
 
@@ -34,6 +34,10 @@ RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json"}
 
 # Существуют, но не в текущей ветке. Значение — где искать; это не ошибка.
 ELSEWHERE = {"docs/pipeline-design.md": "ветка claude/pipelines-plan-f8jrgf"}
+
+# Соседние репозитории проекта: вики цитирует и их. Путь вида
+# "AnalyseTool.FamilyManager/ui/src/bootstrap.ts" ищется рядом с основным репозиторием.
+SIBLINGS = ["AnalyseTool.FamilyManager"]
 
 # Дыры: термин -> страница, которая им владеет (None = владельца нет).
 # Дополняйте по мере роста вики.
@@ -45,6 +49,7 @@ TERMS = {
     "порог прерывания":  (r"порог[а-я]* прерывания",                  "wiki/concepts/proactivity-budget.md"),
     "папка проекта":     (r"папк[а-я]+ проекта",                      "wiki/entities/project-folder.md"),
     "конвейер":          (r"конвейер",                                "wiki/sources/pipeline-design-doc.md"),
+    "генеральная папка": (r"генеральн[а-я]+ папк[а-я]+",                "wiki/entities/general-folder.md"),
 }
 
 def wiki_pages():
@@ -73,7 +78,7 @@ def check_links(pages):
 
 def check_orphans(pages):
     linked = set()
-    for entry in ("wiki/index.md", "wiki/overview.md", "wiki/log.md", "CLAUDE.md"):
+    for entry in ("wiki/index.md", "wiki/overview.md", "wiki/log.md", "CLAUDE.md", "README.md"):
         p = os.path.join(VAULT, entry)
         if not os.path.exists(p):
             continue
@@ -88,6 +93,12 @@ def check_orphans(pages):
             and os.path.normpath(p) not in linked]
 
 def resolve(bare):
+    # Соседний репозиторий: путь начинается с его имени.
+    for sib in SIBLINGS:
+        if bare.startswith(sib + "/"):
+            p = os.path.join(os.path.dirname(REPO), bare.replace("/", os.sep))
+            return bare if os.path.exists(p) else None
+
     cands = [bare] if re.match(CODE_DIR, bare) else [bare, "src/" + bare]
     for c in cands:
         if os.path.exists(os.path.join(REPO, c.replace("/", os.sep))):
@@ -109,6 +120,10 @@ def check_code_paths(pages):
         for m in re.finditer(r"`([^`\n]+)`", read(p)):
             t = m.group(1).strip()
             if t in SKIP or t in RUNTIME or "<" in t or ">" in t:
+                continue
+            # Путь с переменной окружения (%LOCALAPPDATA%\...) — это машина пользователя,
+            # а не артефакт репозитория: искать его в исходниках бессмысленно по определению.
+            if "%" in t:
                 continue
             if t.startswith("../") or t.endswith("/") or "→" in t or "->" in t or " " in t:
                 continue

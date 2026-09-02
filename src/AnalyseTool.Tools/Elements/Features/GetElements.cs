@@ -1,6 +1,5 @@
 ﻿using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
@@ -13,7 +12,8 @@ namespace AnalyseTool.Tools.Elements
                       "{ category, elementKind, count, returned, elements, error, didYouMean } — 'count' is " +
                       "the matches before 'limit', so a truncated answer says so, and an unknown category " +
                       "is an 'error' with suggestions rather than an empty list. Each element carries " +
-                      "familyId/familyName, which is the join back to GetFamilies. Identify the category " +
+                      "builtInCategory, levelId (the join to GetModelOverview.levels) and familyId/familyName. " +
+                      "Identify the category " +
                       "by the LOCALISED name (e.g. \"Wände\") or, better, by the language-independent " +
                       $"builtInCategory (e.g. \"OST_Walls\"); {nameof(GetModelOverview)} lists the categories " +
                       $"that have elements and {nameof(GetCategoryParameters)} the parameter names. " +

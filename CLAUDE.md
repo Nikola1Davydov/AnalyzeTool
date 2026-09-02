@@ -14,7 +14,7 @@ WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools comman
 | --- | --- | --- |
 | `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. |
 | `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn scripting, `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
-| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/`, `Families/` — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
+| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/` (Family Manager left the platform for an extension on 2026-09-01) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
 | `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
 | `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
 | `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
@@ -43,6 +43,34 @@ powershell -File src/build/Check-Schemas.ps1
 - NuGet versions are centralized in `src/Directory.Packages.props` (CPM). `samples/` is deliberately OUTSIDE CPM — it simulates an external extension author. Floating Revit API versions use `VersionOverride`.
 - Shared MSBuild deploy logic (MCP exe + clientapp/dist copying) lives in `src/PluginAssets.targets`.
 - Releases go through NUKE (`src/build`, run `src/build.cmd`) — targets: BuildClientApp → BuildLauncher → CreateInstaller/CreateBundle → PublishGitHub.
+
+## Testing
+
+Three tiers, split by what they need — and the split is the point: a test that needs Revit is a test
+nobody runs in CI.
+
+| Tier | Project | Needs | Runs |
+| --- | --- | --- | --- |
+| 1 — Revit-free | `src/AnalyseTool.Tests` (TUnit) | nothing; the plugin assemblies load because the Revit API is compile-only | CI, every push (`RunTests` in NUKE, part of `Ci`) |
+| 2 — MCP without Revit | same project, `Mcp/`: a fake bridge on `McpWire` + the exe driven over stdio (tools/list, structuredContent, error text, `list_changed`, progress notifications, cancellation, job handles via `GetJobResult`) | nothing | CI |
+| 3 — inside Revit | `src/AnalyseTool.RevitTests` (Nice3point.TUnit.Revit, from the `revit-tunit` template; namespace `AnalyseTool.RevitTests`) | a licensed Revit of the selected year | on demand: `dotnet test --project src/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj -c Debug.R25` |
+
+Rules: every fixed bug gets a test on its tier; a command's core is a function of a `Document` (or of
+plain data) so it can be tested on tier 1 or 3 without `UIApplication` — tests inside Revit never
+touch `RevitAPIUI` and exercise the SERVICES (`DataElementsCollectorService`, `ViewsSheetsService`,
+`TypeAndWorksetService`, `ParameterWriteService`) on a document seeded in code (`SeededModel`: one
+level, four walls), never the commands — plus `RoslynScriptCompiler` against the live `RevitAPI`
+(the test engine has no `RevitAPIUI`, so "UIApplication not referenced" is the one error every
+compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
+must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
+button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher.
+
+```powershell
+dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
+```
+
+`dotnet test` runs in Microsoft.Testing.Platform mode (repo-root `global.json`, `test.runner`), which
+the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not as a positional path.
 
 ## Guardrails (CI: .github/workflows/ci.yml)
 

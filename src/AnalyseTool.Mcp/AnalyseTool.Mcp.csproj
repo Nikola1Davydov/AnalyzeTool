@@ -18,6 +18,10 @@
     <AssemblyName>AnalyseTool.Mcp</AssemblyName>
     <RootNamespace>AnalyseTool.Mcp</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Restore assets for the RID the plugin build publishes with (PluginAssets.targets passes
+         RuntimeIdentifier=win-x64 + SelfContained to the Publish call). Plural on purpose: it does
+         not make an ordinary Build self-contained, it only makes the RID restorable. -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('Release'))">

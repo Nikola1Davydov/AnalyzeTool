@@ -15,8 +15,20 @@ namespace AnalyseTool.Tools.Elements
         [JsonProperty("category")]
         public string Category { get; init; } = string.Empty;
 
+        /// <summary>The BuiltInCategory name ("OST_Walls") beside the localised <see cref="Category"/> — the
+        /// identifier GetElements asks for and, until #113, never told anyone. Null for a category that is
+        /// not a built-in one (a subcategory, an imported one).</summary>
+        [JsonProperty("builtInCategory", NullValueHandling = NullValueHandling.Ignore)]
+        public string? BuiltInCategory { get; init; }
+
         [JsonProperty("level")]
         public string Level { get; init; } = string.Empty;
+
+        /// <summary>The level's id — the join to GetModelOverview.levels, which the NAME alone cannot make
+        /// (two levels may share one). Same defect and same fix as <see cref="FamilyId"/>. Null when the element
+        /// has no level, which is itself informative (types, views, most annotation).</summary>
+        [JsonProperty("levelId", NullValueHandling = NullValueHandling.Ignore)]
+        public long? LevelId { get; init; }
 
         [JsonProperty("isType")]
         public bool IsType { get; init; }
@@ -77,15 +89,50 @@ namespace AnalyseTool.Tools.Elements
         public int? Limit { get; init; }
     }
 
+    /// <summary>What GetCategoryParameters answers: the resolved category (both names), its parameters,
+    /// or an error with suggestions — an object for the same three reasons <see cref="ElementsResult"/>
+    /// is one.</summary>
+    public sealed record CategoryParametersResult(
+        [property: JsonProperty("category")] string? Category,
+        [property: JsonProperty("builtInCategory")] string? BuiltInCategory,
+        [property: JsonProperty("count")] int Count,
+        [property: JsonProperty("parameters")] IReadOnlyList<CategoryParameterInfo> Parameters,
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("didYouMean", NullValueHandling = NullValueHandling.Ignore)]
+        IReadOnlyList<string>? DidYouMean);
+
     /// <summary>Parameter metadata for a category (discovery), so AI callers know which
     /// parameter names they can request and whether they are writable.</summary>
     public sealed record CategoryParameterInfo
     {
+        /// <summary>The id SetDataToParameters takes: a negative BuiltInParameter value, or the
+        /// ParameterElement's ElementId for shared and project parameters. Was missing while the write
+        /// command's description said "ids come from GetCategoryParameters" — the workflow broke in the
+        /// middle and callers dug the id out with ExecuteRevitCode.</summary>
+        [JsonProperty("id")]
+        public long Id { get; init; }
+
+        /// <summary>The BuiltInParameter name (e.g. "ALL_MODEL_INSTANCE_COMMENTS") when the parameter is
+        /// one, else null — language-independent where the name is localised.</summary>
+        [JsonProperty("builtInParameter", NullValueHandling = NullValueHandling.Ignore)]
+        public string? BuiltInParameter { get; init; }
+
         [JsonProperty("name")]
         public string Name { get; init; } = string.Empty;
 
         [JsonProperty("storageType")]
         public string StorageType { get; init; } = string.Empty;
+
+        /// <summary>What the value means: "length", "area", "angle", "number", "string", "yesno"… — the short
+        /// form of Revit's spec id. <see cref="StorageType"/> "Double" alone cannot say that 2400 is a length.</summary>
+        [JsonProperty("spec", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Spec { get; init; }
+
+        /// <summary>For a measurable spec, the unit every value of this parameter is read and written in —
+        /// the document's display unit ("millimeters", "feet", "squareMeters"). The difference between a
+        /// 2400 mm wall and a 2400 ft one when SetDataToParameters writes in bulk. Null when not measurable.</summary>
+        [JsonProperty("unit", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Unit { get; init; }
 
         [JsonProperty("isReadOnly")]
         public bool IsReadOnly { get; init; }

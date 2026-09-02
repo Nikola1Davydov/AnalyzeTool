@@ -76,7 +76,18 @@ namespace AnalyseTool.Sdk
 
     // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
     // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
-    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }.
+    // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }. Over MCP the same
+    // reports reach the AI client as notifications/progress, and a command that runs longer than a
+    // minute is handed back to the client as a job it collects with GetJobResult — so report progress:
+    // an agent that sees movement waits instead of retrying.
+    //
+    // RULE FOR ANYTHING THAT MAY TAKE MORE THAN A FEW SECONDS: work in CHUNKS. One RunInRevitAsync per
+    // chunk (say 50–200 elements), one Transaction per chunk, Progress?.Report between chunks. A single
+    // RunInRevitAsync holding one transaction for minutes freezes Revit for the person at it, cannot be
+    // cancelled until it ends, and shows no progress; chunks keep Revit responsive, let Cancel act
+    // between them, and cost nothing you cannot undo: wrap the chunks in a TransactionGroup and
+    // Assimilate() it at the end for ONE undo step. (Measured: 7,200 elements in 40-cell chunks took
+    // 131 s with a live window; in one transaction 189 s with Revit frozen throughout.)
     // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
     // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
     public sealed record ProgressInfo(double Fraction, string? Message = null);
@@ -191,6 +202,7 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `version` | ✔ | SemVer string. |
 | `description` / `publisher` / `website` / `supportUrl` | — | Vendor metadata shown in the extension listing. Recommended when publishing. |
 | `icon` | — | Extension-level PNG (relative path) for listings; falls back to `ui.button.icon`. |
+| `ui.button.icon` | — | PNG beside `plugin.json`, **or** `glyph:E8A9` — a Segoe MDL2 Assets code point, the same source the host's own buttons use. Crisp at any DPI and nothing to ship. No icon at all draws a letter. |
 | `updateFeed` | — | Update source: an HTTPS URL returning `{version, downloadUrl}`, or `github:owner/repo` (latest release, zip asset). Only for published extensions. |
 | `entryAssembly` | — | DLL name. **Omit** for UI-only or script extensions. Resolved in the Revit-year subfolder first (`2025\`), then the folder root. |
 | `ui` | — | **Omit** for a command-only extension (callable from JS/MCP but no button). |
@@ -199,6 +211,66 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.button.name` | — | Button label (also the display name). |
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
 | `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
+| `schema` | — | Manifest FORMAT version, not yours. Absent = 1. Set `2` when you use `ui.buttons`. Older schemas keep loading. |
+
+### 3.1 Several buttons — `ui.buttons`
+
+One `ui.button` is right for one surface. An extension with **two** — say a manager window and a
+dockable placement palette — needs `ui.buttons`, because the page to open and whether it docks are
+properties of the SURFACE, not of the extension:
+
+```json
+{
+  "schema": 2,
+  "id": "acme.doors",
+  "version": "1.0.0",
+  "entryAssembly": "Acme.Doors.dll",
+  "ui": {
+    "tab": "AnalyseTool",
+    "panel": "Acme",
+    "buttons": [
+      { "name": "Manager", "entryHtml": "dist/index.html", "icon": "manager.png" },
+      { "name": "Palette", "entryHtml": "dist/palette.html", "dockable": true, "icon": "palette.png" }
+    ]
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `entryHtml` | Page for THIS button. Falls back to `ui.entryHtml`. |
+| `dockable` | Docking for THIS button. Falls back to `ui.dockable`. |
+| `tab` / `panel` | Placement for THIS button. Falls back to `ui.tab` / `ui.panel`. |
+| `order` | Sort order in the panel: lower first; equal values keep declaration order; 0 (unset) goes after every stated value. Applies to large and small buttons alike, across extensions. |
+| `kind` | `push` (default) · `stacked` · `pulldown`. Unknown values fall back to `push`. |
+| `items` | Entries of a `pulldown`. Ignored for other kinds. |
+| `name` / `tooltip` / `icon` / `command` | As in the single-button form. |
+
+**`stacked`** — a small button. The host lays ALL small buttons of a panel into columns of three, the
+shape Revit's own stacked items make — across extensions, ordered by `order`, then extension id,
+then declaration, after the panel's large buttons. So one small button from each of two extensions
+stands in one column, not two. Placement comes from the first entry of a run, because a column
+cannot straddle two panels.
+
+**`pulldown`** — the head opens the list rather than running the first entry. Children behave like
+any button (a page or a `command`) but carry no placement of their own, since they live inside the
+parent.
+
+```json
+"buttons": [
+  { "name": "Manager", "entryHtml": "dist/index.html" },
+  { "name": "Palette", "entryHtml": "dist/palette.html", "dockable": true },
+  { "name": "Rename", "kind": "stacked", "command": "acme.doors.Rename" },
+  { "name": "Purge",  "kind": "stacked", "command": "acme.doors.Purge" },
+  { "name": "Export", "kind": "pulldown", "items": [
+      { "name": "Excel", "command": "acme.doors.ExportExcel" },
+      { "name": "CSV",   "command": "acme.doors.ExportCsv" }
+  ]}
+]
+```
+
+`ui.button` (singular) still works and is still the right choice for one surface — do not rewrite a
+working manifest. Use whichever fits; declaring both is not an error, `ui.buttons` simply wins.
 
 ---
 
@@ -278,7 +350,11 @@ diagnose one without a human copying files.
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
 
-**Body form** — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object:
+**Body form** — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object.
+`System`, `System.Linq`, `System.Collections.Generic`, `Autodesk.Revit.DB` and `Autodesk.Revit.UI`
+are already imported; `using` directives you put on the FIRST lines of the body (before any
+statement) are lifted above the class — `using System.Text;` or `using static System.Math;` work.
+Unqualified `Min(a, b)` is LINQ's, not `Math.Min` — write `Math.Min` or add the static using:
 ```csharp
 var walls = new FilteredElementCollector(doc)
     .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().GetElementCount();
@@ -311,6 +387,25 @@ const { commands } = await window.AT.invoke("GetCommands");
   **rejects** with the error message.
 - Built with a framework: set Vite `base: "./"` (relative assets) and ship `dist` next to `plugin.json`.
 
+### Your page is a separate application
+
+**`window.AT` is the ENTIRE contract.** Your page runs in its own WebView, its own document, its own
+bundle. The host injects the bridge and nothing else: no component library, no theme, no stylesheet,
+no global registrations, no CSS variables.
+
+So the page must bring everything it renders with:
+
+- **import every UI component you use, in the file that uses it.** Do not assume a component is
+  registered globally — a component that is not registered does not throw, it renders *nothing*, and
+  the result is a page that looks half-built with a clean console;
+- **ship your own stylesheet**, including a page background. Without one you inherit the WebView
+  default, which is not the host's;
+- **pick your own theme.** Matching the host visually is fine and welcome — reading its settings is
+  not possible and copying its setup file is a dependency that breaks silently when it changes.
+
+This is the frontend half of the rule the C# side already states: a command sees only the SDK, and a
+page sees only `window.AT`.
+
 ---
 
 ## 7. Deploy & reload
@@ -329,7 +424,7 @@ const { commands } = await window.AT.invoke("GetCommands");
 - The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
   single-year extension works without year folders. Scripts and UI are version-independent and
   always live in the root.
-- Changed code/manifest → **Reload** (AnalyseTool tab → Settings → Reload). No restart.
+- Changed code/manifest → **Reload** (the ribbon button, or inside the Extensions window). No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 
 ### 7.0 Migrating an extension from the OLD layout
@@ -365,6 +460,21 @@ Rules for the conversion — they cover every case:
 Do NOT delete the old folder as part of the migration — leave that to the user; both layouts load,
 so nothing breaks while both exist.
 
+### 7.0a Releasing from GitHub
+
+A C# extension created by the template ships `.github/workflows/ci.yml`. It builds every Revit year
+and, on a `v*` tag, publishes the packed zip as a GitHub Release — the same zip
+`updateFeed` points at, so tagging IS the release:
+
+```
+dotnet build -c Release -t:PackExtension     # the same thing, locally
+git tag v1.0.0 && git push --tags            # and on GitHub, with a Release attached
+```
+
+The tag must match `version` in `plugin.json`; the workflow fails the build otherwise, because a
+mismatch would leave the update badge in the Extensions window permanently wrong. Delete the workflow if you
+distribute another way — nothing else depends on it.
+
 ### 7.1 Publish (optional)
 
 For C# extensions built against the `AnalyseTool.Sdk` NuGet package, the SDK ships the whole
@@ -376,12 +486,16 @@ dotnet build -t:PackExtension
 
 builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
 lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
-and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Settings →
+and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Extensions →
 "Install from file…". Script/UI-only extensions need no build: zip the folder itself.
 
 To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
 git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
 notifications for free:
+
+Once it is published, the repository itself is the install source: users reach it through Extensions
+→ Find extensions (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
+repository into "Install from repository…". Both routes download the zip from your release.
 
 ```yaml
 name: Release
@@ -533,7 +647,7 @@ means the click runs it, and an `InputType` means the click opens the launcher w
 on screen. Another reason a generated command should declare one.
 
 **Where saves land is also the user's call.** With no `targetRoot`, `SaveAsCommand` and
-`SaveExtensionUi` write into the folder chosen in Settings → Extension paths (tagged `scripts`),
+`SaveExtensionUi` write into the folder chosen in Extensions → Folders scanned (tagged `scripts`),
 which is the built-in dev root until the user picks another. Leave `targetRoot` empty unless the user
 names a folder — passing the default explicitly overrides a choice they made on purpose.
 

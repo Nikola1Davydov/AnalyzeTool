@@ -6,7 +6,8 @@ namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Selects the given elements (by id) in the active document. An empty list clears the " +
-                      "selection. Returns { ok, selected, error } — 'selected' is what Revit ended up holding. " +
+                      "selection. Returns { ok, selected, ignoredIds, error } — 'selected' is what Revit ended up " +
+                      "holding, 'ignoredIds' the requested ids that do not exist in the document. " +
                       "Changes the UI selection, not the model. Cheap.",
         InputType = typeof(SelectionInRevit.SelectionPayload),
         OutputType = typeof(SelectionResult))]
@@ -31,8 +32,11 @@ namespace AnalyseTool.Tools.Actions
                 uiDoc.Selection.SetElementIds(elementsIds);
 
                 // Read back instead of returning elementsIds.Count: the request is what was asked for, the
-                // selection is what happened, and those two differ the moment an id has gone stale.
-                return new SelectionResult(true, uiDoc.Selection.GetElementIds().Count, null);
+                // selection is what happened, and those two differ the moment an id has gone stale — and
+                // the stale ones are NAMED, because "selected: 2 of 3" leaves the caller guessing which.
+                ICollection<ElementId> held = uiDoc.Selection.GetElementIds();
+                List<long> ignored = elementsIds.Where(id => !held.Contains(id)).Select(id => id.Value).ToList();
+                return new SelectionResult(true, held.Count, null, ignored.Count == 0 ? null : ignored);
             });
         }
 

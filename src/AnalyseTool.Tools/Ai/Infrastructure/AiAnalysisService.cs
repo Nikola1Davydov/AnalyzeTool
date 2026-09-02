@@ -1,6 +1,5 @@
-﻿using AnalyseTool.Tools.Ai;
+using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using Microsoft.Extensions.AI;
 using OllamaSharp;

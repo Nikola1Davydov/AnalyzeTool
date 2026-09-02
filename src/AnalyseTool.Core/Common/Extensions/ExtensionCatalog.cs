@@ -28,7 +28,10 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>True if the extension contributes commands loadable by THIS host.</summary>
         public bool HasCommands => HasDll || HasScript;
 
-        public bool HasUi => Manifest.Ui?.Button is not null;
+        /// <summary>The extension asks for at least one ribbon entry. Reads EffectiveButtons() rather
+        /// than the singular Button, so both manifest forms answer the same — a manifest using
+        /// ui.buttons was otherwise filtered out of the ribbon and got no buttons at all.</summary>
+        public bool HasUi => Manifest.Ui?.EffectiveButtons().Count > 0;
 
         /// <summary>The ribbon button OPENS THE EXTENSION'S PAGE instead of running one command — the
         /// same test the host applies when it builds the button (RibbonHost.CreateButton), read from the
@@ -39,7 +42,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <para>An extension with no button at all is NOT this: nothing else can reach its commands, so
         /// the launcher is their only door and must keep showing them.</para></summary>
         public bool OpensPage =>
-            Manifest.Ui?.Button is { } button && string.IsNullOrWhiteSpace(button.Command);
+            Manifest.Ui?.EffectiveButtons().Any(b => string.IsNullOrWhiteSpace(b.Command)) == true;
 
         /// <summary>False only when a declared entry assembly has no build for the running Revit
         /// version — such extensions are listed (as incompatible) but never loaded.</summary>

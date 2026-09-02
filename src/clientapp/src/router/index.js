@@ -12,12 +12,6 @@ const routes = [
   { path: "/about", component: () => import("@/view/AboutView.vue") },
   { path: "/parameterFilledEmptyPage", component: () => import("@/view/ParameterFilledEmptyView.vue") },
   { path: "/parametervaluecheck", component: () => import("@/view/ParameterValueCheckView.vue") },
-  { path: "/families", component: () => import("@/view/FamiliesView.vue"), meta: { layout: "bare" } },
-  {
-    path: "/families-dock",
-    component: () => import("@/view/Families/FamilyPaletteView.vue"),
-    meta: { layout: "bare" },
-  },
   { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
@@ -27,8 +21,21 @@ const routes = [
     meta: { layout: "bare" },
   },
   {
+    // The plugin's own preferences — one screen, no tabs. Extensions are a window of their own.
     path: "/system/settings",
-    component: () => import("@/view/System/ExtensionsSettingsView.vue"),
+    component: () => import("@/view/System/SettingsView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
+    // The extension manager: installed, catalog, dev folders.
+    path: "/system/extensions",
+    component: () => import("@/view/System/ExtensionsView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
+    // The "New" ribbon button: a window that is nothing but the create-extension form.
+    path: "/system/new-extension",
+    component: () => import("@/view/System/NewExtensionView.vue"),
     meta: { layout: "bare" },
   },
 ];

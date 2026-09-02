@@ -1,4 +1,4 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -132,14 +132,58 @@ namespace AnalyseTool.Core.Common.Dispatch
         /// every interesting edge uncheckable. The cap now lives with the consumer that wants it —
         /// see <see cref="SchemaListing"/>.</para>
         /// </summary>
-        private static string BuildSchema(Type? type)
+        internal static string BuildSchema(Type? type)
         {
             try
             {
-                if (type != null) return AIJsonUtilities.CreateJsonSchema(type).GetRawText();
+                if (type != null) return RelaxNullableRequired(AIJsonUtilities.CreateJsonSchema(type).GetRawText());
             }
             catch { /* fall through to the empty-object schema */ }
             return SchemaListing.EmptyObject;
+        }
+
+        /// <summary>
+        /// Drops every nullable property from the schema's <c>required</c> lists, recursively.
+        ///
+        /// The generator marks ALL properties required, including a <c>long?</c> or a <c>string?</c>.
+        /// Our results are written by Newtonsoft with <c>NullValueHandling.Ignore</c> on exactly those
+        /// properties, so a null is not "null" on the wire — it is absent. An MCP client that validates
+        /// <c>structuredContent</c> against the advertised outputSchema (the spec says it must) then
+        /// rejects the whole answer: <c>GetElements</c> failed on every input for three weeks with a bare
+        /// "Tool execution failed" (#98), while the very same command ran fine from the WebView, which
+        /// validates nothing. A property that may be null is, by our own serialization rule, a property
+        /// that may be missing — and the schema has to say so.
+        /// </summary>
+        internal static string RelaxNullableRequired(string schemaJson)
+        {
+            JToken root = JToken.Parse(schemaJson);
+            Relax(root);
+            return root.ToString(Newtonsoft.Json.Formatting.None);
+
+            static void Relax(JToken node)
+            {
+                if (node is JObject obj)
+                {
+                    if (obj["required"] is JArray required && obj["properties"] is JObject properties)
+                    {
+                        for (int i = required.Count - 1; i >= 0; i--)
+                        {
+                            string? name = (string?)required[i];
+                            if (name is not null && properties[name] is JObject property && AllowsNull(property))
+                                required.RemoveAt(i);
+                        }
+                        if (required.Count == 0) obj.Remove("required");
+                    }
+                    foreach (JProperty p in obj.Properties()) Relax(p.Value);
+                }
+                else if (node is JArray arr)
+                {
+                    foreach (JToken t in arr) Relax(t);
+                }
+            }
+
+            static bool AllowsNull(JObject property) =>
+                property["type"] is JArray types && types.Any(t => (string?)t == "null");
         }
     }
 

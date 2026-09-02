@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-08-31
+updated: 2026-09-02
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -31,6 +31,39 @@ sources: [../sources/github-issues.md]
 сделать специализированный путь *привлекательнее*, чем и занимается плотный инвентарь;
 см. [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md).
 
+## Второй полевой тест, 2026-09-02: причина #98 найдена — и она не в команде
+
+[`../sources/field-test-2026-09-02.md`](../sources/field-test-2026-09-02.md) повторил падение
+`GetElements` на всех вводах и добавил улику, которой не было в августе: ошибка приходит
+голым «Tool execution failed» **без тела**, тогда как всякая другая ошибка у того же клиента
+показывается с кодом (`[command_failed] …`). Голый текст — это провал на уровне протокола,
+не ответ сервера. Значит exe получил от бриджа *успешный* ответ, и отвергнут он был дальше.
+
+Дальше — валидация. `GetElements` объявляет `OutputType`, exe публикует его как
+`outputSchema` и кладёт ответ в `structuredContent`; клиент по спеке обязан сверить одно с
+другим. Схема из `AIJsonUtilities.CreateJsonSchema` помечает **все** свойства `required`,
+включая `long?`/`string?`; хост же пишет их с `NullValueHandling.Ignore` — то есть при
+`null` поля нет вовсе. Пробник на записи `ElementsResult` показал `required: [… "didYouMean"]`
+при ответе без `didYouMean`. Клиент отверг ответ целиком — три недели «падает на любом вводе»
+при команде, которая ни разу не падала (тот же запрос из WebView и через `ExecuteRevitCode`
+работал: там никто не валидирует).
+
+Починено 2026-09-02 в `CommandDispatcher.BuildSchema`: nullable-свойства исключаются из
+`required` рекурсивно, для всех команд — та же ловушка ждала каждую команду с необязательным
+полем. **Подтверждено вживую в тот же день**: через тот же клиент claude.ai на той же модели
+`GetElements` вернул шесть стен; [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98) закрыт.
+
+Тем же днём закрыт по коду [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97): бридж доходит до корневого исключения,
+отдаёт его тип и сообщение, пишет всю цепочку с именем команды и payload в лог. Улика,
+что это было нужно: утренний лог хоста содержал четыре строки «GetElements invoked via
+mcp» и **ни одной** об ошибке. Проверено нарочно брошенным исключением: клиент получил
+`[command_failed] InvalidOperationException: …`, в логе строка `[ERR] MCP: command
+ExecuteRevitCode failed — …` с payload. [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97) закрыт.
+
+Урок для порядка ниже: #97 всё равно был прав как первый пункт — но причину #98 нашла не
+диагностика, а *форма* ошибки у клиента. Голое «failed» без кода — само по себе сигнал: смотреть
+на путь после бриджа.
+
 ## Дефекты и почему они в таком порядке
 
 **[#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97) первым, всегда.** Одна
@@ -55,7 +88,9 @@ sources: [../sources/github-issues.md]
 падает» это буквально вся существующая информация.
 
 **[#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) — цикл авторства
-нельзя проверить.** После `SaveAsCommand` новая команда зарегистрировалась,
+нельзя проверить.** *Сделано 2026-09-02 (штамп каталога на каждом ответе + фоновый опрос +
+`list_changed`; см. [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md)),
+проверено вживую stdio-клиентом против задеплоенного exe: уведомление пришло раньше ответа на сам `ReloadExtensions`, новый инструмент — в следующем `tools/list`. Закрыт. Оговорка: реагирует ли клиент на уведомление — дело клиента; отложенный индекс инструментов Claude Code в той сессии не обновился.* После `SaveAsCommand` новая команда зарегистрировалась,
 загрузилась и стала вызываемой с ленты и из WebView за секунды — лог это доказывает.
 Устарел только список инструментов у AI-клиента: он получен до того, как команда
 появилась, и ничто не велело его перезапросить. То есть «написать → сохранить →
@@ -65,16 +100,26 @@ sources: [../sources/github-issues.md]
 подсказки `ttlMs` / `cacheScope` из `2026-07-28` могут выйти ещё дешевле.
 
 **[#101](https://github.com/Nikola1Davydov/AnalyzeTool/issues/101) — `using` в форме
-голого тела.** Тело вклеивается в метод, поэтому `using Autodesk.Revit.DB;` разбирается
-как *оператор* `using`. Вызывающий получает двадцать ошибок компилятора на языке
-интерфейса Revit, ни одна из которых не называет причину. Ловить ведущие строки
-`using` и отвечать одним предложением.
+голого тела — закрыт 2026-09-02.** Тело вклеивалось в метод, поэтому `using Autodesk.Revit.DB;`
+разбирался как *оператор* `using`, и вызывающий получал двадцать ошибок компилятора, ни
+одна из которых не называла причину. Сделано больше, чем просил issue: ведущие директивы
+не отвергаются, а поднимаются над сгенерированным классом
+(`RoslynScriptCompiler.LiftLeadingUsings`), каждая оставляет пустую строку, чтобы `#line`
+продолжал указывать на строки автора. Тесты: пять на ярусе 1 (чистая функция и форма
+обёртки), два на ярусе 3 (настоящий Roslyn против живого `RevitAPI`). Остаток из issue —
+`Min`/`Max` как LINQ и язык диагностик — записан в гайд одной фразой, не чинился.
 
-**[#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102),
+**[#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — закрыт 2026-09-02**,
 [#104](https://github.com/Nikola1Davydov/AnalyzeTool/issues/104),
-[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99)** — это задача долгих
+**[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) — закрыт 2026-09-02 вечером** (job в бридже, handle через 60 с,
+`GetJobResult`/`CancelJob`; вместе с #108/#109, #110 закрыт без Tasks из спеки — в SDK их нет) — это задача долгих
 вызовов с трёх сторон; см.
-[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md).
+[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md). Для #102 ответ
+оказался на стороне страницы: хост принимает сообщения WebView на UI-потоке Revit, и пока
+тот занят, опрос не доходит даже до `CommandQueue` — поэтому чинить нечего в хосте.
+`RevitBridge.ts` теперь помнит время отправки каждого вызова (`oldestPendingAge`), а
+`RevitBusyBar.vue` по своему таймеру показывает янтарное «Revit is busy … this window will
+answer when it finishes» после трёх секунд без ответа.
 
 **[#103](https://github.com/Nikola1Davydov/AnalyzeTool/issues/103)** —
 `RemoveDevExtension` оставляет неудаляемые папки `.old` на путях под синхронизацией
@@ -114,14 +159,17 @@ OneDrive. Ничего не ломается; общая папка команд
 
 ## Дефект, которого не было в списке: агент слеп
 
-Заведён [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129).
+Заведён [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129). **Закрыт 2026-09-01 без починки:** `GetFamilyPreview` исчез
+вместе со всем слайсом семейств — Family Manager уехал в расширение (63a1992). Раздел ниже
+остаётся как запись о принципе: любая будущая команда, отдающая картинку, либо шлёт блок
+изображения MCP, либо помечается `HiddenFromMcp` с первого дня.
 
 Найден в комментарии к [#80](https://github.com/Nikola1Davydov/AnalyzeTool/issues/80)
 (25.08.2026) и **подтверждён по коду 2026-08-31**.
 
 `GetFamilyPreview` рендерит PNG-миниатюру и возвращает её строкой
 `"data:image/png;base64," + Convert.ToBase64String(...)`
-(`Families/Features/GetFamilyPreview.cs:61`). Команда **не помечена** `HiddenFromMcp`,
+(`AnalyseTool.FamilyManager/extension/Features/GetFamilyPreview.cs`, после выноса). Команда **не помечена** `HiddenFromMcp`,
 то есть выставлена агенту. А `AnalyseTool.Mcp/Program.cs` умеет собирать только
 `TextContentBlock` (строки 133 и 149) — блока изображения там нет.
 
@@ -133,18 +181,20 @@ OneDrive. Ничего не ломается; общая папка команд
 модели, содержит больше пригодного к действию, чем два десятка вызовов `GetElements`. Для
 ревью вида и для размещения это меняет класс решаемых задач.
 
-## Тесты есть — их просто никто не запускает
+## Тесты есть на ветке — на `dev` их нет, и никто не запускает
 
 Заведено [#128](https://github.com/Nikola1Davydov/AnalyzeTool/issues/128).
 
 К [#105](https://github.com/Nikola1Davydov/AnalyzeTool/issues/105) («тест, который реально
 зовёт каждую MCP-команду»). Комментарий к
 [#70](https://github.com/Nikola1Davydov/AnalyzeTool/issues/70) от 01.08.2026 говорил, что
-размещать такие тесты негде: `AnalyseTool.Test` — один `UnitTest1.cs`, ссылающийся на
+размещать такие тесты негде: `AnalyseTool.RevitTests` — один заглушку UnitTest1 (удалена 2026-09-02, проект пересоздан из revit-tunit), ссылающийся на
 `AnalyseTool.App`, то есть тянущий Revit. **Это устарело.**
 
-**Проверено по коду 2026-08-31:** в `dev` есть `AnalyseTool.Core.Tests` и
-`AnalyseTool.Tools.Tests` — Revit-free по построению, ровно тот дом, которого не хватало.
+**Поправка 2026-09-02:** на `dev` проектов `AnalyseTool.Core.Tests` и `AnalyseTool.Tools.Tests`
+нет — `git ls-files src/AnalyseTool.*.Tests` пуст, на диске только сиротские `bin/obj`. Они живут
+на ветке `claude/pipelines-plan-f8jrgf` вместе с целью `RunTests` (b1ac574): Revit-free по
+построению, ровно тот дом, которого не хватало, — но его ещё надо перенести.
 
 Но настоящая проблема оказалась другой и хуже, и её называет
 [`../sources/pipeline-design-doc.md`](../sources/pipeline-design-doc.md): **CI не запускает
@@ -156,28 +206,41 @@ OneDrive. Ничего не ломается; общая папка команд
 То есть правила привязок движка — то, на чём стоит всё остальное, — не проверялись всё это
 время. Формулировка оттуда точная: **гардрейл, который никто не запускает, не гардрейл.**
 
-## Вопрос протокола, который гейтит часть этого
+## Вопрос протокола, который гейтил часть этого
 
-[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) отслеживает, что
+*[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) закрыт 2026-09-02 вечером: гейт снят, каждая строка его таблицы ушла в свой issue
+(#110, #111, #106, #71) или уже сделана; sampling решён в #133 в пользу provider API.*
+
+[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) отслеживал, что
 меняет спека MCP `2026-07-28`. Два пункта бэклога становятся устаревшими (sampling и
 уведомления логирования — оба уже сделаны рекомендованным способом), один получает
 более дешёвый ответ, и приходит Tasks — та возможность, которую три issue обходили без
-имени. **Гейт-вопрос не отвечен:** поддерживает ли `ModelContextProtocol` 1.3.0,
-закреплённый в `src/Directory.Packages.props`, спеку `2026-07-28`? Пока нет ответа,
-ничего не начинается.
-
-> [!warning] не проверено
-> [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) прямо говорит, что
-> его источник — пересказ *release candidate*, а не финальной спеки, и что
-> `modelcontextprotocol.io` был недоступен из среды написания. Проверять, прежде чем
-> на этом строить.
+имени. **Гейт-вопрос отвечен 2026-09-02 — дважды за день.** Утром: закреплённый
+`ModelContextProtocol` 1.3.0 спеку `2026-07-28` не знал (ревизии в его
+`ModelContextProtocol.Core.xml` — до 2025-11-25, ни `requestState`, ни `ttlMs`, ни
+`cacheScope`), но уже нёс `tasks/get|cancel|list|result`, `McpTaskStatus.InputRequired`,
+`ElicitRequestParams`, `ImageContentBlock`, `ToolListChangedNotification`. Вечером пакет
+поднят до **2.2.0** (dc99dbc, `src/Directory.Packages.props:36`), и его xml
+(`%USERPROFILE%\.nuget\packages\modelcontextprotocol.core.2.0\lib
+et10.0\`) ссылается на
+ревизии 2024-11-05, 2025-01-12, 2025-03-26, 2025-06-18, 2025-11-25 **и 2026-07-28**, а
+`RequestState`, `ttlMs`, `CacheScope` в нём есть. Итог: **гейта больше нет.** На уровне
+API разблокирована вся ветка — [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed, и дешёвый вариант через
+`ttlMs`), ~~[#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) (прогресс, отмена, Tasks)~~ — сделаны 2026-09-02 вечером, Tasks заменены job'ами, elicitation для
+[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106), [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111). Живой запуск на 2.2.0 проверен 2026-09-02:
+exe работал в сессиях весь день и под stdio-тестами яруса 2 (`src/AnalyseTool.Tests/Mcp/`).
 
 Уточнение объёма к [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111): его
 собственный комментарий признаёт, что цитата в теле issue устарела. `GetElements` уже
 завёрнут — `OutputType = typeof(ElementsResult)`, объект, — так что миграция, о которой
 там говорится, для примера из issue уже произошла. **Проверено по коду 2026-08-31:**
 голым массивом возвращает только `GetCategoriesInRevit` (`OutputType = typeof(List<string>)`).
-То есть за задачей стоит одна команда, а не несколько.
+**Поправка 2026-09-02, при сужении issue:** та проверка смотрела не все слайсы — открытых для MCP
+команд с массивом в корне три: `GetCategoriesInRevit`, `GetCadImports` (`List<ImportInfo>`),
+`GetWarningsInRevit` (`List<WarningInRevitModel>`); `GetDataByCategoryName` тоже список, но
+`HiddenFromMcp`. SDK 2.2.0 разрешает не-объектный корень `Tool.OutputSchema` явно (его xml),
+так что #111 теперь — удаление ограничения в `src/AnalyseTool.Mcp/Program.cs` и разворот двух
+тестов яруса 2, без гейта.
 
 Единственный пробел против официального чек-листа безопасности — ограничение частоты
 ([#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)); **проверено по коду
@@ -200,12 +263,14 @@ OneDrive. Ничего не ломается; общая папка команд
    пятиминутный баг вместо угадайки
 3. [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100),
    [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — цикл авторства и UI
-4. вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107),
-   затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
+   (оба закрыты 2026-09-02)
+4. ~~вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)~~ снят,
+   ~~затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
    отмена ([#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109)), Tasks
-   ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))
-5. поля читаемости ([#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113)) —
-   работы по протоколу не требуют, и это блокирующая зависимость модуля проверки
+   ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))~~ — закрыты 2026-09-02 вечером
+5. ~~поля читаемости ([#113](https://github.com/Nikola1Davydov/AnalyzeTool/issues/113))~~ — закрыт 2026-09-02:
+   `builtInCategory`/`levelId` на элементе, `spec`/`unit` у параметров, `categories` в обзоре;
+   ресурсная таблица категорий и метрика «вызовов на задачу» остались в #84
 
 ## Связанное
 

@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Bootstrap;
+﻿using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Sdk;
 
@@ -11,7 +11,7 @@ namespace AnalyseTool.Core.Features.Extensions
     /// </summary>
     [RevitCommand(
         Description = "Returns what AnalyseTool is doing right now: { running: [{ command, source, " +
-                      "seconds }], pendingRevitWork, waitingSeconds, waitingForUser }. waitingForUser=true " +
+                      "seconds, progress?: { fraction, message } }], pendingRevitWork, waitingSeconds, waitingForUser }. waitingForUser=true " +
                       "means Revit cannot execute queued work — the user is in a modal dialog or an edit " +
                       "mode. AI agents: check this before starting heavy commands and wait while busy. " +
                       "Read-only, answers instantly even when Revit is blocked.",
@@ -36,26 +36,37 @@ namespace AnalyseTool.Core.Features.Extensions
                     command = r.Command,
                     source = r.Source,
                     seconds = Math.Round((now - r.StartedUtc).TotalSeconds, 1),
+                    progress = r.Progress is null ? null : new { fraction = r.Progress.Fraction, message = r.Progress.Message },
                 })
                 .ToList();
 
             (int pending, double waitingSeconds, bool executing) = RevitTaskHub.Current?.Status ?? (0, 0, false);
-
-            // Primary signal (the RevitDBExplorer technique): Revit hasn't idled for a while and it's
-            // not OUR work item running → a modal dialog / edit mode / native command holds Revit.
-            // Detected proactively, before anything is even enqueued. The stalled-queue check stays
-            // as a fallback for states where Idling behaves unexpectedly.
-            bool blocked = !executing &&
-                (RevitAvailability.IsRevitBusy ||
-                 (pending > 0 && waitingSeconds > StalledWorkThresholdSeconds));
 
             return new
             {
                 running,
                 pendingRevitWork = pending,
                 waitingSeconds = Math.Round(waitingSeconds, 1),
-                waitingForUser = blocked,
+                waitingForUser = IsBlocked(pending, waitingSeconds, executing),
             };
         }
+
+        /// <summary>The proactive "Revit is held" verdict on its own, for the host's availability watcher
+        /// — it pushes a snapshot the moment this flips, instead of leaving a window to find out on its
+        /// next poll (up to ten seconds in idle).</summary>
+        internal static bool IsBlocked()
+        {
+            (int pending, double waitingSeconds, bool executing) = RevitTaskHub.Current?.Status ?? (0, 0, false);
+            return IsBlocked(pending, waitingSeconds, executing);
+        }
+
+        // Primary signal (the RevitDBExplorer technique): Revit hasn't idled for a while and it's
+        // not OUR work item running → a modal dialog / edit mode / native command holds Revit.
+        // Detected proactively, before anything is even enqueued. The stalled-queue check stays
+        // as a fallback for states where Idling behaves unexpectedly.
+        private static bool IsBlocked(int pending, double waitingSeconds, bool executing) =>
+            !executing &&
+            (RevitAvailability.IsRevitBusy ||
+             (pending > 0 && waitingSeconds > StalledWorkThresholdSeconds));
     }
 }

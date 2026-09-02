@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -71,6 +71,14 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
             string descLiteral = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(
                 string.IsNullOrWhiteSpace(description) ? "Script command." : description!, quote: true);
 
+            // A body that starts with `using X;` meant a DIRECTIVE, not a using statement — and spliced
+            // into a method it becomes the latter, which the compiler reports as twenty errors that never
+            // mention `using` (#101). The directives are lifted above the class, and each one leaves an
+            // empty line behind so the #line mapping below still points at the author's own lines.
+            (IReadOnlyList<string> lifted, string bodyWithoutUsings) = LiftLeadingUsings(body);
+            body = bodyWithoutUsings;
+            string extraUsings = lifted.Count == 0 ? string.Empty : string.Join("\n", lifted) + "\n";
+
             // Built with explicit newlines so the #line directive sits at column 0 and body diagnostics
             // map back to the user's own line numbers (script.cs:1+).
             string header =
@@ -82,7 +90,8 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
                 "using System.Threading.Tasks;\n" +
                 "using Autodesk.Revit.DB;\n" +
                 "using Autodesk.Revit.UI;\n" +
-                "using AnalyseTool.Sdk;\n\n" +
+                "using AnalyseTool.Sdk;\n" +
+                extraUsings + "\n" +
                 "[RevitCommand(Description = " + descLiteral + ")]\n" +
                 "public sealed class Script : IRevitTask\n" +
                 "{\n" +
@@ -99,6 +108,34 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
 
             return header + "#line 1 \"script.cs\"\n" + body + "\n#line default\n" + footer;
         }
+
+        /// <summary>
+        /// Splits the `using` directives an author put at the top of a bare body from the body itself.
+        /// Only the LEADING run counts — blank lines and comments may sit between them, but the first
+        /// statement ends it; a `using (var t = …)` statement further down is code and stays. Every
+        /// lifted line is replaced by an empty one, so line numbers in diagnostics are unchanged.
+        /// Public and pure so the Revit-free tests can hold it to that.
+        /// </summary>
+        public static (IReadOnlyList<string> Usings, string Body) LiftLeadingUsings(string body)
+        {
+            string[] lines = body.Split('\n');
+            List<string> usings = new();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string trimmed = lines[i].TrimEnd('\r').Trim();
+                if (trimmed.Length == 0 || trimmed.StartsWith("//", StringComparison.Ordinal)) continue;
+                if (!UsingDirective.IsMatch(trimmed)) break;
+                usings.Add(trimmed);
+                lines[i] = string.Empty;
+            }
+            return (usings, string.Join("\n", lines));
+        }
+
+        // `using X;`, `using static X.Y;`, `using Alias = X.Y;` — one per line, as an author writes them.
+        // A using STATEMENT has a parenthesis or a declaration after the keyword and does not match.
+        private static readonly System.Text.RegularExpressions.Regex UsingDirective = new(
+            @"^using\s+(static\s+)?[A-Za-z_][\w.]*(\s*=\s*[A-Za-z_][\w.<>,\s]*)?\s*;\s*(//.*)?$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Encoding is required: emitting a PDB for a source whose tree has no encoding fails (CS8055).
         /// <summary>True when the source already declares an IRevitTask class (so it should be saved/compiled
@@ -181,8 +218,31 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
             TryAddByName(refs, "netstandard");
             TryAddByName(refs, "System.Runtime");
 
+            // The wrapper's own header names the Sdk, so the Sdk must be referenced whether or not the
+            // host has touched it yet — the CLR loads assemblies lazily, and a process that compiles a
+            // script before it ever executed one (the in-Revit tests do) had no Sdk in the domain.
+            TryAddAssembly(refs, () => typeof(Sdk.IRevitTask).Assembly);
+            // Same for RevitAPI, resolved the way the runtime resolves it (a typeof, not a name), because
+            // a test host finds it by its own resolver, not by probing. Not RevitAPIUI: inside Revit it is
+            // always loaded already, and the UI-less test engine has none — asking for it there crashes
+            // the host. Outside Revit the typeof throws and the compiler stays usable for what it can do.
+            TryAddAssembly(refs, () => typeof(Autodesk.Revit.DB.Document).Assembly);
+
             _references = refs.Values.ToList();
             return _references;
+        }
+
+        private static void TryAddAssembly(Dictionary<string, MetadataReference> refs, Func<Assembly> load)
+        {
+            try
+            {
+                Assembly assembly = load();
+                string name = assembly.GetName().Name ?? string.Empty;
+                if (refs.ContainsKey(name)) return;
+                if (!assembly.IsDynamic && File.Exists(assembly.Location))
+                    refs[name] = MetadataReference.CreateFromFile(assembly.Location);
+            }
+            catch { /* not loadable in this process — the loaded-assembly scan above is the fallback */ }
         }
 
         private static void TryAddByName(Dictionary<string, MetadataReference> refs, string simpleName)

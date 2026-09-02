@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-08-31
+updated: 2026-09-02
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -17,8 +17,8 @@ MCP-сервер, позволяющий внешнему агенту упра�
 
 ## Каталог инструментов
 
-Снят с живой сессии 2026-08-31. Список генерируется из загруженных команд и растёт с
-установленными расширениями — это снимок, а не контракт.
+Снят с живой сессии 2026-08-31, пересверен с кодом 2026-09-01. Список генерируется из
+загруженных команд и растёт с установленными расширениями — это снимок, а не контракт.
 
 **Попадание в список не означает, что инструмент работает.** `GetElements` — первое, за
 чем тянется агент, — падала на любом вводе всю сессию полевого теста
@@ -32,16 +32,25 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `GetCategoryParameters` · `GetTypeParameters` · `GetViewsAndSheets` · `GetWorksets` ·
 `GetLinksInRevit` · `GetCadImports` · `GetWarningsInRevit`
 
-### Семейства
+### Семейства — группы больше нет
 
-`GetFamilies` · `GetFamilyTypes` · `GetFamilyTypeRows` · `GetFamilyInstances` ·
-`GetInPlaceFamilies` · `GetLibraryFamilies` · `GetFamilyMesh` · `GetFamilyPreview`
+2026-09-01 (63a1992) слайс `Tools/Families` удалён из платформы целиком: Family Manager
+работает как расширение, и его 17 команд (`GetFamilies*`, `GetFamilyMesh`, `GetFamilyPreview`,
+`RenameFamily*`, `LoadLibraryFamilies`, `PlaceFamilyInstance`, `DeleteFamilyElements`,
+`PurgeFamilies`, `PurgeFamilyTypes`, `SetInstancesWorkset`) переехали с ним — в списке
+инструментов они появляются только с установленным расширением, под его префиксом.
+Зарегистрированных команд в платформе сегодня 64 (`[RevitCommand]` по `src`, сверка 2026-09-02),
+из них 39 помечены `HiddenFromMcp` и агенту не видны — см. «Чего агент не видит» ниже.
+`GetWorksets` и `GetTypeParameters` остались: они не про семейства и переехали в `Elements`.
+
+Следствие для вики: всё, что выше и ниже сказано о размещении семейств и о `Destructive`
+на командах Family Manager ([`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md),
+[`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md)),
+теперь относится к расширению, а не к платформе.
 
 ### Запись в модель
 
-`SetDataToParameters` · `SetInstancesWorkset` · `RenameFamily` · `RenameFamilyType` ·
-`LoadLibraryFamilies` · `PlaceFamilyInstance` · `DeleteFamilyElements` ·
-`PurgeFamilies` · `PurgeFamilyTypes` · `SaveAsCommand`
+`SetDataToParameters` · `SaveAsCommand`
 
 ### Состояние вида и сессии
 
@@ -73,6 +82,35 @@ MCP-сервер, позволяющий внешнему агенту упра�
 команды, которая потребляет выбор. Это паттерн для работы, требующей человека в
 контуре: агент просит выбрать в Revit и затем действует по выбранному.
 
+## Чего агент не видит
+
+Правило в `src/AnalyseTool.Mcp.Bridge/McpBridgeServer.cs` одно, `IsAvailableToAi`:
+
+`ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(name))`
+
+`ExposeToMcp` — это `!HiddenFromMcp` из атрибута (`CommandDispatcher.cs`). А переключатель C#
+в Settings прячет **набор**, не один инструмент: `ExecuteRevitCode`, `SaveAsCommand`,
+`GetScriptSource`, `SaveExtensionUi`, `UpdateExtensionManifest`, `ReloadExtensions` — читать
+исходник скрипта значит отдать код с машины пользователя, а перезагрузка — шаг, которым
+написанный код вступает в силу. Выключенный инструмент отвечает `NotAvailable` с подсказкой
+попросить человека, а не «неизвестная команда».
+
+Скрытые 39 (сверка 2026-09-02 по `HiddenFromMcp = true`):
+
+| Группа | Команды |
+| --- | --- |
+| AI-провайдеры и Ollama (`Tools/Ai`) | `AiGetProviders`, `AiSaveProvider`, `AiDeleteProvider`, `AiGetModels`, `OllamaAnalyse`, `OllamaEditParameters`, `OllamaGetModels`, `OllamaSuggestName`, `OllamaSuggestNames`, `OllamaSuggestTemplate` |
+| Управление расширениями (`Core/Features/Extensions`) | пути `GetExtensionPaths`, `AddExtensionPath`, `RemoveExtensionPath`, `SetAuthoringRoot`; обновления `CheckExtensionUpdates`, `UpdateExtension`; каталог `GetExtensionCatalog`; установка `InstallExtensionFromFile`, `InstallExtensionFromSource`; удаление `RemoveExtension`, `RemoveDevExtension`; `SetExtensionEnabled`; форма Edit `GetExtensionManifest`, `EditExtensionManifest`; `CreateExtensionTemplate`, `OpenFolder`, `SetCommandButton`, `GetCommands` |
+| Исполнение кода (`Core/Features/Scripting`) | `GetCodeExecutionStatus`, `SetCodeExecution` — ИИ не может выдать себе право |
+| Сам MCP (`Mcp.Bridge/Features`) | `GetMcpStatus`, `SetMcpServer` |
+| Диалоги и кнопки хоста (`App/Features`) | `BrowseForFile`, `BrowseForFolder`, `PickFolder`, `GetChangelog`, `GetHostButtons`, `SetHostButtonVisible` |
+| Тяжёлый UI-ответ (`Tools/Elements`) | `GetDataByCategoryName` — все параметры каждого элемента; агенту вместо неё `GetElements` / `GetCategoryParameters` |
+
+Видимых остаётся 25, при выключенном переключателе C# — 19. `CheckUpdate`
+(`src/AnalyseTool.App/Features/CheckUpdate.cs`: App, `ReadOnly`, не скрыт) по коду должен быть
+среди них, но в каталоге, снятом с живой сессии выше, его нет — **проверить вживую**, попадает
+ли он в `tools/list`.
+
 ## Что бридж делает для вызывающего, который угадывает
 
 Два файла существуют только потому, что вызывающий — языковая модель:
@@ -95,6 +133,42 @@ MCP-сервер, позволяющий внешнему агенту упра�
 только человеку — `SetCodeExecution` сам помечен `HiddenFromMcp`, так что ИИ не может
 выдать себе право исполнять код. Единственный пробел — **ограничение частоты**: нет
 ничего.
+
+## Исполняемый файл: самодостаточный
+
+С 2026-09-02 `mcp\AnalyseTool.Mcp.exe` публикуется как один self-contained файл (win-x64,
+single-file, сжатый, ~36 МБ) — `PluginAssets.targets` вызывает `Publish`, а не `Build`, и
+передаёт `RuntimeIdentifier`/`SelfContained` параметрами, чтобы ProjectReference на exe (только
+порядок сборки) не упирался в NETSDK1150. Причина: exe запускает клиент ИИ, не Revit, и
+runtime Revit ему недоступен; framework-dependent net8.0 держался на том, что Revit 2025/2026
+ставят .NET 8 сами, а Revit 2027 на net10 этого не гарантирует. Подсмотрено в шаблоне
+`dotnet new mcpserver`; остальное из шаблона (атрибутные инструменты, логи через
+`AddConsole`) нам не подходит, а манифест реестра (server.json в папке .mcp шаблона) + `PackageType=McpServer` — отдельное
+решение о публикации в реестр MCP, рядом с #81/#93. Проверено вживую 2026-09-02: два
+клиентских процесса держат новый exe (36 045 660 байт, собран 11:37), вызовы через него
+проходят.
+
+## Сигналы сервер→клиент: штамп каталога и кадры прогресса
+
+Провод односторонний — соединение на запрос, бридж ничего не инициирует. С 2026-09-02 вечера у
+провода пять глаголов — `invoke`, `list`, `version`, `cancel`, `result` — и внутри соединения
+invoke бридж может слать кадры прогресса до ответа; каждый invoke хранится как job на час, exe
+через 60 с отдаёт handle и добавляет в список два собственных инструмента, `GetJobResult` и
+`CancelJob` (разбор — [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md)).
+Штамп каталога остался как был: с
+2026-09-02 сигнал едет **на ответах**: каждый ответ бриджа (и результат, и ошибка) несёт поле
+`catalog` — счётчик перезагрузок расширений плюс состояние переключателя C#, то есть всё, от
+чего зависит ответ `tools/list`. Отдельный тип запроса `version` отдаёт один штамп без Revit-потока.
+Exe сравнивает штамп после каждого вызова и раз в пять секунд в фоне; при расхождении
+перечитывает список и шлёт клиенту `notifications/tools/list_changed` (`ToolsCapability.ListChanged`
+объявлен). Закрывает [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) — ответ на `SaveAsCommand` сам говорит «список
+изменился» — и две ловушки, которые никакой ответ не принёс бы: клиент подключился раньше
+Revit (пустой список, звать нечего) и Revit перезапущен под живым клиентом. Порядок в exe важен:
+сначала есть ли кому слать, потом перечитывать список — иначе смена штампа глоталась бы молча.
+Проверено вживую 2026-09-02 собственным stdio-клиентом (скрипт: initialize → tools/list →
+ReloadExtensions → ждать): `capabilities.tools.listChanged: true`, штамп `1:1 → 2:1`, уведомление
+пришло до ответа на сам вызов. Мелочь, на которой споткнулся тест: ключ токена в `mcp.json` —
+`Token`, с большой буквы.
 
 ## Транспорт: порт, привязка, второй Revit
 
@@ -123,14 +197,32 @@ MCP-сервер, позволяющий внешнему агенту упра�
 (`CryptographicOperations.FixedTimeEquals`), а пустой настроенный токен означает отказ, а
 не открытую дверь.
 
-## Дыры
+## Блок конфигурации клиента
 
-> [!warning] не проверено
-> Точный блок конфигурации клиента, который выдаёт окно Settings, — в вики не перенесён.
-> Смотреть в `McpServerController.cs` и в UI настроек.
+Проверено по коду 2026-09-01, дыра закрыта. Блок собирает **фронтенд**, не хост:
+`clientConfig` в `src/clientapp/src/view/System/SettingsView.vue` из ответа `GetMcpStatus`
+(`serverExePath`, `port`, `token`). Форма:
+
+```json
+{ "mcpServers": { "analysetool-revit": {
+    "command": "<путь к AnalyseTool.Mcp.exe>",
+    "args": ["--port", "<порт>", "--token", "<токен>"] } } }
+```
+
+Где это в интерфейсе — после разделения настроек 2026-09-01: **Settings → Artificial
+intelligence → External assistant → Connection details** (свёрнуто; порт там же, менять
+можно только при выключенном сервере). Сам сервер включается тумблером на блоке
+«External assistant». Переключатель исполнения C# стоит **внутри того же блока** — по
+построению он относится только к внешнему агенту, встроенный код не исполняет.
+
+Блок намеренно назван «внешний ассистент», а не «MCP server»: в окне настроек рядом стоит
+выбор модели для *другого* направления (плагин как AI-клиент, см.
+[`ollama.md`](ollama.md)), и до разделения пользователь читал их как одну систему — ровно
+путаница, про которую предупреждает [`../overview.md`](../overview.md).
 
 ## Связанное
 
 - [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) — что сломано и в каком порядке чинить
 - [`../concepts/architecture-overview.md`](../concepts/architecture-overview.md) · [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md)
 - [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) · [`../overview.md`](../overview.md)
+- [`extension-manifest.md`](extension-manifest.md) — манифест, из которого растут инструменты расширений · [`ribbon-host.md`](ribbon-host.md) — `ribbon`, третий источник той же очереди

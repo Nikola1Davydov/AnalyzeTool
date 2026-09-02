@@ -1,4 +1,4 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
@@ -39,8 +39,13 @@ namespace AnalyseTool.Core.Common.Dispatch
     /// scheduling, priorities, consent gates and per-source policy can be added in ONE place
     /// without touching any transport. Adding a transport must require zero changes here.
     /// </summary>
-    /// <summary>A command currently executing through the queue (for the busy indicator / MCP).</summary>
-    internal sealed record RunningCommand(long Id, string Command, string Source, DateTime StartedUtc);
+    /// <summary>A command currently executing through the queue (for the busy indicator / MCP).
+    /// <see cref="Progress"/> is the LAST report the command made, null until it made one — so an
+    /// indicator that opens late still shows where the command is.</summary>
+    internal sealed record RunningCommand(long Id, string Command, string Source, DateTime StartedUtc)
+    {
+        public ProgressInfo? Progress { get; init; }
+    }
 
     internal sealed class CommandQueue
     {
@@ -50,6 +55,10 @@ namespace AnalyseTool.Core.Common.Dispatch
         // queue doesn't schedule yet, but the user must be able to see WHY the tool is busy — both
         // in the UI (bottom status bar) and over MCP (an agent checks before piling more work on).
         private readonly System.Collections.Concurrent.ConcurrentDictionary<long, RunningCommand> _running = new();
+        // The cancellation of each run, linked to the transport's own token: a transport cancels its
+        // call through its token, a PERSON cancels it through TryCancel — the activity window's button,
+        // which must work for a call that came over MCP and has no window of its own.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<long, CancellationTokenSource> _cancellations = new();
         private long _nextRunId;
 
         /// <summary>Introspection commands stay out of the registry — a status poll must not make the
@@ -63,6 +72,20 @@ namespace AnalyseTool.Core.Common.Dispatch
 
         /// <summary>Raised (on a worker thread) whenever a command starts or finishes.</summary>
         public event Action? RunningChanged;
+
+        /// <summary>Raised (on the reporting thread) when a running command reports progress. The
+        /// transport's own sink still gets every report; this is the copy for whoever else shows the
+        /// platform's state — the host's activity window, the status snapshot.</summary>
+        public event Action<RunningCommand, ProgressInfo>? ProgressReported;
+
+        /// <summary>Cancels one running command by its run id (from <see cref="Running"/>). True when
+        /// it was running and has been told; the command answers its caller as cancelled.</summary>
+        public bool TryCancel(long runId)
+        {
+            if (!_cancellations.TryGetValue(runId, out CancellationTokenSource? cts)) return false;
+            try { cts.Cancel(); } catch (ObjectDisposedException) { return false; }
+            return true;
+        }
 
         /// <summary>Snapshot of the commands in flight, oldest first.</summary>
         public IReadOnlyList<RunningCommand> Running =>
@@ -104,16 +127,39 @@ namespace AnalyseTool.Core.Common.Dispatch
                 Log.Debug("Command {Command} invoked via {Source}", request.Command, request.Source);
 
             long runId = 0;
+            CancellationToken token = request.CancellationToken;
+            IProgress<ProgressInfo>? progress = request.Progress;
+            CancellationTokenSource? cancellation = null;
             if (track)
             {
                 runId = Interlocked.Increment(ref _nextRunId);
                 _running[runId] = new RunningCommand(runId, request.Command, request.Source, DateTime.UtcNow);
+                cancellation = CancellationTokenSource.CreateLinkedTokenSource(request.CancellationToken);
+                _cancellations[runId] = cancellation;
+                token = cancellation.Token;
+                long id = runId;
+                // Every report goes to the transport's sink AND to the queue's listeners; the last one
+                // is kept on the RunningCommand for an observer that arrives late. Delivered on the
+                // REPORTING thread, not posted: a command inside a Revit transaction reports from the
+                // UI thread it is holding, and that is the one moment an indicator on that thread can
+                // repaint — a posted callback would wait until the transaction ends.
+                progress = new SynchronousProgress(info =>
+                {
+                    request.Progress?.Report(info);
+                    if (_running.TryGetValue(id, out RunningCommand? current))
+                    {
+                        RunningCommand updated = current with { Progress = info };
+                        _running[id] = updated;
+                        try { ProgressReported?.Invoke(updated, info); }
+                        catch (Exception ex) { Log.Warning(ex, "A ProgressReported subscriber threw"); }
+                    }
+                });
                 NotifyRunningChanged();
             }
             try
             {
                 return await _dispatcher
-                    .DispatchAsync(request.Command, request.Payload, request.CancellationToken, request.Progress)
+                    .DispatchAsync(request.Command, request.Payload, token, progress)
                     .ConfigureAwait(false);
             }
             finally
@@ -121,9 +167,20 @@ namespace AnalyseTool.Core.Common.Dispatch
                 if (track)
                 {
                     _running.TryRemove(runId, out _);
+                    _cancellations.TryRemove(runId, out _);
+                    cancellation?.Dispose();
                     NotifyRunningChanged();
                 }
             }
+        }
+
+        /// <summary>IProgress that calls back on the reporting thread — the opposite of Progress&lt;T&gt;,
+        /// which posts to the captured context. Listeners that need another thread marshal themselves.</summary>
+        private sealed class SynchronousProgress : IProgress<ProgressInfo>
+        {
+            private readonly Action<ProgressInfo> _report;
+            public SynchronousProgress(Action<ProgressInfo> report) => _report = report;
+            public void Report(ProgressInfo value) => _report(value);
         }
 
         private void NotifyRunningChanged()

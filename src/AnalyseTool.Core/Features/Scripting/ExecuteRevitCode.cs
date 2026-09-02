@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Extensions;
+﻿using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
@@ -19,16 +19,26 @@ namespace AnalyseTool.Core.Features.Scripting
     /// </summary>
     [RevitCommand(
         Description = "Compiles and runs a C# snippet inside Revit and returns its result. The snippet is " +
-                      "either a bare statement body (with uiapp/uidoc/doc in scope, may 'return' any object) " +
-                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings. " +
+                      "either a bare statement body (with uiapp/uidoc/doc in scope, may 'return' any object; " +
+                      "using directives on its first lines are lifted above the class) " +
+                      "or a full IRevitTask class. For anything that may take more than a few seconds, work in " +
+                      "CHUNKS — one RunInRevitAsync and one Transaction per 50-200 elements, Progress reports " +
+                      "between them (implement IProgressAware in a full class); a single long transaction freezes " +
+                      "Revit, cannot be cancelled and shows no progress. Disabled by default — must be enabled in AnalyseTool Settings. " +
                       "MAY MODIFY the model — what the snippet does is up to the snippet. Cost: Roslyn " +
                       "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
         Destructive = true)] // arbitrary code: assume it can modify the model
-    internal sealed class ExecuteRevitCode : IRevitTask
+    internal sealed class ExecuteRevitCode : IRevitTask, IProgressAware
     {
         /// <summary>Wire/command name — referenced by the MCP bridge to gate this tool's visibility.</summary>
         public const string CommandName = nameof(ExecuteRevitCode);
+
+        /// <summary>The caller's progress sink, handed on to the compiled task below. The dispatcher
+        /// injects it into THIS command; the snippet's own class is created here, out of the
+        /// dispatcher's sight, so without the hand-over a script's Progress was always null — and the
+        /// activity window and the MCP progress notifications had nothing to show for it.</summary>
+        public IProgress<ProgressInfo>? Progress { get; set; }
 
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
@@ -61,6 +71,7 @@ namespace AnalyseTool.Core.Features.Scripting
                     return new { error = "Compiled code contains no IRevitTask." };
 
                 IRevitTask task = (IRevitTask)Activator.CreateInstance(taskType)!;
+                if (task is IProgressAware aware) aware.Progress = Progress;
                 object? result = await task.ExecuteAsync(ctx, ct);
 
                 // Detach the result from the snippet's (anonymous) types into a host-owned JToken BEFORE
@@ -76,7 +87,7 @@ namespace AnalyseTool.Core.Features.Scripting
         internal sealed class Request
         {
             /// <summary>The C# to compile and run — a bare body or a full IRevitTask class.</summary>
-            [Description("The C# to compile and run: either a bare method body or a full IRevitTask class.")]
+            [Description("The C# to compile and run: either a bare method body (leading using directives allowed) or a full IRevitTask class.")]
             public string Code { get; set; } = string.Empty;
 
             /// <summary>Optional description used when a bare body is wrapped into a command.</summary>

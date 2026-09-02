@@ -113,7 +113,27 @@ namespace AnalyseTool.Core.Features.Extensions
                 string gitignorePath = Path.Combine(extensionRoot, ".gitignore");
                 File.WriteAllText(gitignorePath, ReadTemplate(GitignoreResource));
                 filesCreated.Add(gitignorePath);
+
+                // A GitHub workflow that builds every Revit year and publishes the zip on a version
+                // tag. C# flavours only, because PackExtension is an MSBuild target and a script or
+                // UI-only folder has no project for it to run in. Without this an author has
+                // PackExtension locally and nothing that calls it where releases are made — the gap
+                // that turned up the first time this extension pipeline was walked end to end.
+                string workflowDir = Path.Combine(extensionRoot, ".github", "workflows");
+                Directory.CreateDirectory(workflowDir);
+                string workflowPath = Path.Combine(workflowDir, "ci.yml");
+                File.WriteAllText(workflowPath, ReadTemplate(WorkflowResource));
+                filesCreated.Add(workflowPath);
             }
+
+            // README.md — for EVERY flavour. LLM.md answers "how do I write a command"; this answers
+            // "what do I do with the folder", and above all that PUBLISHING MEANS PUSHING A TAG. That
+            // fact lives in the workflow's condition and in the guide, and a person opening the folder
+            // would meet neither. An author who does not know it pushes, sees a green build, finds no
+            // release, and has nothing to tell them why.
+            string readmePath = Path.Combine(extensionRoot, "README.md");
+            File.WriteAllText(readmePath, ReadTemplate(ReadmeResource).Replace("__ExtensionId__", payload.PluginJson.Id ?? safeFolderName));
+            filesCreated.Add(readmePath);
 
             // LLM.md — for EVERY flavour, not just C#: the guide covers C#, script and JS/UI authoring,
             // and a UI-only author needs the AT.invoke contract just as much as a C# author needs
@@ -143,6 +163,8 @@ namespace AnalyseTool.Core.Features.Extensions
         // default "<RootNamespace>.<path>" derivation, which a folder rename would silently change.
         private const string CsprojResource = "AnalyseTool.Core.Templates.Extension.csproj.xml";
         private const string GitignoreResource = "AnalyseTool.Core.Templates.gitignore.txt";
+        private const string WorkflowResource = "AnalyseTool.Core.Templates.workflow.yml.txt";
+        private const string ReadmeResource = "AnalyseTool.Core.Templates.readme.md.txt";
 
         /// <summary>
         /// Template texts are EMBEDDED RESOURCES, not C# string literals. The csproj is then real XML
@@ -293,11 +315,20 @@ namespace AnalyseTool.Core.Features.Extensions
         public string TargetRoot { get; set; } = string.Empty;
     }
 
+    /// <summary>The subset of <see cref="ExtensionManifest"/> a person can sensibly fill in BEFORE the
+    /// extension exists. Everything optional is nullable so an empty field is omitted from the written
+    /// plugin.json (the serializer ignores nulls) instead of landing there as "". Not offered: icon
+    /// (needs a file that is not there yet) and the multi-button form (a template has one button).</summary>
     internal sealed class ExtensionTemplateManifest
     {
         public string Id { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
-        public string EntryAssembly { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Publisher { get; set; }
+        public string? Website { get; set; }
+        public string? SupportUrl { get; set; }
+        public string? UpdateFeed { get; set; }
+        public string? EntryAssembly { get; set; }
         /// <summary>Omitted for "Csharp"-only templates.</summary>
         public ExtensionTemplateUi? Ui { get; set; }
     }
@@ -307,6 +338,8 @@ namespace AnalyseTool.Core.Features.Extensions
         public string EntryHtml { get; set; } = "index.html";
         public string Tab { get; set; } = string.Empty;
         public string Panel { get; set; } = string.Empty;
+        /// <summary>Null (the default) is omitted; only an explicit true is worth writing.</summary>
+        public bool? Dockable { get; set; }
         public ExtensionTemplateButton Button { get; set; } = new();
     }
 

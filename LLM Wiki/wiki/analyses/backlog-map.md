@@ -1,13 +1,13 @@
 ---
 type: analysis
-updated: 2026-08-31
+updated: 2026-09-01
 status: current
 sources: [../sources/github-issues.md]
 ---
 
 # Карта открытого бэклога
 
-63 открытых issue, сгруппированных по тому, о чём они на самом деле, а не по меткам.
+48 открытых issue (снимок 2026-09-01, плюс #133 (план встроенного агента, 2026-09-02), минус #107 (закрыт 2026-09-02 вечером как отслуживший трекер), минус #113 (отгружен целиком в тот же вечер), минус #99/#108/#109/#110 (кластер долгих вызовов, тот же вечер), минус #101 и #102 (закрыты 2026-09-02 вечером), минус #100 и #128 (закрыты 2026-09-02), минус семь закрытых 2026-09-02 по [сверке](audit-2026-09-02.md), минус #97 и #98 — починены и подтверждены вживую в тот же день, минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
 AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
@@ -15,7 +15,7 @@ AI-кластеры развёрнуты в других страницах ви
 
 | Кластер | Issue | Где |
 | --- | --- | --- |
-| Дефекты и протокол MCP | 83–85, 97–113, 128, 129 | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
+| Дефекты и протокол MCP | 83–85, 99, 101–113 (97, 98, 100, 128 закрыты 2026-09-02; 129 — команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
 | Агент и где он крутится | 80, 115–118 | [`agent-hosting.md`](agent-hosting.md), [`../concepts/proactivity-budget.md`](../concepts/proactivity-budget.md) |
 | Безопасность и одобрение | 88, 106, 123, 126 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 | Лента, карточки, порог | 79, 80, 116, 118, 122, 126 | [`../concepts/inbox-and-cards.md`](../concepts/inbox-and-cards.md) |
@@ -66,8 +66,33 @@ issue. Ниже — состав.
   headless-доступ. Всё спроектированное читается без Revit, поэтому сервис над папкой
   может отвечать из Teams или чата. Коммерческая суть: вопрос «какое состояние проекта»
   задаёт не моделлер, а руководитель, у которого нет лицензии Revit.
+  Комментарий 2026-09-01 добавил ярусы: **вики — на проект, шаблон — на бюро, харнес — на
+  установку**, отсюда изоляция контекста между заказчиками и расписание посещений
+  ([`agent-hosting.md`](agent-hosting.md)).
 - **[#126](https://github.com/Nikola1Davydov/AnalyzeTool/issues/126)** — обратная петля:
   комментарий → карточка → применение → исход → кандидат в правило.
+
+Заведены после снимка тел и известны вики **только по ссылкам** из комментариев к
+[#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119) (2026-09-01):
+
+- **[#131](https://github.com/Nikola1Davydov/AnalyzeTool/issues/131)** — worker: консолидация трёх ролей (наблюдатель #124, индексатор #56, ответчик
+  #125). Архитектурное требование, которое надо поймать до кода: **движок правил — библиотека
+  без Revit API**, один движок и два исполнителя (плагин против живой модели, worker против
+  снапшотов); форматы папки — wire-контракт в дисциплине `McpWire`.
+- **[#132](https://github.com/Nikola1Davydov/AnalyzeTool/issues/132)** — ACC / Autodesk Platform Services. Интеграция отложена сознательно, но четыре шва
+  закладываются сейчас: хранилище за интерфейсом (SMB · OneDrive · ACC Docs), AECDM как третья
+  подложка `GetDataInventory`, «находка → внешняя система» как порт (BCF · ACC Issues · Teams),
+  версионированные форматы папки. AEC Data Model API уже в GA — элементы и параметры облачных
+  моделей без плагина и без Revit; мутации в бете.
+
+Тела приехали снимком 2026-09-02 и добавили к пересказу выше три вещи: worker — это обычная
+консольная служба .NET, **один на бюро**, родственник `AnalyseTool.Mcp.exe` (второй процесс без
+Revit, только долгоживущий и по расписанию), необязательный для плагина и не наш облачный сервис;
+размещение движка правил — решение зависимостного контракта (строка в таблицу `CLAUDE.md` +
+`src/build/Check-Boundaries.ps1`, как для всех); листинг в экосистеме APS назван каналом
+дистрибуции к бюро, которые уже платят за облако. Куда легло:
+[`../entities/project-folder.md`](../entities/project-folder.md) (бэкенды и форматы папки),
+[`checking-module.md`](checking-module.md) (движок без Revit API, CDE как порт).
 
 ## AI-фичи, не покрытые выше
 
@@ -113,6 +138,10 @@ issue. Ниже — состав.
   с полуавтоматическим разрешением.
 - **[#45](https://github.com/Nikola1Davydov/AnalyzeTool/issues/45)** — подсказка-призрак
   для имён. Маленькая, и единственное место, где порог прерывания соблюдён от рождения.
+- **[#133](https://github.com/Nikola1Davydov/AnalyzeTool/issues/133)** — встроенный агент, план принят 2026-09-02: цикл с инструментами через
+  `CommandQueue` (механизм в Core, проводка в App), чат в док-панели, эскалация = смена провайдера
+  на облачный по ключу пользователя; sidecar не строится. Разбор —
+  [`built-in-agent-plan.md`](built-in-agent-plan.md).
 - **[#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90)–[#92](https://github.com/Nikola1Davydov/AnalyzeTool/issues/92)**
   — конвейеры. [#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90) даёт MCP
   то, чего у него нет: способ заморозить сработавшую цепочку и повторить её без LLM.
@@ -141,12 +170,11 @@ issue. Ниже — состав.
 
 ## Платформа, не AI
 
-[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста
-(заведён 2026-08-31, разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
-[#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних ·
-[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений ·
+~~[#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) версия схемы манифеста~~ — закрыт 2026-09-01, отгружен (e1ded76; разбор — [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md)) ·
+~~[#48](https://github.com/Nikola1Davydov/AnalyzeTool/issues/48) распространение сторонних~~ (закрыт 2026-09-02; остатки в #72 и #87) ·
+~~[#64](https://github.com/Nikola1Davydov/AnalyzeTool/issues/64) менеджер расширений~~ (закрыт 2026-09-02, отгружен) ·
 [#72](https://github.com/Nikola1Davydov/AnalyzeTool/issues/72) лицензирование ·
-[#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) реестр ·
+[#76](https://github.com/Nikola1Davydov/AnalyzeTool/issues/76) реестр (половина «Available» есть как каталог в плагине; открыт вопрос, нужен ли отдельный репозиторий) ·
 [#81](https://github.com/Nikola1Davydov/AnalyzeTool/issues/81) публикация SDK ·
 [#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87) цепочка поставки ·
 [#93](https://github.com/Nikola1Davydov/AnalyzeTool/issues/93) путь публикации ·

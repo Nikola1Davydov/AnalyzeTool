@@ -1,4 +1,4 @@
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using System.Collections.Concurrent;
 
 namespace AnalyseTool.Core.Common.Dispatch
@@ -57,9 +57,18 @@ namespace AnalyseTool.Core.Common.Dispatch
             return tcs.Task;
         }
 
+        /// <summary>Raised on the Revit thread right before a work item runs — the last moment anything
+        /// can be painted before a long command holds that thread. The host's activity indicator shows
+        /// itself here rather than on a timer, because a timer never fires once the thread is held
+        /// (a warm compile reached the Revit thread in under half a second, and the window scheduled
+        /// for 0.6 s never came).</summary>
+        public static event Action? WorkStarting;
+
         public void Execute(UIApplication app)
         {
             Volatile.Write(ref _executing, true);
+            try { WorkStarting?.Invoke(); }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "A WorkStarting subscriber threw"); }
             try
             {
                 while (_queue.TryDequeue(out Action<UIApplication>? item))

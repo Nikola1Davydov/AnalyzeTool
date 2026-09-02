@@ -1,4 +1,4 @@
-using AnalyseTool.App.Common.Dispatch;
+﻿using AnalyseTool.App.Common.Dispatch;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Sdk;
 using Microsoft.Web.WebView2.Core;
@@ -42,6 +42,10 @@ namespace AnalyseTool.App.Common.Transport
             _attached.TryRemove(this, out _);
         }
 
+        /// <summary>How many windows/panes are attached right now — the activity indicator shows a
+        /// window's own calls only when no window is left to show them.</summary>
+        public static int AttachedCount => _attached.Count;
+
         /// <summary>Pushes an Event to EVERY attached window/pane (e.g. "QueueChanged"). Safe from any
         /// thread — posting marshals to each WebView's dispatcher.</summary>
         public static void BroadcastEvent(string name, object? payload = null)
@@ -54,6 +58,15 @@ namespace AnalyseTool.App.Common.Transport
         {
             WebViewMessage? request = JsonConvert.DeserializeObject<WebViewMessage>(args.WebMessageAsJson);
             if (request == null) return;
+
+            // Ping is answered here and now: this handler runs on the WebView's UI thread — Revit's — so
+            // reaching this line IS the fact the page is asking about. Nothing to enqueue, nothing to log:
+            // one of these arrives every tenth of a second from every open window.
+            if (string.Equals(request.Type, WebMessageTypeEnum.Ping.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                Post(JsonConvert.SerializeObject(new WebViewMessage { Type = "Pong", Command = "Ping", Id = request.Id }));
+                return;
+            }
 
             // Cancel carries no work of its own: it names an id and returns. The command it interrupts
             // still answers through the normal path, so there is exactly one way a call finishes.

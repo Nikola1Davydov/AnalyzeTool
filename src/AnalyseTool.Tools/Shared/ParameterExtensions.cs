@@ -1,6 +1,5 @@
 ﻿using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using System.Globalization;
@@ -83,6 +82,37 @@ namespace AnalyseTool.Tools.Shared
         {
             ForgeTypeId unitTypeId = GetProjectUnitTypeId(parameter);
             return unitTypeId == null ? value : UnitUtils.ConvertToInternalUnits(value, unitTypeId);
+        }
+
+        /// <summary>
+        /// What a parameter's value MEANS: its spec ("length", "area", "angle", "number", "string"…) and,
+        /// for a measurable spec, the document's display unit for it ("millimeters", "squareMeters"…) — which
+        /// is the unit every value this assembly reads or writes is expressed in (see GetDoubleParameterValue).
+        /// An agent seeing "Höhe": "2400" had nothing that said millimetres; now it has (#113). Both are the
+        /// short form of Revit's ForgeTypeId ("autodesk.spec.aec:length-2.0.0" → "length"), language-independent.
+        /// Unit is null for a non-measurable spec; spec is null only when the definition carries no data type.
+        /// </summary>
+        public static (string? Spec, string? Unit) DescribeUnits(this Parameter parameter)
+        {
+            ForgeTypeId? specTypeId = parameter.Definition?.GetDataType();
+            if (specTypeId == null || string.IsNullOrEmpty(specTypeId.TypeId)) return (null, null);
+            string spec = ShortForgeId(specTypeId);
+            if (!UnitUtils.IsMeasurableSpec(specTypeId)) return (spec, null);
+            ForgeTypeId? unit = parameter.Element.Document.GetUnits().GetFormatOptions(specTypeId)?.GetUnitTypeId();
+            return (spec, unit == null || string.IsNullOrEmpty(unit.TypeId) ? null : ShortForgeId(unit));
+        }
+
+        /// <summary>"autodesk.spec.aec:length-2.0.0" → "length"; "autodesk.spec:spec.string-2.0.0" → "string";
+        /// "autodesk.unit.unit:millimeters-1.0.1" → "millimeters". The part after the last ':' up to the
+        /// version, minus the "spec." prefix the plain data types carry.</summary>
+        internal static string ShortForgeId(ForgeTypeId id)
+        {
+            string s = id.TypeId;
+            int colon = s.LastIndexOf(':');
+            if (colon >= 0) s = s[(colon + 1)..];
+            int dash = s.IndexOf('-');
+            if (dash > 0) s = s[..dash];
+            return s.StartsWith("spec.", StringComparison.Ordinal) ? s[5..] : s;
         }
 
         private static ForgeTypeId GetProjectUnitTypeId(Parameter parameter)

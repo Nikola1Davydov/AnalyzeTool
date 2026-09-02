@@ -1,0 +1,15 @@
+{
+  "$comment": "The curated list of extension repositories shown in Settings -> Catalog. Shipped with the plugin; users and companies can add their own entries in catalog.json inside the AnalyseTool profile folder, using the same shape (an entry with an existing id replaces the shipped one). AnalyseTool is only the courier - packages are always downloaded from the publisher own release.",
+  "entries": [
+    {
+      "id": "analysetool.family-manager",
+      "name": "Family Manager",
+      "publisher": "AnalyseTool",
+      "description": "Family palette, library browser, batch renaming, purging and placement. The families feature of AnalyseTool, shipped as a separate open-source extension.",
+      "source": "github:Nikola1Davydov/AnalyseTool.FamilyManager",
+      "website": "https://github.com/Nikola1Davydov/AnalyseTool.FamilyManager",
+      "license": "Apache-2.0",
+      "tags": ["families", "official"]
+    }
+  ]
+}

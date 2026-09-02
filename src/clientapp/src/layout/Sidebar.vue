@@ -11,7 +11,6 @@ const menuItems = [
   { label: "Parameter Empty Check", icon: "pi pi-home", to: "/parameterFilledEmptyPage" },
   { label: "Parameter Value Check", icon: "pi pi-check-square", to: "/parametervaluecheck" },
   // { label: "Document Health", icon: "pi pi-heart", to: "/documenthealth" },
-  // { label: "Families", icon: "pi-objects-column", to: "/families" },
   // { label: "ConnectParameters", icon: "pi pi-info-circle", to: "/connectParameters" },
   { label: "About", icon: "pi pi-info-circle", to: "/about" },
 ];

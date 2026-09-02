@@ -14,14 +14,17 @@ namespace AnalyseTool.Tools.Elements
                 .Select(vp => vp.ViewId)
                 .ToHashSet();
 
+            // OfClass(View) also yields the sheets (a ViewSheet is a View) and Revit's own browser
+            // pseudo-views ("Projektansicht", "Systembrowser"), neither of which is a view a person would
+            // list — they came back as views and were counted twice or puzzled over (field test 2026-09-02).
             List<View> views = new FilteredElementCollector(doc)
                 .OfClass(typeof(View))
                 .Cast<View>()
-                .Where(v => !v.IsTemplate)
+                .Where(v => !v.IsTemplate && v is not ViewSheet && IsRealView(v.ViewType))
                 .ToList();
 
             List<ViewInfo> viewInfos = views
-                .Select(v => new ViewInfo(v.Id.Value, v.Name, viewsOnSheets.Contains(v.Id)))
+                .Select(v => new ViewInfo(v.Id.Value, v.Name, v.ViewType.ToString(), viewsOnSheets.Contains(v.Id)))
                 .ToList();
 
             List<SheetInfo> sheets = new FilteredElementCollector(doc)
@@ -32,12 +35,19 @@ namespace AnalyseTool.Tools.Elements
 
             return new ViewsAndSheetsResult(viewInfos, sheets);
         }
+
+        private static bool IsRealView(ViewType type) => type switch
+        {
+            ViewType.ProjectBrowser or ViewType.SystemBrowser or ViewType.Internal or ViewType.Undefined => false,
+            _ => true,
+        };
     }
 
     // camelCase spelled out so the published OutputType schema matches what Newtonsoft actually writes.
     public sealed record ViewInfo(
         [property: JsonProperty("id")] long Id,
         [property: JsonProperty("name")] string Name,
+        [property: JsonProperty("viewType")] string ViewType,
         [property: JsonProperty("isOnSheet")] bool IsOnSheet);
 
     public sealed record SheetInfo(

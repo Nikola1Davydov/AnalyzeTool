@@ -1,0 +1,98 @@
+name: Build & Release
+
+# The author loop in one file: build the extension for every Revit year and — on a version tag —
+# publish the zip as a GitHub Release. That zip is what `updateFeed` in plugin.json points at, so
+# this workflow is the delivery mechanism, not a convenience.
+#
+# Delete it if you distribute some other way; nothing else depends on it.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only by default. Only the release job asks for write, and only when a tag triggered it.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build + pack
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # net8.0-windows for Revit 2025/2026, net10.0-windows for 2027 — PackExtension builds all
+      # three, so both SDKs must be present.
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      # Only if this extension ships a framework UI. A page built by hand needs no build step, and
+      # the condition keeps one template working for both.
+      - name: Build UI
+        if: hashFiles('ui/package-lock.json') != ''
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pack extension
+        run: dotnet build -c Release -t:PackExtension
+
+      # A tag that disagrees with the manifest would publish a zip whose name and whose updateFeed
+      # version do not match, and the update badge in Settings would misfire ever after.
+      - name: Tag must match plugin.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $manifest = (Get-Content plugin.json -Raw | ConvertFrom-Json).version
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          if ($manifest -ne $tag) {
+            throw "Tag $tag does not match plugin.json version $manifest. Bump the manifest or retag."
+          }
+          Write-Output "Version $manifest matches the tag."
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # the only place this workflow writes anything
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-zip
+          path: dist
+
+      # gh is preinstalled on the runner. Using it instead of a third-party release action keeps the
+      # supply chain to actions GitHub itself publishes.
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.zip \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes

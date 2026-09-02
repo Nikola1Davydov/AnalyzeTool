@@ -1,23 +1,23 @@
 ﻿using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Ai;
-using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
-using Autodesk.Revit.DB;
+using AnalyseTool.Tools.Ai;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
-using ParameterUtils = Autodesk.Revit.DB.ParameterUtils;
 
 namespace AnalyseTool.Tools.Actions
 {
     [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
                       "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }. " +
-                      "Returns { ok, written, skipped, warnings: [{ description, elementIds }] } — 'skipped' counts " +
-                      "items whose element or parameter was not found, was read-only, or that the mode filtered out. " +
-                      "Parameter ids come from GetCategoryParameters. Cost: one transaction over the given " +
-                      "items.",
+                      "Returns { ok, written, skipped, warnings: [{ description, elementIds }], problems: [{ elementId, " +
+                      "parameterId, reason }] } — 'skipped' counts items whose element or parameter was not found, " +
+                      "was read-only, could not take the value, or that the mode filtered out; 'problems' names the " +
+                      "ones that failed with a reason. One bad item never fails the batch: the others are written " +
+                      "and committed. Parameter ids come from GetCategoryParameters ('id'); a numeric value is taken " +
+                      "in the document unit that command reports as 'unit' (2400 means 2400 mm on a metric model, " +
+                      "not feet). Cost: one transaction " +
+                      "over the given items.",
         Destructive = true,
         InputType = typeof(SetDataToParameters.SetDataToParametersDto),
         OutputType = typeof(SetDataResult))]
@@ -29,90 +29,20 @@ namespace AnalyseTool.Tools.Actions
             if (list == null)
                 return Task.FromResult<object?>(new SetDataResult(false, 0, 0, "Empty payload.", Array.Empty<TransactionWarning>()));
 
+            // The command is the shell; the write itself is ParameterWriteService, a function of the
+            // Document — testable inside Revit without a UIApplication.
+            List<ParameterWriteService.Item?> items = list.Items
+                .Select(i => i is null ? null : new ParameterWriteService.Item(i.ElementId, i.Id, i.Value))
+                .ToList();
+            ParameterWriteService.Mode mode = list.Mode switch
+            {
+                SetDataMode.OnlyIfEmpty => ParameterWriteService.Mode.OnlyIfEmpty,
+                SetDataMode.SkipIfEqual => ParameterWriteService.Mode.SkipIfEqual,
+                _ => ParameterWriteService.Mode.Overwrite,
+            };
+
             return ctx.RunInRevitAsync<object?>(app =>
-            {
-                Document doc = app.ActiveUIDocument.Document;
-
-                using Transaction transaction = new Transaction(doc, "Set data to parameters");
-                transaction.Start();
-                // Without this a Revit warning raises a MODAL dialog on the Revit thread and the whole
-                // platform waits for a click that, in a batch, nobody is there to give.
-                CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
-
-                int written = 0, skipped = 0;
-                foreach (SetParamItem parameterData in list.Items)
-                {
-                    if (parameterData == null) { skipped++; continue; }
-                    if (SetData(doc, parameterData, list.Mode)) written++;
-                    else skipped++;
-                }
-
-                transaction.Commit();
-
-                // Counted and reported rather than silently dropped: an unattended caller has no other
-                // way to learn that 40 of its 500 writes never landed.
-                return new SetDataResult(true, written, skipped, null, failures.Warnings);
-            });
-        }
-
-        /// <summary>Returns true when the value was actually written; false when the element or parameter
-        /// was not found, the parameter is read-only, or <paramref name="mode"/> filtered the write out.</summary>
-        private bool SetData(Document doc, SetParamItem parameterData, SetDataMode mode)
-        {
-            Element revitElement = doc.GetElement(new ElementId(parameterData.ElementId));
-            if (revitElement == null) return false;
-
-            Parameter? parameter = null;
-
-            if (ParameterUtils.IsBuiltInParameter(new ElementId(parameterData.Id)))
-            {
-                BuiltInParameter builtInParameter = (BuiltInParameter)parameterData.Id;
-                parameter = revitElement.get_Parameter(builtInParameter);
-            }
-            else
-            {
-                foreach (Parameter elementParameter in revitElement.Parameters)
-                {
-                    if (elementParameter?.Id != null && elementParameter.Id.Value == parameterData.Id)
-                    {
-                        parameter = elementParameter;
-                        break;
-                    }
-                }
-
-                if (parameter == null)
-                {
-                    ParameterElement? parameterElement = doc.GetElement(new ElementId(parameterData.Id)) as ParameterElement;
-                    Definition? definition = parameterElement?.GetDefinition();
-
-                    if (definition != null)
-                    {
-                        parameter = revitElement.get_Parameter(definition);
-                    }
-                }
-            }
-
-            if (parameter == null || parameter.IsReadOnly) return false;
-
-            return SetData(parameter, parameterData.Value, mode);
-        }
-
-        /// <summary>Returns false when <paramref name="mode"/> filtered the write out — the caller counts
-        /// that as skipped, not written. These modes are also what makes a node re-runnable: a pipeline
-        /// run is not atomic, so a mutating step must tolerate the state having moved under it.</summary>
-        private bool SetData(Parameter parameter, string value, SetDataMode mode)
-        {
-            switch (mode)
-            {
-                case SetDataMode.Overwrite:
-                    break;
-                case SetDataMode.OnlyIfEmpty when parameter.HasValue:
-                    return false;
-                case SetDataMode.SkipIfEqual when parameter.GetParameterValue() == value:
-                    return false;
-            }
-            parameter.SetParameterValue(value);
-            return true;
+                new ParameterWriteService().Write(app.ActiveUIDocument.Document, items, mode));
         }
 
         internal sealed record SetDataToParametersDto()

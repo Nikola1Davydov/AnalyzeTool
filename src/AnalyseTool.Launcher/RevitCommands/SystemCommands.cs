@@ -1,24 +1,9 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
 namespace AnalyseTool.Launcher.RevitCommands
 {
-    /// <summary>Ribbon "Family Control" button — opens the family browser/QC window.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class FamilyControlCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("OpenFamilyControl", commandData.Application);
-    }
-
-    /// <summary>Ribbon "Palette" button — shows the dockable family placement palette.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class FamilyPaletteCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("ShowFamilyPalette", commandData.Application);
-    }
 
     /// <summary>Ribbon "Scripts" button — shows the dockable launcher listing every registered command.</summary>
     [Transaction(TransactionMode.Manual)]
@@ -28,12 +13,28 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("ShowScriptLauncher", commandData.Application);
     }
 
-    /// <summary>Ribbon "Settings" button — shows where extensions live and how to add them.</summary>
+    /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
             => App.InvokeRibbon("OpenSettings", commandData.Application);
+    }
+
+    /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class ExtensionsCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenExtensions", commandData.Application);
+    }
+
+    /// <summary>Ribbon "New" button — a small window with the create-extension form.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class NewExtensionCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenNewExtension", commandData.Application);
     }
 
     /// <summary>Ribbon "Reload" button — reloads extensions.</summary>

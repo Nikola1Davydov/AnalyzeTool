@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
 
@@ -28,6 +28,8 @@
     <ItemGroup>
         <!-- The host bootstrap starts the controller and registers this assembly's commands. -->
         <InternalsVisibleTo Include="AnalyseTool.App" />
+        <!-- PayloadValidator and NearestName under test without Revit. -->
+        <InternalsVisibleTo Include="AnalyseTool.Tests" />
     </ItemGroup>
 
 </Project>

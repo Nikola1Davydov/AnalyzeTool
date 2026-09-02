@@ -1,6 +1,5 @@
 ﻿using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
-using AnalyseTool.Tools.Families;
 using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using System.Globalization;
@@ -147,7 +146,9 @@ namespace AnalyseTool.Tools.Elements
                     Id = el.Id.Value,
                     Name = el.Name,
                     Category = el.Category?.Name ?? string.Empty,
+                    BuiltInCategory = BuiltInName(el.Category),
                     Level = doc.GetElement(el.LevelId)?.Name ?? string.Empty,
+                    LevelId = el.LevelId == ElementId.InvalidElementId ? null : el.LevelId.Value,
                     IsType = el is ElementType,
                     FamilyId = familyId,
                     FamilyName = familyName,
@@ -256,13 +257,32 @@ namespace AnalyseTool.Tools.Elements
             return null;
         }
 
+        /// <summary>The AI-facing form of <see cref="GetCategoryParameterInfos"/>: resolves the category
+        /// the same way GetElements does (builtInCategory first, localised name second) and answers with
+        /// an object that can say "no such category" — the bare list could only be empty, which reads
+        /// exactly like a category without parameters.</summary>
+        public CategoryParametersResult GetCategoryParameters(Document doc, ElementQuery query)
+        {
+            Category? match = ResolveRequestedCategory(doc, query, out string? error, out List<string>? didYouMean);
+            if (match == null)
+                return new CategoryParametersResult(query.Category, query.BuiltInCategory, 0,
+                    Array.Empty<CategoryParameterInfo>(), error, didYouMean);
+
+            List<CategoryParameterInfo> parameters = GetCategoryParameterInfos(doc, match).ToList();
+            return new CategoryParametersResult(match.Name, match.BuiltInCategory.ToString(), parameters.Count,
+                parameters, null, null);
+        }
+
         /// <summary>Discovery: parameter names available on a category, sampled from a representative
         /// element (instance + its type). Lets AI callers learn which parameterNames to request.</summary>
         public IEnumerable<CategoryParameterInfo> GetCategoryParameterInfos(Document doc, string category)
         {
             Category? match = ResolveCategory(doc, category);
-            if (match == null) return new List<CategoryParameterInfo>();
+            return match == null ? new List<CategoryParameterInfo>() : GetCategoryParameterInfos(doc, match);
+        }
 
+        private static IEnumerable<CategoryParameterInfo> GetCategoryParameterInfos(Document doc, Category match)
+        {
             BuiltInCategory bic = match.BuiltInCategory;
             Element? sample = new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType().FirstElement()
                            ?? new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsElementType().FirstElement();
@@ -285,6 +305,15 @@ namespace AnalyseTool.Tools.Elements
         private Category? ResolveCategory(Document doc, string category) =>
             GetModelCategories(doc).FirstOrDefault(x => x.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>"OST_Walls" for a built-in category, null for anything else — the enum name is the
+        /// language-independent id; a value the enum does not define has no name to give.</summary>
+        private static string? BuiltInName(Category? category)
+        {
+            if (category == null) return null;
+            BuiltInCategory bic = category.BuiltInCategory;
+            return bic == BuiltInCategory.INVALID || !Enum.IsDefined(typeof(BuiltInCategory), bic) ? null : bic.ToString();
+        }
+
         private static Dictionary<string, string> ExtractParameters(Element el, HashSet<string> wanted)
         {
             Dictionary<string, string> pars = new();
@@ -304,10 +333,16 @@ namespace AnalyseTool.Tools.Elements
             {
                 string name = p.Definition?.Name ?? string.Empty;
                 if (name.Length == 0 || map.ContainsKey(name)) continue;
+                bool builtIn = ParameterUtils.IsBuiltInParameter(p.Id);
+                (string? spec, string? unit) = p.DescribeUnits();
                 map[name] = new CategoryParameterInfo
                 {
+                    Id = p.Id.Value,
+                    BuiltInParameter = builtIn ? ((BuiltInParameter)p.Id.Value).ToString() : null,
                     Name = name,
                     StorageType = p.StorageType.ToString(),
+                    Spec = spec,
+                    Unit = unit,
                     IsReadOnly = p.IsReadOnly,
                     IsType = isType
                 };
