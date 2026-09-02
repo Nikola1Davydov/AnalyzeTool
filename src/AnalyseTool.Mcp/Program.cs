@@ -15,9 +15,10 @@ int port = ParsePort(args) ?? AnalyseTool.Mcp.McpWire.DefaultPort;
 // The bridge refuses requests without it; Settings generates the config snippet that supplies it.
 string token = ParseOption(args, "--token") ?? string.Empty;
 // After this many seconds a still-running call is handed back as a job handle instead of being
-// waited for (#99, #110). 0 = wait the whole invoke timeout. Overridable for tests and for clients
-// whose own tool timeout is known to be shorter than the default.
-TimeSpan handleAfter = TimeSpan.FromSeconds(double.TryParse(ParseOption(args, "--handle-after"), out double seconds) ? seconds : 60);
+// waited for (#99, #110). 0 = wait the whole invoke timeout. 40 by default: Claude Code drops a
+// tool call at exactly 60 s (measured), so the handle has to be well inside that. Overridable for
+// tests and for clients whose own timeout is known.
+TimeSpan handleAfter = TimeSpan.FromSeconds(double.TryParse(ParseOption(args, "--handle-after"), out double seconds) ? seconds : 40);
 
 // Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
 // client's MCP server log so it's unambiguous which build is running and which port it targets.
@@ -297,7 +298,16 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
 {
     string? jobId = payload?[JobTools.JobIdField]?.GetValue<string>();
     if (string.IsNullOrWhiteSpace(jobId))
-        return Error($"[{McpWire.Codes.InvalidArguments}] jobId is required — it is the id a running call handed back.");
+    {
+        // No id: the caller lost its handle (a client whose own timeout swallowed the reply, most
+        // likely). The recent calls, newest first, so it can pick the one it meant.
+        JsonNode? jobs = await bridge.ListJobsAsync(ct);
+        string listing = jobs?[McpWire.Jobs]?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "[]";
+        return new CallToolResult
+        {
+            Content = { new TextContentBlock { Text = $"Recent calls, newest first (pass one id as jobId to collect it):\n{listing}" } },
+        };
+    }
     JsonNode? job = await bridge.GetJobResultAsync(jobId, ct);
     string status = job?[McpWire.JobStatus]?.GetValue<string>() ?? McpWire.JobStates.Unknown;
     string? command = job?[McpWire.JobCommand]?.GetValue<string>();
@@ -510,10 +520,10 @@ static class JobTools
                 [JobIdField] = new Dictionary<string, object>
                 {
                     ["type"] = "string",
-                    ["description"] = "The jobId a running call handed back (or that a timeout hint named).",
+                    ["description"] = "The jobId a running call handed back (or that a timeout hint named). " +
+                                       "GetJobResult without it lists the recent calls instead.",
                 },
             },
-            ["required"] = new[] { JobIdField },
         });
         yield return new Tool
         {
@@ -521,7 +531,9 @@ static class JobTools
             Description = $"{GetResult}: Collects the result of a Revit command that was handed back as a running job " +
                           "(a call answering { status: \"running\", jobId }) or whose call timed out. Returns the command's " +
                           "own result once it finished; while it runs, { status: \"running\", seconds } — call again later. " +
-                          "Results are kept for one hour. Read-only, answers instantly even while Revit is busy.",
+                          "Without jobId, lists the recent calls (id, status, command, seconds) — use it when your own " +
+                          "call timed out before the handle arrived. Results are kept for one hour. Read-only, answers " +
+                          "instantly even while Revit is busy.",
             InputSchema = input,
             Annotations = new ToolAnnotations { Title = GetResult, ReadOnlyHint = true },
         };

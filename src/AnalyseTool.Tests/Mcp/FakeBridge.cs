@@ -124,6 +124,19 @@ internal sealed class FakeBridge : IAsyncDisposable
                 if (cancelled) _jobs[id!].Cancellation.Cancel();
                 reply[McpWire.Result] = new JObject { [McpWire.Cancelled] = cancelled };
             }
+            else if (type == McpWire.TypeResult && req[McpWire.List]?.Value<bool>() == true)
+            {
+                reply[McpWire.Result] = new JObject
+                {
+                    [McpWire.Jobs] = new JArray(_jobs.OrderByDescending(j => j.Value.Started).Select(j =>
+                    {
+                        JObject row = j.Value.Describe();
+                        row.Remove(McpWire.JobResult); row.Remove(McpWire.JobError);
+                        row[McpWire.Id] = j.Key;
+                        return row;
+                    })),
+                };
+            }
             else if (type == McpWire.TypeResult)
             {
                 reply[McpWire.Result] = id is not null && _jobs.TryGetValue(id, out Job? job)

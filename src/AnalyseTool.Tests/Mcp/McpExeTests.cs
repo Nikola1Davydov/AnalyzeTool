@@ -173,6 +173,10 @@ public class McpExeTests
         }
         await Assert.That(collected).IsNotNull();
 
+        // A caller that lost the handle finds it in the listing.
+        JObject listing = await exe.RequestAsync("tools/call", new JObject { ["name"] = "GetJobResult", ["arguments"] = new JObject() });
+        await Assert.That((string)listing["content"]![0]!["text"]!).Contains(jobId);
+
         // Nothing to cancel once it is done — and the answer says so instead of pretending.
         JObject cancel = await exe.RequestAsync("tools/call", new JObject { ["name"] = "CancelJob", ["arguments"] = new JObject { ["jobId"] = jobId } });
         await Assert.That((string)cancel["content"]![0]!["text"]!).Contains("\"cancelled\":false");

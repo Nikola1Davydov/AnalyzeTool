@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -38,13 +38,14 @@ internal sealed class RevitBridgeClient
     {
         _port = port;
         _token = token;
-        HandleAfter = handleAfter ?? TimeSpan.FromSeconds(60);
+        HandleAfter = handleAfter ?? TimeSpan.FromSeconds(40);
     }
 
     /// <summary>
     /// How long a call is waited for before it is handed back as a running job. Below the patience of
-    /// the AI clients seen in the field (#99: the call was dropped at four minutes, the work took ten,
-    /// and the answer was lost); zero or negative means "wait the whole InvokeTimeout".
+    /// the AI clients seen in the field: Claude Code drops a tool call at exactly 60 s (measured
+    /// 2026-09-02 — a first version handed back at 60 s and lost the race by a second), and #99's client
+    /// at four minutes. Zero or negative means "wait the whole InvokeTimeout".
     /// </summary>
     public TimeSpan HandleAfter { get; }
 
@@ -128,6 +129,14 @@ internal sealed class RevitBridgeClient
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(8));
         return await SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeResult }, timeout.Token, jobId);
+    }
+
+    /// <summary>The recent calls, newest first — for a caller whose handle never arrived.</summary>
+    public async Task<JsonNode?> ListJobsAsync(CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(8));
+        return await SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeResult, [McpWire.List] = true }, timeout.Token);
     }
 
     /// <summary>Asks the bridge to cancel a running call. True when it was running and has been told.</summary>

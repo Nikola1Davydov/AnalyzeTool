@@ -244,7 +244,7 @@ namespace AnalyseTool.Mcp.Bridge
                 if (string.Equals(type, McpWire.TypeCancel, StringComparison.OrdinalIgnoreCase))
                     return Ok(id, new JObject { [McpWire.Cancelled] = CancelJob(id) });
                 if (string.Equals(type, McpWire.TypeResult, StringComparison.OrdinalIgnoreCase))
-                    return Ok(id, DescribeJob(id));
+                    return Ok(id, req[McpWire.List]?.Value<bool>() == true ? ListJobs() : DescribeJob(id));
 
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
@@ -411,6 +411,24 @@ namespace AnalyseTool.Mcp.Bridge
             if (job.Result is not null) answer[McpWire.JobResult] = job.Result;
             if (job.Error is not null) answer[McpWire.JobError] = job.Error;
             return answer;
+        }
+
+        /// <summary>The recent calls, newest first, without their results — enough to pick the one whose
+        /// handle was lost and ask for it by id.</summary>
+        private JObject ListJobs()
+        {
+            DateTime now = DateTime.UtcNow;
+            JArray jobs = new(_jobs.Values
+                .OrderByDescending(j => j.StartedUtc)
+                .Take(50)
+                .Select(j => new JObject
+                {
+                    [McpWire.Id] = j.Id,
+                    [McpWire.JobStatus] = j.Status,
+                    [McpWire.JobCommand] = j.Command,
+                    [McpWire.JobSeconds] = Math.Round(((j.FinishedUtc ?? now) - j.StartedUtc).TotalSeconds, 1),
+                }));
+            return new JObject { [McpWire.Jobs] = jobs };
         }
 
         /// <summary>Drops finished outcomes past the retention window, and the oldest beyond the cap.</summary>

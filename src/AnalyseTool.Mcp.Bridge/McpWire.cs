@@ -13,7 +13,9 @@
     ///            invoke, on the same connection (#108)
     ///   cancel   { type: "cancel", id: <call id> } on a NEW connection → { result: { cancelled } } (#109)
     ///   result   { type: "result", id: <call id> } → { result: { status, command, seconds, result?, error? } }
-    ///            — the stored outcome of a call whose connection is gone (#99)
+    ///            — the stored outcome of a call whose connection is gone (#99);
+    ///            { type: "result", list: true } → { result: { jobs: [{ id, status, command, seconds }] } }
+    ///            — the recent calls, newest first, for a caller that lost its handle
     ///   list result: { commands: [ { name, source, description, readOnly, destructive,
     ///                                inputSchema, outputSchema } ] }
     ///
@@ -64,6 +66,11 @@
         /// receive it — so a client that gave up at four minutes, or a chat the user closed, can still
         /// collect what Revit finished (#99).</summary>
         public const string TypeResult = "result";
+        /// <summary>On a "result" request: not one call but the recent ones, newest first. A client whose
+        /// own timeout swallowed the handle (a tool call that never returned) has no id to quote — this
+        /// is how it finds it.</summary>
+        public const string List = "list";
+        public const string Jobs = "jobs";
         /// <summary>An interim frame on an invoke's connection: { id, progress: { fraction, message } }.
         /// A frame carrying this field is never the reply; the reader keeps reading.</summary>
         public const string Progress = "progress";
