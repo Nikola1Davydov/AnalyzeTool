@@ -143,7 +143,7 @@ single-file, сжатый, ~36 МБ) — `PluginAssets.targets` вызывает
 runtime Revit ему недоступен; framework-dependent net8.0 держался на том, что Revit 2025/2026
 ставят .NET 8 сами, а Revit 2027 на net10 этого не гарантирует. Подсмотрено в шаблоне
 `dotnet new mcpserver`; остальное из шаблона (атрибутные инструменты, логи через
-`AddConsole`) нам не подходит, а `.mcp/server.json` + `PackageType=McpServer` — отдельное
+`AddConsole`) нам не подходит, а манифест реестра (server.json в папке .mcp шаблона) + `PackageType=McpServer` — отдельное
 решение о публикации в реестр MCP, рядом с #81/#93.
 
 ## Транспорт: порт, привязка, второй Revit

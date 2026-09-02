@@ -1390,5 +1390,5 @@ outputSchema — снята), #97 пишет в лог и отдаёт корн�
 
 Сравнили `dotnet new mcpserver` (34 строки) с нашим exe. Взято: self-contained single-file
 публикация exe (см. [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md)).
-Отложено как решение: `.mcp/server.json` и публикация в реестр MCP через NuGet/`dnx`. Не взято:
+Отложено как решение: манифест реестра (server.json в папке .mcp шаблона) и публикация в реестр MCP через NuGet/`dnx`. Не взято:
 атрибутная регистрация инструментов и логирование через `AddConsole`.
