@@ -1371,3 +1371,17 @@ outputSchema — снята), #97 пишет в лог и отдаёт корн�
 `ignoredIds`, виды без листов. #97 и #98 закрыты, открытых 55. Страницы
 [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md) и
 [`sources/field-test-2026-09-02.md`](sources/field-test-2026-09-02.md) поправлены.
+
+## 2026-09-02 — цикл авторства проверен вживую; категории по builtInCategory
+
+`SaveAsCommand` → авто-reload (лог: «Loaded script extension niko.authoring-probe», 88 команд)
+→ вызов `niko.authoring-probe.Ping` напрямую по проводу бриджа вернул заголовок документа.
+Разрыв ровно один и известный: клиент MCP (эта же сессия) новый инструмент не увидел —
+[#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100), `list_changed` не шлётся.
+Пробное расширение удалено, reload сделан.
+
+По просьбе владельца все AI-видимые команды с категорией на входе переведены на
+`builtInCategory`: `GetCategoryParameters` принимает его и отвечает объектом с `error` /
+`didYouMean`; `GetModelOverview` отдаёт `categories[{name, builtInCategory, count}]`;
+`GetCategoriesInRevit` отсылает к нему. `GetDataByCategoryName` (скрыта от ИИ, кормит UI)
+не тронута. Не проверено вживую — деплой ждёт перезапуска Revit.

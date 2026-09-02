@@ -77,6 +77,18 @@ namespace AnalyseTool.Tools.Elements
         public int? Limit { get; init; }
     }
 
+    /// <summary>What GetCategoryParameters answers: the resolved category (both names), its parameters,
+    /// or an error with suggestions — an object for the same three reasons <see cref="ElementsResult"/>
+    /// is one.</summary>
+    public sealed record CategoryParametersResult(
+        [property: JsonProperty("category")] string? Category,
+        [property: JsonProperty("builtInCategory")] string? BuiltInCategory,
+        [property: JsonProperty("count")] int Count,
+        [property: JsonProperty("parameters")] IReadOnlyList<CategoryParameterInfo> Parameters,
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("didYouMean", NullValueHandling = NullValueHandling.Ignore)]
+        IReadOnlyList<string>? DidYouMean);
+
     /// <summary>Parameter metadata for a category (discovery), so AI callers know which
     /// parameter names they can request and whether they are writable.</summary>
     public sealed record CategoryParameterInfo

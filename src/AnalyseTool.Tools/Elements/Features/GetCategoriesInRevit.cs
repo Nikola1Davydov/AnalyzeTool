@@ -6,10 +6,12 @@ using AnalyseTool.Tools.Shared;
 namespace AnalyseTool.Tools.Elements
 {
     [RevitCommand(
-        Description = "Returns the names of all element categories present in the active document. " +
-                      $"Use these names as 'category' in {nameof(GetElements)} and {nameof(GetCategoryParameters)}. " +
-                      "Read-only and cheap — it reads the document's category table, not its elements. " +
-                      "These names are LOCALISED: on a German model the category is 'Wände', not 'Walls'.",
+        Description = "Returns the LOCALISED names of all element categories in the active document " +
+                      "(on a German model 'Wände', not 'Walls'). For commands, prefer the language-" +
+                      $"independent builtInCategory from {nameof(GetModelOverview)}.categories — " +
+                      $"{nameof(GetElements)} and {nameof(GetCategoryParameters)} take it directly and " +
+                      "it never depends on the UI language. Read-only and cheap — it reads the category " +
+                      "table, not the elements.",
         ReadOnly = true,
         OutputType = typeof(List<string>))]
     internal sealed class GetCategoriesInRevit : IRevitTask
