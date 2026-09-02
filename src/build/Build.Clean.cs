@@ -18,7 +18,7 @@ sealed partial class Build
             Project[] excludedProjects =
             [
                 Solution.Delivery._build,
-                Solution.Tests.AnalyseTool_Test,
+                Solution.Tests.AnalyseTool_RevitTests,
             ];
 
             CleanDirectory(ArtifactsDirectory);
