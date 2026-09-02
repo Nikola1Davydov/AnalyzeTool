@@ -11,7 +11,7 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedData", "SharedData\Sh
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{9DFC2C50-AEB9-4324-BC9F-52006BD84037}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.RevitTests", "AnalyseTool.Test\AnalyseTool.RevitTests.csproj", "{161C8DD2-A7A4-4262-9959-819F712E88D9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyseTool.RevitTests", "AnalyseTool.RevitTests\AnalyseTool.RevitTests.csproj", "{161C8DD2-A7A4-4262-9959-819F712E88D9}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "clientapp", "ClientApp\clientapp.esproj", "{24581855-81DC-CBC5-2066-6239B39AC343}"
 EndProject
