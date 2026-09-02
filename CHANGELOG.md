@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.1] / 2026-09-02
 
 - 🧭 **Settings is no longer the extension manager.** The one window that held four tabs — extension lists, catalog, a command reference and the actual preferences — is now three doors on the ribbon, each named for what you do there. **Extensions** installs, updates, creates and removes; **Settings** is one short screen with the AI (model, the C# switch, the MCP connection as one toggle with the port and snippet folded away) and About; **New** is a small window with nothing but the create-extension form. Of the thirty-odd controls the old window showed, four were settings.
 - 🧩 **New extension: the whole manifest, no previews.** The create form asks for description, publisher, website, support link, update feed and — for a page — the ribbon button's tooltip, tab, panel and whether it opens in the dock. The id and tooltip follow the name until you edit them. It no longer asks "page, C# or both?" — every template is page + C#, and whoever knows better deletes a file; the host still accepts the other flavours for agents. The plugin.json and index.html previews are gone: the files are written to disk, where an editor shows them better than a text box did.
