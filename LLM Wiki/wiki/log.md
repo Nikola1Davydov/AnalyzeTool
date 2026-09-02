@@ -1392,3 +1392,10 @@ outputSchema — снята), #97 пишет в лог и отдаёт корн�
 публикация exe (см. [`entities/analysetool-mcp-server.md`](entities/analysetool-mcp-server.md)).
 Отложено как решение: манифест реестра (server.json в папке .mcp шаблона) и публикация в реестр MCP через NuGet/`dnx`. Не взято:
 атрибутная регистрация инструментов и логирование через `AddConsole`.
+
+## 2026-09-02 — живая проверка: self-contained exe и builtInCategory
+
+После пересборки и перезапуска клиента: оба процесса `AnalyseTool.Mcp` — новый одиночный exe
+(36 МБ); `GetModelOverview.categories`, `GetCategoryParameters` по `builtInCategory` и его
+ошибка с `didYouMean` работают через реальный клиент. Записано на страницах MCP-сервера и
+полевого теста.
