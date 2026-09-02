@@ -138,9 +138,10 @@ Revit, только долгоживущий и по расписанию), не
   с полуавтоматическим разрешением.
 - **[#45](https://github.com/Nikola1Davydov/AnalyzeTool/issues/45)** — подсказка-призрак
   для имён. Маленькая, и единственное место, где порог прерывания соблюдён от рождения.
-- **[#133](https://github.com/Nikola1Davydov/AnalyzeTool/issues/133)** — встроенный агент, план принят 2026-09-02: цикл с инструментами через
-  `CommandQueue` (механизм в Core, проводка в App), чат в док-панели, эскалация = смена провайдера
-  на облачный по ключу пользователя; sidecar не строится. Разбор —
+- **[#133](https://github.com/Nikola1Davydov/AnalyzeTool/issues/133)** — встроенный чат по облачному ключу; переписан тем же вечером: цикл с
+  инструментами только для моделей, которые их поддерживают (облачных), локальная модель — чат и
+  детерминированные рецепты, гейт в `CommandQueue`; **после фундамента** — сильный агент с циклом уже
+  есть (внешний MCP-клиент), это продуктовая вещь, не способность. Разбор —
   [`built-in-agent-plan.md`](built-in-agent-plan.md).
 - **[#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90)–[#92](https://github.com/Nikola1Davydov/AnalyzeTool/issues/92)**
   — конвейеры. [#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90) даёт MCP
