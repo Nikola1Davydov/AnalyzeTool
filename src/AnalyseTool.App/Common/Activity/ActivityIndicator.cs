@@ -183,11 +183,29 @@ namespace AnalyseTool.App.Common.Activity
                 // cannot be shown again.
                 Closing += (_, e) => { e.Cancel = true; ActivityIndicator.HideForRun(_runId); };
 
-                // Bottom-right of the work area, where a status strip is expected and no model is hidden.
-                Rect area = SystemParameters.WorkArea;
-                Left = area.Right - Width - 24;
-                Top = area.Bottom - 140;
+                // Centred on Revit's main window: the owner's choice (a corner strip was overlooked).
+                // WPF centres on the interop owner at the first show; later shows recentre by hand,
+                // because Revit may have moved or resized meanwhile.
+                WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                IsVisibleChanged += (_, e) => { if (e.NewValue is true && IsLoaded) CentreOnRevit(); };
             }
+
+            private void CentreOnRevit()
+            {
+                if (!GetWindowRect(Context.UiApplication.MainWindowHandle, out NativeRect owner)) return;
+                DpiScale dpi = VisualTreeHelper.GetDpi(this);
+                double ownerLeft = owner.Left / dpi.DpiScaleX, ownerTop = owner.Top / dpi.DpiScaleY;
+                double ownerWidth = (owner.Right - owner.Left) / dpi.DpiScaleX, ownerHeight = (owner.Bottom - owner.Top) / dpi.DpiScaleY;
+                Left = ownerLeft + (ownerWidth - ActualWidth) / 2;
+                Top = ownerTop + (ownerHeight - ActualHeight) / 2;
+            }
+
+            [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+            private struct NativeRect { public int Left, Top, Right, Bottom; }
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+            private static extern bool GetWindowRect(nint hWnd, out NativeRect rect);
 
             public void Describe(RunningCommand command, double seconds)
             {
