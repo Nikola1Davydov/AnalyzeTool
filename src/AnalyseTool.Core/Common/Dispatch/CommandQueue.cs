@@ -139,8 +139,11 @@ namespace AnalyseTool.Core.Common.Dispatch
                 token = cancellation.Token;
                 long id = runId;
                 // Every report goes to the transport's sink AND to the queue's listeners; the last one
-                // is kept on the RunningCommand for an observer that arrives late.
-                progress = new Progress<ProgressInfo>(info =>
+                // is kept on the RunningCommand for an observer that arrives late. Delivered on the
+                // REPORTING thread, not posted: a command inside a Revit transaction reports from the
+                // UI thread it is holding, and that is the one moment an indicator on that thread can
+                // repaint — a posted callback would wait until the transaction ends.
+                progress = new SynchronousProgress(info =>
                 {
                     request.Progress?.Report(info);
                     if (_running.TryGetValue(id, out RunningCommand? current))
@@ -169,6 +172,15 @@ namespace AnalyseTool.Core.Common.Dispatch
                     NotifyRunningChanged();
                 }
             }
+        }
+
+        /// <summary>IProgress that calls back on the reporting thread — the opposite of Progress&lt;T&gt;,
+        /// which posts to the captured context. Listeners that need another thread marshal themselves.</summary>
+        private sealed class SynchronousProgress : IProgress<ProgressInfo>
+        {
+            private readonly Action<ProgressInfo> _report;
+            public SynchronousProgress(Action<ProgressInfo> report) => _report = report;
+            public void Report(ProgressInfo value) => _report(value);
         }
 
         private void NotifyRunningChanged()

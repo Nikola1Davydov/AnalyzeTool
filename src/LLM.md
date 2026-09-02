@@ -80,6 +80,14 @@ namespace AnalyseTool.Sdk
     // reports reach the AI client as notifications/progress, and a command that runs longer than a
     // minute is handed back to the client as a job it collects with GetJobResult — so report progress:
     // an agent that sees movement waits instead of retrying.
+    //
+    // RULE FOR ANYTHING THAT MAY TAKE MORE THAN A FEW SECONDS: work in CHUNKS. One RunInRevitAsync per
+    // chunk (say 50–200 elements), one Transaction per chunk, Progress?.Report between chunks. A single
+    // RunInRevitAsync holding one transaction for minutes freezes Revit for the person at it, cannot be
+    // cancelled until it ends, and shows no progress; chunks keep Revit responsive, let Cancel act
+    // between them, and cost nothing you cannot undo: wrap the chunks in a TransactionGroup and
+    // Assimilate() it at the end for ONE undo step. (Measured: 7,200 elements in 40-cell chunks took
+    // 131 s with a live window; in one transaction 189 s with Revit frozen throughout.)
     // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
     // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
     public sealed record ProgressInfo(double Fraction, string? Message = null);

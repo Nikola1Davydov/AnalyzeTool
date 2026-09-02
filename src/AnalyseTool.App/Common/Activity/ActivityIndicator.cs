@@ -52,10 +52,46 @@ namespace AnalyseTool.App.Common.Activity
             _queue = queue;
             _dispatcher = Dispatcher.CurrentDispatcher;
             queue.RunningChanged += () => OnUiThread(Refresh);
-            queue.ProgressReported += (_, _) => OnUiThread(Refresh);
+            queue.ProgressReported += OnProgress;
             // Already on the UI thread, by construction: the hub raises it inside the external event.
             RevitTaskHub.WorkStarting += ShowBeforeRevitWork;
         }
+
+        private static DateTime _lastPaint = DateTime.MinValue;
+        private static readonly TimeSpan PaintInterval = TimeSpan.FromMilliseconds(200);
+
+        /// <summary>A progress report. From any other thread it is just a refresh request. From the UI
+        /// thread it is more: the command is INSIDE Revit work (a transaction, most likely) and holding
+        /// the thread — nothing queued will run until it ends, so the window is updated and painted
+        /// right here, in the command's own call, the way Revit's own progress bar does it.</summary>
+        private static void OnProgress(RunningCommand command, ProgressInfo info)
+        {
+            if (_dispatcher is null) return;
+            if (!_dispatcher.CheckAccess()) { _dispatcher.BeginInvoke(Refresh); return; }
+            DateTime now = DateTime.UtcNow;
+            if (now - _lastPaint < PaintInterval) return;
+            _lastPaint = now;
+            try
+            {
+                RunningCommand? current = Relevant();
+                if (current is null || current.Id == _hiddenForRun) return;
+                _busySince ??= now - ShowDelay;
+                ActivityWindow window = _window ??= new ActivityWindow();
+                window.Describe(current, (now - current.StartedUtc).TotalSeconds);
+                if (!window.IsVisible) window.Show();
+                Paint();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Activity indicator failed to paint on progress");
+            }
+        }
+
+        /// <summary>Runs the dispatcher until everything above idle priority — layout, render, this
+        /// window's paint — has been processed, then returns. A nested frame, the same thing Revit's
+        /// own progress bar does; Revit's ribbon is disabled while an API context runs, so the frame
+        /// cannot let a user command in underneath a transaction.</summary>
+        private static void Paint() => _dispatcher?.Invoke(() => { }, DispatcherPriority.ContextIdle);
 
         /// <summary>The Revit thread is about to be taken by a command: show now, delay or not, and
         /// paint before returning — once the work starts nothing renders until it ends. A quick read
@@ -72,9 +108,10 @@ namespace AnalyseTool.App.Common.Activity
                 window.Describe(current, (DateTime.UtcNow - current.StartedUtc).TotalSeconds);
                 if (!window.IsVisible) window.Show();
                 EnsureTimer();
-                // Flush the render queue: a nested dispatcher frame that returns as soon as the
-                // pending Render-priority work — this window's first paint — has run.
-                _dispatcher?.Invoke(() => { }, DispatcherPriority.Render);
+                // The first paint has to happen NOW: Render priority alone left a window frame with a
+                // blank client area (layout had not run yet), so everything down to idle is flushed.
+                Paint();
+                _lastPaint = DateTime.UtcNow;
             }
             catch (Exception ex)
             {

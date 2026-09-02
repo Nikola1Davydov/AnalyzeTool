@@ -21,7 +21,10 @@ namespace AnalyseTool.Core.Features.Scripting
         Description = "Compiles and runs a C# snippet inside Revit and returns its result. The snippet is " +
                       "either a bare statement body (with uiapp/uidoc/doc in scope, may 'return' any object; " +
                       "using directives on its first lines are lifted above the class) " +
-                      "or a full IRevitTask class. Disabled by default — must be enabled in AnalyseTool Settings. " +
+                      "or a full IRevitTask class. For anything that may take more than a few seconds, work in " +
+                      "CHUNKS — one RunInRevitAsync and one Transaction per 50-200 elements, Progress reports " +
+                      "between them (implement IProgressAware in a full class); a single long transaction freezes " +
+                      "Revit, cannot be cancelled and shows no progress. Disabled by default — must be enabled in AnalyseTool Settings. " +
                       "MAY MODIFY the model — what the snippet does is up to the snippet. Cost: Roslyn " +
                       "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
