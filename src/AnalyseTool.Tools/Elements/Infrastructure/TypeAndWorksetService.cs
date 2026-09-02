@@ -1,4 +1,4 @@
-using AnalyseTool.Tools.Shared;
+﻿using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 
@@ -47,7 +47,10 @@ namespace AnalyseTool.Tools.Elements
                 if (p?.Definition is null) continue;
                 string value = ReadParameterValue(type.Document, p);
                 if (string.IsNullOrEmpty(value) && !includeEmpty) continue;
-                list.Add(new FamilyParameterInfo(p.Definition.Name, value));
+                // The id disambiguates: a type can carry two parameters of one name (Kategorie ×2, or the
+                // H/V layout pair Abstand/Layout/Innentyp…), and a name alone cannot say which is which.
+                list.Add(new FamilyParameterInfo(p.Definition.Name, value, p.Id.Value,
+                    ParameterUtils.IsBuiltInParameter(p.Id) ? ((BuiltInParameter)p.Id.Value).ToString() : null));
             }
             return list.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
@@ -78,7 +81,9 @@ namespace AnalyseTool.Tools.Elements
 
     public sealed record FamilyParameterInfo(
         [property: JsonProperty("name")] string Name,
-        [property: JsonProperty("value")] string Value);
+        [property: JsonProperty("value")] string Value,
+        [property: JsonProperty("id")] long Id = 0,
+        [property: JsonProperty("builtInParameter", NullValueHandling = NullValueHandling.Ignore)] string? BuiltInParameter = null);
 
     public sealed record TypeParametersInfo(
         [property: JsonProperty("typeId")] long TypeId,

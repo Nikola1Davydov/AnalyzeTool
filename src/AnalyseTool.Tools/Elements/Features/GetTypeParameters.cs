@@ -1,4 +1,4 @@
-using AnalyseTool.Tools.Shared;
+﻿using AnalyseTool.Tools.Shared;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 
@@ -10,10 +10,11 @@ namespace AnalyseTool.Tools.Elements
     /// round-trip for the whole selection instead of one per type.
     /// </summary>
     [RevitCommand(
-        Description = "Returns the non-empty type parameters (display values) for a batch of family types. " +
-                      "Read-only. Payload: { typeIds: [long] }, ids from GetFamilyTypes or " +
-                      "GetFamilyTypeRows. Returns { types: [{ typeId, parameters: [{ name, value }] }] }. " +
-                      "Cost: reads only the given types — cheap.",
+        Description = "Returns ALL type parameters (display values, empty ones included) for a batch of " +
+                      "element types. Read-only. Payload: { typeIds: [long] } — type ids from GetElements " +
+                      "with elementKind \"types\". Returns { types: [{ typeId, parameters: [{ name, value, id, " +
+                      "builtInParameter }] }] }; 'id' tells two parameters of one name apart and is what " +
+                      "SetDataToParameters takes. Cost: reads only the given types — cheap.",
         ReadOnly = true,
         InputType = typeof(GetTypeParameters.Request),
         OutputType = typeof(TypeParametersResult))]

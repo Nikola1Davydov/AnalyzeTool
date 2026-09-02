@@ -1349,3 +1349,15 @@ dc99dbc поднял `ModelContextProtocol` до 2.2.0, и его xml ссыла
 [`analyses/roadmap.md`](analyses/roadmap.md) (таблица «что не делать» и «чего не делать в
 первые месяцы») и вывод 4 в [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md).
 Открытым остаётся живой запуск exe на новой мажорной версии.
+
+## 2026-09-02 — ingest: второй полевой тест MCP
+
+Отчёт из claude.ai (Revit 2025, немецкий UI) положен в `raw/field-test-2026-09-02.md`,
+страница [`sources/field-test-2026-09-02.md`](sources/field-test-2026-09-02.md). Три бага,
+пять замечаний. Ключевая улика — голое «Tool execution failed» без кода — привела к причине
+[#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98): не команда, а `required` в outputSchema на nullable-полях, которые хост
+опускает. Разбор дописан в [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md).
+В код в тот же день ушли: схема (все команды), #97 (корневое исключение + лог), `id` в
+параметрах категорий и типов, per-item ошибки в `SetDataToParameters`, виды без листов и
+псевдовидов, `ignoredIds` в выделении, имя инструмента в начале описания. Ничего не
+подтверждено вживую — Revit закрыт.

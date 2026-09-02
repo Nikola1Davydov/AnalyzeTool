@@ -25,6 +25,7 @@ updated: 2026-09-02
 | [`sources/pipeline-design-doc.md`](sources/pipeline-design-doc.md) | дизайн конвейеров с ветки — единственный источник с замерами в живом Revit |
 | [`sources/karpathy-llm-wiki-pattern.md`](sources/karpathy-llm-wiki-pattern.md) | паттерн, на котором построена вики, и как мы его адаптировали |
 | [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) | обзор документации репозитория и AI-значимых проектов |
+| [`sources/field-test-2026-09-02.md`](sources/field-test-2026-09-02.md) | второй полевой тест MCP — улика, которая нашла причину #98 |
 
 ## Сущности
 

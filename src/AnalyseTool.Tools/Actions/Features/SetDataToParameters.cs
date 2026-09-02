@@ -1,4 +1,4 @@
-using AnalyseTool.Sdk;
+﻿using AnalyseTool.Sdk;
 using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
 using AnalyseTool.Tools.Shared;
@@ -13,10 +13,12 @@ namespace AnalyseTool.Tools.Actions
     [RevitCommand(
         Description = "Writes values to element parameters (MODIFIES the model, inside a transaction). " +
                       "Payload: { items: [{ elementId, id (parameter id), value }], mode: \"Overwrite\" | \"OnlyIfEmpty\" | \"SkipIfEqual\" }. " +
-                      "Returns { ok, written, skipped, warnings: [{ description, elementIds }] } — 'skipped' counts " +
-                      "items whose element or parameter was not found, was read-only, or that the mode filtered out. " +
-                      "Parameter ids come from GetCategoryParameters. Cost: one transaction over the given " +
-                      "items.",
+                      "Returns { ok, written, skipped, warnings: [{ description, elementIds }], problems: [{ elementId, " +
+                      "parameterId, reason }] } — 'skipped' counts items whose element or parameter was not found, " +
+                      "was read-only, could not take the value, or that the mode filtered out; 'problems' names the " +
+                      "ones that failed with a reason. One bad item never fails the batch: the others are written " +
+                      "and committed. Parameter ids come from GetCategoryParameters ('id'). Cost: one transaction " +
+                      "over the given items.",
         Destructive = true,
         InputType = typeof(SetDataToParameters.SetDataToParametersDto),
         OutputType = typeof(SetDataResult))]
@@ -39,18 +41,32 @@ namespace AnalyseTool.Tools.Actions
                 CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
 
                 int written = 0, skipped = 0;
+                List<WriteProblem> problems = new();
                 foreach (SetParamItem parameterData in list.Items)
                 {
                     if (parameterData == null) { skipped++; continue; }
-                    if (SetData(doc, parameterData, list.Mode)) written++;
-                    else skipped++;
+                    try
+                    {
+                        if (SetData(doc, parameterData, list.Mode)) written++;
+                        else skipped++;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Per item, not per batch: a value that cannot be converted for ONE parameter
+                        // (a string into an ElementId, say) used to throw out of the loop, and the
+                        // transaction never committed — 499 good writes gone for one bad one, with
+                        // nothing saying which. The item is skipped, named, and the batch goes on.
+                        skipped++;
+                        problems.Add(new WriteProblem(parameterData.ElementId, parameterData.Id, ex.Message));
+                    }
                 }
 
                 transaction.Commit();
 
                 // Counted and reported rather than silently dropped: an unattended caller has no other
                 // way to learn that 40 of its 500 writes never landed.
-                return new SetDataResult(true, written, skipped, null, failures.Warnings);
+                return new SetDataResult(true, written, skipped, null, failures.Warnings,
+                    problems.Count == 0 ? null : problems);
             });
         }
 

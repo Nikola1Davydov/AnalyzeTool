@@ -81,6 +81,18 @@ namespace AnalyseTool.Tools.Elements
     /// parameter names they can request and whether they are writable.</summary>
     public sealed record CategoryParameterInfo
     {
+        /// <summary>The id SetDataToParameters takes: a negative BuiltInParameter value, or the
+        /// ParameterElement's ElementId for shared and project parameters. Was missing while the write
+        /// command's description said "ids come from GetCategoryParameters" — the workflow broke in the
+        /// middle and callers dug the id out with ExecuteRevitCode.</summary>
+        [JsonProperty("id")]
+        public long Id { get; init; }
+
+        /// <summary>The BuiltInParameter name (e.g. "ALL_MODEL_INSTANCE_COMMENTS") when the parameter is
+        /// one, else null — language-independent where the name is localised.</summary>
+        [JsonProperty("builtInParameter", NullValueHandling = NullValueHandling.Ignore)]
+        public string? BuiltInParameter { get; init; }
+
         [JsonProperty("name")]
         public string Name { get; init; } = string.Empty;
 

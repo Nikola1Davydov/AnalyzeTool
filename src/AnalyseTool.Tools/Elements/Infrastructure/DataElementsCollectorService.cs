@@ -1,4 +1,4 @@
-using AnalyseTool.Tools.Ai;
+﻿using AnalyseTool.Tools.Ai;
 using AnalyseTool.Tools.Elements;
 using AnalyseTool.Tools.Shared;
 using Autodesk.Revit.DB;
@@ -303,8 +303,11 @@ namespace AnalyseTool.Tools.Elements
             {
                 string name = p.Definition?.Name ?? string.Empty;
                 if (name.Length == 0 || map.ContainsKey(name)) continue;
+                bool builtIn = ParameterUtils.IsBuiltInParameter(p.Id);
                 map[name] = new CategoryParameterInfo
                 {
+                    Id = p.Id.Value,
+                    BuiltInParameter = builtIn ? ((BuiltInParameter)p.Id.Value).ToString() : null,
                     Name = name,
                     StorageType = p.StorageType.ToString(),
                     IsReadOnly = p.IsReadOnly,

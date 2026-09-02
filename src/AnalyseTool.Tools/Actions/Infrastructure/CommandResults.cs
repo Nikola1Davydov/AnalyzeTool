@@ -1,4 +1,4 @@
-using AnalyseTool.Tools.Shared;
+﻿using AnalyseTool.Tools.Shared;
 using Newtonsoft.Json;
 
 namespace AnalyseTool.Tools.Actions
@@ -24,7 +24,17 @@ namespace AnalyseTool.Tools.Actions
         [property: JsonProperty("written")] int Written,
         [property: JsonProperty("skipped")] int Skipped,
         [property: JsonProperty("error")] string? Error,
-        [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning> Warnings);
+        [property: JsonProperty("warnings")] IReadOnlyList<TransactionWarning> Warnings,
+        [property: JsonProperty("problems", NullValueHandling = NullValueHandling.Ignore)]
+        IReadOnlyList<WriteProblem>? Problems = null);
+
+    /// <summary>One item of a parameter batch that was not written, and why. A batch of five hundred
+    /// used to die on its first unconvertible value with the other 499 rolled back; now the item is
+    /// reported here and the rest land.</summary>
+    public sealed record WriteProblem(
+        [property: JsonProperty("elementId")] long ElementId,
+        [property: JsonProperty("parameterId")] long ParameterId,
+        [property: JsonProperty("reason")] string Reason);
 
     /// <summary>Outcome of a temporary isolate in the active view.</summary>
     public sealed record IsolationResult(
@@ -39,5 +49,7 @@ namespace AnalyseTool.Tools.Actions
     public sealed record SelectionResult(
         [property: JsonProperty("ok")] bool Ok,
         [property: JsonProperty("selected")] int Selected,
-        [property: JsonProperty("error")] string? Error);
+        [property: JsonProperty("error")] string? Error,
+        [property: JsonProperty("ignoredIds", NullValueHandling = NullValueHandling.Ignore)]
+        IReadOnlyList<long>? IgnoredIds = null);
 }

@@ -1,4 +1,4 @@
-using AnalyseTool.Core.Common.Dispatch;
+﻿using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Core.Features.Extensions;
 using AnalyseTool.Core.Features.Scripting;
@@ -156,9 +156,10 @@ namespace AnalyseTool.Mcp.Bridge
         private async Task<string> HandleMessageAsync(string message, CancellationToken ct)
         {
             string? id = null;
+            JObject? req = null; // outside the try so the failure log can name the command and payload
             try
             {
-                JObject req = JObject.Parse(message);
+                req = JObject.Parse(message);
                 id = (string?)req[McpWire.Id];
 
                 // Loopback is not an authorization boundary: every process running as this user can
@@ -273,8 +274,27 @@ namespace AnalyseTool.Mcp.Bridge
             }
             catch (Exception ex)
             {
-                return Err(id, McpWire.Codes.CommandFailed, ex.Message);
+                // The exception arrives marshalled off the Revit thread, so the OUTER one is regularly a
+                // wrapper ("One or more errors occurred.") and the sentence that says what broke sits
+                // in InnerException. Walk to the root, log the whole chain, and send the root's type and
+                // message: an error that lives nowhere — not in the reply, not in the log — cost a whole
+                // Revit session per bug to isolate (#97).
+                Exception root = ex;
+                while (root.InnerException is not null) root = root.InnerException;
+                string commandName = (string?)req?[McpWire.Command] ?? "?";
+                Log.Error(ex, "MCP: command {Command} failed — {ExceptionType}: {Message}. Payload: {Payload}",
+                    commandName, root.GetType().Name, root.Message, Abbreviate(req?[McpWire.Payload]));
+                return Err(id, McpWire.Codes.CommandFailed,
+                    $"{root.GetType().Name}: {root.Message}",
+                    ReferenceEquals(root, ex) ? null : $"Outer exception: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        /// <summary>The payload for the log line: enough to reproduce, not enough to flood.</summary>
+        private static string Abbreviate(JToken? payload)
+        {
+            string text = payload?.ToString(Formatting.None) ?? "null";
+            return text.Length <= 500 ? text : text.Substring(0, 500) + "…";
         }
 
         /// <summary>Constant-time token comparison. An empty configured token means the host could not

@@ -1,4 +1,4 @@
-using AnalyseTool.Mcp;
+﻿using AnalyseTool.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -72,9 +72,12 @@ builder.Services
                     Tool tool = new Tool
                     {
                         Name = toolName,
+                        // The name is repeated at the head of the description on purpose: at least one
+                        // client (claude.ai's tool_search) indexes descriptions but not names, so a tool
+                        // asked for by its exact name was not found (field test 2026-09-02).
                         Description = string.IsNullOrWhiteSpace(description)
-                            ? $"Runs the Revit command '{command}' (source: {source})."
-                            : description,
+                            ? $"{toolName}: runs the Revit command '{command}' (source: {source})."
+                            : $"{toolName}: {description}",
                         InputSchema = schema is not null
                             ? schema.Deserialize<JsonElement>()
                             : FreeFormObjectSchema(),
