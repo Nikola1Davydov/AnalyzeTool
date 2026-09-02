@@ -167,19 +167,21 @@ OneDrive. Ничего не ломается; общая папка команд
 меняет спека MCP `2026-07-28`. Два пункта бэклога становятся устаревшими (sampling и
 уведомления логирования — оба уже сделаны рекомендованным способом), один получает
 более дешёвый ответ, и приходит Tasks — та возможность, которую три issue обходили без
-имени. **Гейт-вопрос отвечен 2026-09-02.** `ModelContextProtocol` 1.3.0, закреплённый в
-`src/Directory.Packages.props`, спеку `2026-07-28` **не** поддерживает: в
-`ModelContextProtocol.Core.xml` пакета (`%USERPROFILE%\.nuget\packages\modelcontextprotocol.core\1.3.0\lib\net8.0\`)
-нет ни `requestState`, ни `ttlMs`, ни `cacheScope`, а ревизии протокола, на которые он
-ссылается, — 2024-11-05, 2025-03-26 и 2025-11-25, ни одной 2026 года. Но там уже есть
-`tasks/get|cancel|list|result`, `McpTaskStatus.InputRequired`, `ElicitRequestParams`,
-`ImageContentBlock` и `ToolListChangedNotification`. Значит на уровне API разблокированы
-[#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed),
-[#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110)
-(прогресс, отмена, Tasks) и форма elicitation для
-[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106); ждут только те, кому буквально
-нужна `2026-07-28` — [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)
-(ttl/cacheScope) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111).
+имени. **Гейт-вопрос отвечен 2026-09-02 — дважды за день.** Утром: закреплённый
+`ModelContextProtocol` 1.3.0 спеку `2026-07-28` не знал (ревизии в его
+`ModelContextProtocol.Core.xml` — до 2025-11-25, ни `requestState`, ни `ttlMs`, ни
+`cacheScope`), но уже нёс `tasks/get|cancel|list|result`, `McpTaskStatus.InputRequired`,
+`ElicitRequestParams`, `ImageContentBlock`, `ToolListChangedNotification`. Вечером пакет
+поднят до **2.2.0** (dc99dbc, `src/Directory.Packages.props:36`), и его xml
+(`%USERPROFILE%\.nuget\packages\modelcontextprotocol.core.2.0\lib
+et10.0\`) ссылается на
+ревизии 2024-11-05, 2025-01-12, 2025-03-26, 2025-06-18, 2025-11-25 **и 2026-07-28**, а
+`RequestState`, `ttlMs`, `CacheScope` в нём есть. Итог: **гейта больше нет.** На уровне
+API разблокирована вся ветка — [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed, и дешёвый вариант через
+`ttlMs`), [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) (прогресс, отмена, Tasks), elicitation для
+[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106), [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111). Что не проверено: сборка и
+поведение `AnalyseTool.Mcp` на 2.2.0 в живой сессии — бамп версии ещё не прошёл через
+Revit; мажорная версия означает, что API мог поменяться, и первый запуск это покажет.
 
 Уточнение объёма к [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111): его
 собственный комментарий признаёт, что цитата в теле issue устарела. `GetElements` уже

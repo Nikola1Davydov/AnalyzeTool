@@ -1340,3 +1340,12 @@ MCP разблокирована; удаление Family Manager не разн�
 разом — `order` не входил в сигнатуру кнопки (Reload не перестраивал), крупные кнопки не
 сортировались вовсе, 0 сортировался раньше 1. Починено; правило ранга записано в
 [`entities/ribbon-host.md`](entities/ribbon-host.md).
+
+## 2026-09-02 — поправка: SDK MCP уже 2.2.0
+
+Утренний ответ на гейт-вопрос («1.3.0 спеку 2026-07-28 не знает») устарел в тот же день:
+dc99dbc поднял `ModelContextProtocol` до 2.2.0, и его xml ссылается на `2026-07-28` с
+`RequestState`/`ttlMs`/`CacheScope`. Поправлены [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md),
+[`analyses/roadmap.md`](analyses/roadmap.md) (таблица «что не делать» и «чего не делать в
+первые месяцы») и вывод 4 в [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md).
+Открытым остаётся живой запуск exe на новой мажорной версии.
