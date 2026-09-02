@@ -1,4 +1,5 @@
-﻿using AnalyseTool.Core.Common.Dispatch;
+﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Core.Features.Extensions;
 using AnalyseTool.Core.Features.Scripting;
@@ -33,12 +34,21 @@ namespace AnalyseTool.Mcp.Bridge
         private readonly string _token;
         private TcpListener? _listener;
         private CancellationTokenSource? _cts;
+        // Bumped on every extension reload. Together with the C# switch it is the "catalog stamp":
+        // anything that changes what tools/list would answer changes the stamp (see McpWire.Catalog).
+        private long _catalogVersion;
 
         public McpBridgeServer(CommandQueue queue, string token)
         {
             _queue = queue;
             _token = token ?? string.Empty;
+            CoreServices.ExtensionsReloaded += () => Interlocked.Increment(ref _catalogVersion);
         }
+
+        /// <summary>What the exe compares to learn that its tool list is stale. Reload counter plus the
+        /// C# switch, because the switch hides a whole set of authoring tools without any reload.</summary>
+        private string CatalogStamp =>
+            $"{Interlocked.Read(ref _catalogVersion)}:{(CodeExecutionSettings.Enabled ? 1 : 0)}";
 
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
@@ -140,7 +150,7 @@ namespace AnalyseTool.Mcp.Bridge
                     string? message;
                     while ((message = await ReadJsonAsync(stream, ct).ConfigureAwait(false)) != null)
                     {
-                        string response = await HandleMessageAsync(message, ct).ConfigureAwait(false);
+                        string response = WithCatalog(await HandleMessageAsync(message, ct).ConfigureAwait(false));
                         byte[] bytes = Encoding.UTF8.GetBytes(response);
                         await stream.WriteAsync(bytes, ct).ConfigureAwait(false);
                         await stream.FlushAsync(ct).ConfigureAwait(false);
@@ -172,6 +182,11 @@ namespace AnalyseTool.Mcp.Bridge
                         "--token argument.");
 
                 string type = (string?)req[McpWire.Type] ?? McpWire.TypeInvoke;
+
+                // The stamp alone: the poller's request. No Revit thread, no command — answers in
+                // microseconds, which is what lets the exe ask every few seconds without cost.
+                if (string.Equals(type, McpWire.TypeVersion, StringComparison.OrdinalIgnoreCase))
+                    return Ok(id, new JObject { [McpWire.Catalog] = CatalogStamp });
 
                 if (string.Equals(type, McpWire.TypeList, StringComparison.OrdinalIgnoreCase))
                 {
@@ -337,6 +352,23 @@ namespace AnalyseTool.Mcp.Bridge
 
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
+
+        /// <summary>Adds the catalog stamp to a finished reply. Done once, here, on the way out, so no
+        /// branch of HandleMessageAsync can forget it — an error reply carries it too, and a reply to
+        /// SaveAsCommand is precisely the one that must say "the list just changed".</summary>
+        private string WithCatalog(string response)
+        {
+            try
+            {
+                JObject reply = JObject.Parse(response);
+                reply[McpWire.Catalog] = CatalogStamp;
+                return reply.ToString(Formatting.None);
+            }
+            catch (JsonException)
+            {
+                return response;
+            }
+        }
 
         /// <summary>An error the caller can act on: a code to branch on, a message to read, and — only
         /// when there is something useful to say — what to do about it.</summary>

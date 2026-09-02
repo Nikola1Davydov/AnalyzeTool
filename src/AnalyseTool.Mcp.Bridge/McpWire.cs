@@ -1,4 +1,4 @@
-namespace AnalyseTool.Mcp
+﻿namespace AnalyseTool.Mcp
 {
     /// <summary>
     /// Wire contract of the localhost TCP bridge between the two halves of the MCP subsystem:
@@ -39,6 +39,16 @@ namespace AnalyseTool.Mcp
         // Request types
         public const string TypeInvoke = "invoke";
         public const string TypeList = "list";
+        /// <summary>Asks for nothing but the catalog stamp — the cheapest possible request, for a client
+        /// polling "did the tool set change while I was not looking".</summary>
+        public const string TypeVersion = "version";
+
+        /// <summary>Stamped onto EVERY reply (result and error alike): an opaque string that changes
+        /// whenever the set of commands an AI may call changes — extensions reloaded, the C# switch
+        /// flipped. The exe compares it with the one it listed under and, on a difference, re-lists and
+        /// tells the client (tools/list_changed). It is the only signal that crosses the wire in the
+        /// server→client direction, and it rides on replies because the bridge cannot initiate.</summary>
+        public const string Catalog = "catalog";
 
         // "list" result fields
         public const string Commands = "commands";

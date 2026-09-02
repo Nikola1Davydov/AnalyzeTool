@@ -2,7 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -32,6 +34,16 @@ RevitBridgeClient bridge = new RevitBridgeClient(port, token);
 // concurrent collection is needed — publishing is a single reference assignment.
 IReadOnlyDictionary<string, ToolBinding> toolBindings = new Dictionary<string, ToolBinding>();
 
+// The catalog stamp the current tool list was built under (McpWire.Catalog). When a reply — or the
+// background poll — carries a different one, the list is stale: re-list and tell the client with
+// tools/list_changed. This is #100: a command saved during a session never reached tools/list,
+// because the client fetches the list once, at connect, and nothing told it to fetch again.
+string? listedCatalog = null;
+// The server, for notifications sent outside a request (the poller). Captured from the first
+// request context as a fallback in case DI does not hand it out.
+McpServer? server = null;
+SemaphoreSlim notifyGate = new SemaphoreSlim(1, 1);
+
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // CRITICAL: stdout is the MCP protocol channel — nothing else may write to it. Drop all logging
@@ -42,10 +54,83 @@ builder.Services
     .AddMcpServer(options =>
     {
         options.ServerInfo = new Implementation { Name = "analysetool-revit", Version = "1.0.0" };
+        // Declared so a client knows list_changed notifications are coming and re-lists on them.
+        options.Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } };
     })
     .WithStdioServerTransport()
     .WithListToolsHandler(async (context, ct) =>
     {
+        server ??= context.Server;
+        return await BuildToolListAsync(ct);
+    })
+    .WithCallToolHandler(async (context, ct) =>
+    {
+        server ??= context.Server;
+        string toolName = context.Params?.Name ?? string.Empty;
+        // Unmapped names are forwarded as-is on purpose: a client may call a tool it cached from an
+        // earlier session without listing again in this process, and the map only fills on tools/list.
+        // Safe because the in-Revit bridge — not this process — is the access boundary: it gates every
+        // invoke on the command's own registration (see McpBridgeServer.IsAvailableToAi).
+        IReadOnlyDictionary<string, ToolBinding> bindings = toolBindings; // one read; the field may be replaced mid-call
+        ToolBinding? binding = bindings.TryGetValue(toolName, out ToolBinding? found) ? found : null;
+        string command = binding?.Command ?? toolName;
+        JsonNode? payload = ArgumentsToPayload(context.Params?.Arguments);
+
+        try
+        {
+            JsonNode? result = await bridge.InvokeAsync(command, payload, ct);
+            string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
+
+            // The text block stays unconditionally: it is what every client can read, including the ones
+            // that ignore structured output entirely.
+            CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
+
+            // Structured content ONLY where the tool promised a schema at listing time and the answer
+            // really is an object. Promising a schema and then not delivering is the one way to be worse
+            // than saying nothing, and a JSON array — which several of our commands return — cannot be
+            // structuredContent at all.
+            if (binding is { HasOutputSchema: true } && result is JsonObject resultObject)
+                callResult.StructuredContent = resultObject.Deserialize<JsonElement>();
+
+            // The reply carried the bridge's stamp; a SaveAsCommand reply is the very one that says
+            // "the list just changed", and the client learns it before its next turn.
+            await NotifyIfCatalogChangedAsync(ct);
+            return callResult;
+        }
+        catch (Exception ex)
+        {
+            await NotifyIfCatalogChangedAsync(ct);
+            return new CallToolResult
+            {
+                IsError = true,
+                Content = { new TextContentBlock { Text = Describe(ex) } },
+            };
+        }
+    });
+
+IHost host = builder.Build();
+server ??= host.Services.GetService<McpServer>();
+
+using CancellationTokenSource watcherCts = new CancellationTokenSource();
+Task watcher = WatchCatalogAsync(watcherCts.Token);
+try
+{
+    await host.RunAsync();
+}
+finally
+{
+    watcherCts.Cancel();
+    try { await watcher; } catch { /* cancelled with the host */ }
+}
+
+return;
+
+// ---- helpers ----
+
+// The listing, as a function: tools/list calls it, and so does the catalog watcher when the stamp
+// moved. Not static — it reads the bridge and publishes toolBindings/listedCatalog.
+async Task<ListToolsResult> BuildToolListAsync(CancellationToken ct)
+{
         List<Tool> tools = new List<Tool>();
         Dictionary<string, ToolBinding> bindings = new Dictionary<string, ToolBinding>();
 
@@ -110,56 +195,70 @@ builder.Services
             Console.Error.WriteLine($"[AnalyseTool.Mcp] tools/list failed: {Describe(ex)}");
         }
 
-        // Published only now: until this assignment, callers still see the previous listing whole.
-        toolBindings = bindings;
-        return new ListToolsResult { Tools = tools };
-    })
-    .WithCallToolHandler(async (context, ct) =>
-    {
-        string toolName = context.Params?.Name ?? string.Empty;
-        // Unmapped names are forwarded as-is on purpose: a client may call a tool it cached from an
-        // earlier session without listing again in this process, and the map only fills on tools/list.
-        // Safe because the in-Revit bridge — not this process — is the access boundary: it gates every
-        // invoke on the command's own registration (see McpBridgeServer.IsAvailableToAi).
-        IReadOnlyDictionary<string, ToolBinding> bindings = toolBindings; // one read; the field may be replaced mid-call
-        ToolBinding? binding = bindings.TryGetValue(toolName, out ToolBinding? found) ? found : null;
-        string command = binding?.Command ?? toolName;
-        JsonNode? payload = ArgumentsToPayload(context.Params?.Arguments);
+    // Published only now: until this assignment, callers still see the previous listing whole.
+    toolBindings = bindings;
+    listedCatalog = bridge.LastCatalog;
+    return new ListToolsResult { Tools = tools };
+}
 
+// Re-lists and notifies when the bridge's stamp differs from the one the list was built under.
+// Serialized: a reply and the poller can notice the same change at the same moment, and one
+// notification is what the client needs, not two.
+async Task NotifyIfCatalogChangedAsync(CancellationToken ct)
+{
+    string? current = bridge.LastCatalog;
+    if (current is null || string.Equals(current, listedCatalog, StringComparison.Ordinal)) return;
+    if (!await notifyGate.WaitAsync(0, ct)) return; // someone else is already on it
+    try
+    {
+        if (string.Equals(bridge.LastCatalog, listedCatalog, StringComparison.Ordinal)) return;
+        // Who to tell, BEFORE re-listing: re-listing records the new stamp, and with nobody to notify
+        // that would silently swallow the change — the session that appears later would never hear
+        // of it. Leaving the list stale keeps the difference alive for the next tick.
+        McpServer? target = server;
+        if (target is null)
+        {
+            Console.Error.WriteLine("[AnalyseTool.Mcp] tool set changed, but no session to notify yet");
+            return;
+        }
+        await BuildToolListAsync(ct);
+        await target.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, ct);
+        Console.Error.WriteLine($"[AnalyseTool.Mcp] tool set changed ({listedCatalog}) — sent tools/list_changed");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[AnalyseTool.Mcp] list_changed failed: {ex.Message}");
+    }
+    finally
+    {
+        notifyGate.Release();
+    }
+}
+
+// The watcher for changes no reply will ever carry: a client that connected while Revit was closed
+// holds an empty list and has nothing to call, so no reply would ever bring it the stamp; and a Revit
+// restarted underneath a running client comes back with a fresh catalog. A "version" request is a
+// stamp and nothing else, so asking every few seconds costs nothing measurable.
+async Task WatchCatalogAsync(CancellationToken ct)
+{
+    while (!ct.IsCancellationRequested)
+    {
         try
         {
-            JsonNode? result = await bridge.InvokeAsync(command, payload, ct);
-            string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
-
-            // The text block stays unconditionally: it is what every client can read, including the ones
-            // that ignore structured output entirely.
-            CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
-
-            // Structured content ONLY where the tool promised a schema at listing time and the answer
-            // really is an object. Promising a schema and then not delivering is the one way to be worse
-            // than saying nothing, and a JSON array — which several of our commands return — cannot be
-            // structuredContent at all.
-            if (binding is { HasOutputSchema: true } && result is JsonObject resultObject)
-                callResult.StructuredContent = resultObject.Deserialize<JsonElement>();
-
-            return callResult;
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            await bridge.GetCatalogAsync(ct); // updates bridge.LastCatalog when Revit answers
+            await NotifyIfCatalogChangedAsync(ct);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return new CallToolResult
-            {
-                IsError = true,
-                Content = { new TextContentBlock { Text = Describe(ex) } },
-            };
+            return;
         }
-    });
-
-IHost host = builder.Build();
-await host.RunAsync();
-
-return;
-
-// ---- helpers ----
+        catch
+        {
+            // Revit not there: nothing to compare against; try again next tick.
+        }
+    }
+}
 
 // Identifies the running build: assembly version + the exe/dll build time (changes every rebuild),
 // so the log proves whether a fresh exe was deployed.

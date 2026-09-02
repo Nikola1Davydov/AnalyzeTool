@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -32,6 +32,20 @@ internal sealed class RevitBridgeClient
     {
         _port = port;
         _token = token;
+    }
+
+    /// <summary>The catalog stamp carried by the LAST reply from the bridge (null until one arrived).
+    /// See McpWire.Catalog: the exe compares it with the stamp it listed under.</summary>
+    public string? LastCatalog { get; private set; }
+
+    /// <summary>Asks the bridge for its current catalog stamp and nothing else. Fast to fail: this is
+    /// the poller's request, and an unreachable Revit must not tie it up.</summary>
+    public async Task<string?> GetCatalogAsync(CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(3));
+        JsonNode? result = await SendAsync(new JsonObject { [McpWire.Type] = McpWire.TypeVersion }, timeout.Token);
+        return result?[McpWire.Catalog]?.GetValue<string>();
     }
 
     public async Task<JsonNode?> ListCommandsAsync(CancellationToken ct)
@@ -103,6 +117,10 @@ internal sealed class RevitBridgeClient
 
         string responseText = await ReadJsonAsync(stream, ct);
         JsonNode? node = JsonNode.Parse(responseText);
+        // Taken from every reply, error or not: the stamp says what the command set IS, and a failed
+        // call is as good a messenger as a successful one.
+        if (node?[McpWire.Catalog]?.GetValue<string>() is { Length: > 0 } stamp)
+            LastCatalog = stamp;
         if (node?[McpWire.Error] is JsonNode err)
             throw ToException(err);
         return node?[McpWire.Result]?.DeepClone();
