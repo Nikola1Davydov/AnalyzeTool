@@ -7,7 +7,7 @@
     never touches a Revit type at run time. The plugin projects take the Revit API COMPILE-ONLY through
     the shared props (ExcludeAssets=runtime), so their assemblies load fine without Revit; a test that
     reached a Revit type would fail loudly here — which is the point of the split. Anything that needs a
-    Document lives in AnalyseTool.Test (Nice3point.TUnit.Revit, runs inside Revit, not in CI).
+    Document lives in AnalyseTool.RevitTests (Nice3point.TUnit.Revit, runs inside Revit, not in CI).
 
     TUnit rather than NUnit so that all tiers share one runner: the in-Revit project is TUnit by
     necessity (Nice3point.TUnit.Revit), and two frameworks for one codebase is one too many.

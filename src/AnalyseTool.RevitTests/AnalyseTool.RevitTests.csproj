@@ -8,7 +8,7 @@
     licensed Revit of the selected year. That is why this project is NOT part of the solution build
     and NOT run in CI: run it by hand on a machine with Revit.
 
-        dotnet test ‑‑project src/AnalyseTool.Test/AnalyseTool.Test.csproj -c Debug.R25
+        dotnet test ‑‑project src/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj -c Debug.R25
 
     What belongs here: anything that needs a Document. Tests seed a fresh in-memory model in code
     (Level + walls in a transaction) and exercise the SERVICES the commands delegate to —
@@ -30,7 +30,7 @@
     <Nullable>enable</Nullable>
     <!-- RevitAPI.dll is AMD64; without this MSBuild warns about MSIL vs AMD64 on every build (MSB3270). -->
     <PlatformTarget>x64</PlatformTarget>
-    <!-- Not AnalyseTool.Test: a namespace whose last segment is "Test" shadows HookType.Test in [Before(Test)]. -->
+    <!-- Not AnalyseTool.Test (the old project name): a namespace whose last segment is "Test" shadows HookType.Test in [Before(Test)]. -->
     <RootNamespace>AnalyseTool.RevitTests</RootNamespace>
   </PropertyGroup>
 

@@ -62,7 +62,7 @@ public class SchemaContractTests
                 // A DTO that carries a Revit type (DataElement wraps an Element; the AI analysis request
                 // carries parameter objects) cannot even be instantiated here. That is tier 3 — the
                 // in-Revit project — and the skip says so instead of counting as a contract failure.
-                Skip.Test($"{declaredType.Name} references Revit API types; check it in AnalyseTool.Test (inside Revit).");
+                Skip.Test($"{declaredType.Name} references Revit API types; check it in AnalyseTool.RevitTests (inside Revit).");
                 return;
             }
             ICollection<NJsonSchema.Validation.ValidationError> errors = schema.Validate(json);

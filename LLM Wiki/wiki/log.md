@@ -394,7 +394,7 @@ pull request'ы отфильтрованы.
   невыполненным — `OutputType` встречается в 54 файлах и обеспечивается CI, значит типы
   результата по слайсам сделаны.
 - К [#105](https://github.com/Nikola1Davydov/AnalyzeTool/issues/105) добавлено, что
-  тестировать негде: `AnalyseTool.Test` — один заглушку UnitTest1 (удалена 2026-09-02, проект пересоздан из revit-tunit), ссылающийся на
+  тестировать негде: `AnalyseTool.RevitTests` — один заглушку UnitTest1 (удалена 2026-09-02, проект пересоздан из revit-tunit), ссылающийся на
   `AnalyseTool.App`, то есть тянущий Revit (подтверждено по коду).
 
 Исходная дыра ingest закрыта. Остались: тела закрытых issue и `docs/pipeline-design.md`
@@ -859,7 +859,7 @@ version, so nothing can tell an old plugin.json from a new one».
 проверяют не код.** `TestSdkPackage` собирает `Acme.Sample` против упакованного nupkg,
 `TestExtensionTemplate` проверяет шаблон расширения; обе полезны и обе не юнит-тесты. Список
 целей читается так, будто тесты идут. Предложено заодно переименовать их в `Verify*`, чтобы
-имя перестало обещать лишнее, и решить судьбу `AnalyseTool.Test` — починить или удалить, чтобы
+имя перестало обещать лишнее, и решить судьбу `AnalyseTool.RevitTests` — починить или удалить, чтобы
 название не подразумевало покрытия, которого нет. Критерий готовности: намеренно сломанный
 тест роняет CI.
 
@@ -1416,7 +1416,7 @@ Stdio-клиент против задеплоенного exe: `listChanged` о
 ## 2026-09-02 — тесты: ярус 1 построен, #128 закрыт
 
 Три яруса записаны в `CLAUDE.md` («Testing»): без Revit (`AnalyseTool.Tests`, TUnit, CI на каждый
-пуш), MCP без Revit (фальшивый бридж + exe, следующий шаг), внутри Revit (`AnalyseTool.Test`,
+пуш), MCP без Revit (фальшивый бридж + exe, следующий шаг), внутри Revit (`AnalyseTool.RevitTests`,
 Nice3point.TUnit.Revit, по запросу). Первый ярус готов: 92 теста, среди них контракт схем — для каждой
 объявленной схемы входа/выхода JSON, который пишет хост, обязан ей соответствовать. Мутационная
 проверка: с отключённым ослаблением `required` тест краснеет, то есть #98 он ловит. Три DTO с типами
@@ -1433,11 +1433,11 @@ Revit пропускаются с указанием на ярус 3. Урок �
 
 ## 2026-09-02 — тесты: ярус 3 внутри Revit, план закрыт
 
-`AnalyseTool.Test` пересоздан из `revit-tunit` (Nice3point.Revit.Sdk, конфигурации `Debug.R25`,
+`AnalyseTool.RevitTests` пересоздан из `revit-tunit` (Nice3point.Revit.Sdk, конфигурации `Debug.R25`,
 `Nice3point.TUnit.Revit` плавающей версии по году; из сборки решения исключён). `SeededModel`:
 пустой проект, уровень, четыре стены. Четырнадцать тестов на сервисах — `GetElementSummaries`,
 `GetCategoryParameters`, `GetViewsAndSheets`, `GetTypeParameters`, `ParameterWriteService` (запись
 вынесена из команды ради этого) — прошли в настоящем Revit 2025 за 26 с. Две ловушки по дороге:
-пространство имён `AnalyseTool.Test` затеняет `HookType.Test` в `[Before(Test)]` (шаблонный образец
+пространство имён `AnalyseTool.RevitTests` затеняет `HookType.Test` в `[Before(Test)]` (шаблонный образец
 с именем на `.Test` не компилируется сам), и `TypeAndWorksetService` внутренний — IVT. Итог дня по
 тестам: 92 без Revit в CI + 6 MCP по stdio + 14 в Revit по запросу.

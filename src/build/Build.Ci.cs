@@ -27,7 +27,7 @@ sealed partial class Build
     AbsolutePath SampleProject => RootDirectory / "samples" / "Acme.Sample" / "Acme.Sample.csproj";
 
     /// <summary>The Revit-free test projects — the ones a CI runner without Revit can execute. The
-    /// in-Revit project (AnalyseTool.Test) is deliberately not here; it needs a licensed Revit.</summary>
+    /// in-Revit project (AnalyseTool.RevitTests) is deliberately not here; it needs a licensed Revit.</summary>
     AbsolutePath[] TestProjects =>
     [
         RootDirectory / "src" / "AnalyseTool.Tests" / "AnalyseTool.Tests.csproj",
