@@ -1,4 +1,4 @@
-<Project Sdk="Nice3point.Revit.Sdk/6.2.3">
+﻿<Project Sdk="Nice3point.Revit.Sdk/6.2.3">
 
   <!--
     The IN-REVIT test project — tier 3 of the test strategy (CLAUDE.md, "Testing").
@@ -15,6 +15,10 @@
     DataElementsCollectorService, ViewsSheetsService, TypeAndWorksetService, ParameterWriteService —
     never the commands themselves: a command runs through RunInRevitAsync(app => …) on a
     UIApplication, and the test host has no UI session (no RevitAPIUI here, by the template's rule).
+    Also RoslynScriptCompiler (Core): a bare-body script compiled against the live RevitAPI. The
+    wrapper names UIApplication, so the one error a compile reports here is the missing RevitAPIUI;
+    the tests filter that one out and require nothing else. Do NOT make the compiler load RevitAPIUI
+    to please them — asking this engine for it takes the host down with an access violation.
 
     Configurations are the template's (Debug.R25 …), not the plugin's ("Debug R25"): the Revit SDK
     derives the Revit year from them. The referenced plugin projects receive the same Configuration
@@ -44,6 +48,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
     <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
   </ItemGroup>
 

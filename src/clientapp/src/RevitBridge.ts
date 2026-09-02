@@ -50,6 +50,9 @@ type PendingCall = {
   resolve: (value: any) => void;
   reject: (reason: any) => void;
   onProgress?: (p: ProgressInfo) => void;
+  /** When the request was posted — the age of the oldest one is the page's only way to know that
+   *  the host has stopped answering (see oldestPendingAge). */
+  sentAt: number;
 };
 
 export type InvokeOptions = {
@@ -67,6 +70,20 @@ export type InvokeOptions = {
 
 const pendingCalls = new Map<string, PendingCall>();
 let invokeSeq = 0;
+
+/**
+ * Milliseconds the longest-waiting call has been without an answer, 0 when nothing is pending.
+ *
+ * This is the page's stall detector (#102). Every message from the page reaches the host on Revit's
+ * UI thread, and a long Revit operation holds that thread — so while Revit works, NOTHING the page
+ * asks is even received, GetQueueStatus included, and the busy indicator that exists to explain the
+ * silence goes silent with it. The one fact the page still has is its own unanswered requests.
+ */
+export function oldestPendingAge(now: number = Date.now()): number {
+  let oldest = 0;
+  for (const call of pendingCalls.values()) oldest = Math.max(oldest, now - call.sentAt);
+  return oldest;
+}
 
 function ensureInvokeListener(): void {
   const webview = (window as any).chrome?.webview;
@@ -138,6 +155,7 @@ export function invoke<T = any>(
       resolve: (value) => { stopListening?.(); resolve(value); },
       reject: (reason) => { stopListening?.(); reject(reason); },
       onProgress: options?.onProgress,
+      sentAt: Date.now(),
     });
 
     const message: WebViewMessage = {

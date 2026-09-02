@@ -19,3 +19,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("AnalyseTool.Mcp.Bridge")]
 // The Revit-free test project reads the schema builder and the manifest writer as they are.
 [assembly: InternalsVisibleTo("AnalyseTool.Tests")]
+// The in-Revit tests compile scripts through RoslynScriptCompiler against a live RevitAPI (#101).
+[assembly: InternalsVisibleTo("AnalyseTool.RevitTests")]

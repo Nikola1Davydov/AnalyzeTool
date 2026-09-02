@@ -59,7 +59,9 @@ Rules: every fixed bug gets a test on its tier; a command's core is a function o
 plain data) so it can be tested on tier 1 or 3 without `UIApplication` — tests inside Revit never
 touch `RevitAPIUI` and exercise the SERVICES (`DataElementsCollectorService`, `ViewsSheetsService`,
 `TypeAndWorksetService`, `ParameterWriteService`) on a document seeded in code (`SeededModel`: one
-level, four walls), never the commands. Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
+level, four walls), never the commands — plus `RoslynScriptCompiler` against the live `RevitAPI`
+(the test engine has no `RevitAPIUI`, so "UIApplication not referenced" is the one error every
+compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
 must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
 button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher.
 

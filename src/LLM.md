@@ -339,7 +339,11 @@ diagnose one without a human copying files.
 Drop a `.cs` file next to `plugin.json` (with **no** `entryAssembly`). Roslyn compiles it on load.
 Two accepted forms:
 
-**Body form** — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object:
+**Body form** — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object.
+`System`, `System.Linq`, `System.Collections.Generic`, `Autodesk.Revit.DB` and `Autodesk.Revit.UI`
+are already imported; `using` directives you put on the FIRST lines of the body (before any
+statement) are lifted above the class — `using System.Text;` or `using static System.Math;` work.
+Unqualified `Min(a, b)` is LINQ's, not `Math.Min` — write `Math.Min` or add the static using:
 ```csharp
 var walls = new FilteredElementCollector(doc)
     .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().GetElementCount();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { invoke } from "@/RevitBridge";
+import { invoke, oldestPendingAge } from "@/RevitBridge";
 
 // Bottom status strip shown in EVERY window while the platform is busy. Answers the two "why is
 // nothing happening?" cases:
@@ -9,6 +9,13 @@ import { invoke } from "@/RevitBridge";
 // The host pushes "QueueChanged" events on start/finish; while busy we additionally poll
 // GetQueueStatus (which deliberately never touches the Revit thread, so it answers even when Revit
 // is blocked). Quick commands never show up: the bar appears only after MIN_VISIBLE_SECONDS.
+//
+// A THIRD case needs no host at all, and cannot have one (#102): a long Revit operation holds the
+// UI thread that every WebView message is delivered on, so while it runs the host does not even
+// receive our poll — GetQueueStatus was answering over MCP the whole time and the window could not
+// ask. The only fact left on this side is that our own requests are not being answered, and that is
+// what the "stalled" state reads: any call older than STALL_MS, checked every second from a plain
+// timer that the host cannot block.
 
 interface QueueStatus {
   running: { command: string; source: string; seconds: number }[];
@@ -30,17 +37,26 @@ const POLL_BUSY_MS = 2000;
 // two seconds for hours. 10 s idle still arms the proactive warning well inside the time it takes a
 // person to notice a frozen Revit, and the first sign of work flips the cadence back to 2 s.
 const POLL_IDLE_MS = 10000;
+// A call the host has not answered for this long is a host that is not receiving: the status poll
+// itself answers in milliseconds when Revit's thread is free.
+const STALL_MS = 3000;
 
 const status = ref<QueueStatus | null>(null);
+/** Seconds the oldest unanswered call has waited, 0 when the host is answering. */
+const stalledSeconds = ref(0);
 let pollTimer: number | null = null;
+let stallTimer: number | null = null;
 let disposed = false;
 
 const busy = computed(() => (status.value?.running.length ?? 0) > 0 || (status.value?.pendingRevitWork ?? 0) > 0);
 const longest = computed(() =>
   status.value?.running.reduce((max, r) => (r.seconds > (max?.seconds ?? -1) ? r : max), null as null | QueueStatus["running"][number]),
 );
+const stalled = computed(() => stalledSeconds.value * 1000 >= STALL_MS);
 const visible = computed(
-  () => !!status.value && (status.value.waitingForUser || (longest.value?.seconds ?? 0) >= MIN_VISIBLE_SECONDS),
+  () =>
+    stalled.value ||
+    (!!status.value && (status.value.waitingForUser || (longest.value?.seconds ?? 0) >= MIN_VISIBLE_SECONDS)),
 );
 
 async function refresh() {
@@ -64,6 +80,12 @@ function schedule() {
   pollTimer = window.setTimeout(refresh, busy.value ? POLL_BUSY_MS : POLL_IDLE_MS);
 }
 
+// Runs on a timer of its own, not on a reply: a reply is exactly what does not come while Revit is
+// busy. Reads the bridge's pending calls — the poll above and anything else the window asked.
+function watchStall() {
+  stalledSeconds.value = Math.round(oldestPendingAge() / 1000);
+}
+
 function onQueueChanged(e: Event) {
   const detail = (e as CustomEvent).detail as QueueStatus | undefined;
   if (detail) {
@@ -74,12 +96,14 @@ function onQueueChanged(e: Event) {
 
 onMounted(() => {
   window.addEventListener("at:QueueChanged", onQueueChanged);
+  stallTimer = window.setInterval(watchStall, 1000);
   void refresh(); // a window may open while a command started elsewhere is already running
 });
 onUnmounted(() => {
   disposed = true;
   window.removeEventListener("at:QueueChanged", onQueueChanged);
   if (pollTimer !== null) clearTimeout(pollTimer);
+  if (stallTimer !== null) clearInterval(stallTimer);
 });
 </script>
 
@@ -89,12 +113,23 @@ onUnmounted(() => {
       v-if="visible"
       class="fixed bottom-0 inset-x-0 z-50 flex items-center gap-2 px-3 py-1.5 text-xs border-t shadow-lg"
       :class="
-        status!.waitingForUser
+        stalled || status?.waitingForUser
           ? 'bg-amber-50 border-amber-300 text-amber-800'
           : 'bg-surface-0 border-surface-200 text-surface-600'
       "
     >
-      <template v-if="status!.waitingForUser">
+      <template v-if="stalled">
+        <i class="pi pi-spin pi-spinner text-amber-500 shrink-0" />
+        <!-- Detected from this side alone: the host has not answered anything for a while. What it
+             is doing we cannot know — the last thing it told us, if anything, is the best we have. -->
+        <span class="truncate">
+          <b>Revit is busy</b> — it is running
+          <template v-if="longest">“{{ longest.command }}”</template>
+          <template v-else>something</template>
+          on its main thread and this window will answer when it finishes ({{ stalledSeconds }}s).
+        </span>
+      </template>
+      <template v-else-if="status!.waitingForUser">
         <i class="pi pi-exclamation-triangle text-amber-500 shrink-0" />
         <!-- Proactive case: nothing of ours is queued by the user yet — Revit itself is held. -->
         <span v-if="!longest" class="truncate">

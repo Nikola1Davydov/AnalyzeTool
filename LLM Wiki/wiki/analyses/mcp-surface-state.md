@@ -100,16 +100,25 @@ ExecuteRevitCode failed — …` с payload. [#97](https://github.com/Nikola1Dav
 подсказки `ttlMs` / `cacheScope` из `2026-07-28` могут выйти ещё дешевле.
 
 **[#101](https://github.com/Nikola1Davydov/AnalyzeTool/issues/101) — `using` в форме
-голого тела.** Тело вклеивается в метод, поэтому `using Autodesk.Revit.DB;` разбирается
-как *оператор* `using`. Вызывающий получает двадцать ошибок компилятора на языке
-интерфейса Revit, ни одна из которых не называет причину. Ловить ведущие строки
-`using` и отвечать одним предложением.
+голого тела — закрыт 2026-09-02.** Тело вклеивалось в метод, поэтому `using Autodesk.Revit.DB;`
+разбирался как *оператор* `using`, и вызывающий получал двадцать ошибок компилятора, ни
+одна из которых не называла причину. Сделано больше, чем просил issue: ведущие директивы
+не отвергаются, а поднимаются над сгенерированным классом
+(`RoslynScriptCompiler.LiftLeadingUsings`), каждая оставляет пустую строку, чтобы `#line`
+продолжал указывать на строки автора. Тесты: пять на ярусе 1 (чистая функция и форма
+обёртки), два на ярусе 3 (настоящий Roslyn против живого `RevitAPI`). Остаток из issue —
+`Min`/`Max` как LINQ и язык диагностик — записан в гайд одной фразой, не чинился.
 
-**[#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102),
+**[#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — закрыт 2026-09-02**,
 [#104](https://github.com/Nikola1Davydov/AnalyzeTool/issues/104),
-[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99)** — это задача долгих
+[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) — это задача долгих
 вызовов с трёх сторон; см.
-[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md).
+[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md). Для #102 ответ
+оказался на стороне страницы: хост принимает сообщения WebView на UI-потоке Revit, и пока
+тот занят, опрос не доходит даже до `CommandQueue` — поэтому чинить нечего в хосте.
+`RevitBridge.ts` теперь помнит время отправки каждого вызова (`oldestPendingAge`), а
+`RevitBusyBar.vue` по своему таймеру показывает янтарное «Revit is busy … this window will
+answer when it finishes» после трёх секунд без ответа.
 
 **[#103](https://github.com/Nikola1Davydov/AnalyzeTool/issues/103)** —
 `RemoveDevExtension` оставляет неудаляемые папки `.old` на путях под синхронизацией
@@ -246,6 +255,7 @@ Revit; мажорная версия означает, что API мог пом�
    пятиминутный баг вместо угадайки
 3. [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100),
    [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — цикл авторства и UI
+   (оба закрыты 2026-09-02)
 4. вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107),
    затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
    отмена ([#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109)), Tasks
