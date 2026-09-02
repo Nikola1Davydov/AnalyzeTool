@@ -7,6 +7,11 @@ sources: [../sources/github-issues.md]
 
 # Где должен крутиться цикл агента и кто за него платит
 
+> Решение принято 2026-09-02: облачная модель по ключу пользователя, sidecar не строится —
+> см. [`built-in-agent-plan.md`](built-in-agent-plan.md) и
+> [#133](https://github.com/Nikola1Davydov/AnalyzeTool/issues/133). Ниже — разбор вариантов,
+> из которых выбирали.
+
 [#80](https://github.com/Nikola1Davydov/AnalyzeTool/issues/80) перечисляет три варианта
 хостинга AI-агента, управляющего моделью.
 [#118](https://github.com/Nikola1Davydov/AnalyzeTool/issues/118) затем показывает, что
