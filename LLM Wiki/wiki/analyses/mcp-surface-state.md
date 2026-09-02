@@ -205,9 +205,12 @@ OneDrive. Ничего не ломается; общая папка команд
 То есть правила привязок движка — то, на чём стоит всё остальное, — не проверялись всё это
 время. Формулировка оттуда точная: **гардрейл, который никто не запускает, не гардрейл.**
 
-## Вопрос протокола, который гейтит часть этого
+## Вопрос протокола, который гейтил часть этого
 
-[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) отслеживает, что
+*[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) закрыт 2026-09-02 вечером: гейт снят, каждая строка его таблицы ушла в свой issue
+(#110, #111, #106, #71) или уже сделана; sampling решён в #133 в пользу provider API.*
+
+[#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) отслеживал, что
 меняет спека MCP `2026-07-28`. Два пункта бэклога становятся устаревшими (sampling и
 уведомления логирования — оба уже сделаны рекомендованным способом), один получает
 более дешёвый ответ, и приходит Tasks — та возможность, которую три issue обходили без
@@ -223,16 +226,20 @@ et10.0\`) ссылается на
 `RequestState`, `ttlMs`, `CacheScope` в нём есть. Итог: **гейта больше нет.** На уровне
 API разблокирована вся ветка — [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100) (list_changed, и дешёвый вариант через
 `ttlMs`), [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)–[#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110) (прогресс, отмена, Tasks), elicitation для
-[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106), [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111). Что не проверено: сборка и
-поведение `AnalyseTool.Mcp` на 2.2.0 в живой сессии — бамп версии ещё не прошёл через
-Revit; мажорная версия означает, что API мог поменяться, и первый запуск это покажет.
+[#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106), [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) и [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111). Живой запуск на 2.2.0 проверен 2026-09-02:
+exe работал в сессиях весь день и под stdio-тестами яруса 2 (`src/AnalyseTool.Tests/Mcp/`).
 
 Уточнение объёма к [#111](https://github.com/Nikola1Davydov/AnalyzeTool/issues/111): его
 собственный комментарий признаёт, что цитата в теле issue устарела. `GetElements` уже
 завёрнут — `OutputType = typeof(ElementsResult)`, объект, — так что миграция, о которой
 там говорится, для примера из issue уже произошла. **Проверено по коду 2026-08-31:**
 голым массивом возвращает только `GetCategoriesInRevit` (`OutputType = typeof(List<string>)`).
-То есть за задачей стоит одна команда, а не несколько.
+**Поправка 2026-09-02, при сужении issue:** та проверка смотрела не все слайсы — открытых для MCP
+команд с массивом в корне три: `GetCategoriesInRevit`, `GetCadImports` (`List<ImportInfo>`),
+`GetWarningsInRevit` (`List<WarningInRevitModel>`); `GetDataByCategoryName` тоже список, но
+`HiddenFromMcp`. SDK 2.2.0 разрешает не-объектный корень `Tool.OutputSchema` явно (его xml),
+так что #111 теперь — удаление ограничения в `src/AnalyseTool.Mcp/Program.cs` и разворот двух
+тестов яруса 2, без гейта.
 
 Единственный пробел против официального чек-листа безопасности — ограничение частоты
 ([#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)); **проверено по коду
@@ -256,7 +263,7 @@ Revit; мажорная версия означает, что API мог пом�
 3. [#100](https://github.com/Nikola1Davydov/AnalyzeTool/issues/100),
    [#102](https://github.com/Nikola1Davydov/AnalyzeTool/issues/102) — цикл авторства и UI
    (оба закрыты 2026-09-02)
-4. вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107),
+4. ~~вопрос про SDK из [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107)~~ снят,
    затем прогресс ([#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)),
    отмена ([#109](https://github.com/Nikola1Davydov/AnalyzeTool/issues/109)), Tasks
    ([#110](https://github.com/Nikola1Davydov/AnalyzeTool/issues/110))
