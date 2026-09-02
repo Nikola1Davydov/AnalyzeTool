@@ -26,10 +26,16 @@ namespace AnalyseTool.Core.Features.Scripting
                       "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
         Destructive = true)] // arbitrary code: assume it can modify the model
-    internal sealed class ExecuteRevitCode : IRevitTask
+    internal sealed class ExecuteRevitCode : IRevitTask, IProgressAware
     {
         /// <summary>Wire/command name — referenced by the MCP bridge to gate this tool's visibility.</summary>
         public const string CommandName = nameof(ExecuteRevitCode);
+
+        /// <summary>The caller's progress sink, handed on to the compiled task below. The dispatcher
+        /// injects it into THIS command; the snippet's own class is created here, out of the
+        /// dispatcher's sight, so without the hand-over a script's Progress was always null — and the
+        /// activity window and the MCP progress notifications had nothing to show for it.</summary>
+        public IProgress<ProgressInfo>? Progress { get; set; }
 
         public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
@@ -62,6 +68,7 @@ namespace AnalyseTool.Core.Features.Scripting
                     return new { error = "Compiled code contains no IRevitTask." };
 
                 IRevitTask task = (IRevitTask)Activator.CreateInstance(taskType)!;
+                if (task is IProgressAware aware) aware.Progress = Progress;
                 object? result = await task.ExecuteAsync(ctx, ct);
 
                 // Detach the result from the snippet's (anonymous) types into a host-owned JToken BEFORE
