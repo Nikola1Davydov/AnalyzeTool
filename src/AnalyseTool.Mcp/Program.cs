@@ -39,6 +39,9 @@ RevitBridgeClient bridge = new RevitBridgeClient(port, token, handleAfter);
 // concurrent collection is needed — publishing is a single reference assignment.
 IReadOnlyDictionary<string, ToolBinding> toolBindings = new Dictionary<string, ToolBinding>();
 
+// The one property an array-rooted answer is wrapped in, in the listed schema and in the answer.
+const string ArrayItemsField = "items";
+
 // The catalog stamp the current tool list was built under (McpWire.Catalog). When a reply — or the
 // background poll — carries a different one, the list is stale: re-list and tell the client with
 // tools/list_changed. This is #100: a command saved during a session never reached tools/list,
@@ -117,6 +120,17 @@ builder.Services
                 };
             }
             JsonNode? result = outcome.Result;
+
+            // An array-rooted answer travels inside { "items": [...] } — the shape the tool listed under.
+            // The spec allows a bare array since 2026-07-28, but Claude Code's client does not: it
+            // validates tools/list with its own schema, refuses an outputSchema whose root is not an
+            // object, and with it the WHOLE server ("Couldn't start", 2026-09-04). Wrapping keeps
+            // structured content for these tools on every client. DeepClone: the result is a child of
+            // the bridge's reply envelope, and a node with a parent cannot be re-parented.
+            if (binding is { WrapsArray: true } && result is JsonArray array)
+                result = new JsonObject { [ArrayItemsField] = array.DeepClone() };
+
+            // Text mirrors structured content, as the spec asks — one shape, whichever block a client reads.
             string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
 
             // The text block stays unconditionally: it is what every client can read, including the ones
@@ -124,9 +138,8 @@ builder.Services
             CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
 
             // Structured content ONLY where the tool promised a schema at listing time. Promising a
-            // schema and then not delivering is the one way to be worse than saying nothing. Any JSON
-            // value qualifies since spec 2026-07-28 (SEP-2106) — an array-rooted answer included, which
-            // three of our tools give (#111); before that, structuredContent had to be an object.
+            // schema and then not delivering is the one way to be worse than saying nothing. Always an
+            // object here: object results as they are, array results wrapped above (#111).
             if (binding is { HasOutputSchema: true } && result is not null)
                 callResult.StructuredContent = result.Deserialize<JsonElement>();
 
@@ -223,13 +236,17 @@ async Task<ListToolsResult> BuildToolListAsync(CancellationToken ct)
                         },
                     };
 
-                    // Only when the command really declared an object-shaped result. See the helper for
-                    // why an array-returning command is skipped even though it HAS a schema.
-                    bool declaresResult = DeclaresResult(entry?[McpWire.OutputSchema]);
-                    if (declaresResult)
-                        tool.OutputSchema = entry![McpWire.OutputSchema]!.Deserialize<JsonElement>();
+                    // Only when the command really declared a result. An object schema is advertised as
+                    // it is; an array schema is advertised wrapped in { items: [...] } and the call wraps
+                    // the answer the same way — see OutputShapeOf for why.
+                    JsonNode? outputSchema = entry?[McpWire.OutputSchema];
+                    OutputShape shape = OutputShapeOf(outputSchema);
+                    if (shape == OutputShape.Object)
+                        tool.OutputSchema = outputSchema!.Deserialize<JsonElement>();
+                    else if (shape == OutputShape.Array)
+                        tool.OutputSchema = WrapArraySchema(outputSchema!).Deserialize<JsonElement>();
 
-                    bindings[toolName] = new ToolBinding(command, declaresResult);
+                    bindings[toolName] = new ToolBinding(command, shape != OutputShape.None, shape == OutputShape.Array);
                     tools.Add(tool);
                 }
             }
@@ -469,19 +486,30 @@ static JsonElement FreeFormObjectSchema()
 /// <item>the free-form fallback the bridge substitutes for an oversized schema has no properties either,
 /// and promising a shape it does not describe buys nothing.</item>
 /// </list>
-/// A third refusal — an array-rooted schema — is history: until spec 2026-07-28 structuredContent had
-/// to be an object, so GetCategoriesInRevit, GetCadImports and GetWarningsInRevit answered as text
-/// only. SEP-2106 lifted that, and the SDK's Tool.OutputSchema says the root need not be an object
-/// any more (#111). An array schema with items is a real promise and is kept.
+/// An array-rooted schema with items (GetCategoriesInRevit, GetCadImports, GetWarningsInRevit — #111)
+/// is a real promise, but it is advertised WRAPPED: <c>{ type: object, properties: { items: &lt;array&gt; } }</c>,
+/// and the call answers <c>{ items: [...] }</c>. Spec 2026-07-28 (SEP-2106) allows a bare array root
+/// and the SDK follows; Claude Code's client does not — its tools/list validator requires
+/// <c>outputSchema.type == "object"</c> and rejects the whole listing otherwise, so the server never
+/// started for it (2026-09-04). The wrapper is one field of indirection for every client and a working
+/// server for the one that matters most.
 /// </summary>
-static bool DeclaresResult(JsonNode? schema)
+static OutputShape OutputShapeOf(JsonNode? schema)
 {
-    if (schema is not JsonObject obj) return false;
+    if (schema is not JsonObject obj) return OutputShape.None;
     string? type = obj["type"]?.GetValue<string>();
-    if (type == "array") return obj["items"] is not null;
-    if (type != "object") return false;
-    return obj["properties"] is JsonObject properties && properties.Count > 0;
+    if (type == "array") return obj["items"] is not null ? OutputShape.Array : OutputShape.None;
+    if (type != "object") return OutputShape.None;
+    return obj["properties"] is JsonObject properties && properties.Count > 0 ? OutputShape.Object : OutputShape.None;
 }
+
+/// <summary>The object schema an array-rooted result is advertised under; see <see cref="OutputShapeOf"/>.</summary>
+static JsonObject WrapArraySchema(JsonNode arraySchema) => new JsonObject
+{
+    ["type"] = "object",
+    ["properties"] = new JsonObject { [ArrayItemsField] = arraySchema.DeepClone() },
+    ["required"] = new JsonArray(ArrayItemsField),
+};
 
 /// <summary>
 /// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error
@@ -551,4 +579,10 @@ static class JobTools
 
 /// <summary>What tools/list decided about one tool name: the Revit command it maps back to, and whether
 /// it advertised an outputSchema (so CallTool knows whether structuredContent is owed).</summary>
-internal sealed record ToolBinding(string Command, bool HasOutputSchema);
+/// <param name="WrapsArray">The command answers with a bare array; the tool listed an object schema
+/// with one <c>items</c> property, and the call has to wrap the answer to match.</param>
+internal sealed record ToolBinding(string Command, bool HasOutputSchema, bool WrapsArray = false);
+
+/// <summary>What a command's declared output schema amounts to for tools/list.</summary>
+internal enum OutputShape { None, Object, Array }
+

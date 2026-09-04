@@ -1561,3 +1561,11 @@ exe), архитектура без новых стрелок в контрак�
 расширений. Тесты: ярус 1 `SqliteRuntimeTests` (пропускаются вне Windows), ярус 3 `IndexSpikeTests`
 на `SeededModel`. Собрано на Linux с `EnableWindowsTargeting` — Core, Tests, RevitTests; запустить
 негде: `winsqlite3.dll` и Revit есть только у владельца. Цифры — следующей записью.
+## 2026-09-04 — #111 сломал старт сервера у Claude Code, обёрнуто
+
+Лог клиента: `Invalid result for tools/list … outputSchema.type: expected "object"` — сервер не
+поднимался для сессий Cowork и Code. Причина — вчерашний #111: массив в корне `outputSchema`, что
+спека 2026-07-28 разрешает, а валидатор клиента нет. Починено в `src/AnalyseTool.Mcp/Program.cs`:
+массив объявляется и отдаётся как `{ items: [...] }`, тесты яруса 2 развёрнуты обратно на объект,
+CHANGELOG поправлен. Проверено на Linux поддельным мостом по `McpWire` и собранным exe через stdio.
+Записано в `mcp-surface-state.md`. Ветка `dev`, затем слито в `feature/model-index`.
