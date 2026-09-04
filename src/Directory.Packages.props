@@ -23,6 +23,12 @@
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.5.2" />
     <!-- Core: runtime C# script compilation -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <!-- Core: the model index (SQLite). The .Core flavour of Microsoft.Data.Sqlite brings no native
+         library; the provider binds the sqlite3 Windows ships in System32 (winsqlite3.dll), so the
+         add-in carries no e_sqlite3.dll that could collide with another add-in's copy (#80).
+         SQLitePCLRaw 3.x dropped the winsqlite3 "bundle" — the provider is set explicitly in code. -->
+    <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.11" />
+    <PackageVersion Include="SQLitePCLRaw.provider.winsqlite3" Version="3.0.5" />
     <!-- App (host UI) -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />

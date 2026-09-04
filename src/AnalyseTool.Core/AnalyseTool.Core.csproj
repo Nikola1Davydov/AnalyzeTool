@@ -15,6 +15,9 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <!-- CommandDispatcher generates JSON Schemas for command inputs via AIJsonUtilities. -->
         <PackageReference Include="Microsoft.Extensions.AI" />
+        <!-- Model index: SQLite through the Windows system library (see Directory.Packages.props). -->
+        <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+        <PackageReference Include="SQLitePCLRaw.provider.winsqlite3" />
         <PackageReference Include="Newtonsoft.Json" />
         <!-- Log calls only; the sinks are configured by the host (AppLog). -->
         <PackageReference Include="Serilog" />

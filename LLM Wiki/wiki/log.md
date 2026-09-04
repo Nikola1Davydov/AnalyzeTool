@@ -1547,3 +1547,17 @@ Revit, без фокуса, с задержкой показа и скрытия
 exe), архитектура без новых стрелок в контракте зависимостей плюс одно расширение Sdk в фазе 4,
 схема v1, пять фаз с критериями готовности и тестами по ярусам. `shadow-index.md` получил абзац о
 развороте, таблица хранилищ там оставлена как история. Ветка `feature/model-index`, код не начат.
+
+## 2026-09-04 — фаза 0 индекса: спайк написан, замер за владельцем
+
+Все пять развилок плана приняты. Выяснилось при выборе пакетов: SQLitePCLRaw 3.x больше не возит
+`bundle_winsqlite3`, но провайдер `SQLitePCLRaw.provider.winsqlite3` 3.0.5 есть — берём его с
+`Microsoft.Data.Sqlite.Core` 10.0.11 и ставим провайдер явно (`SqliteRuntime.EnsureProvider`).
+Написано в Core: `Common/Index/` — `SqliteRuntime` (провайдер, `Describe`: версия, JSON и FTS5
+пробами), `ElementRowReader` (элемент → строки схемы v1, функция от `Document`; сверка по
+`VersionGuid`), `IndexSpikeStore` (DDL v1, WAL, писатель, таймер запросов); команда
+`Features/Index/ModelIndexSpike` — временная, видна MCP, меряет sweep, чтение на потоке Revit по
+чанкам, запись, три запроса, размер файла, опционально переживает ли соединение перезагрузку
+расширений. Тесты: ярус 1 `SqliteRuntimeTests` (пропускаются вне Windows), ярус 3 `IndexSpikeTests`
+на `SeededModel`. Собрано на Linux с `EnableWindowsTargeting` — Core, Tests, RevitTests; запустить
+негде: `winsqlite3.dll` и Revit есть только у владельца. Цифры — следующей записью.
