@@ -215,14 +215,26 @@ namespace AnalyseTool.Core.Common.Index
             : _lengthUnit is null ? internalValue
             : UnitUtils.ConvertFromInternalUnits(internalValue.Value, _lengthUnit);
 
+        /// <summary>A point for the element: the location point, or the middle of the location curve. An
+        /// UNBOUND curve (the spike found one on a real model — a line with no ends cannot be evaluated
+        /// at a normalized parameter) yields its origin instead; anything Revit refuses yields nothing.</summary>
         private (double?, double?, double?) Location(Element element)
         {
-            XYZ? point = element.Location switch
+            XYZ? point;
+            try
             {
-                LocationPoint lp => lp.Point,
-                LocationCurve lc => lc.Curve.Evaluate(0.5, normalized: true),
-                _ => null,
-            };
+                point = element.Location switch
+                {
+                    LocationPoint lp => lp.Point,
+                    LocationCurve { Curve: { IsBound: true } curve } => curve.Evaluate(0.5, normalized: true),
+                    LocationCurve { Curve: { } curve } => curve.Evaluate(0, normalized: false),
+                    _ => null,
+                };
+            }
+            catch (Autodesk.Revit.Exceptions.ApplicationException)
+            {
+                point = null;
+            }
             return point is null ? (null, null, null) : (Length(point.X), Length(point.Y), Length(point.Z));
         }
 

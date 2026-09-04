@@ -94,26 +94,40 @@ namespace AnalyseTool.Core.Features.Index
             ElementRowReader? reader = null;
             double revitThreadMs = 0, maxChunkMs = 0, writeMs = 0;
             Stopwatch dumpWall = Stopwatch.StartNew();
-            int chunks = 0, elements = 0, types = 0;
+            int chunks = 0, elements = 0, types = 0, skipped = 0;
+            // One element Revit refuses to describe must not cost the measurement: it is skipped, counted,
+            // and the first few are named in the notes — they are findings of the spike, not failures of it.
+            List<string> failures = new();
             for (int offset = 0; offset < ids.Count; offset += chunkSize)
             {
                 ct.ThrowIfCancellationRequested();
                 int count = Math.Min(chunkSize, ids.Count - offset);
                 IReadOnlyList<ElementId> slice = ids.Skip(offset).Take(count).ToList();
 
-                (List<ElementRead> batch, double chunkMs) = await ctx.RunInRevitAsync(app =>
+                (List<ElementRead> batch, double chunkMs, int chunkSkipped) = await ctx.RunInRevitAsync(app =>
                 {
                     Stopwatch inner = Stopwatch.StartNew();
                     reader ??= new ElementRowReader(doc, withParameters);
                     List<ElementRead> read = new(slice.Count);
+                    int failed = 0;
                     foreach (ElementId id in slice)
                     {
                         Element? element = doc.GetElement(id);
                         if (element is null) continue;
-                        read.Add(reader.Read(element));
+                        try
+                        {
+                            read.Add(reader.Read(element));
+                        }
+                        catch (Exception ex)
+                        {
+                            failed++;
+                            if (failures.Count < 10)
+                                failures.Add($"element {id.Value} ({element.Category?.Name ?? "no category"}, {element.GetType().Name}): {ex.GetType().Name}: {ex.Message}");
+                        }
                     }
-                    return (read, inner.Elapsed.TotalMilliseconds);
+                    return (read, inner.Elapsed.TotalMilliseconds, failed);
                 });
+                skipped += chunkSkipped;
                 revitThreadMs += chunkMs;
                 maxChunkMs = Math.Max(maxChunkMs, chunkMs);
 
@@ -146,6 +160,12 @@ namespace AnalyseTool.Core.Features.Index
                 reloadSurvived = store.Count("elements") == elements + types;
             }
 
+            if (skipped > 0)
+            {
+                notes.Add($"{skipped} element(s) could not be read and were skipped; the first {failures.Count}:");
+                notes.AddRange(failures);
+            }
+
             store.Checkpoint();
             long fileBytes = new FileInfo(dbPath).Length;
 
@@ -158,7 +178,7 @@ namespace AnalyseTool.Core.Features.Index
                 dbPath,
                 fileBytes,
                 facts,
-                new Counts(elements, types, store.Count("parameter_defs"), store.Count("parameter_values")),
+                new Counts(elements, types, skipped, store.Count("parameter_defs"), store.Count("parameter_values")),
                 new Timings(
                     Math.Round(collect.Elapsed.TotalMilliseconds, 1),
                     swept,
@@ -230,6 +250,7 @@ namespace AnalyseTool.Core.Features.Index
         internal sealed record Counts(
             [property: JsonProperty("elements")] int Elements,
             [property: JsonProperty("types")] int Types,
+            [property: JsonProperty("skipped")] int Skipped,
             [property: JsonProperty("parameterDefs")] long ParameterDefs,
             [property: JsonProperty("parameterValues")] long ParameterValues);
 
