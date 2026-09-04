@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Индекс
@@ -68,6 +68,7 @@ updated: 2026-09-02
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
 | [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 54 открытых issue по группам |
 | [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md) | сверка issue и вики с кодом: семь выводов, что закрыть, что сузить, что править |
+| [`analyses/model-index-plan.md`](analyses/model-index-plan.md) | план теневого индекса на SQLite: сверка с вики, четыре развилки, схема, фазы — код после согласования |
 
 ## Известные дыры
 
