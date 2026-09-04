@@ -78,6 +78,12 @@ namespace AnalyseTool.Core.Common.Index
             return ids.ToList();
         }
 
+        /// <summary>Whether an element belongs in the index at all — the same rule as <see cref="CollectIds"/>,
+        /// asked of one element when a DocumentChanged id arrives (views, sheets and annotations change
+        /// too, and are not ours).</summary>
+        public static bool IsIndexed(Element element) =>
+            element is Level || element.Category?.CategoryType == CategoryType.Model;
+
         /// <summary>The reconcile pass: (id, version) of every element WITHOUT reading anything else. Its
         /// cost is what decides whether "sweep and re-read only what changed" is cheap enough to run on
         /// every document open.</summary>

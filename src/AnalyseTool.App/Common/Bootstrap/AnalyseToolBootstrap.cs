@@ -35,6 +35,10 @@ namespace AnalyseTool.App.Common.Bootstrap
             RevitTaskHub hub = new RevitTaskHub();
             hub.Initialize();
 
+            // The model index: one SQLite copy per open model, fed by DocumentChanged, built and kept in
+            // step in the background. Subscribed here because the events need a valid API context.
+            Core.Common.Index.ModelIndexHost.Initialize(uiApp, hub);
+
             CommandDispatcher dispatcher = new CommandDispatcher(hub);
             // Built-ins live in three assemblies: platform commands in Core, feature commands in
             // Tools, host commands (CheckUpdate, GetChangelog, PickFolder, …) here.

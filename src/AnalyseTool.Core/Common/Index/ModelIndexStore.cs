@@ -5,17 +5,21 @@ using System.IO;
 namespace AnalyseTool.Core.Common.Index
 {
     /// <summary>
-    /// The throw-away database of the phase-0 spike: the v1 schema of the model index (elements,
-    /// parameter definitions, parameter values, and the views an agent would query), a writer that
-    /// takes what <see cref="ElementRowReader"/> read, and a stopwatch around queries. Everything here
-    /// runs OFF the Revit thread — the reader hands over plain records, this class never sees Revit.
+    /// The model index on disk: schema v1 (elements, parameter definitions, parameter values, the
+    /// views an agent queries), the single writer, and the reads the indexer needs to keep it in step
+    /// with the model. Everything here runs OFF the Revit thread — <see cref="ElementRowReader"/> hands
+    /// over plain records, this class never sees Revit.
     ///
-    /// Not the index proper: no journal, no reconcile, no migrations. Its purpose is to make the
-    /// schema real enough to measure — file size, write cost, query latency — before the design is
-    /// fixed. What survives into the indexer is the DDL.
+    /// One connection, one owner: the indexing session writes through it from its own loop. Readers
+    /// (QueryModelIndex) open their own read-only connections; WAL lets them read while this writes.
+    ///
+    /// The schema is a wire contract in the McpWire sense (#131): a worker outside Revit reads the same
+    /// file, so the DDL and its version live here, in one place, and a version bump means "rebuild".
     /// </summary>
-    internal sealed class IndexSpikeStore : IDisposable
+    internal sealed class ModelIndexStore : IDisposable
     {
+        public const string SchemaVersion = "1";
+
         public const string Ddl = """
             CREATE TABLE meta (
                 key   TEXT PRIMARY KEY,
@@ -81,16 +85,21 @@ namespace AnalyseTool.Core.Common.Index
         private readonly SqliteCommand _insertElement;
         private readonly SqliteCommand _insertDef;
         private readonly SqliteCommand _insertValue;
+        private readonly SqliteCommand _deleteValues;
+        private readonly SqliteCommand _tombstone;
 
-        private IndexSpikeStore(SqliteConnection connection)
+        public string Path { get; }
+
+        private ModelIndexStore(SqliteConnection connection, string path)
         {
             _connection = connection;
+            Path = path;
             _insertElement = Prepare(
                 "INSERT OR REPLACE INTO elements (unique_id, element_id, is_type, category, built_in_category, category_type, " +
                 "name, family_name, type_name, type_element_id, level_id, workset_id, loc_x, loc_y, loc_z, " +
-                "bbox_min_x, bbox_min_y, bbox_min_z, bbox_max_x, bbox_max_y, bbox_max_z, version_guid, updated_at) " +
+                "bbox_min_x, bbox_min_y, bbox_min_z, bbox_max_x, bbox_max_y, bbox_max_z, version_guid, updated_at, deleted_at) " +
                 "VALUES ($uid, $eid, $type, $cat, $bic, $ctype, $name, $fam, $tname, $tid, $lvl, $ws, $lx, $ly, $lz, " +
-                "$b0, $b1, $b2, $b3, $b4, $b5, $ver, $now)",
+                "$b0, $b1, $b2, $b3, $b4, $b5, $ver, $now, NULL)",
                 "$uid", "$eid", "$type", "$cat", "$bic", "$ctype", "$name", "$fam", "$tname", "$tid", "$lvl", "$ws",
                 "$lx", "$ly", "$lz", "$b0", "$b1", "$b2", "$b3", "$b4", "$b5", "$ver", "$now");
             _insertDef = Prepare(
@@ -101,33 +110,71 @@ namespace AnalyseTool.Core.Common.Index
                 "INSERT OR REPLACE INTO parameter_values (element_id, param_id, value_text, value_num, value_id) " +
                 "VALUES ($eid, $pid, $text, $num, $id)",
                 "$eid", "$pid", "$text", "$num", "$id");
+            _deleteValues = Prepare("DELETE FROM parameter_values WHERE element_id = $eid", "$eid");
+            // Element ids are reused by Revit after a deletion: a tombstone must also drop the OLD element's
+            // values, or a new element under the same id would inherit (and then overwrite) them.
+            _tombstone = Prepare(
+                "UPDATE elements SET deleted_at = $now WHERE element_id = $eid AND deleted_at IS NULL",
+                "$now", "$eid");
         }
 
-        /// <summary>A fresh file: any previous spike database at the path (and its WAL sidecars) is removed
-        /// first, so every run measures from zero.</summary>
-        public static IndexSpikeStore Create(string path)
+        /// <summary>A fresh file: any previous database at the path (and its WAL sidecars) is removed
+        /// first. Used by a full rebuild and by the spike.</summary>
+        public static ModelIndexStore Create(string path)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            foreach (string sidecar in new[] { path, path + "-wal", path + "-shm" })
-                if (File.Exists(sidecar)) File.Delete(sidecar);
-
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            DeleteFiles(path);
             SqliteConnection connection = SqliteRuntime.Open(path);
-            Execute(connection, "PRAGMA journal_mode=WAL");
-            Execute(connection, "PRAGMA synchronous=NORMAL");
-            Execute(connection, Ddl);
-            return new IndexSpikeStore(connection);
+            Initialize(connection);
+            return new ModelIndexStore(connection, path);
         }
 
-        public static IndexSpikeStore CreateInMemory()
+        /// <summary>Opens the index of a model, creating it when absent and RECREATING it when its schema
+        /// version is not this build's — a version bump is a rebuild by definition. The caller learns
+        /// which from <paramref name="created"/> and starts a build or a reconcile accordingly.</summary>
+        public static ModelIndexStore Open(string path, out bool created)
+        {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            created = !File.Exists(path);
+            if (!created)
+            {
+                try
+                {
+                    SqliteConnection existing = SqliteRuntime.Open(path);
+                    Execute(existing, "PRAGMA journal_mode=WAL");
+                    Execute(existing, "PRAGMA synchronous=NORMAL");
+                    string? version = SqliteRuntime.Scalar<string>(existing, "SELECT value FROM meta WHERE key = 'schema_version'");
+                    if (version == SchemaVersion) return new ModelIndexStore(existing, path);
+                    existing.Dispose();
+                }
+                catch (SqliteException)
+                {
+                    // Not a database we wrote (a corrupt or foreign file): start over.
+                }
+                created = true;
+            }
+            return Create(path);
+        }
+
+        public static ModelIndexStore CreateInMemory()
         {
             SqliteConnection connection = SqliteRuntime.OpenInMemory();
             Execute(connection, Ddl);
-            return new IndexSpikeStore(connection);
+            Execute(connection, $"INSERT INTO meta (key, value) VALUES ('schema_version', '{SchemaVersion}')");
+            return new ModelIndexStore(connection, ":memory:");
+        }
+
+        private static void Initialize(SqliteConnection connection)
+        {
+            Execute(connection, "PRAGMA journal_mode=WAL");
+            Execute(connection, "PRAGMA synchronous=NORMAL");
+            Execute(connection, Ddl);
+            Execute(connection, $"INSERT INTO meta (key, value) VALUES ('schema_version', '{SchemaVersion}')");
         }
 
         public string JournalMode => SqliteRuntime.Scalar<string>(_connection, "PRAGMA journal_mode") ?? string.Empty;
 
-        public void WriteMeta(string key, string? value)
+        public void SetMeta(string key, string? value)
         {
             using SqliteCommand command = _connection.CreateCommand();
             command.CommandText = "INSERT OR REPLACE INTO meta (key, value) VALUES ($k, $v)";
@@ -136,7 +183,18 @@ namespace AnalyseTool.Core.Common.Index
             command.ExecuteNonQuery();
         }
 
-        /// <summary>One transaction per batch — the chunk the command read in one Revit-thread slot.</summary>
+        public string? GetMeta(string key)
+        {
+            using SqliteCommand command = _connection.CreateCommand();
+            command.CommandText = "SELECT value FROM meta WHERE key = $k";
+            command.Parameters.AddWithValue("$k", key);
+            object? value = command.ExecuteScalar();
+            return value is string s ? s : null;
+        }
+
+        /// <summary>Writes a batch of freshly read elements in one transaction — the chunk one Revit-thread
+        /// slot produced. An element already present is replaced whole: its old values go first, so a
+        /// parameter that disappeared from it does not linger.</summary>
         public void Write(IReadOnlyList<ElementRead> batch)
         {
             string now = DateTime.UtcNow.ToString("O");
@@ -144,6 +202,7 @@ namespace AnalyseTool.Core.Common.Index
             _insertElement.Transaction = transaction;
             _insertDef.Transaction = transaction;
             _insertValue.Transaction = transaction;
+            _deleteValues.Transaction = transaction;
 
             foreach (ElementRead read in batch)
             {
@@ -162,6 +221,8 @@ namespace AnalyseTool.Core.Common.Index
                     _insertDef.ExecuteNonQuery();
                 }
 
+                Bind(_deleteValues, r.ElementId);
+                _deleteValues.ExecuteNonQuery();
                 foreach (ParameterValueRow v in read.Values)
                 {
                     Bind(_insertValue, v.ElementId, v.ParamId, v.ValueText, v.ValueNum, v.ValueId);
@@ -172,7 +233,51 @@ namespace AnalyseTool.Core.Common.Index
             transaction.Commit();
         }
 
+        /// <summary>Marks elements deleted. The rows stay — a deleted element can no longer be read from
+        /// the model, and the index is the one place that still knows what it was (#80) — but their
+        /// values go, because Revit hands the id to the next element it creates.</summary>
+        public void Tombstone(IReadOnlyCollection<long> elementIds)
+        {
+            if (elementIds.Count == 0) return;
+            string now = DateTime.UtcNow.ToString("O");
+            using SqliteTransaction transaction = _connection.BeginTransaction();
+            _tombstone.Transaction = transaction;
+            _deleteValues.Transaction = transaction;
+            foreach (long id in elementIds)
+            {
+                Bind(_tombstone, now, id);
+                _tombstone.ExecuteNonQuery();
+                Bind(_deleteValues, id);
+                _deleteValues.ExecuteNonQuery();
+            }
+            transaction.Commit();
+        }
+
+        /// <summary>element_id → version_guid of every LIVE row: what a reconcile compares the model's
+        /// (id, VersionGuid) sweep against.</summary>
+        public Dictionary<long, string> LiveVersions()
+        {
+            Dictionary<long, string> versions = new();
+            using SqliteCommand command = _connection.CreateCommand();
+            command.CommandText = "SELECT element_id, version_guid FROM elements WHERE deleted_at IS NULL";
+            using SqliteDataReader reader = command.ExecuteReader();
+            while (reader.Read())
+                versions[reader.GetInt64(0)] = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+            return versions;
+        }
+
+        /// <summary>Empties the index for a full rebuild while keeping the file (and any reader's
+        /// connection) valid. Meta survives: the model key and path do not change.</summary>
+        public void Clear()
+        {
+            using SqliteTransaction transaction = _connection.BeginTransaction();
+            Execute(_connection, "DELETE FROM parameter_values; DELETE FROM parameter_defs; DELETE FROM elements", transaction);
+            transaction.Commit();
+        }
+
         public long Count(string table) => SqliteRuntime.Scalar<long>(_connection, $"SELECT COUNT(*) FROM {table}");
+
+        public long LiveElements => SqliteRuntime.Scalar<long>(_connection, "SELECT COUNT(*) FROM elements WHERE deleted_at IS NULL");
 
         public T? Scalar<T>(string sql) => SqliteRuntime.Scalar<T>(_connection, sql);
 
@@ -192,15 +297,28 @@ namespace AnalyseTool.Core.Common.Index
             return (rows, watch.Elapsed.TotalMilliseconds);
         }
 
-        /// <summary>Folds the WAL back into the main file so the size measured is the size that stays.</summary>
-        public void Checkpoint() => Execute(_connection, "PRAGMA wal_checkpoint(TRUNCATE)");
+        /// <summary>Folds the WAL back into the main file: after a build, and at the model's own save
+        /// and sync moments, so the file on disk is the whole index.</summary>
+        public void Checkpoint()
+        {
+            try { Execute(_connection, "PRAGMA wal_checkpoint(TRUNCATE)"); }
+            catch (SqliteException) { /* a reader holds the WAL open; the next checkpoint gets it */ }
+        }
 
         public void Dispose()
         {
             _insertElement.Dispose();
             _insertDef.Dispose();
             _insertValue.Dispose();
+            _deleteValues.Dispose();
+            _tombstone.Dispose();
             _connection.Dispose();
+        }
+
+        public static void DeleteFiles(string path)
+        {
+            foreach (string sidecar in new[] { path, path + "-wal", path + "-shm" })
+                if (File.Exists(sidecar)) File.Delete(sidecar);
         }
 
         private SqliteCommand Prepare(string sql, params string[] parameterNames)
@@ -217,10 +335,11 @@ namespace AnalyseTool.Core.Common.Index
                 command.Parameters[i].Value = values[i] ?? DBNull.Value;
         }
 
-        private static void Execute(SqliteConnection connection, string sql)
+        private static void Execute(SqliteConnection connection, string sql, SqliteTransaction? transaction = null)
         {
             using SqliteCommand command = connection.CreateCommand();
             command.CommandText = sql;
+            command.Transaction = transaction;
             command.ExecuteNonQuery();
         }
     }

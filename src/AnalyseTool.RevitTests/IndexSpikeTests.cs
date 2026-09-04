@@ -17,7 +17,7 @@ public sealed class IndexSpikeTests : SeededModel
         string path = Path.Combine(Path.GetTempPath(), "analysetool-spike-" + Guid.NewGuid().ToString("N") + ".db");
         try
         {
-            using IndexSpikeStore store = IndexSpikeStore.Create(path);
+            using ModelIndexStore store = ModelIndexStore.Create(path);
             await Assert.That(store.JournalMode).IsEqualTo("wal");
 
             IReadOnlyList<ElementId> ids = ElementRowReader.CollectIds(Document);

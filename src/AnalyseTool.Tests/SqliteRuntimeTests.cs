@@ -38,7 +38,7 @@ public class SqliteRuntimeTests
     {
         RequireWindows();
 
-        using IndexSpikeStore store = IndexSpikeStore.CreateInMemory();
+        using ModelIndexStore store = ModelIndexStore.CreateInMemory();
 
         ElementRow wall = new("uid-1", 1001, false, "Wände", "OST_Walls", "Model", "Basiswand", "Basiswand", "Generic 200", 42,
             10, null, Guid.Empty.ToString(), 0, 0, 0, -1, -1, 0, 1, 1, 3);
@@ -73,7 +73,7 @@ public class SqliteRuntimeTests
     {
         RequireWindows();
 
-        using IndexSpikeStore store = IndexSpikeStore.CreateInMemory();
+        using ModelIndexStore store = ModelIndexStore.CreateInMemory();
         ElementRow before = new("uid-1", 1001, false, "Wände", "OST_Walls", "Model", "old", null, null, null,
             null, null, "v1", null, null, null, null, null, null, null, null, null);
         ElementRow after = before with { Name = "new", VersionGuid = "v2" };

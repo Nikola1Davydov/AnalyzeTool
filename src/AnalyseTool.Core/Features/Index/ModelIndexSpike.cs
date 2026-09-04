@@ -69,16 +69,16 @@ namespace AnalyseTool.Core.Features.Index
             collect.Stop();
 
             string dbPath = Path.Combine(SqliteRuntime.ModelsRoot, "spike", SafeFileName(facts.Title) + ".db");
-            using IndexSpikeStore store = IndexSpikeStore.Create(dbPath);
+            using ModelIndexStore store = ModelIndexStore.Create(dbPath);
             string journalMode = store.JournalMode;
             if (!string.Equals(journalMode, "wal", StringComparison.OrdinalIgnoreCase))
                 notes.Add($"WAL was requested but the journal mode is '{journalMode}'.");
-            store.WriteMeta("schema_version", "spike-1");
-            store.WriteMeta("title", facts.Title);
-            store.WriteMeta("path", facts.Path);
-            store.WriteMeta("creation_guid", facts.CreationGuid);
-            store.WriteMeta("revit_version", facts.RevitVersion);
-            store.WriteMeta("built_at", DateTime.UtcNow.ToString("O"));
+            store.SetMeta("schema_version", "spike-1");
+            store.SetMeta("title", facts.Title);
+            store.SetMeta("path", facts.Path);
+            store.SetMeta("creation_guid", facts.CreationGuid);
+            store.SetMeta("revit_version", facts.RevitVersion);
+            store.SetMeta("built_at", DateTime.UtcNow.ToString("O"));
 
             // 3. The reconcile sweep: id + version of everything, nothing else read.
             Stopwatch sweepWall = Stopwatch.StartNew();

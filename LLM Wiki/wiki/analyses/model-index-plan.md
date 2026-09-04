@@ -303,6 +303,21 @@ v_distribution  -- param name × value_text → count   (строка инвен
 Извлечение строки элемента — функция от `Element`, применение дельты — функция от журнала и
 хранилища, guard — функция от строки SQL. Тесты яруса 1 покрывают всё, кроме самого Revit.
 
+## Состояние на 2026-09-04
+
+Фазы 1–3 написаны одним заходом по решению владельца («сделай, как считаешь нужным»), ветка
+`feature/model-index`: `src/AnalyseTool.Core/Common/Index/` (`ModelIndexStore`, `ChangeJournal`,
+`ModelIdentity`, `ElementRowReader`, `ModelIndexSession`, `ModelIndexHost`, `IndexQuery`),
+команды в `src/AnalyseTool.Core/Features/Index/ModelIndexCommands.cs`, проводка одной строкой в
+`AnalyseToolBootstrap`. Отличия от текста выше: слепка `VACUUM INTO` и Sdk `IModelIndex` пока нет
+(фаза 4); журнал держится в памяти без таблицы `changes`; «огромная» пачка — больше 5 000 id или
+четверти живых строк — идёт в сверку, малая и большая — одним путём применения порциями. Спайк
+`ModelIndexSpike` оставлен до снятия цифр. Тесты: ярус 1 `ModelIndexTests` (свёртка журнала,
+tombstone, замена, миграция версии схемы, guard запроса), ярус 3 `ModelIndexSessionTests`
+(сборка, дельта через настоящий `DocumentChanged`, удаление, сверка мимо журнала, полная
+пересборка). Собрано на Linux; в Revit ещё не запускалось — цифры и поведение на живой модели за
+владельцем.
+
 ## 7. Риски — и что на каждый
 
 | Риск | Ответ |
