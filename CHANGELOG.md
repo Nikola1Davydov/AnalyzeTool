@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- 📤 **Array-rooted answers are structured content too (#111).** `GetCategoriesInRevit`, `GetCadImports` and `GetWarningsInRevit` return a JSON array, and the MCP server used to list them without an `outputSchema` and answer with text only, because structured content had to be an object. The 2026-07-28 spec lifted that (and the SDK with it), so the three now advertise their array schema and answer with `structuredContent` like every other tool.
+- 📤 **Array-rooted answers are structured content too (#111).** `GetCategoriesInRevit`, `GetCadImports` and `GetWarningsInRevit` return a JSON array, and the MCP server used to list them without an `outputSchema` and answer with text only, because structured content had to be an object. The 2026-07-28 spec lifted that, but Claude Code's client has not followed: it validates `tools/list` itself, refuses an `outputSchema` whose root is not an object, and with it refused the whole server ("Couldn't start"). So the three tools advertise `{ items: [...] }` — an object with one array property — and answer in that shape, text and `structuredContent` alike. One field of indirection, and every client works.
 
 ## [1.5.1] / 2026-09-02
 

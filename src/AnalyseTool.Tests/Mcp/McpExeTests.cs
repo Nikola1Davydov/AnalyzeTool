@@ -45,9 +45,11 @@ public class McpExeTests
             await Assert.That(byName.Keys).IsEquivalentTo(new[] { "GetThings", "GetNames", "acme_x_Run", "GetJobResult", "CancelJob" });
             await Assert.That((string)byName["GetJobResult"]["description"]!).StartsWith("GetJobResult: ");
             await Assert.That((string)byName["GetThings"]["description"]!).StartsWith("GetThings: ");
-            // outputSchema for objects AND arrays (#111): the array-rooted refusal is history since spec 2026-07-28.
+            // outputSchema for objects AND arrays (#111) — but always with an object root: Claude Code's
+            // client rejects the whole listing over a bare array root, so an array is advertised as { items }.
             await Assert.That(byName["GetThings"]["outputSchema"]).IsNotNull();
-            await Assert.That((string)byName["GetNames"]["outputSchema"]!["type"]!).IsEqualTo("array");
+            await Assert.That((string)byName["GetNames"]["outputSchema"]!["type"]!).IsEqualTo("object");
+            await Assert.That((string)byName["GetNames"]["outputSchema"]!["properties"]!["items"]!["type"]!).IsEqualTo("array");
             await Assert.That((bool)byName["GetThings"]["annotations"]!["readOnlyHint"]!).IsTrue();
             await Assert.That((bool)byName["acme_x_Run"]["annotations"]!["destructiveHint"]!).IsTrue();
         }
@@ -69,8 +71,10 @@ public class McpExeTests
             await Assert.That((bool?)things["isError"] ?? false).IsFalse();
             await Assert.That((string)things["content"]![0]!["text"]!).Contains("\"count\": 2");
             await Assert.That((int)things["structuredContent"]!["count"]!).IsEqualTo(2);
-            // An array-rooted answer is structuredContent too (#111), matching the array outputSchema it listed under.
-            await Assert.That(names["structuredContent"]!.Select(t => (string)t!)).IsEquivalentTo(new[] { "a", "b" });
+            // An array-rooted answer is structuredContent too (#111), wrapped in { items } like the schema it listed under;
+            // the text block mirrors the same shape.
+            await Assert.That(names["structuredContent"]!["items"]!.Select(t => (string)t!)).IsEquivalentTo(new[] { "a", "b" });
+            await Assert.That((string)names["content"]![0]!["text"]!).Contains("\"items\"");
             await Assert.That((string)names["content"]![0]!["text"]!).Contains("\"a\"");
         }
         // The payload reached the bridge unchanged, under the real command name.

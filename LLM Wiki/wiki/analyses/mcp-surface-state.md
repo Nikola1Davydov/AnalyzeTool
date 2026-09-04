@@ -240,7 +240,13 @@ exe работал в сессиях весь день и под stdio-тест�
 `GetWarningsInRevit` (`List<WarningInRevitModel>`); `GetDataByCategoryName` тоже список, но
 `HiddenFromMcp`. SDK 2.2.0 разрешает не-объектный корень `Tool.OutputSchema` явно (его xml),
 так что #111 теперь — удаление ограничения в `src/AnalyseTool.Mcp/Program.cs` и разворот двух
-тестов яруса 2, без гейта.
+тестов яруса 2, без гейта. **Поправка 2026-09-04:** сделано 2026-09-02 буквально — массив в корне
+`outputSchema` — и на следующее утро клиент Claude Code отверг весь `tools/list` («Invalid input:
+expected "object"» на `tools[20].outputSchema.type`), сервер не стартовал вовсе. Спека разрешает,
+клиент проверяет по-своему. Ответ — обёртка: три команды с массивом объявляют
+`{ type: object, properties: { items: <массив> } }` и отвечают `{ items: [...] }`, текст и
+`structuredContent` одинаковы (`OutputShapeOf`, `WrapArraySchema` в `Program.cs`). Проверено
+поддельным мостом через stdio; урок: **корень `outputSchema` — всегда объект**, что бы ни говорила спека.
 
 Единственный пробел против официального чек-листа безопасности — ограничение частоты
 ([#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)); **проверено по коду

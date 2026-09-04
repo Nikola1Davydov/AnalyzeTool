@@ -1536,3 +1536,12 @@ Revit, без фокуса, с задержкой показа и скрытия
 яруса 2 развёрнуты. #85 P0: `Document.CreationGUID` при Save As **не регенерируется** — измерено в Revit
 2025 и закреплено тестом яруса 3 (`DocumentIdentityTests`, 19 тестов в Revit). Следствие для теневого
 индекса и папки проекта: ключ = GUID плюс `PathName`, для worksharing — GUID центральной модели.
+
+## 2026-09-04 — #111 сломал старт сервера у Claude Code, обёрнуто
+
+Лог клиента: `Invalid result for tools/list … outputSchema.type: expected "object"` — сервер не
+поднимался для сессий Cowork и Code. Причина — вчерашний #111: массив в корне `outputSchema`, что
+спека 2026-07-28 разрешает, а валидатор клиента нет. Починено в `src/AnalyseTool.Mcp/Program.cs`:
+массив объявляется и отдаётся как `{ items: [...] }`, тесты яруса 2 развёрнуты обратно на объект,
+CHANGELOG поправлен. Проверено на Linux поддельным мостом по `McpWire` и собранным exe через stdio.
+Записано в `mcp-surface-state.md`. Ветка `dev`, затем слито в `feature/model-index`.
