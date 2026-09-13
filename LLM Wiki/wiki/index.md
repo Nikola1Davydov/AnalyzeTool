@@ -65,6 +65,7 @@ updated: 2026-09-02
 | [`analyses/roadmap.md`](analyses/roadmap.md) | куда двигаться дальше: три слоя, что припарковать, структура трекера |
 | [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
+| [`analyses/context-hub.md`](analyses/context-hub.md) | центр контекста: одно знание проекта для агентов во всех инструментах — раскладка папки, MCP-сервер, фазы |
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
 | [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 54 открытых issue по группам |
 | [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md) | сверка issue и вики с кодом: семь выводов, что закрыть, что сузить, что править |
