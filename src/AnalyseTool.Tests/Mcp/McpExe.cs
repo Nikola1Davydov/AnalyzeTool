@@ -23,11 +23,11 @@ internal sealed class McpExe : IAsyncDisposable
 
     public static McpExe Start(int bridgePort, string token = "test-token", params string[] extraArgs)
     {
-        // <src>/AnalyseTool.Tests/bin/<cfg>/net8.0-windows/  ->  <src>/AnalyseTool.Mcp/bin/<cfg>/net8.0/AnalyseTool.Mcp.dll
+        // <src>/AnalyseTool.Tests/bin/<cfg>/net8.0-windows/  ->  <src>/AnalyseTool.Mcp/bin/<cfg>/net8.0-windows/AnalyseTool.Mcp.dll
         string testBin = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         string cfg = Path.GetFileName(Path.GetDirectoryName(testBin)!);
         string src = Path.GetFullPath(Path.Combine(testBin, "..", "..", "..", "..")); // net8.0-windows -> cfg -> bin -> AnalyseTool.Tests -> src
-        string dll = Path.Combine(src, "AnalyseTool.Mcp", "bin", cfg, "net8.0", "AnalyseTool.Mcp.dll");
+        string dll = Path.Combine(src, "AnalyseTool.Mcp", "bin", cfg, "net8.0-windows", "AnalyseTool.Mcp.dll");
         if (!File.Exists(dll))
             throw new FileNotFoundException("Build AnalyseTool.Mcp first (the test project references it for build order).", dll);
 

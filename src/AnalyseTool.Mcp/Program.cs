@@ -22,7 +22,8 @@ TimeSpan handleAfter = TimeSpan.FromSeconds(double.TryParse(ParseOption(args, "-
 
 // Startup banner on STDERR (never stdout — that's the MCP protocol channel). Shows in the AI
 // client's MCP server log so it's unambiguous which build is running and which port it targets.
-Console.Error.WriteLine($"[AnalyseTool.Mcp] starting — {BuildStamp()}, bridge port {port}");
+Console.Error.WriteLine($"[AnalyseTool.Mcp] starting — {BuildStamp()}, bridge port {port}, " +
+                        $"{System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
 if (token.Length == 0)
     Console.Error.WriteLine("[AnalyseTool.Mcp] no --token argument: Revit will reject every call. " +
                             "Copy the configuration snippet from AnalyseTool Settings → MCP server.");

@@ -134,9 +134,15 @@ MCP-сервер, позволяющий внешнему агенту упра�
 выдать себе право исполнять код. Единственный пробел — **ограничение частоты**: нет
 ничего.
 
-## Исполняемый файл: самодостаточный
+## Исполняемый файл: framework-dependent (self-contained был один релиз)
 
-С 2026-09-02 `mcp\AnalyseTool.Mcp.exe` публикуется как один self-contained файл (win-x64,
+*Пересмотр 2026-09-14, к 1.5.2:* exe снова framework-dependent, single-file win-x64, ~5,6 МБ вместо
+36. Довод «на машине может не быть .NET 8» снят иначе: единственные машины, где exe нужен, это
+машины с Revit, а Revit приносит рантайм (2025/2026 — .NET 8, 2027 — .NET 10); в csproj стоит
+`RollForward=LatestMajor`, чтобы net8.0-сборка стартовала и на одном лишь .NET 10. Баннер на stderr
+называет рантайм, на котором exe поднялся. Ниже — как было в 1.5.1.
+
+С 2026-09-02 `mcp\AnalyseTool.Mcp.exe` публиковался как один self-contained файл (win-x64,
 single-file, сжатый, ~36 МБ) — `PluginAssets.targets` вызывает `Publish`, а не `Build`, и
 передаёт `RuntimeIdentifier`/`SelfContained` параметрами, чтобы ProjectReference на exe (только
 порядок сборки) не упирался в NETSDK1150. Причина: exe запускает клиент ИИ, не Revit, и

@@ -11,20 +11,21 @@
   <!-- The out-of-process MCP stdio server ships in a "mcp" subfolder; the Settings page points
        the AI client's config at <plugin>\mcp\AnalyseTool.Mcp.exe.
 
-       PUBLISHED, not built: self-contained, single-file, win-x64. The exe is started by the AI
-       client, not by Revit, so it cannot borrow Revit's runtime — a framework-dependent net8.0 exe
-       relied on a .NET 8 runtime happening to be installed, which Revit 2025/2026 guarantee and a
-       Revit 2027 (net10) machine does not. Self-contained costs ~70 MB in mcp\ and buys an exe that
-       runs on any Windows x64 with nothing installed. The switches are passed HERE rather than set
-       in the csproj so the ProjectReferences on the exe (build order only) keep seeing an ordinary
-       project — NETSDK1150 refuses a self-contained referenced project. -->
+       PUBLISHED, not built: framework-dependent, single-file, win-x64. The exe is started by the AI
+       client, not by Revit, so it cannot borrow Revit's process — but it CAN use the runtime Revit
+       installed on the machine: Revit 2025/2026 bring .NET 8, Revit 2027 brings .NET 10, and the
+       exe declares RollForward=LatestMajor so a net8.0 build starts on either. 1.5.1 shipped it
+       self-contained (~36 MB, runs with nothing installed); 1.5.2 goes back to a few MB because the
+       only machines that matter have Revit, and Revit brings a runtime. The switches are passed
+       HERE rather than set in the csproj so the ProjectReferences on the exe (build order only)
+       keep seeing an ordinary project. -->
   <PropertyGroup>
     <ATMcpPublishDir>$(MSBuildThisFileDirectory)AnalyseTool.Mcp\bin\$(Configuration)\publish\</ATMcpPublishDir>
   </PropertyGroup>
   <Target Name="ATBuildAndCopyMcpServer" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
-    <Message Text="Publishing AnalyseTool.Mcp (self-contained, single file) into the plugin folder..." Importance="high" />
+    <Message Text="Publishing AnalyseTool.Mcp (framework-dependent, single file) into the plugin folder..." Importance="high" />
     <MSBuild Projects="$(MSBuildThisFileDirectory)AnalyseTool.Mcp\AnalyseTool.Mcp.csproj"
-             Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=true;PublishSingleFile=true;IncludeNativeLibrariesForSelfExtract=true;EnableCompressionInSingleFile=true;PublishDir=$(ATMcpPublishDir)"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=false;PublishSingleFile=true;IncludeNativeLibrariesForSelfExtract=true;PublishDir=$(ATMcpPublishDir)"
              Targets="Publish" />
     <ItemGroup>
       <ATMcpFiles Include="$(ATMcpPublishDir)**\*.*" />

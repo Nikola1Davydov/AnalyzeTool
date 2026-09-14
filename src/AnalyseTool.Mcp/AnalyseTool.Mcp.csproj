@@ -7,21 +7,30 @@
     command is exposed to AI automatically (discovered live via the bridge's "list" message).
 
     No Revit/SDK references on purpose: this process never loads the Revit API. It only speaks two
-    JSON protocols (MCP stdio <-> our tiny bridge envelope). net8.0 (not -windows): no UI.
+    JSON protocols (MCP stdio <-> our tiny bridge envelope). net8.0-windows (owner's call, 2026-09-14):
+    the exe is Windows-only and says so in its TFM as well as in the win-x64 RuntimeIdentifier the
+    publish step passes; no UI, no WindowsDesktop framework. The tier-2 tests start the dll from
+    bin\<cfg>
+et8.0-windows — keep McpExe.cs in step when the TFM changes.
   -->
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>AnalyseTool.Mcp</AssemblyName>
     <RootNamespace>AnalyseTool.Mcp</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Restore assets for the RID the plugin build publishes with (PluginAssets.targets passes
-         RuntimeIdentifier=win-x64 + SelfContained to the Publish call). Plural on purpose: it does
-         not make an ordinary Build self-contained, it only makes the RID restorable. -->
+         RuntimeIdentifier=win-x64 to the Publish call). Plural on purpose: it does not make an
+         ordinary Build RID-specific, it only makes the RID restorable. -->
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- Framework-dependent since 1.5.2: the exe runs on whatever .NET the machine's Revit brought.
+         Revit 2025/2026 install .NET 8, Revit 2027 installs .NET 10 — Major lets this net8.0 build
+         start on .NET 10 when no .NET 8 is present, and keeps it on .NET 8 when there is one
+         (LatestMajor would jump to the newest major even with 8 installed). -->
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('Release'))">
