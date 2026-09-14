@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.2] / 2026-09-14
 
 - 🧹 **A lighter plugin folder.** Roslyn used to ship its compiler diagnostics in thirteen languages into every Revit version's folder (6 MB each, three times in the installer). Only the English satellite assemblies are deployed now; a script author reads diagnostics in the language `ExecuteRevitCode` reports anyway. One Revit version's folder: 31 MB → 24 MB.
 - 📦 **The MCP server exe is small again.** 1.5.1 published `mcp\AnalyseTool.Mcp.exe` self-contained (~36 MB, its own .NET inside) so it would start on a machine without .NET 8. But the only machines that matter have Revit, and Revit brings a runtime: 2025/2026 install .NET 8, 2027 installs .NET 10. The exe is framework-dependent now, a few MB, and rolls forward to whichever major .NET is there. Its startup line on the client's log names the runtime it landed on.
