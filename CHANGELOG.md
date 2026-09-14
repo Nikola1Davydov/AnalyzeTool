@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 🧹 **A lighter plugin folder.** Roslyn used to ship its compiler diagnostics in thirteen languages into every Revit version's folder (6 MB each, three times in the installer). Only the English satellite assemblies are deployed now; a script author reads diagnostics in the language `ExecuteRevitCode` reports anyway. One Revit version's folder: 31 MB → 24 MB.
 - 📦 **The MCP server exe is small again.** 1.5.1 published `mcp\AnalyseTool.Mcp.exe` self-contained (~36 MB, its own .NET inside) so it would start on a machine without .NET 8. But the only machines that matter have Revit, and Revit brings a runtime: 2025/2026 install .NET 8, 2027 installs .NET 10. The exe is framework-dependent now, a few MB, and rolls forward to whichever major .NET is there. Its startup line on the client's log names the runtime it landed on.
 - 📤 **Array-rooted answers are structured content too (#111).** `GetCategoriesInRevit`, `GetCadImports` and `GetWarningsInRevit` return a JSON array, and the MCP server used to list them without an `outputSchema` and answer with text only, because structured content had to be an object. The 2026-07-28 spec lifted that, but Claude Code's client has not followed: it validates `tools/list` itself, refuses an `outputSchema` whose root is not an object, and with it refused the whole server ("Couldn't start"). So the three tools advertise `{ items: [...] }` — an object with one array property — and answer in that shape, text and `structuredContent` alike. One field of indirection, and every client works.
 

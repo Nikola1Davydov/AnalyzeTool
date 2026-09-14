@@ -11,6 +11,10 @@
 	    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
         <PluginSubDir>AnalyseTool</PluginSubDir>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <!-- Only English satellite assemblies reach the plugin folder. Roslyn alone ships its compiler
+             diagnostics in 13 languages (6.3 MB per Revit version, x3 in the MSI), and a script author
+             reads them in whatever language ExecuteRevitCode reports anyway. -->
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
       </PropertyGroup>
 
     <!-- Output layout: bin\<Configuration>\AnalyseTool\ (the .addin sits one level up, next to it).
