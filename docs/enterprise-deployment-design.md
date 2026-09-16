@@ -56,7 +56,10 @@ Consequences for an IT department:
    origin (machine / user / default) can be displayed in Settings and printed by a CLI.
 5. Nothing changes for a single user with no policy file — the user layer alone behaves exactly
    as today.
-6. A user who installed the plugin themselves (no admin rights, SingleUser MSI, a contractor's
+6. **IT is needed once, not for every change.** Day-to-day configuration (settings, locks,
+   catalog, required extensions, AI endpoint) is owned by the BIM coordinator and changes without
+   an IT ticket. IT's part is the MSI and, optionally, a one-time pointer.
+7. A user who installed the plugin themselves (no admin rights, SingleUser MSI, a contractor's
    laptop) can **join the company's configuration in one action** from Settings — and leave it
    again.
 
@@ -91,9 +94,19 @@ cannot be overridden by the layers below it and cannot be changed through the UI
 | Organization | the user, via **Join organization** | no | yes (**Leave organization**) |
 | User | the plugin | no | these ARE the user's settings |
 
-The machine and organization layers carry the **same file format**. IT publishes one
-`policy.json`; strict shops push it to `%ProgramData%`, everyone else (self-installed seats,
-contractors, freelancers on a project) joins it by URL. Both can coexist: the machine layer wins.
+The machine and organization layers carry the **same file format**, and the machine file has two
+forms:
+
+- **Pointer (recommended).** `%ProgramData%\AnalyseTool\policy.json` contains only
+  `{ "version": 1, "policyUrl": "https://…/policy.json", "enforced": true }`. The plugin loads the
+  real policy from the URL through the same loader as Join organization (§8), and `enforced`
+  means the user cannot leave. IT writes this file once; **the content at the URL is owned by the
+  BIM coordinator** and changes with a commit or a file replace, never an IT ticket.
+- **Inline.** The full policy in the machine file, for shops where IT wants to own every value.
+  Every change then travels via GPO.
+
+Self-installed seats, contractors and freelancers join the same URL by hand (§8). All layers can
+coexist: the machine layer wins.
 
 `PathProvider` gets `MachineProfilePath` (`%ProgramData%\AnalyseTool`) and `PolicyPath`.
 A new `Core/Common/Policy/PolicyStore` loads both policy sources once, tolerates a missing or
@@ -109,6 +122,7 @@ exactly the single-seat product it is today.
 {
   "version": 1,
   "organization": { "name": "Company BIM", "contact": "bim-support@company.local" },
+  "minimumVersion": "2.3.0",
   "locked": ["codeExecution.enabled", "extensions.roots", "mcp.enabled"],
 
   "codeExecution": { "enabled": false },
@@ -144,6 +158,8 @@ Key semantics:
 
 - `organization` — shown in Settings ("Managed by Company BIM") and in the join preview (§8), so
   a user always knows whose configuration they are running and whom to ask.
+- `minimumVersion` — a seat below it shows a non-blocking banner with the organization's download
+  link (`organization.downloadUrl`, optional); nothing is enforced, the plugin cannot update itself.
 - `locked` — dotted setting paths. A locked path is read-only in the UI; the corresponding
   `Set…` command returns an error naming the policy file.
 - `extensions.roots` — appended to the scan roots as **Dev zone, IsDefault=true** (not removable).
@@ -221,45 +237,54 @@ to the RevitTests tier or a future remote transport.
 Boundary work: `Check-Boundaries.ps1` learns the new project; CLAUDE.md / AGENTS.md table gets a
 row; `InternalsVisibleTo("AnalyseTool.Cli")` in Core, same pattern as `Mcp.Bridge`.
 
-### 7. Rollout story for an administrator (what ONBOARDING.md § "For IT" will say)
+### 7. Rollout story — who does what
 
-Nothing here is AnalyseTool-specific machinery: the plugin reads one file from
-`%ProgramData%\AnalyseTool\` at startup, and Windows does the delivery.
+The split that matters: **IT touches a seat once** (the MSI and a pointer); everything that
+changes afterwards lives at a URL the **BIM coordinator** controls. Nothing here is
+AnalyseTool-specific machinery: the plugin reads one small file from `%ProgramData%\AnalyseTool\`
+at startup and fetches the rest; Windows does the delivery of that one file.
 
-**Active Directory / GPO**
+**IT (once per seat, and per plugin version)**
 
 1. **Plugin.** Put `AnalyseTool-<ver>-MultiUser.msi` on a share readable by domain computers.
    In the GPO linked to the BIM workstations OU: *Computer Configuration → Policies → Software
    Settings → Software Installation → New Package*, deployment **Assigned**. The MSI installs as
-   SYSTEM at the next boot, before anyone logs in. New versions go in via the package's
-   *Upgrades* tab (the MSI has `MajorUpgrade` configured).
-2. **Policy.** Same GPO: *Computer Configuration → Preferences → Windows Settings → Files → New
-   File*. Action **Replace**, source `\\fileserver\deploy\AnalyseTool\policy.json`, destination
-   `%ProgramData%\AnalyseTool\policy.json`. GPO re-applies at boot and every ~90 minutes, so an
-   edited file on the share reaches every seat within that window; the plugin picks it up on the
-   next Revit start.
-3. **Pre-installed extensions (no feed needed).** *Preferences → Folders/Files* can also drop
-   ready extension folders into `%ProgramData%\AnalyseTool\extensions-dist\<id>\`. The plugin
-   scans that machine-level managed root in addition to the user one (read-only for the Extension
-   Manager: no install/remove/update there, listed with a **Machine** badge).
-4. **AI key.** *Preferences → Windows Settings → Environment* sets `ANALYSETOOL_AI_KEY` — per
-   user (User Configuration) or per machine when the key belongs to a gateway.
-5. **Verify** a seat with `AnalyseTool.Cli policy show` and `ext list`.
+   SYSTEM at the next boot. New versions go in via the package's *Upgrades* tab (the MSI has
+   `MajorUpgrade` configured). This is the one step that legitimately needs admin rights: code
+   loaded into Revit must arrive through a trusted path.
+2. **Pointer.** Same GPO: *Computer Configuration → Preferences → Windows Settings → Files → New
+   File*, action **Replace**, destination `%ProgramData%\AnalyseTool\policy.json`, content = the
+   pointer form (§1). Written once; it only changes if the URL moves.
+   *Alternative without any file:* a DNS TXT record `_analysetool.<domain>` pointing at the URL
+   (§8 discovery). Then IT's part is the MSI and one DNS record, and the plugin finds the policy
+   itself. Add `"enforced"` via the pointer file if leaving must be impossible.
+3. Optional: *Preferences → Environment* for `ANALYSETOOL_AI_KEY` when the key is per machine.
 
-A startup PowerShell script that copies the file is an equivalent alternative to Preferences.
+**Intune / Azure AD only:** same shape — MSI as a Win32 app (`msiexec /i … /qn`), the pointer via
+an Intune PowerShell script.
 
-**Intune / Azure AD only**
+**BIM coordinator (any time, no IT involved)**
 
-Same shape, different tooling: the MSI wrapped as a Win32 app (`msiexec /i … /qn`), `policy.json`
-delivered by an Intune PowerShell script or a second Win32 app. Everything the plugin does is
-identical.
+- Owns `policy.json` at the URL: settings, locks, catalog URL, required extensions, AI endpoint,
+  log sink. Edits reach every seat on its next Revit start (ETag refresh, §8). Keep it in a Git
+  repository: history, review, and `AnalyseTool.Cli policy validate` in CI before it goes live.
+- Owns `catalog.json` and the extension feeds / zips on any internal static hosting (GitLab raw,
+  Nexus, an IIS folder, a file share). Publishing a new extension version = replacing files.
+  Extensions install into the user's managed zone with user rights — no admin needed, today
+  already.
+- Sees who is behind: the policy may carry `"minimumVersion"`; a seat below it shows a banner
+  with the internal download link, and `GetOrganizationStatus` / the CLI report the version.
 
-**Hosting for catalog and feeds.** Any internal static hosting: GitLab raw, Nexus, an IIS folder,
-a file share. Publish a new extension version by replacing files. No service to run.
+**Pre-installed extensions via GPO (optional, IT-owned).** *Preferences → Folders/Files* can drop
+ready extension folders into `%ProgramData%\AnalyseTool\extensions-dist\<id>\`. The plugin scans
+that machine-level managed root read-only (**Machine** badge; no install/remove/update there). Use
+this only when extensions must not be user-writable; otherwise `extensions.required` + a feed keeps
+them in the coordinator's hands.
+
+**Verify** a seat with `AnalyseTool.Cli policy show`, `org status` and `ext list`.
 
 **Later, on request:** an ADMX template reading `HKLM\Software\Policies\AnalyseTool` as a second
-source of the machine layer, for administrators who want checkboxes in the Group Policy Editor
-instead of a JSON file.
+source of the machine layer, for administrators who want checkboxes in the Group Policy Editor.
 
 ### 8. Join organization — one action to adopt the company configuration
 
@@ -360,6 +385,7 @@ Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the too
 
 - [ ] `PathProvider.MachineProfilePath`, `PolicyPath`
 - [ ] `Core/Common/Policy/PolicyStore` + `PolicyDocument` model, load-once, diagnostics on error
+- [ ] Machine file in two forms: inline policy, or pointer `{ policyUrl, enforced }` resolved through the URL loader from phase 3 (pointer support lands with phase 3)
 - [ ] `CodeExecutionSettings` reads policy, refuses when locked
 - [ ] `ExtensionSources` appends policy roots, honors lock
 - [ ] Machine-level managed root `%ProgramData%\AnalyseTool\extensions-dist` scanned read-only (Machine badge; no install/remove/update there)
@@ -381,6 +407,7 @@ Phase 3 — Join organization (the organization layer).
 - [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
 - [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
 - [ ] Startup refresh with `If-None-Match`; offline keeps cache; host change invalidates the join
+- [ ] Machine pointer form: same loader, `enforced` hides Leave; `minimumVersion` banner + `GetOrganizationStatus` reports version
 - [ ] `organization.name` / `contact` required for a joinable policy; HTTPS-only enforcement
 - [ ] Tier-1 tests: resolution order, input parsing, refresh cases, leave semantics
 
@@ -409,7 +436,8 @@ Phase 6 — CLI.
 
 Phase 7 — docs.
 
-- [ ] ONBOARDING.md § "For IT administrators": GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
+- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI
+- [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
