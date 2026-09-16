@@ -167,7 +167,7 @@ user file as the fallback, and refuse writes for locked paths.
 | Store | Change |
 | --- | --- |
 | `CodeExecutionSettings` | `Enabled` → policy value wins; `SetEnabled` refuses when locked |
-| `ExtensionSources` | `AllRoots()` appends policy roots; `RemoveRoot` refuses for them; `AddRoot` refuses when `extensions.roots` is locked |
+| `ExtensionSources` | `AllRoots()` appends policy roots and the machine-level `extensions-dist`; `RemoveRoot` refuses for them; `AddRoot` refuses when `extensions.roots` is locked |
 | `ExtensionStateStore` | `SetEnabled(false)` refuses for `required` ids |
 | `ExtensionSourceCatalog` | third source: the remote catalog; entries carry `Origin = Policy` |
 | `ExtensionUpdateFeed` / `InstallExtensionFromFile` / install-from-repository | enforce `allowedFeeds`, `allowInstallFromRepository` |
@@ -223,13 +223,43 @@ row; `InternalsVisibleTo("AnalyseTool.Cli")` in Core, same pattern as `Mcp.Bridg
 
 ### 7. Rollout story for an administrator (what ONBOARDING.md § "For IT" will say)
 
-1. Deploy `AnalyseTool-<ver>-MultiUser.msi` silently via SCCM / Intune.
-2. Deploy `policy.json` to `%ProgramData%\AnalyseTool\` via GPO Preferences (Files) or the
-   same package.
-3. Host `catalog.json` and extension zips + feed JSON on any internal static hosting
-   (GitLab raw, Nexus, IIS folder, file share). Publish new versions by replacing files.
-4. Optional: set `ANALYSETOOL_AI_KEY` per user or point `baseUrl` at the company gateway.
-5. Verify a seat with `AnalyseTool.Cli policy show` and `ext list`.
+Nothing here is AnalyseTool-specific machinery: the plugin reads one file from
+`%ProgramData%\AnalyseTool\` at startup, and Windows does the delivery.
+
+**Active Directory / GPO**
+
+1. **Plugin.** Put `AnalyseTool-<ver>-MultiUser.msi` on a share readable by domain computers.
+   In the GPO linked to the BIM workstations OU: *Computer Configuration → Policies → Software
+   Settings → Software Installation → New Package*, deployment **Assigned**. The MSI installs as
+   SYSTEM at the next boot, before anyone logs in. New versions go in via the package's
+   *Upgrades* tab (the MSI has `MajorUpgrade` configured).
+2. **Policy.** Same GPO: *Computer Configuration → Preferences → Windows Settings → Files → New
+   File*. Action **Replace**, source `\\fileserver\deploy\AnalyseTool\policy.json`, destination
+   `%ProgramData%\AnalyseTool\policy.json`. GPO re-applies at boot and every ~90 minutes, so an
+   edited file on the share reaches every seat within that window; the plugin picks it up on the
+   next Revit start.
+3. **Pre-installed extensions (no feed needed).** *Preferences → Folders/Files* can also drop
+   ready extension folders into `%ProgramData%\AnalyseTool\extensions-dist\<id>\`. The plugin
+   scans that machine-level managed root in addition to the user one (read-only for the Extension
+   Manager: no install/remove/update there, listed with a **Machine** badge).
+4. **AI key.** *Preferences → Windows Settings → Environment* sets `ANALYSETOOL_AI_KEY` — per
+   user (User Configuration) or per machine when the key belongs to a gateway.
+5. **Verify** a seat with `AnalyseTool.Cli policy show` and `ext list`.
+
+A startup PowerShell script that copies the file is an equivalent alternative to Preferences.
+
+**Intune / Azure AD only**
+
+Same shape, different tooling: the MSI wrapped as a Win32 app (`msiexec /i … /qn`), `policy.json`
+delivered by an Intune PowerShell script or a second Win32 app. Everything the plugin does is
+identical.
+
+**Hosting for catalog and feeds.** Any internal static hosting: GitLab raw, Nexus, an IIS folder,
+a file share. Publish a new extension version by replacing files. No service to run.
+
+**Later, on request:** an ADMX template reading `HKLM\Software\Policies\AnalyseTool` as a second
+source of the machine layer, for administrators who want checkboxes in the Group Policy Editor
+instead of a JSON file.
 
 ### 8. Join organization — one action to adopt the company configuration
 
@@ -332,6 +362,7 @@ Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the too
 - [ ] `Core/Common/Policy/PolicyStore` + `PolicyDocument` model, load-once, diagnostics on error
 - [ ] `CodeExecutionSettings` reads policy, refuses when locked
 - [ ] `ExtensionSources` appends policy roots, honors lock
+- [ ] Machine-level managed root `%ProgramData%\AnalyseTool\extensions-dist` scanned read-only (Machine badge; no install/remove/update there)
 - [ ] `allowedFeeds` + `allowInstallFromRepository` enforced in feed resolution and install commands
 - [ ] `McpServerController` honors `mcp.enabled`
 - [ ] Tier-1 tests for parsing, resolution, feed whitelist
@@ -378,7 +409,7 @@ Phase 6 — CLI.
 
 Phase 7 — docs.
 
-- [ ] ONBOARDING.md § "For IT administrators": MSI silent install, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
+- [ ] ONBOARDING.md § "For IT administrators": GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
