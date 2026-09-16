@@ -149,7 +149,14 @@ exactly the single-seat product it is today.
 
   "mcp": { "enabled": false },
 
-  "sharepoint": { "syncUrl": "odopen://sync/?siteId=…&webId=…&listId=…&webUrl=…&listTitle=BIM%20Tools" },
+  "sources": {
+    "bimtools": {
+      "sharepoint": "https://contoso.sharepoint.com/sites/BIM/Shared Documents/AnalyseTool",
+      "markerId": "contoso.bimtools",
+      "syncUrl": "odopen://sync/?siteId=…&webId=…&listId=…&webUrl=…&listTitle=BIM%20Tools"
+    },
+    "share": { "path": "\\\\fileserver\\revit\\analysetool" }
+  },
 
   "ai": {
     "providers": [
@@ -179,10 +186,10 @@ Key semantics:
 - `locked` — dotted setting paths. A locked path is read-only in the UI; the corresponding
   `Set…` command returns an error naming the policy file.
 - `extensions.roots` — appended to the scan roots as **Dev zone, IsDefault=true** (not removable).
-  For UNC shares and local folders only: a root is a *load* root, and a synced OneDrive /
-  SharePoint folder must never be one (§9, rule 1). The loader warns when a policy root lies under
-  `%OneDrive%`, `%OneDriveCommercial%` or a `* - Documents` folder in the profile; SharePoint
-  content reaches seats through feeds and `required`, not roots.
+  A synced OneDrive / SharePoint folder works as a root: assemblies are loaded from a byte copy
+  (`ExtensionLoadContext.LoadFromStream`), so the sync client can replace a DLL under a running
+  Revit and the next Reload picks it up. Paths are written as `source:<name>/<relative>` (§9) so
+  one line serves every seat regardless of where OneDrive mounted the library.
 - `extensions.catalogUrl` — fetched at startup (cached with ETag under the user profile so an
   offline start still has the last copy) and merged **after** the shipped catalog and **before**
   the user's `catalog.json`; the user file can add but not remove company entries.
@@ -204,6 +211,11 @@ Key semantics:
 - `logging.sink` — an additional Serilog sink; the local rolling file stays.
 - `telemetry` — fleet inventory and command usage to the company's own sink; absent = nothing is
   sent (§10).
+- `sources` — named locations, referenced everywhere a path or URL is expected as
+  `source:<name>/<relative>` (roots, `required[].source`, `catalogUrl`, the pointer). The one
+  mechanism that makes a SharePoint library addressable although its local path differs on every
+  machine (§9). `syncUrl` is shown as **Connect the BIM Tools library** when the source cannot be
+  resolved on this seat.
 
 **Startup rule.** Reading the machine file is the only policy work allowed on the Revit startup
 path: it is one local file. Everything that touches the network or a synced folder — the pointer
@@ -379,7 +391,7 @@ configuration without IT touching their machine.
 | full URL | fetched as is |
 | domain (`company.local`) | 1. DNS TXT `_analysetool.company.local` → URL; 2. `https://company.local/.well-known/analysetool/policy.json` |
 | path | `%ENV%` expanded, `policy.json` read from the folder (UNC share, synced SharePoint library — §9) |
-| nothing | same two lookups against `USERDNSDOMAIN` (domain-joined machines), then synced-folder scan (§9) |
+| nothing | same two lookups against `USERDNSDOMAIN` (domain-joined machines), then a marker-file scan across OneDrive mount points (§9) |
 
 On first start, if discovery against `USERDNSDOMAIN` finds a policy, Settings shows a
 non-modal banner "Your organization publishes AnalyseTool settings. Join?". Nothing is applied
@@ -440,42 +452,64 @@ So the loader accepts **`https://` URLs and file-system paths**, with `%ENV%` ex
 Everything that is "a policy source" (machine pointer, Join input, `catalogUrl`, feed `source`,
 `updateFeed`) takes either form. Plain `http://` is refused everywhere.
 
-**SharePoint / OneDrive — the synced-folder pattern**
+**SharePoint / OneDrive — named sources, because the local path is different on every seat**
 
-Users already run the OneDrive client and sync the BIM library to disk. The tenant and library
-names are the same for everyone; only `%USERPROFILE%` differs, and the plugin expands it.
+Users run the OneDrive client and have the BIM library on disk, but *where* differs by how each
+person added it: **Sync** on the library gives `%USERPROFILE%\<Tenant>\<Site> - <Library>`,
+**Add shortcut to My files** gives `%OneDriveCommercial%\<Folder>`, syncing a sub-folder gives yet
+another root name. A path in the policy therefore cannot work. The policy names **what** the folder
+is; the plugin finds **where** it is on this machine:
 
+```json
+"sources": {
+  "bimtools": { "sharepoint": "https://contoso.sharepoint.com/sites/BIM/Shared Documents/AnalyseTool",
+                "markerId": "contoso.bimtools",
+                "syncUrl": "odopen://…" }
+}
 ```
-%USERPROFILE%\Contoso\BIM Tools - Documents\AnalyseTool\
-    policy.json
-    catalog.json
-    packages\
-        company.standards-1.4.0.zip
-        company.standards.feed.json      ← { "version": "1.4.0", "downloadUrl": "company.standards-1.4.0.zip" }
-```
 
-Two rules that make it work:
+and every other place refers to it: `"roots": ["source:bimtools/extensions"]`,
+`"required": [{ "source": "source:bimtools/packages/company.standards.feed.json" }]`,
+`"catalogUrl": "source:bimtools/catalog.json"`. One policy, identical for every seat.
 
-1. **A synced folder is a distribution source, never a load root.** Loading DLLs in place would
-   have Revit lock files OneDrive is trying to sync — conflicts and half-written copies. The
-   plugin *installs from* the folder into its own managed zone (`ExtensionInstaller`, exactly
-   like install-from-zip) and *updates* by comparing the feed version with the installed one.
-   `ExtensionUpdateFeed` therefore resolves relative `downloadUrl`s against the feed's own
-   location, for files as for https.
-2. **Files On-Demand.** Files may be placeholders; a read triggers a download. The coordinator
-   marks the AnalyseTool folder "Always keep on this device", and the plugin reads with a
-   timeout and reports "downloading from OneDrive…" instead of hanging the Revit UI thread.
+Resolution order for a `sharepoint` source, each step a fallback for the one before:
+
+1. **OneDrive's own mapping.** The client records which library is mounted where:
+   `HKCU\Software\Microsoft\OneDrive\Accounts\Business*\Tenants\<tenant>` (mount point → flags) and
+   `ScopeIdToMountPoint`, plus `%LOCALAPPDATA%\Microsoft\OneDrive\settings\Business*\*.ini`
+   (`libraryScope` lines carry the site URL, the library and the local path). Match the source URL's
+   site + library against those, append the remaining relative path. Covers full sync, shortcuts
+   and sub-folder syncs alike, because it reads the real mount point.
+2. **Marker file.** The coordinator drops `analysetool-source.json` (`{ "id": "contoso.bimtools" }`)
+   into the folder. The plugin scans every OneDrive mount point two or three levels deep for a
+   marker with that id — once per start, cached. Slower and blunter, but independent of the
+   registry layout Microsoft may change.
+3. **Ask once.** Nothing found → the Organization panel says "Where is *BIM Tools* on this
+   computer?" with a folder picker; the answer is stored in the user layer (`sourceOverrides`)
+   and reused. If the library is not synced at all, the same card offers **Connect the BIM Tools
+   library** via `syncUrl`; OneDrive does the rest and the next start resolves it by step 1.
+
+Why a synced folder is a fine load root: `ExtensionLoadContext` loads every assembly from a byte
+copy, never `LoadFromAssemblyPath`, so Revit holds no handle on the DLL and the sync client can
+replace it at will; Reload (or the next start) picks up the new bytes. The coordinator updates
+the whole company by saving a file. Two things to keep in mind:
+
+1. **Files On-Demand.** Files may be placeholders; a read triggers a download. The coordinator
+   marks the AnalyseTool folder "Always keep on this device", and the plugin reads with a timeout
+   off the UI thread and reports "downloading from OneDrive…" instead of hanging Revit.
+2. **Half-synced states.** A DLL and its `plugin.json` may arrive seconds apart. The loader
+   already treats an unreadable manifest as a diagnostic, not a crash; bumping `version` in the
+   manifest last (after the binaries) is the coordinator's rule of thumb, and the packaged form
+   (`required` + feed with `sha256`) is the way out when that matters.
+
+A `path` source (UNC share, local folder) and a `url` source resolve trivially; they exist so the
+same `source:` syntax covers every hosting kind and the policy never carries a raw path twice.
 
 **Giving people access.** Permissions are SharePoint's job (group membership); the policy cannot
-grant them and must not try. What it can do is remove the manual steps after access exists:
-
-- `sharepoint.syncUrl` — the `odopen://` link SharePoint's **Sync** button produces (or the
-  Intune / GPO "Configure team site libraries to sync automatically" setting). If the synced
-  folder is missing on a seat, the Organization panel shows **Connect the BIM Tools library**,
-  which opens that link; OneDrive does the rest.
-- **Discovery through synced folders.** Besides DNS and well-known URLs (§8), discovery scans
-  `%USERPROFILE%\*\* - Documents\AnalyseTool\policy.json` (and `%OneDriveCommercial%`). A new
-  hire's path: get SharePoint access → click Sync → open Revit → accept the Join banner.
+grant them and must not try. What it removes is the manual work after access exists: resolution
+steps 1–3 above, the `syncUrl` card, and discovery (§8) that also looks for a marker file across
+OneDrive mount points, so a new hire's path is: get SharePoint access → click Sync → open Revit →
+accept the Join banner.
 
 **Later, not v1:** a SharePoint connector reading the library through Microsoft Graph with silent
 Windows SSO (MSAL, an app registration, admin consent). It gives a true URL without syncing;
@@ -631,11 +665,13 @@ will share).
 
 - [ ] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds
 - [ ] `HttpClient` with system proxy + default Windows credentials, per-request timeouts
-- [ ] Warn when a policy root or pointer target lies in a synced OneDrive / SharePoint folder (roots: never a load root; pointer: `enforced` meaningless)
+- [ ] Named sources: `sources.<name>` with `sharepoint` / `path` / `url`, referenced as `source:<name>/<relative>` from roots, `required`, `catalogUrl`, pointer
+- [ ] SharePoint source resolver: OneDrive registry + settings `.ini` mapping (step 1), marker-file scan across mount points (step 2), `sourceOverrides` in the user layer (step 3)
+- [ ] Pointer with `enforced` at a user-writable target is reported as a policy problem
 - [ ] Fetch with `If-None-Match` / file timestamp; cache under the user profile; offline keeps cache
 - [ ] Machine pointer form `{ policyUrl, enforced }` resolved through the source abstraction (completes the phase-1 placeholder)
 - [ ] Discovery: URL / domain / path / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>`, `/.well-known/analysetool/policy.json`, synced-folder scan (`%USERPROFILE%\*\* - Documents\AnalyseTool`, `%OneDriveCommercial%`)
-- [ ] `ExtensionUpdateFeed`: file-system feeds, relative `downloadUrl`; install-from-folder copies into `extensions-dist`, never loads in place
+- [ ] `ExtensionUpdateFeed`: file-system feeds, relative `downloadUrl`; install-from-folder copies into `extensions-dist`
 - [ ] Files On-Demand: reads with timeout off the UI thread, "downloading from OneDrive…" status
 - [ ] `organization.name` / `contact` required for a joinable policy
 - [ ] Tier-1 tests: input parsing, `%ENV%` expansion, `http://` refusal, refresh cases (unchanged / changed / failure), relative feed paths
@@ -647,7 +683,7 @@ Phase 3b — Join organization (the organization layer, on top of 3a).
 - [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink, telemetry sink
 - [ ] Host change invalidates the join and asks again; `enforced` hides Leave
 - [ ] `minimumVersion` banner + `GetOrganizationStatus` reports version
-- [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
+- [ ] Organization panel: "Where is <source> on this computer?" folder picker (writes `sourceOverrides`) and **Connect the library** via `sources.<name>.syncUrl` when unresolved
 - [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
 - [ ] `enforced` accepted only for non-user-writable sources; otherwise reported as a policy problem
 - [ ] Tier-1 tests: resolution order, leave semantics, enforced, preview contents
@@ -694,7 +730,7 @@ Phase 7 — CLI.
 
 Phase 8 — docs.
 
-- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; the SharePoint synced-library layout, "Always keep on this device", `odopen://` sync link
+- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; named sources and the SharePoint library URL, marker file, "Always keep on this device", `odopen://` sync link
 - [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
 - [ ] ONBOARDING.md § telemetry: what is sent, to whom, how to turn it on, the "nothing without a policy" promise, the pseudonymous-not-anonymous / works-council note
