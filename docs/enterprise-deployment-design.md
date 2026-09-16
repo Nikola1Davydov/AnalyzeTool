@@ -478,7 +478,7 @@ Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the too
 
 - [ ] `PathProvider.MachineProfilePath`, `PolicyPath`
 - [ ] `Core/Common/Policy/PolicyStore` + `PolicyDocument` model, load-once, diagnostics on error
-- [ ] Machine file in two forms: inline policy, or pointer `{ policyUrl, enforced }` resolved through the URL loader from phase 3 (pointer support lands with phase 3)
+- [ ] Machine file in two forms: inline policy, or pointer `{ policyUrl, enforced }` resolved through the source abstraction from phase 3a (pointer support lands with 3a)
 - [ ] `CodeExecutionSettings` reads policy, refuses when locked
 - [ ] `ExtensionSources` appends policy roots, honors lock
 - [ ] Machine-level managed root `%ProgramData%\AnalyseTool\extensions-dist` scanned read-only (Machine badge; no install/remove/update there)
@@ -493,22 +493,29 @@ Phase 2 — catalog and required extensions.
 - [ ] `extensions.required`: install on startup, block disable/remove, update with the rest
 - [ ] Tier-1 tests for merge order and required-id protection
 
-Phase 3 — Join organization (the organization layer).
+Phase 3a — policy sources and discovery (no join yet; everything the machine pointer and Join
+will share).
 
-- [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
 - [ ] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds
+- [ ] Fetch with `If-None-Match` / file timestamp; cache under the user profile; offline keeps cache
+- [ ] Machine pointer form `{ policyUrl, enforced }` resolved through the source abstraction (completes the phase-1 placeholder)
 - [ ] Discovery: URL / domain / path / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>`, `/.well-known/analysetool/policy.json`, synced-folder scan (`%USERPROFILE%\*\* - Documents\AnalyseTool`, `%OneDriveCommercial%`)
 - [ ] `ExtensionUpdateFeed`: file-system feeds, relative `downloadUrl`; install-from-folder copies into `extensions-dist`, never loads in place
 - [ ] Files On-Demand: reads with timeout off the UI thread, "downloading from OneDrive…" status
-- [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
+- [ ] `organization.name` / `contact` required for a joinable policy
+- [ ] Tier-1 tests: input parsing, `%ENV%` expansion, `http://` refusal, refresh cases (unchanged / changed / failure), relative feed paths
+
+Phase 3b — Join organization (the organization layer, on top of 3a).
+
+- [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
 - [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
 - [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
-- [ ] Startup refresh with `If-None-Match`; offline keeps cache; host change invalidates the join
-- [ ] Machine pointer form: same loader, `enforced` hides Leave; `minimumVersion` banner + `GetOrganizationStatus` reports version
+- [ ] Host change invalidates the join and asks again; `enforced` hides Leave
+- [ ] `minimumVersion` banner + `GetOrganizationStatus` reports version
+- [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
 - [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
 - [ ] Per-user self-update: download from the policy host only, verify `update.sha256`, run `msiexec /qn` after Revit exits; disabled on per-machine installs
-- [ ] `organization.name` / `contact` required for a joinable policy; HTTPS-only enforcement
-- [ ] Tier-1 tests: resolution order, input parsing, refresh cases, leave semantics
+- [ ] Tier-1 tests: resolution order, leave semantics, enforced, preview contents
 
 Phase 4 — Sdk contract and Tools.
 
