@@ -30,6 +30,9 @@ namespace AnalyseTool.Core.Common.Policy
         /// <summary>Seats below this plugin version are shown a non-blocking banner (phase 3b).</summary>
         [JsonProperty("minimumVersion")] public string? MinimumVersion { get; set; }
 
+        /// <summary>Where a seat below <see cref="MinimumVersion"/> gets the installer (and its hash).</summary>
+        [JsonProperty("update")] public PolicyUpdate? Update { get; set; }
+
         /// <summary>Dotted setting paths (<see cref="PolicySettings"/>) the user may not change. A value
         /// that is present in the policy but NOT locked is a default: it applies until the user makes
         /// their own choice.</summary>
@@ -50,7 +53,12 @@ namespace AnalyseTool.Core.Common.Policy
     {
         [JsonProperty("name")] public string? Name { get; set; }
         [JsonProperty("contact")] public string? Contact { get; set; }
+    }
+
+    internal sealed class PolicyUpdate
+    {
         [JsonProperty("downloadUrl")] public string? DownloadUrl { get; set; }
+        [JsonProperty("sha256")] public string? Sha256 { get; set; }
     }
 
     internal sealed class CodeExecutionPolicy
@@ -61,7 +69,9 @@ namespace AnalyseTool.Core.Common.Policy
 
     internal sealed class ExtensionsPolicy
     {
-        /// <summary>Additional extension source roots (dev zone, not removable). <c>%ENV%</c> expanded.</summary>
+        /// <summary>Additional extension source roots (dev zone, not removable). <c>%ENV%</c> expanded.
+        /// UNC shares and local folders only — a root is a LOAD root, and a synced OneDrive /
+        /// SharePoint folder must never be one (Revit would lock files the sync client is writing).</summary>
         [JsonProperty("roots")] public List<string>? Roots { get; set; }
 
         /// <summary>Company catalog, merged after the shipped one and before the user's (phase 2).</summary>
@@ -83,6 +93,9 @@ namespace AnalyseTool.Core.Common.Policy
     {
         [JsonProperty("id")] public string Id { get; set; } = string.Empty;
         [JsonProperty("source")] public string? Source { get; set; }
+
+        /// <summary>SHA-256 of the package zip; when present, a download that does not match is refused.</summary>
+        [JsonProperty("sha256")] public string? Sha256 { get; set; }
     }
 
     internal sealed class McpPolicy

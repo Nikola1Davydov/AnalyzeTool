@@ -15,12 +15,20 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "contact": { "type": "string" },
-        "downloadUrl": { "type": "string", "description": "Where a seat below minimumVersion gets the installer." }
+        "contact": { "type": "string" }
       },
       "additionalProperties": false
     },
     "minimumVersion": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+    "update": {
+      "type": "object",
+      "description": "Where a seat below minimumVersion gets the installer, and its hash.",
+      "properties": {
+        "downloadUrl": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
     "locked": {
       "type": "array",
       "description": "Settings the user may not change. A value present but not locked is only a default.",
@@ -37,7 +45,7 @@
       "properties": {
         "roots": {
           "type": "array",
-          "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded.",
+          "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded. UNC shares and local folders only: a root is a load root, never a synced OneDrive/SharePoint folder — distribute SharePoint content through feeds.",
           "items": { "type": "string" }
         },
         "catalogUrl": { "type": "string", "description": "Company catalog (catalog.json shape). Phase 2." },
@@ -51,7 +59,11 @@
           "description": "Extensions every seat must have. Phase 2.",
           "items": {
             "type": "object",
-            "properties": { "id": { "type": "string" }, "source": { "type": "string" } },
+            "properties": {
+              "id": { "type": "string" },
+              "source": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$", "description": "Pins the package; a download that does not match is refused." }
+            },
             "required": ["id"],
             "additionalProperties": false
           }

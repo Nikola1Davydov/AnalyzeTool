@@ -111,10 +111,15 @@ forms:
 Self-installed seats, contractors and freelancers join the same URL by hand (§8). All layers can
 coexist: the machine layer wins.
 
+`enforced` is meaningful only when the pointer's target is something the user cannot write: an
+https host they do not control, or a share with read-only ACLs. A pointer with `enforced: true`
+at a path under `%USERPROFILE%` (a synced library, §9) is a contradiction — the user edits the
+file and the enforcement is gone — and the loader reports it as a policy problem.
+
 `PathProvider` gets `MachineProfilePath` (`%ProgramData%\AnalyseTool`) and `PolicyPath`.
 A new `Core/Common/Policy/PolicyStore` loads both policy sources once, tolerates a missing or
-broken file (logged + reported through `ExtensionDiagnostics`, never fatal), merges them and
-exposes typed accessors plus `Origin(settingName)` for the UI.
+broken file (logged, and reported as `Problems` through `GetPolicyStatus`, never fatal), merges
+them and exposes typed accessors plus `OriginOf(setting)` for the UI.
 
 The plugin **never writes** to the machine layer. If neither policy source exists, the tool is
 exactly the single-seat product it is today.
@@ -174,13 +179,25 @@ Key semantics:
 - `locked` — dotted setting paths. A locked path is read-only in the UI; the corresponding
   `Set…` command returns an error naming the policy file.
 - `extensions.roots` — appended to the scan roots as **Dev zone, IsDefault=true** (not removable).
+  For UNC shares and local folders only: a root is a *load* root, and a synced OneDrive /
+  SharePoint folder must never be one (§9, rule 1). The loader warns when a policy root lies under
+  `%OneDrive%`, `%OneDriveCommercial%` or a `* - Documents` folder in the profile; SharePoint
+  content reaches seats through feeds and `required`, not roots.
 - `extensions.catalogUrl` — fetched at startup (cached with ETag under the user profile so an
   offline start still has the last copy) and merged **after** the shipped catalog and **before**
   the user's `catalog.json`; the user file can add but not remove company entries.
 - `extensions.allowedFeeds` — prefix whitelist for `updateFeed` / catalog `source` / *Install from
-  repository…*. Absent = everything allowed (today's behavior).
-- `extensions.required` — installed on startup if missing, updated on *Check for updates*, cannot
-  be disabled or removed by the user. Uses `ExtensionInstaller` + `ExtensionUpdateFeed` unchanged.
+  repository…*. Absent = everything allowed (today's behavior). The whitelist governs the **feed
+  origin**; the package URL is whatever the feed serves (GitHub assets come from
+  `objects.githubusercontent.com`, a JSON feed can name any host). Phase 2 closes that gap: for an
+  https or file feed the `downloadUrl` must resolve to the feed's own host or folder, or itself
+  match the whitelist; `github:` feeds accept GitHub's asset hosts.
+- `extensions.required` — installed if missing, updated on *Check for updates*, cannot be
+  disabled or removed by the user (an id the user had disabled earlier is re-enabled). Each entry
+  may carry `sha256` of the package; when present the download must match or is refused — the
+  cheap half of package signing (§Security notes). Uses `ExtensionInstaller` +
+  `ExtensionUpdateFeed` unchanged. Installs and catalog fetches run **after** startup, in the
+  background (§Startup rule below).
 - `ai.providers[].apiKeyEnv` — the key is read from an environment variable (set by GPO / login
   script) instead of DPAPI storage. `baseUrl` may point at a gateway that holds the real key, in
   which case `apiKeyEnv` is omitted.
@@ -188,20 +205,30 @@ Key semantics:
 - `telemetry` — fleet inventory and command usage to the company's own sink; absent = nothing is
   sent (§10).
 
+**Startup rule.** Reading the machine file is the only policy work allowed on the Revit startup
+path: it is one local file. Everything that touches the network or a synced folder — the pointer
+target, `catalogUrl`, `required` installs, the ETag refresh of §8 — runs asynchronously after
+`Initialize` returns, off the UI thread, with timeouts, and its result applies when ready or on
+the next start. A slow proxy or an offline share must never delay Revit's ribbon. Corporate
+proxies are the norm, not the exception: the shared `HttpClient` uses the system proxy **with
+default Windows credentials** (`DefaultProxyCredentials`), otherwise every https source fails
+behind an NTLM proxy.
+
 ### 3. Stores read through the policy
 
-Each existing store gets the same small change: consult `PolicyStore` first, keep its own
-user file as the fallback, and refuse writes for locked paths.
+Each existing store gets the same small change: resolve through `PolicyState.Resolve` (locked
+policy value → the user's own file → unlocked policy default → built-in default) and refuse
+writes for locked paths with `LockedMessage`.
 
 | Store | Change |
 | --- | --- |
-| `CodeExecutionSettings` | `Enabled` → policy value wins; `SetEnabled` refuses when locked |
+| `CodeExecutionSettings` | `Enabled` resolved through the policy; `SetEnabled` refuses when locked; user file absent = "no choice yet" so a policy default applies |
 | `ExtensionSources` | `AllRoots()` appends policy roots and the machine-level `extensions-dist`; `RemoveRoot` refuses for them; `AddRoot` refuses when `extensions.roots` is locked |
-| `ExtensionStateStore` | `SetEnabled(false)` refuses for `required` ids |
+| `ExtensionStateStore` | `SetEnabled(false)` refuses for `required` ids; a required id the user disabled *before* the policy arrived is re-enabled when the policy is applied |
 | `ExtensionSourceCatalog` | third source: the remote catalog; entries carry `Origin = Policy` |
 | `ExtensionUpdateFeed` / `InstallExtensionFromFile` / install-from-repository | enforce `allowedFeeds`, `allowInstallFromRepository` |
-| `McpServerController` | `mcp.enabled` from policy when present |
-| `AiProviderRegistry` (**Tools**) | see §4 |
+| `McpServerController` | `mcp.enabled` resolved through the policy; `Apply` refuses a change when locked; `mcp.json` `Enabled` becomes nullable so "never toggled" is distinguishable from "off" |
+| `AiProviderRegistry` (**Tools**) | see §4. `allowUserProviders=false` **hides** the user's own DPAPI providers and refuses new ones; it never deletes what the user stored — leaving the organization brings them back |
 | `AppLog` (App) | add the policy sink |
 
 ### 4. The Tools boundary
@@ -286,9 +313,9 @@ an Intune PowerShell script.
   extension version = replacing files.
   Extensions install into the user's managed zone with user rights — no admin needed, today
   already.
-- Sees who is behind: the policy may carry `"minimumVersion"` + `"update"`; a seat below it shows
-  a banner with the internal download link (per-user seats can self-update, below), and
-  `GetOrganizationStatus` / the CLI report the version.
+- Sees who is behind: the policy may carry `"minimumVersion"` + `"update"` (`downloadUrl`,
+  `sha256`); a seat below it shows a banner with the internal download link (per-user seats can
+  self-update, below), and `GetOrganizationStatus` / the CLI report the version.
 
 **Fully per-user path (no IT at all)**
 
@@ -306,9 +333,11 @@ out one link. Getting a seat joined without typing:
   hands the request to a running Revit or stores it for the next start.
 
 What per-user gains: **self-update of the plugin becomes possible.** A per-user MSI runs without
-UAC, so `minimumVersion` + `organization.downloadUrl` can turn into "Install version X when Revit
-closes": download from the policy's host only, verify the SHA-256 the policy carries, run
-`msiexec /i … /qn` after Revit exits. Never for the per-machine install.
+UAC, so `minimumVersion` + `update.downloadUrl` can turn into "Install version X when Revit
+closes": download from the policy's host only, verify `update.sha256`, run `msiexec /i … /qn`
+after Revit exits. Never for the per-machine install. **Ordering:** a process that outlives Revit
+is needed to run the installer, and that is the CLI exe (§6) — so self-update lands after the CLI
+phase, not in 3b (see the TODO).
 
 What per-user loses: no `enforced` (the user can Leave; the coordinator sees it in status), and
 locks hold only while joined. Acceptable for most shops; strict ones bring IT in for the pointer.
@@ -473,6 +502,12 @@ The second and third are the telemetry this section adds. They are the fleet-wid
 
 - **Off unless the policy turns it on.** A seat without a policy (or with a policy that omits
   `telemetry`) sends nothing. Written in the docs in exactly those words.
+- **Inventory first, usage separately.** A `telemetry` block that names only a `sink` sends
+  `inventory` events and nothing else. `command` and `ai` (per-seat usage) must be listed in
+  `events` explicitly. A stable per-seat hash is pseudonymous, not anonymous — under the GDPR it is
+  still personal data, and per-employee usage records in Germany usually need a works-council
+  (Betriebsrat) agreement. The docs say so next to the setting; the plugin cannot make that
+  decision for the coordinator, it can only make the default the harmless one.
 - **The recipient is the company.** `telemetry.sink` names an OTLP endpoint, Seq, Application
   Insights, or a folder (a share, or the synced SharePoint library — §9) receiving JSON-lines
   files. No default, no fallback host.
@@ -515,9 +550,24 @@ sells the enterprise variant: data does not leave the company.
 
 ## Security notes
 
+**Threat model, stated plainly: whoever can write the policy can run code on every seat.**
+Through `required` and its feed a policy installs extensions — DLLs that load into Revit with
+the user's rights. The pointer form moves that power from `%ProgramData%` (admin-only) to a URL
+or folder the BIM coordinator owns without admin rights. That is the feature, and it is also the
+attack surface: a compromised coordinator account, a writable Git branch, a SharePoint folder with
+too many editors. Consequences for the design:
+
+- The policy lives in a Git repository with a **protected branch and review**, or in a folder with
+  a deliberately short write ACL. The docs for coordinators say this first, not last.
+- `required[].sha256` pins the package. A feed that serves a different file is refused. Cheap,
+  and it turns "trust the hosting" into "trust the reviewed policy".
+- Policy **signing** moves from "if a customer asks" to the phase after Join: a detached
+  signature next to `policy.json`, a public key (or fingerprint) delivered out of band — in the
+  machine pointer, in the invite link, or typed once at Join. Until it ships, HTTPS + preview +
+  the two points above are the whole defense, and the docs say so.
+
 - Policy is trusted **because of where it is**: `%ProgramData%` is admin-writable only on a
-  correctly configured machine. No signature in v1; document the assumption. Signing is a
-  later addition if a customer asks.
+  correctly configured machine. No signature in v1; document the assumption.
 - `allowedFeeds` and `allowInstallFromRepository=false` are the two settings that turn the tool
   from "installs what the user pastes" into "installs what IT approved". They are the reason
   the policy layer exists; ship them in phase 1, not later.
@@ -564,13 +614,24 @@ Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the too
 Phase 2 — catalog and required extensions.
 
 - [ ] Remote `catalogUrl` with ETag cache, merge order shipped → policy → user
-- [ ] `extensions.required`: install on startup, block disable/remove, update with the rest
-- [ ] Tier-1 tests for merge order and required-id protection
+- [ ] `extensions.required`: install in the background after startup, block disable/remove, re-enable a previously disabled id, update with the rest; `sha256` pin verified before install
+- [ ] `downloadUrl` host check: must match the feed's host/folder or the whitelist (`github:` feeds accept GitHub asset hosts)
+- [ ] Startup rule: no network or synced-folder read on the startup path; background apply with timeouts
+- [ ] Minimal read-only **Organization** panel in Settings: `GetPolicyStatus` rendered (present / problems / locked / origins) — pulled forward from the UI phase so a broken policy.json is visible without the log
+- [ ] Tier-1 tests for merge order, required-id protection, sha256 refusal, downloadUrl host check
+
+Phase 2b — minimal CLI (`policy show`, `policy validate`), pulled forward: the coordinator needs
+to validate a file before it reaches hundreds of seats, and that is before Join exists.
+
+- [ ] `AnalyseTool.Cli` project skeleton (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row, shipped via `PluginAssets.targets` + MSI
+- [ ] `policy show [--json]`, `policy validate <file>` (schema + semantic checks, exit code for CI)
 
 Phase 3a — policy sources and discovery (no join yet; everything the machine pointer and Join
 will share).
 
 - [ ] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds
+- [ ] `HttpClient` with system proxy + default Windows credentials, per-request timeouts
+- [ ] Warn when a policy root or pointer target lies in a synced OneDrive / SharePoint folder (roots: never a load root; pointer: `enforced` meaningless)
 - [ ] Fetch with `If-None-Match` / file timestamp; cache under the user profile; offline keeps cache
 - [ ] Machine pointer form `{ policyUrl, enforced }` resolved through the source abstraction (completes the phase-1 placeholder)
 - [ ] Discovery: URL / domain / path / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>`, `/.well-known/analysetool/policy.json`, synced-folder scan (`%USERPROFILE%\*\* - Documents\AnalyseTool`, `%OneDriveCommercial%`)
@@ -588,8 +649,14 @@ Phase 3b — Join organization (the organization layer, on top of 3a).
 - [ ] `minimumVersion` banner + `GetOrganizationStatus` reports version
 - [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
 - [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
-- [ ] Per-user self-update: download from the policy host only, verify `update.sha256`, run `msiexec /qn` after Revit exits; disabled on per-machine installs
+- [ ] `enforced` accepted only for non-user-writable sources; otherwise reported as a policy problem
 - [ ] Tier-1 tests: resolution order, leave semantics, enforced, preview contents
+
+Phase 3c — policy signing (right after Join, before telemetry).
+
+- [ ] Detached signature next to `policy.json`; public key / fingerprint delivered via the machine pointer, the invite link, or typed once at Join
+- [ ] Unsigned or mismatching policy: refused for the organization layer when a key is known; machine layer inline form exempt (trusted by location)
+- [ ] Tier-1 tests: good signature, tampered file, missing signature with and without a known key
 
 Phase 4 — Sdk contract and Tools.
 
@@ -599,13 +666,13 @@ Phase 4 — Sdk contract and Tools.
 
 Phase 5 — telemetry (company sink only).
 
-- [ ] `telemetry` policy section: `sink` (https OTLP / Seq / folder), `identity`, `events`; absent = off
+- [ ] `telemetry` policy section: `sink` (https OTLP / Seq / folder), `identity`, `events`; absent = off; `events` absent = `inventory` only
 - [ ] `CommandQueue` hook → `command` events (name, extension id, transport, duration, outcome); never the payload
 - [ ] `inventory` event at bootstrap and after Join / Leave / extension update
 - [ ] `ai` events from `AiClientFactory` via the Sdk policy accessor (provider, model, tokens)
 - [ ] Dedicated Serilog logger + sink selection from policy; background buffer, drop on sink failure
 - [ ] Organization panel: **Show recent events**; Join preview line "Sends telemetry to: …"
-- [ ] Tier-1 tests: off by default, payload never leaks, JSON-lines file sink, dead sink is harmless
+- [ ] Tier-1 tests: off by default, inventory-only default, payload never leaks, JSON-lines file sink, dead sink is harmless
 
 Phase 6 — UI.
 
@@ -617,9 +684,9 @@ Phase 6 — UI.
 
 Phase 7 — CLI.
 
-- [ ] `AnalyseTool.Cli` project (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row
-- [ ] `policy show`, `policy validate`
+- [ ] (project skeleton and `policy show` / `policy validate` shipped in phase 2b)
 - [ ] `ext list`, `ext install`, `ext validate`, `ext update`
+- [ ] Per-user self-update (moved here from 3b: needs a process that outlives Revit): download from the policy host only, verify `update.sha256`, run `msiexec /qn` after Revit exits; disabled on per-machine installs
 - [ ] `org join <url|domain>`, `org leave`, `org status`
 - [ ] `analysetool://join?url=…` protocol handler registered by the installer, served by the CLI exe
 - [ ] `diag collect`
@@ -630,6 +697,7 @@ Phase 8 — docs.
 - [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; the SharePoint synced-library layout, "Always keep on this device", `odopen://` sync link
 - [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
-- [ ] ONBOARDING.md § telemetry: what is sent, to whom, how to turn it on, the "nothing without a policy" promise
+- [ ] ONBOARDING.md § telemetry: what is sent, to whom, how to turn it on, the "nothing without a policy" promise, the pseudonymous-not-anonymous / works-council note
+- [ ] ONBOARDING.md § "For BIM coordinators": the threat model paragraph first (protected branch, short write ACL, `sha256` pins, signing)
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
