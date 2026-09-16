@@ -31,14 +31,15 @@ public class PolicyPhase2Tests
     [Test]
     public async Task Catalog_merges_shipped_then_policy_then_user_and_the_user_cannot_override_the_organization()
     {
-        var shipped = new[] { Entry("a.one", "One", "github:a/one"), Entry("a.two", "Two") };
+        var shipped = new[] { Entry("a.one", "One", "github:a/one"), Entry("a.two", "Two"), Entry("a.three", "Three") };
         var policy = new[] { Entry("a.two", "Two (company build)", "https://git.company.local/two/feed.json"), Entry("c.std", "Standards") };
         var user = new[] { Entry("a.one", "One (my fork)", "github:me/one"), Entry("c.std", "Standards (mine)"), Entry("u.x", "Mine") };
 
         IReadOnlyList<ExtensionCatalogEntry> merged = ExtensionSourceCatalog.Merge(shipped, policy, user);
 
         Dictionary<string, ExtensionCatalogEntry> byId = merged.ToDictionary(e => e.Id);
-        await Assert.That(byId.Count).IsEqualTo(4);
+        await Assert.That(byId.Count).IsEqualTo(5);
+        await Assert.That(byId["a.three"].Origin).IsEqualTo("shipped");       // untouched shipped entry keeps its origin
         await Assert.That(byId["a.one"].Origin).IsEqualTo("user");            // user may replace a shipped entry
         await Assert.That(byId["a.one"].Name).IsEqualTo("One (my fork)");
         await Assert.That(byId["a.two"].Origin).IsEqualTo("policy");          // policy replaces shipped
@@ -46,7 +47,7 @@ public class PolicyPhase2Tests
         await Assert.That(byId["c.std"].Name).IsEqualTo("Standards");
         await Assert.That(byId["u.x"].UserSupplied).IsTrue();
         // shipped first, then organization, then the user's own additions
-        await Assert.That(merged.Select(e => e.Origin).Distinct()).IsEquivalentTo(new[] { "shipped", "policy", "user" });
+        await Assert.That(merged.Select(e => e.Origin).Distinct().ToArray()).IsEquivalentTo(new[] { "shipped", "policy", "user" });
     }
 
     [Test]
