@@ -42,6 +42,39 @@ namespace AnalyseTool.Core.Common.Policy
             return $"{who} allows installing extensions from its catalog only ({policy.Path}).";
         }
 
+        /// <summary>The whitelist governs the FEED origin; the package URL is whatever the feed serves
+        /// (GitHub assets come from <c>*.githubusercontent.com</c>, a JSON feed can name any host). When
+        /// a whitelist exists, the download must come from the feed's own host, from GitHub's asset
+        /// hosts for a <c>github:</c> feed, or itself match the whitelist. Null = allowed.</summary>
+        public static string? DownloadRefusal(string feedSource, string downloadUrl)
+        {
+            PolicyState policy = PolicyStore.Current;
+            List<string>? allowed = policy.Document.Extensions?.AllowedFeeds;
+            if (!policy.IsPresent || allowed is null) return null;
+
+            return IsDownloadAllowed(ExtensionUpdateFeed.Normalize(feedSource), downloadUrl, allowed)
+                ? null
+                : $"The feed '{feedSource}' serves its package from '{downloadUrl}', which is neither the feed's " +
+                  $"own host nor an approved source ({policy.Path}). Refusing to download it.";
+        }
+
+        /// <summary>Pure form of <see cref="DownloadRefusal"/>.</summary>
+        public static bool IsDownloadAllowed(string normalizedFeed, string downloadUrl, IEnumerable<string> allowedFeeds)
+        {
+            if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out Uri? download)) return false;
+            if (!string.Equals(download.Scheme, "https", StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (normalizedFeed.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
+                return download.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+                    || download.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase);
+
+            if (Uri.TryCreate(normalizedFeed, UriKind.Absolute, out Uri? feed)
+                && download.Host.Equals(feed.Host, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return IsAllowed(downloadUrl, allowedFeeds);
+        }
+
         /// <summary>Prefix match against the whitelist. Entries are compared in the same normalized form
         /// the sources use (<c>github:owner/repo</c>, <c>https://host/path</c>). A bare
         /// <c>github:owner</c> is read as <c>github:owner/</c> so it cannot match another owner whose

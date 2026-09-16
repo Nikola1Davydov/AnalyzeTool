@@ -50,7 +50,13 @@ namespace AnalyseTool.Core.Features.Extensions
             string cacheName = expectedId ?? SanitizeForFileName(source);
 
             ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(source, expectedId ?? string.Empty, ct);
+            if (PolicyFeedRules.DownloadRefusal(source, latest.DownloadUrl) is string refusedDownload)
+                throw new InvalidOperationException(refusedDownload);
             string zipPath = await ExtensionUpdateFeed.DownloadPackageAsync(latest.DownloadUrl, cacheName, ct);
+
+            if (expectedId is not null &&
+                PackageHash.Verify(zipPath, RequiredExtensions.Find(expectedId)?.Sha256, expectedId) is string badHash)
+                throw new InvalidOperationException(badHash);
 
             ExtensionPackageInfo probe = ExtensionPackage.Validate(zipPath);
 

@@ -1,4 +1,4 @@
-﻿using AnalyseTool.App.Common.Extensions;
+using AnalyseTool.App.Common.Extensions;
 using AnalyseTool.Core;
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Dispatch;
@@ -102,6 +102,10 @@ namespace AnalyseTool.App.Common.Bootstrap
             // MCP transport: the localhost TCP bridge enqueues into the SAME queue; auto-starts if
             // the user enabled it previously (persisted in mcp.json).
             McpServerController.Initialize(queue);
+
+            // Organization policy, the network half: company catalog and required extensions. Runs on a
+            // background task after a short delay — the startup path reads one local file and nothing else.
+            Core.Common.Policy.PolicyBackgroundApply.Start();
 
             Log.Information("AnalyseTool host ready — {CommandCount} commands registered", dispatcher.RegisteredCommands.Count);
         }

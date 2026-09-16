@@ -48,7 +48,7 @@
           "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded; 'source:<name>/<relative>' resolves a named source (see 'sources'). Synced OneDrive/SharePoint folders work: assemblies are loaded from a byte copy.",
           "items": { "type": "string" }
         },
-        "catalogUrl": { "type": "string", "description": "Company catalog (catalog.json shape). Phase 2." },
+        "catalogUrl": { "type": "string", "description": "Company catalog (catalog.json shape): an https URL (cached with its ETag) or a file-system path with %ENV%. Merged after the shipped catalog and before the user's; user entries cannot override it." },
         "allowedFeeds": {
           "type": "array",
           "description": "Prefix whitelist for install sources and update feeds: 'github:owner/' or 'https://host/path/'. Absent = everything allowed.",
@@ -56,7 +56,7 @@
         },
         "required": {
           "type": "array",
-          "description": "Extensions every seat must have. Phase 2.",
+          "description": "Extensions every seat must have: installed when missing, updated when the feed is newer, never disabled or removed by the user. Applied in the background after startup.",
           "items": {
             "type": "object",
             "properties": {

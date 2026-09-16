@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
 using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Core.Features.Extensions
@@ -37,6 +38,8 @@ namespace AnalyseTool.Core.Features.Extensions
                     supportUrl = SafeLink(d.Manifest.SupportUrl),
                     updateFeed = d.Manifest.UpdateFeed,
                     enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
+                    // Required by the organization policy: cannot be disabled or uninstalled here.
+                    required = RequiredExtensions.IsRequired(d.Manifest.Id),
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
                     // "dll" = prebuilt assembly (declared, even if no build for this year),

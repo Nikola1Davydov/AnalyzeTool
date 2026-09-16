@@ -110,7 +110,14 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException(refused);
 
             ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(installed.Manifest.UpdateFeed!, id, ct);
+            if (PolicyFeedRules.DownloadRefusal(installed.Manifest.UpdateFeed!, latest.DownloadUrl) is string refusedDownload)
+                throw new InvalidOperationException(refusedDownload);
             string zipPath = await ExtensionUpdateFeed.DownloadPackageAsync(latest.DownloadUrl, installed.Manifest.Id, ct);
+
+            // A required extension may carry a sha256 pin in the policy; an update that does not match it
+            // is refused before the package is even opened.
+            if (PackageHash.Verify(zipPath, RequiredExtensions.Find(id)?.Sha256, id) is string badHash)
+                throw new InvalidOperationException(badHash);
 
             // The feed must serve the SAME extension it was declared for — checked BEFORE anything
             // is installed, so a wrong or hijacked feed cannot plant a different package.

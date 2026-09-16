@@ -24,6 +24,8 @@ namespace AnalyseTool.Core.Features.Policy
         {
             PolicyState policy = PolicyStore.Current;
             PolicyDocument doc = policy.Document;
+            (DateTimeOffset? lastRun, IReadOnlyList<RequiredExtensionOutcome> outcomes) = RequiredExtensions.LastReport();
+            (bool applying, DateTimeOffset? lastCompleted, string? applyError) = PolicyBackgroundApply.Status();
 
             return Task.FromResult<object?>(new
             {
@@ -63,6 +65,17 @@ namespace AnalyseTool.Core.Features.Policy
                     },
                 },
                 machineExtensionsRoot = PathProvider.MachineExtensionsDistRoot,
+                catalog = new
+                {
+                    source = ExtensionSourceCatalog.PolicyCatalogSource,
+                },
+                required = new
+                {
+                    declared = RequiredExtensions.Declared.Select(r => new { id = r.Id, source = r.Source, pinned = r.Sha256 is not null }),
+                    lastRun,
+                    outcomes = outcomes.Select(o => new { o.Id, state = o.State, o.Version, o.Detail }),
+                },
+                backgroundApply = new { running = applying, lastCompleted, error = applyError },
             });
         }
     }
@@ -78,6 +91,7 @@ namespace AnalyseTool.Core.Features.Policy
         {
             PolicyStore.Reload();
             CoreServices.ReloadExtensions();
+            PolicyBackgroundApply.Start(TimeSpan.Zero); // catalog + required extensions, off this thread
             PolicyState policy = PolicyStore.Current;
             return Task.FromResult<object?>(new
             {

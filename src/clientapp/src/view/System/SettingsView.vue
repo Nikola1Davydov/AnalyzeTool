@@ -29,6 +29,72 @@ function errorText(e: unknown): string {
   return String((e as Error)?.message ?? e);
 }
 
+// --- Organization: what the policy does to this seat (read-only; the file is IT's or the coordinator's).
+interface PolicyStatus {
+  present: boolean;
+  origin: "absent" | "loaded" | "invalid";
+  path: string;
+  problems: string[];
+  organization?: { name?: string | null; contact?: string | null } | null;
+  minimumVersion?: string | null;
+  pluginVersion: string;
+  policyUrl?: string | null;
+  locked: string[];
+  settings: {
+    codeExecution: { enabled: boolean; origin: string; locked: boolean };
+    extensionRoots: { fromPolicy: string[]; locked: boolean };
+    allowedFeeds?: string[] | null;
+    allowInstallFromRepository: boolean;
+    mcpEnabled: { value?: boolean | null; locked: boolean };
+  };
+  catalog: { source?: string | null };
+  required: {
+    declared: { id: string; source?: string | null; pinned: boolean }[];
+    lastRun?: string | null;
+    outcomes: { id: string; state: string; version?: string | null; detail?: string | null }[];
+  };
+  backgroundApply: { running: boolean; lastCompleted?: string | null; error?: string | null };
+}
+const policy = ref<PolicyStatus | null>(null);
+const policyBusy = ref(false);
+
+async function loadPolicy() {
+  try {
+    policy.value = await invoke<PolicyStatus>("GetPolicyStatus");
+  } catch (e) {
+    console.error("Failed to load the organization policy status", e);
+  }
+}
+
+async function reloadPolicy() {
+  policyBusy.value = true;
+  try {
+    await invoke("ReloadPolicy");
+    await Promise.all([loadPolicy(), loadCodeExec(), loadMcp()]);
+    notifications.info("Policy re-read. Catalog and required extensions refresh in the background.");
+  } catch (e) {
+    notifications.error(`Could not reload the policy: ${errorText(e)}`);
+  } finally {
+    policyBusy.value = false;
+  }
+}
+
+/** One line per required extension for the panel: "id — state (version)". */
+function outcomeSeverity(state: string): "success" | "info" | "warn" | "danger" | "secondary" {
+  switch (state) {
+    case "installed":
+    case "updated":
+      return "success";
+    case "present":
+      return "secondary";
+    case "blocked":
+    case "failed":
+      return "danger";
+    default:
+      return "warn";
+  }
+}
+
 // --- About: the host facts. Same command the extension manager uses; we only read its header. -----
 interface EnvironmentData {
   hostRevit: string;
@@ -233,6 +299,7 @@ async function loadCommands() {
 
 onMounted(() => {
   loadEnvironment();
+  loadPolicy();
   loadCodeExec();
   loadMcp();
   loadCommands();
@@ -396,7 +463,122 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- 2. About ------------------------------------------------------------------------------->
+    <!-- 2. Organization ---------------------------------------------------------------------------
+         Read-only: the policy file belongs to IT (machine layer) or the BIM coordinator. This panel is
+         the one place a broken or surprising policy becomes visible without reading the log. -->
+    <section
+      v-if="policy && (policy.present || policy.origin === 'invalid')"
+      class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4"
+    >
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-base font-bold flex items-center gap-2">
+            <i class="pi pi-building" />
+            Organization
+            <Tag
+              v-if="policy.organization?.name"
+              :value="`Managed by ${policy.organization.name}`"
+              severity="info"
+            />
+          </h2>
+          <p class="text-xs text-surface-500 mt-1">
+            Settings below marked with a lock come from
+            <span class="font-mono break-all">{{ policy.path }}</span
+            ><template v-if="policy.organization?.contact">
+              — questions go to <b>{{ policy.organization.contact }}</b></template
+            >.
+          </p>
+        </div>
+        <Button
+          icon="pi pi-refresh"
+          size="small"
+          text
+          severity="secondary"
+          :loading="policyBusy"
+          v-tooltip.left="'Re-read the policy file'"
+          @click="reloadPolicy"
+        />
+      </div>
+
+      <div
+        v-for="problem in policy.problems"
+        :key="problem"
+        class="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+      >
+        <i class="pi pi-exclamation-triangle mr-1" />{{ problem }}
+      </div>
+      <div
+        v-if="policy.backgroundApply.error"
+        class="mb-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800"
+      >
+        <i class="pi pi-times-circle mr-1" />{{ policy.backgroundApply.error }}
+      </div>
+
+      <div v-if="policy.present" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div>
+          <div class="text-surface-500 text-xs mb-1">Locked settings</div>
+          <div v-if="policy.locked.length" class="flex flex-wrap gap-1">
+            <Tag v-for="l in policy.locked" :key="l" :value="l" severity="secondary" icon="pi pi-lock" />
+          </div>
+          <div v-else class="text-surface-500">none — the policy only sets defaults</div>
+        </div>
+        <div>
+          <div class="text-surface-500 text-xs mb-1">Extension sources</div>
+          <div v-if="policy.settings.allowedFeeds" class="text-xs">
+            approved: <span class="font-mono break-all">{{ policy.settings.allowedFeeds.join(", ") }}</span>
+          </div>
+          <div v-else class="text-xs text-surface-500">any source</div>
+          <div v-if="!policy.settings.allowInstallFromRepository" class="text-xs">
+            "Install from repository…" is switched off
+          </div>
+          <div v-if="policy.catalog.source" class="text-xs">
+            catalog: <span class="font-mono break-all">{{ policy.catalog.source }}</span>
+          </div>
+          <div v-for="r in policy.settings.extensionRoots.fromPolicy" :key="r" class="text-xs font-mono break-all">
+            folder: {{ r }}
+          </div>
+        </div>
+        <div v-if="policy.required.declared.length" class="md:col-span-2">
+          <div class="text-surface-500 text-xs mb-1">
+            Required extensions
+            <span v-if="policy.backgroundApply.running"> — checking…</span>
+            <span v-else-if="policy.required.lastRun"> — last checked {{ new Date(policy.required.lastRun).toLocaleString() }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div
+              v-for="req in policy.required.declared"
+              :key="req.id"
+              class="flex items-center gap-2 flex-wrap text-xs"
+            >
+              <span class="font-mono">{{ req.id }}</span>
+              <template v-if="policy.required.outcomes.find((o) => o.id === req.id)">
+                <Tag
+                  :value="policy.required.outcomes.find((o) => o.id === req.id)!.state"
+                  :severity="outcomeSeverity(policy.required.outcomes.find((o) => o.id === req.id)!.state)"
+                />
+                <span v-if="policy.required.outcomes.find((o) => o.id === req.id)!.version" class="text-surface-500">
+                  {{ policy.required.outcomes.find((o) => o.id === req.id)!.version }}
+                </span>
+                <span
+                  v-if="policy.required.outcomes.find((o) => o.id === req.id)!.detail"
+                  class="text-surface-500 break-all"
+                >
+                  {{ policy.required.outcomes.find((o) => o.id === req.id)!.detail }}
+                </span>
+              </template>
+              <Tag v-else value="pending" severity="secondary" />
+              <Tag v-if="req.pinned" value="sha256" severity="secondary" v-tooltip.top="'Package hash pinned by the policy'" />
+            </div>
+          </div>
+        </div>
+        <div v-if="policy.minimumVersion" class="md:col-span-2 text-xs">
+          Minimum plugin version required by the organization: <b>{{ policy.minimumVersion }}</b>
+          (this seat: {{ policy.pluginVersion }})
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. About ------------------------------------------------------------------------------->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
       <h2 class="text-base font-bold mb-3">About</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">

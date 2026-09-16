@@ -1,3 +1,4 @@
+using AnalyseTool.Core.Common.Policy;
 using Newtonsoft.Json;
 using System.IO;
 
@@ -20,13 +21,19 @@ namespace AnalyseTool.Core.Common.Extensions
 
         private static string StateFile => Path.Combine(PathProvider.ProfilePath, "extensions-state.json");
 
+        /// <summary>A required extension (organization policy) is always enabled — including one the
+        /// user disabled before the policy arrived; its stored flag is simply overruled, not rewritten,
+        /// so leaving the organization gives the user's choice back.</summary>
         public static bool IsEnabled(string extensionId) =>
-            !Disabled().Contains(extensionId);
+            RequiredExtensions.IsRequired(extensionId) || !Disabled().Contains(extensionId);
 
-        /// <summary>Enables/disables an extension. Takes effect on the next extension reload.</summary>
+        /// <summary>Enables/disables an extension. Takes effect on the next extension reload.
+        /// Throws when the organization policy requires the extension and the caller disables it.</summary>
         public static void SetEnabled(string extensionId, bool enabled)
         {
             if (string.IsNullOrWhiteSpace(extensionId)) return;
+            if (!enabled && RequiredExtensions.IsRequired(extensionId))
+                throw new InvalidOperationException(RequiredExtensions.RefusalFor(extensionId, "disabled"));
 
             lock (Gate)
             {

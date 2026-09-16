@@ -647,12 +647,13 @@ Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the too
 
 Phase 2 — catalog and required extensions.
 
-- [ ] Remote `catalogUrl` with ETag cache, merge order shipped → policy → user
-- [ ] `extensions.required`: install in the background after startup, block disable/remove, re-enable a previously disabled id, update with the rest; `sha256` pin verified before install
-- [ ] `downloadUrl` host check: must match the feed's host/folder or the whitelist (`github:` feeds accept GitHub asset hosts)
-- [ ] Startup rule: no network or synced-folder read on the startup path; background apply with timeouts
-- [ ] Minimal read-only **Organization** panel in Settings: `GetPolicyStatus` rendered (present / problems / locked / origins) — pulled forward from the UI phase so a broken policy.json is visible without the log
-- [ ] Tier-1 tests for merge order, required-id protection, sha256 refusal, downloadUrl host check
+- [x] Remote `catalogUrl` with ETag cache (`PolicySourceReader`: https or a path with `%ENV%`), merge order shipped → policy → user, user cannot override policy entries
+- [x] `extensions.required`: install in the background after startup, block disable/remove, re-enable a previously disabled id (overruled, not rewritten), update with the rest; `sha256` pin verified before install
+- [x] `downloadUrl` host check: must match the feed's host or the whitelist (`github:` feeds accept GitHub asset hosts)
+- [x] Startup rule: `PolicyBackgroundApply` — the startup path reads one local file; catalog + required run on a background task with a 5-minute budget; `HttpClient` uses the system proxy with default Windows credentials
+- [x] Minimal read-only **Organization** panel in Settings: `GetPolicyStatus` rendered (managed-by, problems, locked, sources, required outcomes, reload)
+- [x] Extensions window: **required** badge, no disable/uninstall for required ids; catalog shows **organization** / **not approved** tags; "Install from repository…" hidden when the policy switches it off
+- [x] Tier-1 tests for merge order, required-id protection, sha256 refusal, downloadUrl host check, source reader
 
 Phase 2b — minimal CLI (`policy show`, `policy validate`), pulled forward: the coordinator needs
 to validate a file before it reaches hundreds of seats, and that is before Join exists.

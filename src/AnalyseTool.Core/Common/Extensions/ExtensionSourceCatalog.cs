@@ -1,3 +1,4 @@
+using AnalyseTool.Core.Common.Policy;
 using Newtonsoft.Json;
 using Serilog;
 using System.IO;
@@ -26,6 +27,9 @@ namespace AnalyseTool.Core.Common.Extensions
 
         /// <summary>Set by the loader, not by the file: this entry came from the user's own catalog.</summary>
         [JsonIgnore] public bool UserSupplied { get; init; }
+
+        /// <summary>Set by the loader: <c>shipped</c>, <c>policy</c> (the organization's catalog) or <c>user</c>.</summary>
+        [JsonIgnore] public string Origin { get; init; } = "shipped";
     }
 
     /// <summary>What <see cref="ExtensionSourceCatalog.Load"/> found, plus whatever it could
@@ -34,7 +38,14 @@ namespace AnalyseTool.Core.Common.Extensions
     /// cases the entries that DID parse are still worth showing.</summary>
     internal sealed record ExtensionCatalogResult(
         IReadOnlyList<ExtensionCatalogEntry> Entries,
-        string? Error);
+        string? Error)
+    {
+        /// <summary>Where the organization's catalog comes from (<c>extensions.catalogUrl</c>), if any.</summary>
+        public string? PolicyCatalogSource { get; init; }
+
+        /// <summary>The policy catalog shown is the cached copy (offline start, or fetch failed).</summary>
+        public bool PolicyCatalogFromCache { get; init; }
+    }
 
     /// <summary>
     /// The curated list of extension repositories offered in Settings. Two sources, in order:
@@ -54,23 +65,84 @@ namespace AnalyseTool.Core.Common.Extensions
         /// can name the file even when it does not exist yet.</summary>
         public static string UserCatalogPath => Path.Combine(PathProvider.ProfilePath, "catalog.json");
 
+        /// <summary>Disk only — safe on the startup path. The organization's catalog is read from its
+        /// cached copy (or the file itself for a path source); <see cref="RefreshPolicyCatalogAsync"/>
+        /// is what fetches it.</summary>
         public static ExtensionCatalogResult Load()
         {
-            Dictionary<string, ExtensionCatalogEntry> byId = new(StringComparer.OrdinalIgnoreCase);
             List<string> problems = new();
+            IReadOnlyList<ExtensionCatalogEntry> shipped = Read(ReadShipped, "the shipped catalog", problems).ToList();
+            IReadOnlyList<ExtensionCatalogEntry> user = Read(ReadUser, UserCatalogPath, problems).ToList();
 
-            foreach (ExtensionCatalogEntry e in Read(ReadShipped, "the shipped catalog", problems))
-                byId[e.Id] = e;
+            string? policySource = PolicyCatalogSource;
+            bool fromCache = false;
+            IReadOnlyList<ExtensionCatalogEntry> policy = Array.Empty<ExtensionCatalogEntry>();
+            if (policySource is not null)
+            {
+                PolicySourceContent? cached = null;
+                try { cached = PolicySourceReader.ReadCached(policySource); }
+                catch (Exception ex) { problems.Add($"Could not read the organization catalog: {ex.Message}"); }
 
-            foreach (ExtensionCatalogEntry e in Read(ReadUser, UserCatalogPath, problems))
-                byId[e.Id] = e with { UserSupplied = true };
+                if (cached is not null)
+                {
+                    fromCache = cached.FromCache;
+                    policy = Read(() => Parse(cached.Text, cached.Location).ToList(), "the organization catalog", problems).ToList();
+                }
+                else if (_lastRefreshProblem is string p)
+                    problems.Add(p);
+            }
 
-            return new ExtensionCatalogResult(
-                byId.Values
-                    .OrderBy(e => e.UserSupplied) // shipped first, then the local additions
-                    .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
-                    .ToList(),
-                problems.Count == 0 ? null : string.Join(" ", problems));
+            return new ExtensionCatalogResult(Merge(shipped, policy, user), problems.Count == 0 ? null : string.Join(" ", problems))
+            {
+                PolicyCatalogSource = policySource,
+                PolicyCatalogFromCache = fromCache,
+            };
+        }
+
+        /// <summary>Merge order shipped → policy → user. A user entry replaces a shipped one with the
+        /// same id (as before), but never an organization entry: the user file can add, not remove
+        /// or redirect what the company lists. Pure — the unit the tests exercise.</summary>
+        internal static IReadOnlyList<ExtensionCatalogEntry> Merge(
+            IEnumerable<ExtensionCatalogEntry> shipped,
+            IEnumerable<ExtensionCatalogEntry> policy,
+            IEnumerable<ExtensionCatalogEntry> user)
+        {
+            Dictionary<string, ExtensionCatalogEntry> byId = new(StringComparer.OrdinalIgnoreCase);
+            foreach (ExtensionCatalogEntry e in shipped) byId[e.Id] = e with { Origin = "shipped" };
+            foreach (ExtensionCatalogEntry e in policy) byId[e.Id] = e with { Origin = "policy" };
+            foreach (ExtensionCatalogEntry e in user)
+            {
+                if (byId.TryGetValue(e.Id, out ExtensionCatalogEntry? existing) && existing.Origin == "policy") continue;
+                byId[e.Id] = e with { Origin = "user", UserSupplied = true };
+            }
+
+            return byId.Values
+                .OrderBy(e => e.Origin switch { "shipped" => 0, "policy" => 1, _ => 2 })
+                .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        private static string? _lastRefreshProblem;
+
+        /// <summary><c>extensions.catalogUrl</c> when the policy declares one and its form is acceptable.</summary>
+        public static string? PolicyCatalogSource
+        {
+            get
+            {
+                string? source = PolicyStore.Current.IsPresent ? PolicyStore.Current.Document.Extensions?.CatalogUrl : null;
+                return string.IsNullOrWhiteSpace(source) || PolicySourceReader.Validate(source!) is not null ? null : source!.Trim();
+            }
+        }
+
+        /// <summary>Fetches the organization's catalog into the cache (conditional GET). Background only.
+        /// Never throws: a failure is remembered and shown beside the entries that did load.</summary>
+        public static async Task RefreshPolicyCatalogAsync(CancellationToken ct)
+        {
+            string? source = PolicyCatalogSource;
+            if (source is null) { _lastRefreshProblem = null; return; }
+
+            (PolicySourceContent? _, string? problem) = await PolicySourceReader.ReadAsync(source, ct);
+            _lastRefreshProblem = problem is null ? null : $"Organization catalog: {problem}";
         }
 
         private static IEnumerable<ExtensionCatalogEntry> Read(

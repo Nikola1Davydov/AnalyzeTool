@@ -1,6 +1,7 @@
 using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
 using AnalyseTool.Sdk;
 using Serilog;
 using System.ComponentModel;
@@ -25,6 +26,8 @@ namespace AnalyseTool.Core.Features.Extensions
             string? id = ctx.Payload.As<Request>()?.Id?.Trim();
             if (string.IsNullOrWhiteSpace(id))
                 throw new InvalidOperationException("Extension id is required.");
+            if (RequiredExtensions.IsRequired(id))
+                throw new InvalidOperationException(RequiredExtensions.RefusalFor(id, "uninstalled"));
 
             IReadOnlyList<ExtensionDescriptor> descriptors = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion);
             ExtensionDescriptor? managed = descriptors.FirstOrDefault(d =>

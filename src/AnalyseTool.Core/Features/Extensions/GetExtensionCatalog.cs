@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
 using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Core.Features.Extensions
@@ -39,6 +40,10 @@ namespace AnalyseTool.Core.Features.Extensions
                     license = e.License,
                     tags = e.Tags ?? new List<string>(),
                     userSupplied = e.UserSupplied,
+                    origin = e.Origin, // shipped | policy | user
+                    // The organization's whitelist may exclude an entry: shown, not installable.
+                    blockedByPolicy = e.Source is null ? null : PolicyFeedRules.Refusal(e.Source),
+                    required = RequiredExtensions.IsRequired(e.Id),
                     installed = d is not null,
                     installedVersion = d?.Manifest.Version,
                     // A dev-zone hit is the author's own working copy: offering "install" there would
@@ -51,6 +56,9 @@ namespace AnalyseTool.Core.Features.Extensions
             {
                 entries,
                 userCatalogPath = ExtensionSourceCatalog.UserCatalogPath,
+                policyCatalogSource = catalog.PolicyCatalogSource,
+                policyCatalogFromCache = catalog.PolicyCatalogFromCache,
+                installFromRepositoryAllowed = PolicyFeedRules.InstallFromRepositoryAllowed,
                 // A catalog file that failed to parse is reported BESIDE the entries that did,
                 // not as a failed command: one broken file must not cost the whole page.
                 error = catalog.Error,

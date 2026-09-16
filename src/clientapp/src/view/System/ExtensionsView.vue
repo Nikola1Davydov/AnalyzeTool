@@ -51,6 +51,7 @@ interface ExtensionRow {
   compatible: boolean;
   binaryYears?: string[]; // Revit years this extension actually ships a build for
   zone: "managed" | "dev" | "machine"; // machine = pre-installed by an administrator, read-only
+  required?: boolean; // required by the organization policy: no disable, no uninstall
   kind: "dll" | "script" | "js"; // what it is made of, not what it does
   legacyLayout?: boolean;
   compileError?: string | null;
@@ -342,6 +343,9 @@ interface CatalogRow {
   license?: string | null;
   tags: string[];
   userSupplied: boolean;
+  origin?: "shipped" | "policy" | "user";
+  blockedByPolicy?: string | null; // the organization's whitelist excludes this source
+  required?: boolean;
   installed: boolean;
   installedVersion?: string | null;
   zone?: "managed" | "dev" | "machine" | null;
@@ -349,6 +353,8 @@ interface CatalogRow {
 
 const catalog = ref<CatalogRow[]>([]);
 const userCatalogPath = ref("");
+const policyCatalogSource = ref<string | null>(null);
+const installFromRepositoryAllowed = ref(true);
 const catalogLoading = ref(false);
 const catalogError = ref("");
 
@@ -358,10 +364,14 @@ async function loadCatalog() {
     const res = await invoke<{
       entries: CatalogRow[];
       userCatalogPath: string;
+      policyCatalogSource?: string | null;
+      installFromRepositoryAllowed?: boolean;
       error?: string | null;
     }>("GetExtensionCatalog");
     catalog.value = res?.entries ?? [];
     userCatalogPath.value = res?.userCatalogPath ?? "";
+    policyCatalogSource.value = res?.policyCatalogSource ?? null;
+    installFromRepositoryAllowed.value = res?.installFromRepositoryAllowed !== false;
     // A file that failed to parse is a note above a working list, not a toast over an empty
     // page — the entries that did parse are still usable.
     catalogError.value = res?.error ?? "";
@@ -713,6 +723,14 @@ onMounted(() => {
                   />
                   <Tag v-if="row.hasUi && row.kind !== 'js'" value="UI" severity="warn" class="mr-1" />
                   <Tag
+                    v-if="row.required"
+                    value="required"
+                    severity="info"
+                    icon="pi pi-lock"
+                    class="mr-1"
+                    v-tooltip.top="'Required by your organization — kept installed and enabled'"
+                  />
+                  <Tag
                     v-if="!row.compatible"
                     :value="buildState(row).label"
                     severity="danger"
@@ -730,7 +748,8 @@ onMounted(() => {
                 <template #body="{ data: row }">
                   <ToggleSwitch
                     :modelValue="row.enabled"
-                    :disabled="loading"
+                    :disabled="loading || !!row.required"
+                    v-tooltip.top="row.required ? 'Required by your organization' : undefined"
                     @update:modelValue="setExtensionEnabled(row, !row.enabled)"
                   />
                 </template>
@@ -770,7 +789,7 @@ onMounted(() => {
                     @click="openFolder(row.directory)"
                   />
                   <Button
-                    v-if="row.zone !== 'machine'"
+                    v-if="row.zone !== 'machine' && !row.required"
                     icon="pi pi-trash"
                     size="small"
                     text
@@ -1032,6 +1051,7 @@ onMounted(() => {
               </div>
               <div class="flex gap-2 shrink-0">
                 <Button
+                  v-if="installFromRepositoryAllowed"
                   label="Install from repository…"
                   icon="pi pi-cloud-download"
                   size="small"
@@ -1067,7 +1087,15 @@ onMounted(() => {
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-medium">{{ row.name }}</span>
                     <Tag v-if="row.installed" value="installed" severity="success" />
-                    <Tag v-if="row.userSupplied" value="local catalog" severity="secondary" />
+                    <Tag v-if="row.required" value="required" severity="info" icon="pi pi-lock" />
+                    <Tag v-if="row.origin === 'policy'" value="organization" severity="secondary" v-tooltip.top="policyCatalogSource ?? ''" />
+                    <Tag v-else-if="row.userSupplied" value="local catalog" severity="secondary" />
+                    <Tag
+                      v-if="row.blockedByPolicy"
+                      value="not approved"
+                      severity="danger"
+                      v-tooltip.top="row.blockedByPolicy"
+                    />
                     <Tag v-for="tag in row.tags" :key="tag" :value="tag" severity="secondary" />
                   </div>
                   <div class="text-xs text-surface-500 mt-0.5">
@@ -1103,6 +1131,8 @@ onMounted(() => {
                     :icon="row.installed ? 'pi pi-replay' : 'pi pi-download'"
                     size="small"
                     :severity="row.installed ? 'secondary' : undefined"
+                    :disabled="!!row.blockedByPolicy"
+                    v-tooltip.left="row.blockedByPolicy ?? undefined"
                     @click="installFromCatalog(row)"
                   />
                   <span v-else-if="row.zone === 'dev'" class="text-xs text-surface-500">
@@ -1116,7 +1146,7 @@ onMounted(() => {
                        here and then hunting for it in another tab to remove it is one place too
                        many for one thing. -->
                   <Button
-                    v-if="row.installed && row.zone === 'managed'"
+                    v-if="row.installed && row.zone === 'managed' && !row.required"
                     label="Uninstall"
                     icon="pi pi-trash"
                     size="small"
