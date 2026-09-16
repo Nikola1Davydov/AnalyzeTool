@@ -151,7 +151,10 @@ exactly the single-seat product it is today.
     "allowUserProviders": false
   },
 
-  "logging": { "sink": "\\\\fileserver\\logs\\analysetool\\{user}\\{date}.log", "level": "Information" }
+  "logging": { "sink": "\\\\fileserver\\logs\\analysetool\\{user}\\{date}.log", "level": "Information" },
+
+  "telemetry": { "sink": "https://otel.company.local/v1/logs", "identity": "hashed",
+                 "events": ["inventory", "command", "ai"] }
 }
 ```
 
@@ -179,6 +182,8 @@ Key semantics:
   script) instead of DPAPI storage. `baseUrl` may point at a gateway that holds the real key, in
   which case `apiKeyEnv` is omitted.
 - `logging.sink` — an additional Serilog sink; the local rolling file stays.
+- `telemetry` — fleet inventory and command usage to the company's own sink; absent = nothing is
+  sent (§10).
 
 ### 3. Stores read through the policy
 
@@ -444,6 +449,67 @@ grant them and must not try. What it can do is remove the manual steps after acc
 Windows SSO (MSAL, an app registration, admin consent). It gives a true URL without syncing;
 worth it only if the synced-folder pattern proves insufficient.
 
+### 10. Telemetry — the company's, never the vendor's
+
+There is no telemetry today, and for the single-seat product that stays so. The enterprise
+scenario needs it in one specific shape: **data goes to the company's own sink, chosen by the
+policy, and nowhere else.** AnalyseTool the project has no endpoint and collects nothing.
+
+Three things that are usually lumped together:
+
+| Kind | For whom | Today |
+| --- | --- | --- |
+| Diagnostics: exceptions, stack traces | support during an incident | yes — Serilog rolling file (`AppLog.cs`), `ExtensionDiagnostics`; `logging.sink` (§2) ships it centrally |
+| Fleet inventory: plugin / Revit version, installed extensions, join state, policy version | the BIM coordinator ("who is behind?", "who still has extension X?") | no |
+| Usage: which command ran, from which transport, how long, success or error class | the coordinator ("is X used at all?", "why does Y fail for half the office?") and extension authors | no |
+
+The second and third are the telemetry this section adds. They are the fleet-wide view of what
+`GetOrganizationStatus` already shows on one seat.
+
+**Rules**
+
+- **Off unless the policy turns it on.** A seat without a policy (or with a policy that omits
+  `telemetry`) sends nothing. Written in the docs in exactly those words.
+- **The recipient is the company.** `telemetry.sink` names an OTLP endpoint, Seq, Application
+  Insights, or a folder (a share, or the synced SharePoint library — §9) receiving JSON-lines
+  files. No default, no fallback host.
+- **Visible to the user.** The Join preview lists "Sends telemetry to: …" (§8); the Organization
+  panel has **Show recent events** that prints exactly what left the seat.
+- **No model data, ever.** Events carry command name, extension id, transport (`WebView2`,
+  `Mcp`), duration, outcome (`ok` / error type name), versions. Never a payload, a file name, an
+  element name, a parameter value. User and machine identity only with `identity: "user"`;
+  the default `"hashed"` sends a stable per-seat hash so the coordinator can count seats without
+  naming them.
+- **Never blocks a command.** Buffered, sent in the background, dropped when the sink is down.
+
+**Policy**
+
+```json
+"telemetry": {
+  "sink": "https://otel.company.local/v1/logs",      // or a folder path (JSON lines, one file per seat per day)
+  "identity": "hashed",                               // "hashed" | "user"
+  "events": ["inventory", "command", "ai"]            // subsets are fine
+}
+```
+
+**Where it lives in the code**
+
+- One hook in `CommandQueue` (Core) — the single entry point for every transport — emits a
+  `command` event per request with start/end, source, outcome. Third-party extensions are covered
+  without changing them.
+- An `inventory` event at bootstrap (versions, extensions, join state) and after every
+  Join / Leave / update.
+- `ai` events from `AiClientFactory` (Tools): provider id, model, token counts — the coordinator's
+  cost view. Reaches Core via the same Sdk policy accessor as §4, so Tools stays on the Sdk only.
+- Events are structured Serilog events on a dedicated logger; `telemetry.sink` picks the Serilog
+  sink (OTLP / Seq / file). No new dependency for the file form.
+- A tier-1 test asserts that no property of a `command` event equals or contains the request
+  payload — the class of leak this design promises not to have.
+
+**Not doing:** anonymous usage statistics for the author "to know what is used". That is a
+separate consent, privacy document and infrastructure, and it undercuts the one-line promise that
+sells the enterprise variant: data does not leave the company.
+
 ## Security notes
 
 - Policy is trusted **because of where it is**: `%ProgramData%` is admin-writable only on a
@@ -453,6 +519,8 @@ worth it only if the synced-folder pattern proves insufficient.
   from "installs what the user pastes" into "installs what IT approved". They are the reason
   the policy layer exists; ship them in phase 1, not later.
 - `codeExecution.enabled=false` + locked should be the recommended enterprise default in the docs.
+- Telemetry is off without a policy, goes only to the sink the policy names, and never carries
+  model data (§10). The vendor has no endpoint.
 - The organization layer is trusted **because the user consented** to a specific origin (an HTTPS
   host or a path) after a preview — not by location. A path under the user's own profile grants
   nothing the user did not already have: they own their settings anyway. A policy fetched from a URL is never applied silently, and a URL
@@ -470,6 +538,8 @@ Tier 1 (`AnalyseTool.Tests`), Revit-free:
 - Discovery input parsing: URL vs domain vs path vs empty; `http://` refused; `%ENV%` expansion.
 - Feed with relative `downloadUrl` resolved against a file-system feed location.
 - `org.json` refresh: ETag unchanged, changed, fetch failure keeps the cache; Leave removes locks.
+- Telemetry: no event without `telemetry` in the policy; `command` events never contain the payload;
+  file sink writes valid JSON lines; a dead sink does not fail or delay the command.
 - CLI: `policy validate` exit codes on good/bad files; `ext validate` on the Acme.Sample zip.
 
 ## Implementation phases / TODO
@@ -509,7 +579,7 @@ Phase 3b — Join organization (the organization layer, on top of 3a).
 
 - [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
 - [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
-- [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
+- [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink, telemetry sink
 - [ ] Host change invalidates the join and asks again; `enforced` hides Leave
 - [ ] `minimumVersion` banner + `GetOrganizationStatus` reports version
 - [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
@@ -523,7 +593,17 @@ Phase 4 — Sdk contract and Tools.
 - [ ] `AiProviderRegistry`: policy providers, `apiKeyEnv`, `allowUserProviders`
 - [ ] `AppLog`: policy logging sink
 
-Phase 5 — UI.
+Phase 5 — telemetry (company sink only).
+
+- [ ] `telemetry` policy section: `sink` (https OTLP / Seq / folder), `identity`, `events`; absent = off
+- [ ] `CommandQueue` hook → `command` events (name, extension id, transport, duration, outcome); never the payload
+- [ ] `inventory` event at bootstrap and after Join / Leave / extension update
+- [ ] `ai` events from `AiClientFactory` via the Sdk policy accessor (provider, model, tokens)
+- [ ] Dedicated Serilog logger + sink selection from policy; background buffer, drop on sink failure
+- [ ] Organization panel: **Show recent events**; Join preview line "Sends telemetry to: …"
+- [ ] Tier-1 tests: off by default, payload never leaks, JSON-lines file sink, dead sink is harmless
+
+Phase 6 — UI.
 
 - [ ] Locked state rendering in Settings (disabled + lock icon + tooltip)
 - [ ] **Organization** panel: policy status, effective values with origin
@@ -531,7 +611,7 @@ Phase 5 — UI.
 - [ ] Organization panel: Join organization… dialog with preview, Leave organization, "Managed by <name> — updated <time>"
 - [ ] First-start banner when discovery finds a policy (offer only, never auto-apply)
 
-Phase 6 — CLI.
+Phase 7 — CLI.
 
 - [ ] `AnalyseTool.Cli` project (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row
 - [ ] `policy show`, `policy validate`
@@ -541,10 +621,11 @@ Phase 6 — CLI.
 - [ ] `diag collect`
 - [ ] Ship via `PluginAssets.targets` + MSI; tier-1 tests drive the exe like `McpExeTests`
 
-Phase 7 — docs.
+Phase 8 — docs.
 
 - [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; the SharePoint synced-library layout, "Always keep on this device", `odopen://` sync link
 - [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
+- [ ] ONBOARDING.md § telemetry: what is sent, to whom, how to turn it on, the "nothing without a policy" promise
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
