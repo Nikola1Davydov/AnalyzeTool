@@ -56,6 +56,9 @@ Consequences for an IT department:
    origin (machine / user / default) can be displayed in Settings and printed by a CLI.
 5. Nothing changes for a single user with no policy file — the user layer alone behaves exactly
    as today.
+6. A user who installed the plugin themselves (no admin rights, SingleUser MSI, a contractor's
+   laptop) can **join the company's configuration in one action** from Settings — and leave it
+   again.
 
 ## Non-goals (this iteration)
 
@@ -70,30 +73,42 @@ Consequences for an IT department:
 
 ## Design
 
-### 1. Two configuration layers
+### 1. Three configuration layers
 
 ```
 %ProgramData%\AnalyseTool\policy.json      ← machine layer, admin-owned, read-only for the plugin
-%LOCALAPPDATA%\AnalyseTool\*.json          ← user layer, plugin-owned, exactly today's files
+%LOCALAPPDATA%\AnalyseTool\org.json         ← organization layer: a policy the USER joined by URL (§8)
+%LOCALAPPDATA%\AnalyseTool\*.json           ← user layer, plugin-owned, exactly today's files
 ```
 
-Resolution per setting: **machine value if present, else user value, else default.**
-A machine value that is also listed under `locked` cannot be overridden by the user layer and
-cannot be changed through the UI or any command.
+Resolution per setting: **machine value if present, else organization value, else user value,
+else default.** A value that is also listed under `locked` (in whichever layer supplies it)
+cannot be overridden by the layers below it and cannot be changed through the UI or any command.
+
+| Layer | Put in place by | Needs admin | User can leave |
+| --- | --- | --- | --- |
+| Machine | IT, via GPO / Intune / SCCM | yes | no |
+| Organization | the user, via **Join organization** | no | yes (**Leave organization**) |
+| User | the plugin | no | these ARE the user's settings |
+
+The machine and organization layers carry the **same file format**. IT publishes one
+`policy.json`; strict shops push it to `%ProgramData%`, everyone else (self-installed seats,
+contractors, freelancers on a project) joins it by URL. Both can coexist: the machine layer wins.
 
 `PathProvider` gets `MachineProfilePath` (`%ProgramData%\AnalyseTool`) and `PolicyPath`.
-A new `Core/Common/Policy/PolicyStore` loads the file once, tolerates a missing or broken file
-(logged + reported through `ExtensionDiagnostics`, never fatal) and exposes typed accessors plus
-`Origin(settingName)` for the UI.
+A new `Core/Common/Policy/PolicyStore` loads both policy sources once, tolerates a missing or
+broken file (logged + reported through `ExtensionDiagnostics`, never fatal), merges them and
+exposes typed accessors plus `Origin(settingName)` for the UI.
 
-The plugin **never writes** to the machine layer. If the file is missing, the tool is exactly the
-single-seat product it is today.
+The plugin **never writes** to the machine layer. If neither policy source exists, the tool is
+exactly the single-seat product it is today.
 
 ### 2. `policy.json` (v1)
 
 ```json
 {
   "version": 1,
+  "organization": { "name": "Company BIM", "contact": "bim-support@company.local" },
   "locked": ["codeExecution.enabled", "extensions.roots", "mcp.enabled"],
 
   "codeExecution": { "enabled": false },
@@ -127,6 +142,8 @@ on an older plugin.
 
 Key semantics:
 
+- `organization` — shown in Settings ("Managed by Company BIM") and in the join preview (§8), so
+  a user always knows whose configuration they are running and whom to ask.
 - `locked` — dotted setting paths. A locked path is read-only in the UI; the corresponding
   `Set…` command returns an error naming the policy file.
 - `extensions.roots` — appended to the scan roots as **Dev zone, IsDefault=true** (not removable).
@@ -214,6 +231,73 @@ row; `InternalsVisibleTo("AnalyseTool.Cli")` in Core, same pattern as `Mcp.Bridg
 4. Optional: set `ANALYSETOOL_AI_KEY` per user or point `baseUrl` at the company gateway.
 5. Verify a seat with `AnalyseTool.Cli policy show` and `ext list`.
 
+### 8. Join organization — one action to adopt the company configuration
+
+The scenario: a user installs the plugin themselves, opens Settings and connects to the company's
+configuration without IT touching their machine.
+
+**User flow**
+
+1. Settings → **Organization** → **Join organization…**
+2. The user enters a policy URL **or** the company domain **or** nothing when the plugin already
+   discovered a policy (below).
+3. The plugin downloads `policy.json` and shows a **preview** before applying anything:
+   organization name and contact, which settings change, which become locked, which extensions
+   will be installed and from where, where AI requests will go, where logs will go.
+4. The user confirms. The policy is applied: required extensions install, the catalog is
+   fetched, the locks take effect. The panel now reads "Managed by <name> — updated <time>" with
+   a **Leave organization** button.
+
+**Discovery (so the user types as little as possible)**
+
+| Input | Resolution |
+| --- | --- |
+| full URL | fetched as is |
+| domain (`company.local`) | 1. DNS TXT `_analysetool.company.local` → URL; 2. `https://company.local/.well-known/analysetool/policy.json` |
+| nothing | same two lookups against `USERDNSDOMAIN` (domain-joined machines) |
+
+On first start, if discovery against `USERDNSDOMAIN` finds a policy, Settings shows a
+non-modal banner "Your organization publishes AnalyseTool settings. Join?". Nothing is applied
+without the user's confirmation — discovery only offers.
+
+**Persistence and refresh**
+
+`%LOCALAPPDATA%\AnalyseTool\org.json`:
+
+```json
+{ "policyUrl": "https://…/policy.json", "etag": "\"…\"", "fetchedAt": "2026-09-16T08:00:00Z",
+  "organizationName": "Company BIM", "cachedPolicy": { … } }
+```
+
+On every start the plugin re-fetches with `If-None-Match`; unchanged → nothing to do, changed →
+re-apply and note it in the panel, offline → the cached policy stays in force. A fetch failure is a
+diagnostic, never a reason to drop the configuration.
+
+**Leave organization** deletes `org.json`, releases the locks and offers (not forces) to remove
+the extensions that were installed because of `extensions.required`. User-layer files are untouched,
+so the user gets their own pre-join settings back.
+
+**Trust**
+
+- HTTPS only. A policy can install code and redirect AI traffic; a plain-http or
+  file-share URL is refused for the organization layer (the machine layer is trusted by location,
+  §Security notes).
+- The preview is the consent step and must name the consequential items explicitly:
+  "Installs extensions: …", "Sends AI requests to: …", "Locks: …".
+- `organization.name` and `contact` are required for a joinable policy so the UI never says
+  "managed by unknown".
+- Later, optional: a publisher signature over the file plus a fingerprint IT hands to staff,
+  shown in the preview. v1 relies on HTTPS + preview.
+
+**Implementation shape**
+
+- `PolicyStore` gains a second loader (`OrgPolicySource`) beside the file loader; merge order is
+  the only place that knows there are two. No store class changes for this feature.
+- Core commands: `DiscoverOrganizationPolicy(input?)` → preview model, `JoinOrganization(url)`,
+  `LeaveOrganization()`, `GetOrganizationStatus()`.
+- App: the Organization panel from §5 grows the join/leave controls and the first-start banner.
+- CLI: `org join <url|domain>`, `org leave`, `org status` — the same commands for scripted seats.
+
 ## Security notes
 
 - Policy is trusted **because of where it is**: `%ProgramData%` is admin-writable only on a
@@ -223,6 +307,9 @@ row; `InternalsVisibleTo("AnalyseTool.Cli")` in Core, same pattern as `Mcp.Bridg
   from "installs what the user pastes" into "installs what IT approved". They are the reason
   the policy layer exists; ship them in phase 1, not later.
 - `codeExecution.enabled=false` + locked should be the recommended enterprise default in the docs.
+- The organization layer is trusted **because the user consented** to a specific HTTPS origin after
+  a preview — not by location. A policy fetched from a URL is never applied silently, and a URL
+  change (redirect to another host) invalidates the join and asks again.
 
 ## Testing
 
@@ -232,6 +319,9 @@ Tier 1 (`AnalyseTool.Tests`), Revit-free:
 - Layer resolution: machine wins, locked refuses writes, user-only behaves as today.
 - Catalog merge order shipped → policy → user with id overrides.
 - `allowedFeeds` matching (prefix, case, `github:` form).
+- Three-layer resolution: machine over organization over user; locks honored per origin.
+- Discovery input parsing: URL vs domain vs empty; http/file URLs refused for the org layer.
+- `org.json` refresh: ETag unchanged, changed, fetch failure keeps the cache; Leave removes locks.
 - CLI: `policy validate` exit codes on good/bad files; `ext validate` on the Acme.Sample zip.
 
 ## Implementation phases / TODO
@@ -253,28 +343,42 @@ Phase 2 — catalog and required extensions.
 - [ ] `extensions.required`: install on startup, block disable/remove, update with the rest
 - [ ] Tier-1 tests for merge order and required-id protection
 
-Phase 3 — Sdk contract and Tools.
+Phase 3 — Join organization (the organization layer).
+
+- [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
+- [ ] Discovery: URL / domain / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>` and `/.well-known/analysetool/policy.json`
+- [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
+- [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
+- [ ] Startup refresh with `If-None-Match`; offline keeps cache; host change invalidates the join
+- [ ] `organization.name` / `contact` required for a joinable policy; HTTPS-only enforcement
+- [ ] Tier-1 tests: resolution order, input parsing, refresh cases, leave semantics
+
+Phase 4 — Sdk contract and Tools.
 
 - [ ] Sdk: read-only policy section accessor on the context (minor version bump, CHANGELOG, ONBOARDING §Sdk)
 - [ ] `AiProviderRegistry`: policy providers, `apiKeyEnv`, `allowUserProviders`
 - [ ] `AppLog`: policy logging sink
 
-Phase 4 — UI.
+Phase 5 — UI.
 
 - [ ] Locked state rendering in Settings (disabled + lock icon + tooltip)
 - [ ] **Organization** panel: policy status, effective values with origin
 - [ ] **Required** badge; hide disable/remove for required extensions
+- [ ] Organization panel: Join organization… dialog with preview, Leave organization, "Managed by <name> — updated <time>"
+- [ ] First-start banner when discovery finds a policy (offer only, never auto-apply)
 
-Phase 5 — CLI.
+Phase 6 — CLI.
 
 - [ ] `AnalyseTool.Cli` project (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row
 - [ ] `policy show`, `policy validate`
 - [ ] `ext list`, `ext install`, `ext validate`, `ext update`
+- [ ] `org join <url|domain>`, `org leave`, `org status`
 - [ ] `diag collect`
 - [ ] Ship via `PluginAssets.targets` + MSI; tier-1 tests drive the exe like `McpExeTests`
 
-Phase 6 — docs.
+Phase 7 — docs.
 
-- [ ] ONBOARDING.md § "For IT administrators": MSI silent install, policy.json reference, hosting a catalog/feed, CLI
+- [ ] ONBOARDING.md § "For IT administrators": MSI silent install, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
+- [ ] ONBOARDING.md § "Joining your company's configuration" for end users
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
