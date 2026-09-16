@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- 🏢 **Organization policy (phase 1 of enterprise deployment).** An administrator can put `policy.json` into `%ProgramData%\AnalyseTool\` (GPO, Intune, a script) and the plugin reads it at start: the C# execution switch and the MCP bridge switch can be set and **locked** (Settings shows them read-only with the reason), extra extension folders can be declared for every user (`%ENV%` expanded, never removable), install sources and update feeds can be limited to an approved list (`allowedFeeds`), and the free-form "Install from repository…" paste can be switched off. A policy value that is not locked is only a default — the user's own choice still wins. Packages pre-installed into `%ProgramData%\AnalyseTool\extensions-dist` load for every user of the machine and show as **machine** in the Extensions window, without update or uninstall actions. No file = nothing changes. Design: `docs/enterprise-deployment-design.md`; schema: `docs/policy.schema.json`.
+
 ## [1.5.2] / 2026-09-14
 
 - 🧹 **A lighter plugin folder.** Roslyn used to ship its compiler diagnostics in thirteen languages into every Revit version's folder (6 MB each, three times in the installer). Only the English satellite assemblies are deployed now; a script author reads diagnostics in the language `ExecuteRevitCode` reports anyway. One Revit version's folder: 31 MB → 24 MB.

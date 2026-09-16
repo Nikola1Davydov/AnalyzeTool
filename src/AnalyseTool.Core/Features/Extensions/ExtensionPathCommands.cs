@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Core.Common.Bootstrap;
+using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
@@ -25,7 +25,8 @@ namespace AnalyseTool.Core.Features.Extensions
                 .Select(root => DescribeRoot(root, version, authoringRoot))
                 .ToList();
 
-            return Task.FromResult<object?>(new { revitVersion = version, paths });
+            // True while the policy locks the root list: the UI hides add/remove.
+            return Task.FromResult<object?>(new { revitVersion = version, paths, rootsLocked = ExtensionSources.RootsLocked });
         }
 
         internal static object DescribeRoot(ExtensionSourceRoot root, string version, string authoringRoot)
@@ -43,10 +44,14 @@ namespace AnalyseTool.Core.Features.Extensions
                 path = root.Path,       // root — used by remove
                 scanDir = root.Path,    // extensions now live directly under the root
                 isDefault = root.IsDefault,
-                zone = root.Zone == ExtensionZone.Dev ? "dev" : "managed",
+                zone = root.Zone switch { ExtensionZone.Dev => "dev", ExtensionZone.Machine => "machine", _ => "managed" },
                 valid = count > 0,
                 reason,
                 extensionCount = count,
+                // Declared by the organization policy: shown, never removable from the UI.
+                fromPolicy = root.FromPolicy,
+                // The machine root is an administrator's folder: nothing is installed or removed there.
+                readOnly = root.Zone == ExtensionZone.Machine,
                 // Where SaveAsCommand / SaveExtensionUi put what they generate when no root is named.
                 isAuthoringRoot = string.Equals(root.Path, authoringRoot, StringComparison.OrdinalIgnoreCase),
             };

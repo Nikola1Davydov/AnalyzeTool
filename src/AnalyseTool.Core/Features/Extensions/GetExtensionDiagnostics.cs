@@ -43,7 +43,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 .Select(descriptor => new ExtensionDiagnostic(
                     descriptor.Manifest.Id,
                     descriptor.DeclaresDll ? "dll" : descriptor.HasScript ? "script" : "js",
-                    descriptor.Zone == ExtensionZone.Dev ? "dev" : "managed",
+                    descriptor.Zone switch { ExtensionZone.Dev => "dev", ExtensionZone.Machine => "machine", _ => "managed" },
                     ExtensionStateStore.IsEnabled(descriptor.Manifest.Id),
                     descriptor.IsCompatibleWithHost,
                     descriptor.HasCommands,

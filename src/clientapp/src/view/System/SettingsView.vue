@@ -82,11 +82,13 @@ function openFolder(path: string | undefined) {
 // --- C# code execution: gates the ad-hoc ExecuteRevitCode command (the AI scratchpad). -----------
 const codeExec = ref(false);
 const codeExecBusy = ref(false);
+const codeExecManaged = ref(false); // locked by the organization policy: read-only
 
 async function loadCodeExec() {
   try {
-    const res = await invoke<{ enabled: boolean }>("GetCodeExecutionStatus");
+    const res = await invoke<{ enabled: boolean; managed?: boolean }>("GetCodeExecutionStatus");
     codeExec.value = !!res?.enabled;
+    codeExecManaged.value = !!res?.managed;
   } catch (e) {
     console.error("Failed to load code-execution status", e);
   }
@@ -120,6 +122,7 @@ interface McpStatus {
   serverExeExists: boolean;
   token: string;
   lastError: string | null;
+  managed?: boolean; // locked by the organization policy: read-only
 }
 
 const mcp = ref<McpStatus | null>(null);
@@ -300,9 +303,9 @@ onMounted(() => {
           </div>
           <ToggleSwitch
             :modelValue="!!mcp?.running"
-            :disabled="mcpBusy"
+            :disabled="mcpBusy || !!mcp?.managed"
             class="shrink-0 mt-1"
-            v-tooltip.left="'Allow external assistants to connect'"
+            v-tooltip.left="mcp?.managed ? 'Managed by your organization' : 'Allow external assistants to connect'"
             @update:modelValue="applyMcp(!mcp?.running)"
           />
         </div>
@@ -368,6 +371,12 @@ onMounted(() => {
                   :value="codeExec ? 'on' : 'off'"
                   :severity="codeExec ? 'warn' : 'secondary'"
                 />
+                <Tag
+                  v-if="codeExecManaged"
+                  value="managed by your organization"
+                  severity="secondary"
+                  icon="pi pi-lock"
+                />
               </div>
               <p class="text-xs text-surface-600 mt-1">
                 Beyond the ready-made commands: the <code>ExecuteRevitCode</code> tool lets the
@@ -378,7 +387,7 @@ onMounted(() => {
             </div>
             <ToggleSwitch
               :modelValue="codeExec"
-              :disabled="codeExecBusy"
+              :disabled="codeExecBusy || codeExecManaged"
               class="shrink-0 mt-1"
               @update:modelValue="setCodeExec($event)"
             />

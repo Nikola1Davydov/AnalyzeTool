@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Reflection;
 
 namespace AnalyseTool.Core.Common
@@ -9,6 +9,18 @@ namespace AnalyseTool.Core.Common
         // no matter which assembly of the split platform calls it.
         public static string RootDirectory => Path.GetDirectoryName(typeof(PathProvider).Assembly.Location)!;
         public static string ProfilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
+
+        /// <summary>%ProgramData%\&lt;plugin&gt; — the MACHINE layer, written by an administrator (GPO, Intune,
+        /// a deployment script), never by the plugin. Absent on a single-seat install.</summary>
+        public static string MachineProfilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), SharedData.ToolData.PLUGIN_NAME);
+
+        /// <summary>%ProgramData%\&lt;plugin&gt;\policy.json — the organization policy (docs/enterprise-deployment-design.md).</summary>
+        public static string PolicyPath => Path.Combine(MachineProfilePath, "policy.json");
+
+        /// <summary>%ProgramData%\&lt;plugin&gt;\extensions-dist — packages an administrator pre-installed for
+        /// every user of the machine. Scanned read-only: the Extension Manager never installs, removes
+        /// or updates there.</summary>
+        public static string MachineExtensionsDistRoot => Path.Combine(MachineProfilePath, "extensions-dist");
 
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\extensions — the default DEV extensions root, exactly what
         /// this folder has always been: loose folders authored by the user (scripts, templates,

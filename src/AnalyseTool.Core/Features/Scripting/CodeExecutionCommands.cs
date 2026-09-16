@@ -12,7 +12,13 @@ namespace AnalyseTool.Core.Features.Scripting
     internal sealed class GetCodeExecutionStatus : IRevitTask
     {
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
-            Task.FromResult<object?>(new { enabled = CodeExecutionSettings.Enabled });
+            Task.FromResult<object?>(new
+            {
+                enabled = CodeExecutionSettings.Enabled,
+                // True when an organization policy locks the switch: render it read-only.
+                managed = CodeExecutionSettings.IsManaged,
+                origin = CodeExecutionSettings.Origin,
+            });
     }
 
     /// <summary>Toggles C# code execution from the Settings page.</summary>
@@ -28,8 +34,13 @@ namespace AnalyseTool.Core.Features.Scripting
             if (request is null)
                 throw new InvalidOperationException("Payload is missing.");
 
-            CodeExecutionSettings.SetEnabled(request.Enabled);
-            return Task.FromResult<object?>(new { enabled = CodeExecutionSettings.Enabled });
+            CodeExecutionSettings.SetEnabled(request.Enabled); // throws when the policy locks it
+            return Task.FromResult<object?>(new
+            {
+                enabled = CodeExecutionSettings.Enabled,
+                managed = CodeExecutionSettings.IsManaged,
+                origin = CodeExecutionSettings.Origin,
+            });
         }
 
         internal sealed class Request

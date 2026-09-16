@@ -1,3 +1,4 @@
+using AnalyseTool.Core.Common.Policy;
 using Newtonsoft.Json;
 using System.IO;
 
@@ -12,10 +13,15 @@ namespace AnalyseTool.Core.Common.Extensions
 
         /// <summary>Authored by the user: loose folders, live Reload, no install/update semantics.</summary>
         Dev,
+
+        /// <summary>Pre-installed by an administrator under <c>%ProgramData%</c>: package layout, loaded
+        /// like managed, but read-only for the Extension Manager (no install / remove / update).</summary>
+        Machine,
     }
 
-    /// <summary>One extension source root with its zone semantics.</summary>
-    internal sealed record ExtensionSourceRoot(string Path, ExtensionZone Zone, bool IsDefault);
+    /// <summary>One extension source root with its zone semantics. <paramref name="FromPolicy"/> marks a
+    /// root the organization policy added: listed, scanned, never removable from the UI.</summary>
+    internal sealed record ExtensionSourceRoot(string Path, ExtensionZone Zone, bool IsDefault, bool FromPolicy = false);
 
     /// <summary>
     /// Resolves the roots that are scanned for extensions. An extension is a folder with a
@@ -44,19 +50,56 @@ namespace AnalyseTool.Core.Common.Extensions
 
         private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "extensions.json");
 
-        /// <summary>All roots with zone info: managed default, dev default, then user-added dev roots (deduped).</summary>
+        /// <summary>Machine-wide packages an administrator pre-installed (<c>%ProgramData%</c>). Read-only.</summary>
+        public static string MachineManagedRoot => PathProvider.MachineExtensionsDistRoot;
+
+        /// <summary>All roots with zone info, in load order (first folder to claim an id wins):
+        /// the machine root, the managed default, the dev default, the roots the organization policy
+        /// adds, then user-added dev roots (deduped).</summary>
         public static IReadOnlyList<ExtensionSourceRoot> AllRoots()
         {
-            List<ExtensionSourceRoot> roots = new()
-            {
-                new ExtensionSourceRoot(DefaultManagedRoot, ExtensionZone.Managed, IsDefault: true),
-                new ExtensionSourceRoot(DefaultDevRoot, ExtensionZone.Dev, IsDefault: true),
-            };
+            List<ExtensionSourceRoot> roots = new();
+            // Only listed when an administrator actually created it: a single-seat install must not
+            // see a "folder not found" row for a folder it has no business with.
+            if (Directory.Exists(MachineManagedRoot))
+                roots.Add(new ExtensionSourceRoot(MachineManagedRoot, ExtensionZone.Machine, IsDefault: true));
+            roots.Add(new ExtensionSourceRoot(DefaultManagedRoot, ExtensionZone.Managed, IsDefault: true));
+            roots.Add(new ExtensionSourceRoot(DefaultDevRoot, ExtensionZone.Dev, IsDefault: true));
+            foreach (string p in PolicyRoots())
+                if (!roots.Any(r => string.Equals(r.Path, p, StringComparison.OrdinalIgnoreCase)))
+                    roots.Add(new ExtensionSourceRoot(p, ExtensionZone.Dev, IsDefault: true, FromPolicy: true));
             foreach (string p in LoadUserRoots())
                 if (!roots.Any(r => string.Equals(r.Path, p, StringComparison.OrdinalIgnoreCase)))
                     roots.Add(new ExtensionSourceRoot(p, ExtensionZone.Dev, IsDefault: false));
             return roots;
         }
+
+        /// <summary>Roots the organization policy declares (<c>extensions.roots</c>), with <c>%ENV%</c>
+        /// expanded so one policy line serves every user (<c>%USERPROFILE%\Contoso\BIM Tools - Documents\…</c>).
+        /// Malformed entries are skipped, not fatal.</summary>
+        public static IReadOnlyList<string> PolicyRoots()
+        {
+            List<string>? declared = PolicyStore.Current.Document.Extensions?.Roots;
+            if (declared is null || !PolicyStore.Current.IsPresent) return Array.Empty<string>();
+
+            List<string> roots = new();
+            foreach (string raw in declared)
+            {
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                try
+                {
+                    roots.Add(Path.GetFullPath(Environment.ExpandEnvironmentVariables(raw.Trim())));
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Ignoring malformed policy extension root {Root}", raw);
+                }
+            }
+            return roots;
+        }
+
+        /// <summary>The user may not add or remove their own roots while the policy locks <c>extensions.roots</c>.</summary>
+        public static bool RootsLocked => PolicyStore.Current.IsLocked(PolicySettings.ExtensionsRoots);
 
         /// <summary>All root paths (both zones) — for callers that only validate/display paths.</summary>
         public static IReadOnlyList<string> Roots() => AllRoots().Select(r => r.Path).ToList();
@@ -114,13 +157,19 @@ namespace AnalyseTool.Core.Common.Extensions
             return null;
         }
 
-        /// <summary>Adds a user dev root (no-op for the built-in roots or duplicates). Returns the normalized path.</summary>
+        /// <summary>Adds a user dev root (no-op for the built-in roots or duplicates). Returns the normalized path.
+        /// Throws when the organization policy locks the root list.</summary>
         public static string AddRoot(string path)
         {
+            if (RootsLocked)
+                throw new InvalidOperationException(PolicyStore.Current.LockedMessage(PolicySettings.ExtensionsRoots));
+
             string full = Path.GetFullPath(path.Trim());
-            if (string.Equals(full, DefaultManagedRoot, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(full, DefaultDevRoot, StringComparison.OrdinalIgnoreCase))
-                return full; // built-ins are always implicit
+            if (string.Equals(full, MachineManagedRoot, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(full, DefaultManagedRoot, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(full, DefaultDevRoot, StringComparison.OrdinalIgnoreCase)
+                || PolicyRoots().Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
+                return full; // built-ins and policy roots are always implicit
 
             List<string> roots = LoadUserRoots().ToList();
             if (!roots.Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
@@ -131,10 +180,18 @@ namespace AnalyseTool.Core.Common.Extensions
             return full;
         }
 
-        /// <summary>Removes a user root (the built-in roots cannot be removed).</summary>
+        /// <summary>Removes a user root. The built-in roots and the roots the policy declares cannot be
+        /// removed; a locked root list refuses every removal.</summary>
         public static void RemoveRoot(string path)
         {
+            if (RootsLocked)
+                throw new InvalidOperationException(PolicyStore.Current.LockedMessage(PolicySettings.ExtensionsRoots));
+
             string full = Path.GetFullPath(path.Trim());
+            if (PolicyRoots().Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException(
+                    $"'{full}' is declared by your organization's policy ({PolicyStore.Current.Path}) and cannot be removed here.");
+
             List<string> roots = LoadUserRoots()
                 .Where(r => !string.Equals(r, full, StringComparison.OrdinalIgnoreCase))
                 .ToList();

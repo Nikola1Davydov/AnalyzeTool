@@ -84,9 +84,12 @@ Consequences for an IT department:
 %LOCALAPPDATA%\AnalyseTool\*.json           ← user layer, plugin-owned, exactly today's files
 ```
 
-Resolution per setting: **machine value if present, else organization value, else user value,
-else default.** A value that is also listed under `locked` (in whichever layer supplies it)
-cannot be overridden by the layers below it and cannot be changed through the UI or any command.
+Resolution per setting follows the Group Policy model of **mandatory vs. default**: a policy value
+listed under `locked` is mandatory — it wins over the user's own choice and the UI shows it
+read-only; a policy value that is *not* locked is a default — it applies until the user makes
+their own choice, which then wins. Between the two policy layers the machine layer wins. In
+order: locked machine → locked organization → user → machine default → organization default →
+built-in default. (Phase 1 implements this in `PolicyState.Resolve`.)
 
 | Layer | Put in place by | Needs admin | User can leave |
 | --- | --- | --- | --- |
@@ -546,16 +549,17 @@ Tier 1 (`AnalyseTool.Tests`), Revit-free:
 
 Phase 1 — policy layer (no UI, no CLI): the smallest change that makes the tool manageable.
 
-- [ ] `PathProvider.MachineProfilePath`, `PolicyPath`
-- [ ] `Core/Common/Policy/PolicyStore` + `PolicyDocument` model, load-once, diagnostics on error
-- [ ] Machine file in two forms: inline policy, or pointer `{ policyUrl, enforced }` resolved through the source abstraction from phase 3a (pointer support lands with 3a)
-- [ ] `CodeExecutionSettings` reads policy, refuses when locked
-- [ ] `ExtensionSources` appends policy roots, honors lock
-- [ ] Machine-level managed root `%ProgramData%\AnalyseTool\extensions-dist` scanned read-only (Machine badge; no install/remove/update there)
-- [ ] `allowedFeeds` + `allowInstallFromRepository` enforced in feed resolution and install commands
-- [ ] `McpServerController` honors `mcp.enabled`
-- [ ] Tier-1 tests for parsing, resolution, feed whitelist
-- [ ] `docs/policy.schema.json` (JSON Schema for editor completion and `policy validate`)
+- [x] `PathProvider.MachineProfilePath`, `PolicyPath`
+- [x] `Core/Common/Policy/PolicyStore` + `PolicyDocument` model, load-once, diagnostics on error
+- [x] Machine file in two forms: inline policy, or pointer `{ policyUrl, enforced }` — the pointer is recognized and reported; following it lands with 3a
+- [x] `CodeExecutionSettings` reads policy, refuses when locked
+- [x] `ExtensionSources` appends policy roots (`%ENV%` expanded), honors lock
+- [x] Machine-level managed root `%ProgramData%\AnalyseTool\extensions-dist` scanned read-only (Machine badge; no install/remove/update there)
+- [x] `allowedFeeds` + `allowInstallFromRepository` enforced in feed resolution and install commands
+- [x] `McpServerController` honors `mcp.enabled`
+- [x] `GetPolicyStatus` / `ReloadPolicy` commands (the data the Organization panel and the CLI read)
+- [x] Tier-1 tests for parsing, resolution, feed whitelist
+- [x] `docs/policy.schema.json` (JSON Schema for editor completion and `policy validate`)
 
 Phase 2 — catalog and required extensions.
 

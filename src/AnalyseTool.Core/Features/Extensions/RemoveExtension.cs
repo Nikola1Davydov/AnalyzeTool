@@ -36,9 +36,16 @@ namespace AnalyseTool.Core.Features.Extensions
                 bool existsInDev = descriptors.Any(d =>
                     d.Zone == ExtensionZone.Dev &&
                     string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
-                throw new InvalidOperationException(existsInDev
-                    ? $"'{id}' is a dev extension — the manager only uninstalls managed packages. " +
-                      "Delete its folder yourself (Open in Explorer) if you want it gone."
+                bool existsOnMachine = descriptors.Any(d =>
+                    d.Zone == ExtensionZone.Machine &&
+                    string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
+                throw new InvalidOperationException(
+                    existsInDev
+                        ? $"'{id}' is a dev extension — the manager only uninstalls managed packages. " +
+                          "Delete its folder yourself (Open in Explorer) if you want it gone."
+                    : existsOnMachine
+                        ? $"'{id}' was pre-installed for every user of this computer by an administrator " +
+                          $"({ExtensionSources.MachineManagedRoot}). It can only be removed there."
                     : $"No installed extension with id '{id}'.");
             }
 

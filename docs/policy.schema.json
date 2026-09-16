@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Nikola1Davydov/AnalyzeTool/docs/policy.schema.json",
+  "title": "AnalyseTool organization policy",
+  "description": "policy.json — machine layer (%ProgramData%\\AnalyseTool\\policy.json) or organization layer (joined by URL). Every section is optional. See docs/enterprise-deployment-design.md.",
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "policyUrl": {
+      "type": "string",
+      "description": "Pointer form: the real policy lives at this https URL or file-system path. Followed from plugin phase 3a on."
+    },
+    "enforced": { "type": "boolean", "description": "Pointer form: the user cannot leave the organization." },
+    "organization": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "contact": { "type": "string" },
+        "downloadUrl": { "type": "string", "description": "Where a seat below minimumVersion gets the installer." }
+      },
+      "additionalProperties": false
+    },
+    "minimumVersion": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+    "locked": {
+      "type": "array",
+      "description": "Settings the user may not change. A value present but not locked is only a default.",
+      "items": { "type": "string", "enum": ["codeExecution.enabled", "extensions.roots", "mcp.enabled"] },
+      "uniqueItems": true
+    },
+    "codeExecution": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean", "description": "Allow ad-hoc C# execution (ExecuteRevitCode). Recommended: false + locked." } },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "properties": {
+        "roots": {
+          "type": "array",
+          "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded.",
+          "items": { "type": "string" }
+        },
+        "catalogUrl": { "type": "string", "description": "Company catalog (catalog.json shape). Phase 2." },
+        "allowedFeeds": {
+          "type": "array",
+          "description": "Prefix whitelist for install sources and update feeds: 'github:owner/' or 'https://host/path/'. Absent = everything allowed.",
+          "items": { "type": "string" }
+        },
+        "required": {
+          "type": "array",
+          "description": "Extensions every seat must have. Phase 2.",
+          "items": {
+            "type": "object",
+            "properties": { "id": { "type": "string" }, "source": { "type": "string" } },
+            "required": ["id"],
+            "additionalProperties": false
+          }
+        },
+        "allowInstallFromRepository": {
+          "type": "boolean",
+          "description": "False refuses the free-form 'Install from repository…' paste; catalog entries still go through allowedFeeds."
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcp": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean", "description": "Whether the in-Revit MCP bridge may run." } },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

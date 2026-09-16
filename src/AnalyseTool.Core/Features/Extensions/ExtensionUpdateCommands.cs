@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
 using AnalyseTool.Sdk;
 using Serilog;
 using System.ComponentModel;
@@ -28,6 +29,11 @@ namespace AnalyseTool.Core.Features.Extensions
                 string installed = d.Manifest.Version;
                 try
                 {
+                    // A feed outside the organization's whitelist is reported as an error on the row,
+                    // not polled: the seat must not even ask a host the policy does not name.
+                    if (PolicyFeedRules.Refusal(d.Manifest.UpdateFeed!) is string refused)
+                        throw new InvalidOperationException(refused);
+
                     ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(d.Manifest.UpdateFeed!, id, ct);
                     return (object)new
                     {
@@ -100,6 +106,8 @@ namespace AnalyseTool.Core.Features.Extensions
                 throw new InvalidOperationException($"No installed extension with id '{id}'.");
             if (string.IsNullOrWhiteSpace(installed.Manifest.UpdateFeed))
                 throw new InvalidOperationException($"Extension '{id}' declares no updateFeed.");
+            if (PolicyFeedRules.Refusal(installed.Manifest.UpdateFeed!) is string refused)
+                throw new InvalidOperationException(refused);
 
             ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(installed.Manifest.UpdateFeed!, id, ct);
             string zipPath = await ExtensionUpdateFeed.DownloadPackageAsync(latest.DownloadUrl, installed.Manifest.Id, ct);

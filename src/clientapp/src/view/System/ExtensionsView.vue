@@ -50,7 +50,7 @@ interface ExtensionRow {
   hasUi: boolean;
   compatible: boolean;
   binaryYears?: string[]; // Revit years this extension actually ships a build for
-  zone: "managed" | "dev";
+  zone: "managed" | "dev" | "machine"; // machine = pre-installed by an administrator, read-only
   kind: "dll" | "script" | "js"; // what it is made of, not what it does
   legacyLayout?: boolean;
   compileError?: string | null;
@@ -84,11 +84,13 @@ interface PathRow {
   path: string; // root — used for remove
   scanDir: string; // what's actually scanned (extensions live directly under the root)
   isDefault: boolean;
-  zone: "managed" | "dev";
+  zone: "managed" | "dev" | "machine";
   valid: boolean;
   reason: string;
   extensionCount: number;
   isAuthoringRoot: boolean; // where generated scripts are saved when no root is named
+  fromPolicy?: boolean; // declared by the organization policy — never removable here
+  readOnly?: boolean; // the machine root: nothing is installed or removed there
 }
 
 const data = ref<ExtensionsData | null>(null);
@@ -139,11 +141,13 @@ function kindTag(row: ExtensionRow): { label: string; severity: string; tip: str
 }
 
 // Two zones, two sections: installed packages (manager-owned) vs the user's own dev folders.
+// Machine-zone packages (pre-installed by an administrator) list with the installed ones, minus
+// the actions that would write to a folder the user does not own.
 const managedExtensions = computed(() =>
-  (data.value?.extensions ?? []).filter((e) => e.zone === "managed"),
+  (data.value?.extensions ?? []).filter((e) => e.zone !== "dev"),
 );
 const devExtensions = computed(() =>
-  (data.value?.extensions ?? []).filter((e) => e.zone !== "managed"),
+  (data.value?.extensions ?? []).filter((e) => e.zone === "dev"),
 );
 
 // ---- Finding your own: a session with an agent can leave a dozen folders behind, and by then the
@@ -340,7 +344,7 @@ interface CatalogRow {
   userSupplied: boolean;
   installed: boolean;
   installedVersion?: string | null;
-  zone?: "managed" | "dev" | null;
+  zone?: "managed" | "dev" | "machine" | null;
 }
 
 const catalog = ref<CatalogRow[]>([]);
@@ -733,8 +737,14 @@ onMounted(() => {
               </Column>
               <Column header="" class="w-40">
                 <template #body="{ data: row }">
+                  <Tag
+                    v-if="row.zone === 'machine'"
+                    value="machine"
+                    severity="secondary"
+                    v-tooltip.left="'Pre-installed by your administrator — updated and removed there, not here'"
+                  />
                   <Button
-                    v-if="updateChecks[row.id]?.updateAvailable"
+                    v-if="updateChecks[row.id]?.updateAvailable && row.zone !== 'machine'"
                     icon="pi pi-arrow-circle-up"
                     size="small"
                     text
@@ -760,6 +770,7 @@ onMounted(() => {
                     @click="openFolder(row.directory)"
                   />
                   <Button
+                    v-if="row.zone !== 'machine'"
                     icon="pi pi-trash"
                     size="small"
                     text
@@ -957,7 +968,9 @@ onMounted(() => {
                     :value="row.valid ? `${row.extensionCount} ext` : 'invalid'"
                     :severity="row.valid ? 'success' : 'warn'"
                   />
-                  <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
+                  <Tag v-if="row.isDefault && !row.fromPolicy && !row.readOnly" value="default" severity="secondary" class="ml-1" />
+                  <Tag v-if="row.fromPolicy" value="organization" severity="secondary" class="ml-1" v-tooltip.top="'Declared by your organization\'s policy'" />
+                  <Tag v-if="row.readOnly" value="machine" severity="secondary" class="ml-1" v-tooltip.top="'Pre-installed packages for every user of this computer'" />
                   <Tag v-if="row.isAuthoringRoot" value="scripts" severity="info" class="ml-1" />
                 </template>
               </Column>
@@ -1085,7 +1098,7 @@ onMounted(() => {
                   <!-- A dev-zone hit is the author's own working copy of this id: installing the
                        package on top would leave two extensions claiming one id. -->
                   <Button
-                    v-if="row.source && row.zone !== 'dev'"
+                    v-if="row.source && row.zone !== 'dev' && row.zone !== 'machine'"
                     :label="row.installed ? 'Reinstall' : 'Install'"
                     :icon="row.installed ? 'pi pi-replay' : 'pi pi-download'"
                     size="small"
@@ -1094,6 +1107,9 @@ onMounted(() => {
                   />
                   <span v-else-if="row.zone === 'dev'" class="text-xs text-surface-500">
                     open as a dev copy
+                  </span>
+                  <span v-else-if="row.zone === 'machine'" class="text-xs text-surface-500">
+                    pre-installed by your administrator
                   </span>
                   <span v-else class="text-xs text-surface-500">manual download</span>
                   <!-- Installing and uninstalling belong to the same card: finding an extension

@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
 using AnalyseTool.Sdk;
 using Serilog;
 using System.ComponentModel;
@@ -36,6 +37,13 @@ namespace AnalyseTool.Core.Features.Extensions
 
             string source = ExtensionUpdateFeed.Normalize(req.Source);
             string? expectedId = string.IsNullOrWhiteSpace(req.ExpectedId) ? null : req.ExpectedId!.Trim();
+
+            // Organization policy, before anything is fetched: the free-form paste (no catalog id) may
+            // be switched off, and every source must match the approved prefixes when a list exists.
+            if (expectedId is null && !PolicyFeedRules.InstallFromRepositoryAllowed)
+                throw new InvalidOperationException(PolicyFeedRules.InstallFromRepositoryRefusal());
+            if (PolicyFeedRules.Refusal(source) is string refused)
+                throw new InvalidOperationException(refused);
 
             // Nothing is known about the package yet, so the download needs a name of its own; the
             // catalog's id when there is one, otherwise the source, flattened into a file name.

@@ -44,7 +44,7 @@ namespace AnalyseTool.Core.Features.Extensions
                     kind = d.DeclaresDll ? "dll" : d.HasScript ? "script" : "js",
                     // False = declared DLL has no build for the running Revit year (never loaded).
                     compatible = d.IsCompatibleWithHost,
-                    zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",
+                    zone = d.Zone switch { ExtensionZone.Dev => "dev", ExtensionZone.Machine => "machine", _ => "managed" },
                     legacyLayout = d.IsLegacyLayout,
                     // Which Revit years the extension ships binaries for (current layout only).
                     binaryYears = d.BinaryYears,
