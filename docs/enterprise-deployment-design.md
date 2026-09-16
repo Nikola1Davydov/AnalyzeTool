@@ -141,6 +141,8 @@ exactly the single-seat product it is today.
 
   "mcp": { "enabled": false },
 
+  "sharepoint": { "syncUrl": "odopen://sync/?siteId=…&webId=…&listId=…&webUrl=…&listTitle=BIM%20Tools" },
+
   "ai": {
     "providers": [
       { "id": "company-gateway", "name": "Company AI Gateway", "baseUrl": "https://ai.company.local/v1",
@@ -272,7 +274,8 @@ an Intune PowerShell script.
   log sink. Edits reach every seat on its next Revit start (ETag refresh, §8). Keep it in a Git
   repository: history, review, and `AnalyseTool.Cli policy validate` in CI before it goes live.
 - Owns `catalog.json` and the extension feeds / zips on any internal static hosting (GitLab raw,
-  Nexus, an IIS folder, a file share). Publishing a new extension version = replacing files.
+  Nexus, an IIS folder, a file share, **a synced SharePoint library** — §9). Publishing a new
+  extension version = replacing files.
   Extensions install into the user's managed zone with user rights — no admin needed, today
   already.
 - Sees who is behind: the policy may carry `"minimumVersion"` + `"update"`; a seat below it shows
@@ -338,7 +341,8 @@ configuration without IT touching their machine.
 | --- | --- |
 | full URL | fetched as is |
 | domain (`company.local`) | 1. DNS TXT `_analysetool.company.local` → URL; 2. `https://company.local/.well-known/analysetool/policy.json` |
-| nothing | same two lookups against `USERDNSDOMAIN` (domain-joined machines) |
+| path | `%ENV%` expanded, `policy.json` read from the folder (UNC share, synced SharePoint library — §9) |
+| nothing | same two lookups against `USERDNSDOMAIN` (domain-joined machines), then synced-folder scan (§9) |
 
 On first start, if discovery against `USERDNSDOMAIN` finds a policy, Settings shows a
 non-modal banner "Your organization publishes AnalyseTool settings. Join?". Nothing is applied
@@ -363,9 +367,9 @@ so the user gets their own pre-join settings back.
 
 **Trust**
 
-- HTTPS only. A policy can install code and redirect AI traffic; a plain-http or
-  file-share URL is refused for the organization layer (the machine layer is trusted by location,
-  §Security notes).
+- HTTPS, or a file-system path (UNC share, synced SharePoint library — §9); plain `http://` is
+  refused. A policy can install code and redirect AI traffic, so the transport must not be
+  tamperable in transit; a share or synced library is protected by its own ACLs.
 - The preview is the consent step and must name the consequential items explicitly:
   "Installs extensions: …", "Sends AI requests to: …", "Locks: …".
 - `organization.name` and `contact` are required for a joinable policy so the UI never says
@@ -382,6 +386,64 @@ so the user gets their own pre-join settings back.
 - App: the Organization panel from §5 grows the join/leave controls and the first-start banner.
 - CLI: `org join <url|domain>`, `org leave`, `org status` — the same commands for scripted seats.
 
+### 9. Where the URL comes from — hosting, and SharePoint / OneDrive
+
+A policy source is anything the plugin can read **without an interactive login**. Two kinds:
+
+| Source | Form | Notes |
+| --- | --- | --- |
+| Git hosting (GitHub / GitLab raw, internal GitLab) | `https://…` | best: history, review, `policy validate` in CI |
+| Azure Blob Storage with a SAS token | `https://…?sv=…` | cheap static hosting, no Azure AD on the client |
+| Internal web server (IIS, nginx) | `https://…` | classic |
+| File share | `\\server\bim\analysetool\` | a path, not a URL — same loader |
+| **Synced SharePoint / OneDrive library** | `%USERPROFILE%\Contoso\BIM Tools - Documents\AnalyseTool\` | **the SharePoint answer** (below) |
+| SharePoint HTTPS link | — | **not supported**: the link needs an Azure AD sign-in; `HttpClient` gets a 401 or a login page. "Anyone" links with `?download=1` are tenant-disabled more often than not and unstable. |
+
+So the loader accepts **`https://` URLs and file-system paths**, with `%ENV%` expansion in paths.
+Everything that is "a policy source" (machine pointer, Join input, `catalogUrl`, feed `source`,
+`updateFeed`) takes either form. Plain `http://` is refused everywhere.
+
+**SharePoint / OneDrive — the synced-folder pattern**
+
+Users already run the OneDrive client and sync the BIM library to disk. The tenant and library
+names are the same for everyone; only `%USERPROFILE%` differs, and the plugin expands it.
+
+```
+%USERPROFILE%\Contoso\BIM Tools - Documents\AnalyseTool\
+    policy.json
+    catalog.json
+    packages\
+        company.standards-1.4.0.zip
+        company.standards.feed.json      ← { "version": "1.4.0", "downloadUrl": "company.standards-1.4.0.zip" }
+```
+
+Two rules that make it work:
+
+1. **A synced folder is a distribution source, never a load root.** Loading DLLs in place would
+   have Revit lock files OneDrive is trying to sync — conflicts and half-written copies. The
+   plugin *installs from* the folder into its own managed zone (`ExtensionInstaller`, exactly
+   like install-from-zip) and *updates* by comparing the feed version with the installed one.
+   `ExtensionUpdateFeed` therefore resolves relative `downloadUrl`s against the feed's own
+   location, for files as for https.
+2. **Files On-Demand.** Files may be placeholders; a read triggers a download. The coordinator
+   marks the AnalyseTool folder "Always keep on this device", and the plugin reads with a
+   timeout and reports "downloading from OneDrive…" instead of hanging the Revit UI thread.
+
+**Giving people access.** Permissions are SharePoint's job (group membership); the policy cannot
+grant them and must not try. What it can do is remove the manual steps after access exists:
+
+- `sharepoint.syncUrl` — the `odopen://` link SharePoint's **Sync** button produces (or the
+  Intune / GPO "Configure team site libraries to sync automatically" setting). If the synced
+  folder is missing on a seat, the Organization panel shows **Connect the BIM Tools library**,
+  which opens that link; OneDrive does the rest.
+- **Discovery through synced folders.** Besides DNS and well-known URLs (§8), discovery scans
+  `%USERPROFILE%\*\* - Documents\AnalyseTool\policy.json` (and `%OneDriveCommercial%`). A new
+  hire's path: get SharePoint access → click Sync → open Revit → accept the Join banner.
+
+**Later, not v1:** a SharePoint connector reading the library through Microsoft Graph with silent
+Windows SSO (MSAL, an app registration, admin consent). It gives a true URL without syncing;
+worth it only if the synced-folder pattern proves insufficient.
+
 ## Security notes
 
 - Policy is trusted **because of where it is**: `%ProgramData%` is admin-writable only on a
@@ -391,8 +453,9 @@ so the user gets their own pre-join settings back.
   from "installs what the user pastes" into "installs what IT approved". They are the reason
   the policy layer exists; ship them in phase 1, not later.
 - `codeExecution.enabled=false` + locked should be the recommended enterprise default in the docs.
-- The organization layer is trusted **because the user consented** to a specific HTTPS origin after
-  a preview — not by location. A policy fetched from a URL is never applied silently, and a URL
+- The organization layer is trusted **because the user consented** to a specific origin (an HTTPS
+  host or a path) after a preview — not by location. A path under the user's own profile grants
+  nothing the user did not already have: they own their settings anyway. A policy fetched from a URL is never applied silently, and a URL
   change (redirect to another host) invalidates the join and asks again.
 
 ## Testing
@@ -404,7 +467,8 @@ Tier 1 (`AnalyseTool.Tests`), Revit-free:
 - Catalog merge order shipped → policy → user with id overrides.
 - `allowedFeeds` matching (prefix, case, `github:` form).
 - Three-layer resolution: machine over organization over user; locks honored per origin.
-- Discovery input parsing: URL vs domain vs empty; http/file URLs refused for the org layer.
+- Discovery input parsing: URL vs domain vs path vs empty; `http://` refused; `%ENV%` expansion.
+- Feed with relative `downloadUrl` resolved against a file-system feed location.
 - `org.json` refresh: ETag unchanged, changed, fetch failure keeps the cache; Leave removes locks.
 - CLI: `policy validate` exit codes on good/bad files; `ext validate` on the Acme.Sample zip.
 
@@ -432,7 +496,11 @@ Phase 2 — catalog and required extensions.
 Phase 3 — Join organization (the organization layer).
 
 - [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
-- [ ] Discovery: URL / domain / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>` and `/.well-known/analysetool/policy.json`
+- [ ] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds
+- [ ] Discovery: URL / domain / path / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>`, `/.well-known/analysetool/policy.json`, synced-folder scan (`%USERPROFILE%\*\* - Documents\AnalyseTool`, `%OneDriveCommercial%`)
+- [ ] `ExtensionUpdateFeed`: file-system feeds, relative `downloadUrl`; install-from-folder copies into `extensions-dist`, never loads in place
+- [ ] Files On-Demand: reads with timeout off the UI thread, "downloading from OneDrive…" status
+- [ ] `sharepoint.syncUrl` → **Connect the BIM Tools library** action when the source folder is missing
 - [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
 - [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
 - [ ] Startup refresh with `If-None-Match`; offline keeps cache; host change invalidates the join
@@ -468,7 +536,7 @@ Phase 6 — CLI.
 
 Phase 7 — docs.
 
-- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI
+- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; the SharePoint synced-library layout, "Always keep on this device", `odopen://` sync link
 - [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
 - [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
