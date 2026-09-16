@@ -123,6 +123,8 @@ exactly the single-seat product it is today.
   "version": 1,
   "organization": { "name": "Company BIM", "contact": "bim-support@company.local" },
   "minimumVersion": "2.3.0",
+  "update": { "downloadUrl": "https://git.company.local/bim/analysetool/AnalyseTool-2.3.0-SingleUser.msi",
+              "sha256": "…" },
   "locked": ["codeExecution.enabled", "extensions.roots", "mcp.enabled"],
 
   "codeExecution": { "enabled": false },
@@ -158,8 +160,9 @@ Key semantics:
 
 - `organization` — shown in Settings ("Managed by Company BIM") and in the join preview (§8), so
   a user always knows whose configuration they are running and whom to ask.
-- `minimumVersion` — a seat below it shows a non-blocking banner with the organization's download
-  link (`organization.downloadUrl`, optional); nothing is enforced, the plugin cannot update itself.
+- `minimumVersion` / `update` — a seat below the version shows a non-blocking banner with the
+  download link. On a **per-user** install the plugin may offer to run the MSI itself after Revit
+  closes (same host as the policy, SHA-256 verified); on a per-machine install it only links.
 - `locked` — dotted setting paths. A locked path is read-only in the UI; the corresponding
   `Set…` command returns an error naming the policy file.
 - `extensions.roots` — appended to the scan roots as **Dev zone, IsDefault=true** (not removable).
@@ -272,8 +275,34 @@ an Intune PowerShell script.
   Nexus, an IIS folder, a file share). Publishing a new extension version = replacing files.
   Extensions install into the user's managed zone with user rights — no admin needed, today
   already.
-- Sees who is behind: the policy may carry `"minimumVersion"`; a seat below it shows a banner
-  with the internal download link, and `GetOrganizationStatus` / the CLI report the version.
+- Sees who is behind: the policy may carry `"minimumVersion"` + `"update"`; a seat below it shows
+  a banner with the internal download link (per-user seats can self-update, below), and
+  `GetOrganizationStatus` / the CLI report the version.
+
+**Fully per-user path (no IT at all)**
+
+When seats install the **SingleUser MSI** themselves (`%AppData%`, no admin rights), there is no
+machine layer and the organization layer (§8) carries everything. The BIM coordinator publishes
+three things on internal static hosting — the MSI, `policy.json`, the catalog + feeds — and hands
+out one link. Getting a seat joined without typing:
+
+- **Discovery** by domain (DNS TXT / well-known URL, §8) when IT is willing to add one DNS record.
+- **Installer property.** `msiexec /i AnalyseTool.msi POLICYURL=https://…` writes `org.json` at
+  install time; the coordinator distributes the MSI with a ready command line or a `.bat`. The
+  seat is joined before Revit starts for the first time.
+- **Invite link.** The installer registers the `analysetool://join?url=…` protocol; a link in
+  mail or Teams opens the Join dialog with the URL filled in. Handled by the CLI exe (§6), which
+  hands the request to a running Revit or stores it for the next start.
+
+What per-user gains: **self-update of the plugin becomes possible.** A per-user MSI runs without
+UAC, so `minimumVersion` + `organization.downloadUrl` can turn into "Install version X when Revit
+closes": download from the policy's host only, verify the SHA-256 the policy carries, run
+`msiexec /i … /qn` after Revit exits. Never for the per-machine install.
+
+What per-user loses: no `enforced` (the user can Leave; the coordinator sees it in status), and
+locks hold only while joined. Acceptable for most shops; strict ones bring IT in for the pointer.
+Note for docs: SingleUser and MultiUser MSIs must not coexist on one machine — Revit would load
+both `.addin` files (true today already).
 
 **Pre-installed extensions via GPO (optional, IT-owned).** *Preferences → Folders/Files* can drop
 ready extension folders into `%ProgramData%\AnalyseTool\extensions-dist\<id>\`. The plugin scans
@@ -408,6 +437,8 @@ Phase 3 — Join organization (the organization layer).
 - [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink
 - [ ] Startup refresh with `If-None-Match`; offline keeps cache; host change invalidates the join
 - [ ] Machine pointer form: same loader, `enforced` hides Leave; `minimumVersion` banner + `GetOrganizationStatus` reports version
+- [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
+- [ ] Per-user self-update: download from the policy host only, verify `update.sha256`, run `msiexec /qn` after Revit exits; disabled on per-machine installs
 - [ ] `organization.name` / `contact` required for a joinable policy; HTTPS-only enforcement
 - [ ] Tier-1 tests: resolution order, input parsing, refresh cases, leave semantics
 
@@ -431,6 +462,7 @@ Phase 6 — CLI.
 - [ ] `policy show`, `policy validate`
 - [ ] `ext list`, `ext install`, `ext validate`, `ext update`
 - [ ] `org join <url|domain>`, `org leave`, `org status`
+- [ ] `analysetool://join?url=…` protocol handler registered by the installer, served by the CLI exe
 - [ ] `diag collect`
 - [ ] Ship via `PluginAssets.targets` + MSI; tier-1 tests drive the exe like `McpExeTests`
 
@@ -438,6 +470,6 @@ Phase 7 — docs.
 
 - [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI
 - [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
-- [ ] ONBOARDING.md § "Joining your company's configuration" for end users
+- [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
 - [ ] LLM.md: one paragraph on reading a policy section from an extension
 - [ ] CHANGELOG.md entry
