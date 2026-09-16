@@ -75,10 +75,11 @@ namespace AnalyseTool.Core.Common.Extensions
         }
 
         /// <summary>Roots the organization policy declares (<c>extensions.roots</c>), with <c>%ENV%</c>
-        /// expanded so one policy line serves every user. Meant for UNC shares and local folders: a root
-        /// is a LOAD root, and a synced OneDrive / SharePoint folder must never be one (the sync client
-        /// and Revit would fight over the DLLs) — such a root is still added, but logged as a warning.
-        /// Malformed entries are skipped, not fatal.</summary>
+        /// expanded so one policy line serves every user. A synced OneDrive / SharePoint folder works as
+        /// a root: assemblies are loaded from a byte copy (<see cref="ExtensionLoadContext"/>), so the
+        /// sync client can replace files under a running Revit. Named sources that resolve the
+        /// per-machine mount point of a library arrive with phase 3a. Malformed entries are skipped,
+        /// not fatal.</summary>
         public static IReadOnlyList<string> PolicyRoots()
         {
             List<string>? declared = PolicyStore.Current.Document.Extensions?.Roots;
@@ -90,13 +91,7 @@ namespace AnalyseTool.Core.Common.Extensions
                 if (string.IsNullOrWhiteSpace(raw)) continue;
                 try
                 {
-                    string full = Path.GetFullPath(Environment.ExpandEnvironmentVariables(raw.Trim()));
-                    if (LooksSynced(full))
-                        Serilog.Log.Warning(
-                            "Policy extension root {Root} looks like a synced OneDrive/SharePoint folder. " +
-                            "Extensions are loaded in place from a root; distribute SharePoint content " +
-                            "through a feed instead.", full);
-                    roots.Add(full);
+                    roots.Add(Path.GetFullPath(Environment.ExpandEnvironmentVariables(raw.Trim())));
                 }
                 catch (Exception ex)
                 {
@@ -104,22 +99,6 @@ namespace AnalyseTool.Core.Common.Extensions
                 }
             }
             return roots;
-        }
-
-        /// <summary>A path the OneDrive client is likely syncing: under one of its known roots, or a
-        /// SharePoint library synced into the profile (<c>&lt;tenant&gt;\&lt;site&gt; - Documents</c>).</summary>
-        internal static bool LooksSynced(string fullPath)
-        {
-            foreach (string var in new[] { "OneDrive", "OneDriveCommercial", "OneDriveConsumer" })
-            {
-                string? root = Environment.GetEnvironmentVariable(var);
-                if (!string.IsNullOrWhiteSpace(root) &&
-                    fullPath.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
-                        StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-            return fullPath.Contains(" - Documents" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                || fullPath.EndsWith(" - Documents", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>The user may not add or remove their own roots while the policy locks <c>extensions.roots</c>.</summary>

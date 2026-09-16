@@ -143,17 +143,6 @@ public class PolicyTests
     }
 
     [Test]
-    [Arguments(@"C:\Users\me\Contoso\BIM Tools - Documents\AnalyseTool", true)]
-    [Arguments(@"C:\Users\me\Contoso\BIM Tools - Documents", true)]
-    [Arguments(@"\\fileserver\revit\analysetool\extensions", false)]
-    [Arguments(@"C:\Tools\AnalyseTool\extensions", false)]
-    public async Task A_synced_library_path_is_recognized_so_it_can_be_warned_about(string path, bool expected)
-    {
-        // Independent of the OneDrive env vars (not set on CI): the " - Documents" library marker alone decides.
-        await Assert.That(ExtensionSources.LooksSynced(path)).IsEqualTo(expected);
-    }
-
-    [Test]
     public async Task An_empty_whitelist_allows_nothing_and_a_blank_entry_is_skipped()
     {
         await Assert.That(PolicyFeedRules.IsAllowed("github:a/b", Array.Empty<string>())).IsFalse();

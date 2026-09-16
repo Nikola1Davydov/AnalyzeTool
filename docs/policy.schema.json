@@ -45,7 +45,7 @@
       "properties": {
         "roots": {
           "type": "array",
-          "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded. UNC shares and local folders only: a root is a load root, never a synced OneDrive/SharePoint folder — distribute SharePoint content through feeds.",
+          "description": "Additional extension source folders (dev zone, not removable). %ENV% is expanded; 'source:<name>/<relative>' resolves a named source (see 'sources'). Synced OneDrive/SharePoint folders work: assemblies are loaded from a byte copy.",
           "items": { "type": "string" }
         },
         "catalogUrl": { "type": "string", "description": "Company catalog (catalog.json shape). Phase 2." },
@@ -79,6 +79,20 @@
       "type": "object",
       "properties": { "enabled": { "type": "boolean", "description": "Whether the in-Revit MCP bridge may run." } },
       "additionalProperties": false
+    },
+    "sources": {
+      "type": "object",
+      "description": "Named sources referenced as 'source:<name>/<relative>' anywhere a path or URL is expected. Phase 3a. Exactly one of sharepoint / path / url per entry.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sharepoint": { "type": "string", "description": "Library or folder URL (https://<tenant>.sharepoint.com/sites/<site>/<library>/<folder>); resolved to this machine's OneDrive mount point." },
+          "path": { "type": "string", "description": "UNC share or local folder; %ENV% expanded." },
+          "url": { "type": "string", "description": "https base URL." },
+          "markerId": { "type": "string", "description": "Fallback: id inside analysetool-source.json at the folder root, found by scanning OneDrive mount points." }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": true

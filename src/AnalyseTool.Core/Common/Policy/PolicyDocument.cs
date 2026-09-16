@@ -69,9 +69,9 @@ namespace AnalyseTool.Core.Common.Policy
 
     internal sealed class ExtensionsPolicy
     {
-        /// <summary>Additional extension source roots (dev zone, not removable). <c>%ENV%</c> expanded.
-        /// UNC shares and local folders only — a root is a LOAD root, and a synced OneDrive /
-        /// SharePoint folder must never be one (Revit would lock files the sync client is writing).</summary>
+        /// <summary>Additional extension source roots (dev zone, not removable). <c>%ENV%</c> expanded;
+        /// <c>source:&lt;name&gt;/…</c> references (phase 3a) resolve a named source's per-machine
+        /// mount point. Synced folders are fine as roots: assemblies load from a byte copy.</summary>
         [JsonProperty("roots")] public List<string>? Roots { get; set; }
 
         /// <summary>Company catalog, merged after the shipped one and before the user's (phase 2).</summary>
