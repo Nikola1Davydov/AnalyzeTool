@@ -1079,8 +1079,10 @@ to a user whose seat has not synced the library. A `path` source (UNC share, loc
 `url` source (an https base) exist so the same `source:` syntax covers every hosting kind.
 
 Resolution is three fallbacks: the OneDrive client's own library-to-folder mapping; a **marker
-file**; and a folder the user pointed the plugin at once (kept per seat in
-`%LOCALAPPDATA%\AnalyseTool\sources.json`, never in the policy). For the marker, drop
+file**; and a folder the user picks once when Settings → Organization asks "Where is *bimtools*
+on this computer?" (kept per seat in `%LOCALAPPDATA%\AnalyseTool\sources.json`, never in the
+policy; the same card offers **Connect the library** when the source carries a `syncUrl`). For the
+marker, drop
 `analysetool-source.json` into the folder root:
 
 ```json
@@ -1159,10 +1161,12 @@ Settings → Organization.
 
 #### `minimumVersion` and `update`
 
-A seat below `minimumVersion` shows the minimum next to its own version in Settings →
-Organization. `update.downloadUrl` and `update.sha256` tell the seat where
-the installer is and what it must hash to. The plugin does not update itself — that is the
-user's or IT's step (§11.3, §11.4).
+A seat below `minimumVersion` shows an amber banner in Settings with a **Download** link.
+`update.downloadUrl` and `update.sha256` tell the seat where the installer is and what it must
+hash to. On a **per-user** install (SingleUser MSI) the plugin can finish the job itself: it
+downloads the MSI, verifies the hash (the pin is required — no hash, no self-update), and hands
+it to `AnalyseTool.Cli update wait-and-install`, which waits for Revit to exit and runs
+`msiexec /qn`. A per-machine install only links: updating it is IT's step (§11.3).
 
 #### Signing
 
@@ -1300,8 +1304,8 @@ load order, so a machine copy wins over a user-installed one with the same id. U
 extension must not be user-writable; otherwise `extensions.required` plus a feed keeps updates in
 the coordinator's hands without an IT ticket.
 
-**Verify a seat** without opening Revit, with the CLI that ships next to the plugin
-(`<plugin>\cli\AnalyseTool.Cli.exe`):
+**Verify a seat** without opening Revit, with the CLI that ships inside the plugin folder
+(`…\Addins\<year>\AnalyseTool\AnalyseTool.Cli.exe`, next to `AnalyseTool.Core.dll`):
 
 ```
 AnalyseTool.Cli policy show     # the effective configuration with the origin of every setting
