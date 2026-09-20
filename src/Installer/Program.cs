@@ -55,8 +55,8 @@ WixEntity[] wixEntities = Generator.GenerateWixEntities(versions);
 // file is written with the install's own rights; UsesProperties hands them into the deferred context.
 project.Properties = new[]
 {
-    new Property("POLICYURL", string.Empty),
-    new Property("POLICYKEY", string.Empty),
+    new Property("POLICYURL"),
+    new Property("POLICYKEY"),
 };
 project.Actions = new WixSharp.Action[]
 {
