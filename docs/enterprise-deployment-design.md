@@ -713,11 +713,13 @@ Phase 5 — telemetry (company sink only).
 
 Phase 6 — UI.
 
-- [ ] Locked state rendering in Settings (disabled + lock icon + tooltip)
-- [ ] **Organization** panel: policy status, effective values with origin
-- [ ] **Required** badge; hide disable/remove for required extensions
-- [ ] Organization panel: Join organization… dialog with preview, Leave organization, "Managed by <name> — updated <time>"
-- [ ] First-start banner when discovery finds a policy (offer only, never auto-apply)
+- [x] Locked state rendering in Settings (disabled toggles + "managed by your organization" tag)
+- [x] **Organization** panel: policy status, problems, locked settings, sources, required outcomes, reload
+- [x] **Required** badge; hide disable/remove for required extensions; **machine** badge for pre-installed packages
+- [x] Organization panel: Join organization… (URL / domain / folder / automatic, optional signing key) with a preview dialog naming every consequence, Leave organization with the list of removable extensions, "Managed by <name>", signature and fingerprint, refresh problems
+- [x] First-start banner when discovery finds a policy (offer only, never auto-apply); minimum-version banner with Download and "Install when Revit closes" (per-user, pinned)
+- [x] Organization panel: "Where is <source> on this computer?" folder picker (`SetSourceLocation`) and **Connect the library** via `sources.<name>.syncUrl` when unresolved
+- [x] Telemetry line with **Show recent events**
 
 Phase 7 — CLI.
 
@@ -731,10 +733,13 @@ Phase 7 — CLI.
 
 Phase 8 — docs.
 
-- [ ] ONBOARDING.md § "For BIM coordinators": owning policy.json in Git, catalog and feeds, minimumVersion, validate in CI; hosting options table; named sources and the SharePoint library URL, marker file, "Always keep on this device", `odopen://` sync link
-- [ ] ONBOARDING.md § "For IT administrators": MSI + pointer (or DNS TXT) only; GPO step-by-step (Software Installation + Preferences → Files), Intune variant, policy.json reference, hosting a catalog/feed, publishing for Join (DNS TXT / well-known URL), CLI
-- [ ] ONBOARDING.md § "Joining your company's configuration" for end users (invite link, installer property, SingleUser vs MultiUser warning)
-- [ ] ONBOARDING.md § telemetry: what is sent, to whom, how to turn it on, the "nothing without a policy" promise, the pseudonymous-not-anonymous / works-council note
-- [ ] ONBOARDING.md § "For BIM coordinators": the threat model paragraph first (protected branch, short write ACL, `sha256` pins, signing)
-- [ ] LLM.md: one paragraph on reading a policy section from an extension
-- [ ] CHANGELOG.md entry
+- [x] ONBOARDING.md §11.2 "For BIM coordinators": threat model first, owning policy.json, hosting table, named sources and the SharePoint library URL, marker file, Files On-Demand, feeds on a share, required + sha256, catalog / whitelist / download-host rule, minimumVersion + update, signing, telemetry, logging, ai.providers
+- [x] ONBOARDING.md §11.3 "For IT administrators": MSI via GPO / Intune, the pointer file, environment variable, pre-installed packages, verifying a seat with the CLI
+- [x] ONBOARDING.md §11.4 "Joining your company's configuration": Join inputs, preview as consent, Leave, installer property, SingleUser vs MultiUser, required extensions
+- [x] ONBOARDING.md §11.5 policy.json reference; the SDK reference gains HostPolicy / HostTelemetry (1.3)
+- [x] LLM.md §9a: reading a policy section from an extension; telemetry is a no-op without a policy
+- [x] CHANGELOG.md entries for phases 1–7
+
+Deferred, with the reason recorded above: DNS TXT discovery (no TXT resolver in the BCL; the
+well-known URL covers the need), the `analysetool://join` protocol handler, and detecting an
+`enforced` pointer at a user-writable target (documented as a caveat instead).
