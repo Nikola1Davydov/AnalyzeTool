@@ -182,7 +182,7 @@ public class PolicyPhase45Tests
             File.WriteAllText(machine, $$"""
                 { "version": 1, "telemetry": { "sink": {{Newtonsoft.Json.JsonConvert.ToString(sinkDir)}}, "events": ["command"] } }
                 """);
-            PolicyStore.Reload();
+            PolicyStore.OverridePathForTests(machine); // point the store at the file just written
             await Assert.That(TelemetryHub.IsEnabled("command")).IsTrue();
             await Assert.That(TelemetryHub.IsEnabled("inventory")).IsFalse(); // not listed → not sent
 
