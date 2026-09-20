@@ -83,7 +83,8 @@ public class PolicyPhase2Tests
     {
         await Assert.That(PolicySourceReader.Validate("http://x/catalog.json")).IsNotNull();
         await Assert.That(PolicySourceReader.Validate("https://x/catalog.json")).IsNull();
-        await Assert.That(PolicySourceReader.Validate("source:bimtools/catalog.json")).IsNotNull(); // phase 3a
+        await Assert.That(PolicySourceReader.Validate("source:bimtools/catalog.json")).IsNull();   // a named source is a valid form
+        await Assert.That(PolicySourceReader.Validate("source:")).IsNotNull();                     // …but it must name one
         await Assert.That(PolicySourceReader.Validate(@"\\server\share\catalog.json")).IsNull();
 
         string file = Path.Combine(_dir, "catalog.json");

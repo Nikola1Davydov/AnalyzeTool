@@ -63,23 +63,25 @@ public class PolicyTests
         PolicyState state = PolicyStore.Load(Write("""
             { "version": 1,
               "codeExecution": { "enabled": false },
-              "locked": ["codeExecution.enabled", "telemetry.sink"],
+              "locked": ["codeExecution.enabled", "nosuch.setting"],
               "futureSection": { "x": 1 } }
             """));
 
         await Assert.That(state.Origin).IsEqualTo(PolicyOrigin.Loaded);
         await Assert.That(state.IsLocked(PolicySettings.CodeExecutionEnabled)).IsTrue();
         await Assert.That(state.Problems.Any(p => p.Contains("futureSection"))).IsTrue();
-        await Assert.That(state.Problems.Any(p => p.Contains("telemetry.sink"))).IsTrue();
+        await Assert.That(state.Problems.Any(p => p.Contains("nosuch.setting"))).IsTrue();
     }
 
     [Test]
-    public async Task A_pointer_file_is_recognized_and_named_as_not_yet_followed()
+    public async Task A_pointer_file_is_recognized_and_an_unusable_target_is_named()
     {
         PolicyState state = PolicyStore.Load(Write("""{ "version": 1, "policyUrl": "https://x/policy.json", "enforced": true }"""));
-
         await Assert.That(state.Document.IsPointer).IsTrue();
-        await Assert.That(state.Problems.Any(p => p.Contains("policyUrl"))).IsTrue();
+        await Assert.That(state.Problems.Any(p => p.Contains("policyUrl"))).IsFalse(); // followed as the organization layer
+
+        PolicyState insecure = PolicyStore.Load(Write("""{ "version": 1, "policyUrl": "http://x/policy.json" }"""));
+        await Assert.That(insecure.Problems.Any(p => p.Contains("policyUrl is not usable"))).IsTrue();
     }
 
     [Test]

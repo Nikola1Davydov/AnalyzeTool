@@ -62,9 +62,9 @@ namespace AnalyseTool.Core.Features.Policy
                 sources = doc.Sources?.Keys ?? Enumerable.Empty<string>(),
                 minimumVersion = doc.MinimumVersion,
                 // Sections read by later phases; shown raw so the preview never hides a consequence.
-                aiSection = doc.Unknown is not null && doc.Unknown.TryGetValue("ai", out var ai) ? ai.ToString(Newtonsoft.Json.Formatting.None) : null,
-                telemetrySection = doc.Unknown is not null && doc.Unknown.TryGetValue("telemetry", out var tm) ? tm.ToString(Newtonsoft.Json.Formatting.None) : null,
-                loggingSection = doc.Unknown is not null && doc.Unknown.TryGetValue("logging", out var lg) ? lg.ToString(Newtonsoft.Json.Formatting.None) : null,
+                aiSection = doc.Ai?.ToString(Newtonsoft.Json.Formatting.None),
+                telemetrySection = doc.Telemetry?.ToString(Newtonsoft.Json.Formatting.None),
+                loggingSection = doc.Logging?.ToString(Newtonsoft.Json.Formatting.None),
                 alreadyJoined = now.Membership is not null,
                 machinePolicyPresent = now.Machine.CodeExecution is not null || now.Machine.Extensions is not null || now.Machine.Mcp is not null,
             };
