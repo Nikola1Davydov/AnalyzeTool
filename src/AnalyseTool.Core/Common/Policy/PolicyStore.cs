@@ -155,6 +155,7 @@ namespace AnalyseTool.Core.Common.Policy
                     SigningKey = machine.Document.SigningKey,
                     CachedPolicy = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.CachedPolicy : null,
                     LastLocation = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.LastLocation : null,
+                    LastSignature = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.LastSignature : null,
                     FetchedAt = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.FetchedAt : null,
                     OrganizationName = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.OrganizationName : null,
                 };

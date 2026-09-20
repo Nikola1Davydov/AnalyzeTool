@@ -87,12 +87,12 @@ public class PolicyPhase45Tests
     [NotInParallel("HostPolicy")]
     public async Task Managed_ai_providers_come_from_the_policy_with_keys_from_the_environment_and_cannot_be_edited()
     {
-        Environment.SetEnvironmentVariable("AT_TEST_AI_KEY", "sk-from-gpo");
+        Environment.SetEnvironmentVariable("ANALYSETOOL_TEST_KEY", "sk-from-gpo");
         try
         {
             HostPolicy.RegisterReader(section => section == "ai" ? """
-                { "providers": [ { "id": "company-gateway", "name": "Company AI", "baseUrl": "https://ai.company.local/v1/", "apiKeyEnv": "AT_TEST_AI_KEY" },
-                                 { "id": "local-ollama", "type": "ollama", "baseUrl": "http://ollama.company.local:11434" } ],
+                { "providers": [ { "id": "company-gateway", "name": "Company AI", "baseUrl": "https://ai.company.local/v1/", "apiKeyEnv": "ANALYSETOOL_TEST_KEY" },
+                                 { "id": "local-ollama", "type": "ollama", "baseUrl": "http://localhost:11434" } ],
                   "allowUserProviders": false }
                 """ : null);
 
@@ -131,7 +131,7 @@ public class PolicyPhase45Tests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("AT_TEST_AI_KEY", null);
+            Environment.SetEnvironmentVariable("ANALYSETOOL_TEST_KEY", null);
             CoreServices.RegisterSdkHooks();
         }
     }
