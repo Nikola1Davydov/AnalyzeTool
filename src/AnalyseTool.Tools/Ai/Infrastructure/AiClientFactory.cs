@@ -27,7 +27,8 @@ namespace AnalyseTool.Tools.Ai
                     model,
                     TimeSpan.FromSeconds(provider.TimeoutSeconds + 5)); // outer CTS in BuildAnswer fires first
 
-            return (client, provider);
+            // One event per call to the company's sink when the policy asks for it; otherwise a no-op wrapper.
+            return (new TelemetryChatClient(client, provider.Id, model), provider);
         }
     }
 }

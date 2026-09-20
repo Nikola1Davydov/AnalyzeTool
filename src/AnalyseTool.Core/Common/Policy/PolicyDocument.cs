@@ -52,11 +52,31 @@ namespace AnalyseTool.Core.Common.Policy
         [JsonProperty("extensions")] public ExtensionsPolicy? Extensions { get; set; }
         [JsonProperty("mcp")] public McpPolicy? Mcp { get; set; }
 
+        /// <summary>AI providers and the switch for user-added ones; read by Tools through the Sdk's
+        /// <c>HostPolicy</c>, so it stays raw here (Core does not own the AI feature).</summary>
+        [JsonProperty("ai")] public JObject? Ai { get; set; }
+
+        /// <summary>Additional Serilog file sink (<c>{ "sink": path, "level": name }</c>), read by the host.</summary>
+        [JsonProperty("logging")] public JObject? Logging { get; set; }
+
+        /// <summary>Fleet telemetry to the company's own sink (design §10); typed in <c>TelemetryPolicy</c>.</summary>
+        [JsonProperty("telemetry")] public JObject? Telemetry { get; set; }
+
         /// <summary>Keys this plugin version does not know. Reported, never fatal.</summary>
         [JsonExtensionData] public IDictionary<string, JToken>? Unknown { get; set; }
 
         /// <summary>True for the pointer form: nothing but the pointer is meaningful in the file.</summary>
         public bool IsPointer => !string.IsNullOrWhiteSpace(PolicyUrl);
+
+        /// <summary>One top-level section as JSON text (typed or unknown alike), or null. What the Sdk's
+        /// <c>HostPolicy.GetSectionJson</c> answers with.</summary>
+        public string? SectionJson(string section)
+        {
+            if (string.IsNullOrWhiteSpace(section)) return null;
+            JObject all = JObject.FromObject(this);
+            JToken? token = all[section];
+            return token is null || token.Type == JTokenType.Null ? null : token.ToString(Formatting.None);
+        }
     }
 
     /// <summary>One named source. Exactly one of <see cref="Sharepoint"/>, <see cref="Path"/>,

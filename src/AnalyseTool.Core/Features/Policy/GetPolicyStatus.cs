@@ -3,6 +3,7 @@ using AnalyseTool.Core.Common.Bootstrap;
 using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Core.Common.Extensions.Scripting;
 using AnalyseTool.Core.Common.Policy;
+using AnalyseTool.Core.Common.Telemetry;
 using AnalyseTool.Sdk;
 
 namespace AnalyseTool.Core.Features.Policy
@@ -111,6 +112,10 @@ namespace AnalyseTool.Core.Features.Policy
                     outcomes = outcomes.Select(o => new { o.Id, state = o.State, o.Version, o.Detail }),
                 },
                 backgroundApply = new { running = applying, lastCompleted, error = applyError },
+                telemetry = TelemetryHub.Configuration is { } tp
+                    ? new { enabled = true, sink = tp.Sink, identity = tp.Identity ?? "hashed", events = tp.Events ?? new List<string> { "inventory" }, pending = TelemetryHub.Status().Pending, lastError = TelemetryHub.Status().LastError }
+                    : new { enabled = false, sink = (string?)null, identity = "hashed", events = new List<string>(), pending = 0, lastError = (string?)null },
+                logging = doc.Logging?.ToString(Newtonsoft.Json.Formatting.None),
             });
         }
 
@@ -119,6 +124,22 @@ namespace AnalyseTool.Core.Features.Policy
             !string.IsNullOrWhiteSpace(minimum)
             && Version.TryParse(plugin, out Version? p) && Version.TryParse(minimum, out Version? m)
             && p < m;
+    }
+
+    /// <summary>Exactly what left this seat lately (design §10, "Show recent events"): the last
+    /// telemetry lines as sent. Empty when telemetry is off.</summary>
+    [RevitCommand(
+        Description = "Returns the most recent telemetry events this installation sent to the organization's sink.",
+        ReadOnly = true,
+        HiddenFromMcp = true)]
+    internal sealed class GetTelemetryRecent : IRevitTask
+    {
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            Task.FromResult<object?>(new
+            {
+                enabled = TelemetryHub.Configuration is not null,
+                events = TelemetryHub.RecentEvents(),
+            });
     }
 
     /// <summary>Re-reads the policy file. For a Settings "Reload" button and for the CLI; an edited

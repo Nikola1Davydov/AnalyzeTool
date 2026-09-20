@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Serilog;
 using System.IO;
 using System.Security.Cryptography;
@@ -24,6 +24,13 @@ namespace AnalyseTool.Tools.Ai
         /// <summary>DPAPI-encrypted (CurrentUser) API key, base64. Never leaves the host machine/user.</summary>
         [JsonProperty("apiKeyEnc")] public string? ApiKeyEnc { get; set; }
         [JsonProperty("timeoutSeconds")] public int TimeoutSeconds { get; set; } = 120;
+
+        /// <summary>Managed provider (organization policy): the key is read from this environment
+        /// variable instead of DPAPI storage. Never persisted to ai-providers.json.</summary>
+        [JsonIgnore] public string? ApiKeyEnv { get; set; }
+
+        /// <summary>Declared by the organization policy: listed and usable, never edited or deleted here.</summary>
+        [JsonIgnore] public bool Managed { get; set; }
     }
 
     /// <summary>
@@ -58,22 +65,45 @@ namespace AnalyseTool.Tools.Ai
             TimeoutSeconds = DefaultTimeoutSeconds,
         };
 
+        /// <summary>Ollama, then the organization's managed providers, then the user's own — the latter
+        /// hidden (not deleted) when the policy says <c>allowUserProviders: false</c>.</summary>
         public static IReadOnlyList<AiProvider> All()
         {
-            lock (_gate) return [Ollama, .. Custom()];
+            IReadOnlyList<AiProvider> managed = AiPolicy.ManagedProviders();
+            lock (_gate)
+            {
+                IEnumerable<AiProvider> own = AiPolicy.UserProvidersAllowed
+                    ? Custom().Where(c => !managed.Any(m => string.Equals(m.Id, c.Id, StringComparison.OrdinalIgnoreCase)))
+                    : Enumerable.Empty<AiProvider>();
+                return [Ollama, .. managed, .. own];
+            }
         }
 
         /// <summary>Null/empty id falls back to the built-in Ollama — every pre-provider payload keeps working.</summary>
         public static AiProvider? Get(string? id)
         {
             if (string.IsNullOrWhiteSpace(id) || id == OllamaId) return Ollama;
+            AiProvider? managed = AiPolicy.ManagedProviders().FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (managed is not null) return managed;
+            if (!AiPolicy.UserProvidersAllowed) return null;
             lock (_gate) return Custom().FirstOrDefault(p => p.Id == id);
+        }
+
+        /// <summary>The message a seat gets when the policy owns the provider list.</summary>
+        public static string? Refusal(string? id)
+        {
+            if (id is not null && AiPolicy.ManagedProviders().Any(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase)))
+                return $"AI provider '{id}' is managed by your organization's policy and cannot be changed here.";
+            if (!AiPolicy.UserProvidersAllowed)
+                return "Your organization's policy allows only its own AI providers on this installation.";
+            return null;
         }
 
         /// <summary>Adds or updates a custom provider. A null apiKey KEEPS the stored key (so the
         /// frontend can edit name/url without ever seeing the key); an empty string clears it.</summary>
         public static AiProvider Save(string? id, string displayName, string baseUrl, string? apiKey, int? timeoutSeconds)
         {
+            if (Refusal(id) is string refused) throw new InvalidOperationException(refused);
             lock (_gate)
             {
                 List<AiProvider> list = Custom();
@@ -96,6 +126,7 @@ namespace AnalyseTool.Tools.Ai
         public static bool Delete(string id)
         {
             if (id == OllamaId) return false;
+            if (Refusal(id) is string refused) throw new InvalidOperationException(refused);
             lock (_gate)
             {
                 List<AiProvider> list = Custom();
@@ -108,6 +139,13 @@ namespace AnalyseTool.Tools.Ai
         /// <summary>Decrypted API key for host-side use only. Never expose through a command result.</summary>
         public static string? GetApiKey(AiProvider provider)
         {
+            // Managed providers: the key lives in an environment variable IT sets (GPO / login script),
+            // or nowhere at all when baseUrl is a gateway that holds it. Never in DPAPI storage.
+            if (provider.Managed)
+            {
+                string? fromEnv = provider.ApiKeyEnv is null ? null : Environment.GetEnvironmentVariable(provider.ApiKeyEnv);
+                return string.IsNullOrWhiteSpace(fromEnv) ? null : fromEnv;
+            }
             if (string.IsNullOrEmpty(provider.ApiKeyEnc)) return null;
             try
             {

@@ -35,6 +35,24 @@ namespace AnalyseTool.Core.Common.Policy
             lock (Gate) return (_running is { IsCompleted: false }, _lastCompleted, _lastError);
         }
 
+        /// <summary>The fleet view of one seat (design §10): versions, extensions, join state.</summary>
+        public static void ReportInventory()
+        {
+            try
+            {
+                PolicyState policy = PolicyStore.Current;
+                var extensions = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion)
+                    .Select(d => (d.Manifest.Id, d.Manifest.Version, d.Zone.ToString().ToLowerInvariant(),
+                                  ExtensionStateStore.IsEnabled(d.Manifest.Id)));
+                Common.Telemetry.TelemetryEvents.Inventory(extensions,
+                    joined: policy.Membership is not null,
+                    organization: policy.Document.Organization?.Name,
+                    machinePolicy: policy.Machine.IsPointer || policy.LayerOf("codeExecution") == "machine"
+                                   || policy.LayerOf("extensions") == "machine" || policy.LayerOf("mcp") == "machine");
+            }
+            catch (Exception ex) { Log.Debug(ex, "Inventory event skipped"); }
+        }
+
         private static async Task RunAsync(TimeSpan delay)
         {
             try
@@ -51,6 +69,7 @@ namespace AnalyseTool.Core.Common.Policy
                 if (changed)
                     CoreServices.ReloadExtensions(); // thread-safe; ribbon subscribers hop to the UI thread themselves
 
+                ReportInventory();
                 lock (Gate) { _lastError = null; _lastCompleted = DateTimeOffset.Now; }
             }
             catch (Exception ex)

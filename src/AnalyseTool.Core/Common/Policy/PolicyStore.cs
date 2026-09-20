@@ -215,6 +215,9 @@ namespace AnalyseTool.Core.Common.Policy
                 Extensions = machine.Extensions ?? org.Extensions,
                 Mcp = machine.Mcp ?? org.Mcp,
                 Sources = machine.Sources ?? org.Sources,
+                Ai = machine.Ai ?? org.Ai,
+                Logging = machine.Logging ?? org.Logging,
+                Telemetry = machine.Telemetry ?? org.Telemetry,
                 Locked = new List<string>(),
             };
 

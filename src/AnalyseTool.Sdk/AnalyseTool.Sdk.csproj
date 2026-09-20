@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="build\AnalyseTool.Extension.props" />
 
@@ -25,9 +25,11 @@
                 PackExtension publishing target.
          1.2: added RevitCommandAttribute.OutputType (additive — commands may now declare the type
               they return, completing the pair InputType has formed alone; callers stop inferring the
-              response shape from prose, and two commands can be checked for compatibility). -->
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.0</FileVersion>
+              response shape from prose, and two commands can be checked for compatibility).
+         1.3: added HostPolicy (read a section of the organization policy) and HostTelemetry
+              (emit an event to the company's sink) — both static, optional, additive. -->
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
@@ -37,7 +39,7 @@
          adds OutputType. A published version is immutable, so each fix needs a new number to reach
          anyone. Docs still pin 1.1.2 — what authors can restore today — and move only in the same
          commit as the push. -->
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>

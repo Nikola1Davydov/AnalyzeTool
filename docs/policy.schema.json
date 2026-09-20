@@ -81,6 +81,49 @@
       "properties": { "enabled": { "type": "boolean", "description": "Whether the in-Revit MCP bridge may run." } },
       "additionalProperties": false
     },
+    "ai": {
+      "type": "object",
+      "description": "AI providers declared by the organization (read by the AI feature through the Sdk).",
+      "properties": {
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string", "enum": ["openaiCompatible", "ollama"] },
+              "baseUrl": { "type": "string" },
+              "apiKeyEnv": { "type": "string", "description": "Environment variable holding the API key; omit when baseUrl is a gateway that holds it." },
+              "timeoutSeconds": { "type": "integer" }
+            },
+            "required": ["id", "baseUrl"],
+            "additionalProperties": false
+          }
+        },
+        "allowUserProviders": { "type": "boolean", "description": "False hides the user's own providers and refuses new ones (nothing is deleted)." }
+      },
+      "additionalProperties": false
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "sink": { "type": "string", "description": "Additional Serilog file sink: a folder or file path; {user}, {machine} and %ENV% expanded; one file per day." },
+        "level": { "type": "string", "enum": ["Verbose", "Debug", "Information", "Warning", "Error", "Fatal"] }
+      },
+      "additionalProperties": false
+    },
+    "telemetry": {
+      "type": "object",
+      "description": "Fleet telemetry to the company's own sink. Absent = nothing is sent.",
+      "properties": {
+        "sink": { "type": "string", "description": "https endpoint accepting newline-delimited JSON (Seq raw ingestion, any NDJSON collector) or a folder for .jsonl files." },
+        "identity": { "type": "string", "enum": ["hashed", "user"], "default": "hashed" },
+        "events": { "type": "array", "items": { "type": "string", "enum": ["inventory", "command", "ai"] }, "description": "Absent = inventory only. command and ai are per-seat usage: list them deliberately." }
+      },
+      "required": ["sink"],
+      "additionalProperties": false
+    },
     "sources": {
       "type": "object",
       "description": "Named sources referenced as 'source:<name>/<relative>' anywhere a path or URL is expected. Exactly one of sharepoint / path / url per entry.",

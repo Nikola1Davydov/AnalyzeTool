@@ -20,7 +20,8 @@ namespace AnalyseTool.Tools.Ai
             p.BaseUrl,
             !string.IsNullOrEmpty(p.ApiKeyEnc),
             p.TimeoutSeconds,
-            p.Id == AiProviderRegistry.OllamaId);
+            p.Id == AiProviderRegistry.OllamaId,
+            p.Managed);
 
         public static AiProviderInfo[] AllWire() => AiProviderRegistry.All().Select(ToWire).ToArray();
 

@@ -1,5 +1,8 @@
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Extensions;
+using AnalyseTool.Core.Common.Policy;
+using AnalyseTool.Core.Common.Telemetry;
+using AnalyseTool.Sdk;
 using Serilog;
 
 namespace AnalyseTool.Core.Common.Bootstrap
@@ -44,6 +47,15 @@ namespace AnalyseTool.Core.Common.Bootstrap
             Loader = loader;
             RevitVersion = revitVersion;
             IsInitialized = true;
+            RegisterSdkHooks();
+        }
+
+        /// <summary>The Sdk's static hooks (SDK 1.3): extensions and Tools read policy sections and emit
+        /// telemetry through them without a reference to Core. Safe to call more than once.</summary>
+        public static void RegisterSdkHooks()
+        {
+            HostPolicy.RegisterReader(section => PolicyStore.Current.Document.SectionJson(section));
+            HostTelemetry.RegisterSink((kind, props) => TelemetryHub.Emit(kind, props));
         }
 
         /// <summary>Serializes reloads. Every reload path funnels through this class — the ribbon button,

@@ -697,19 +697,19 @@ Phase 3c — policy signing (right after Join, before telemetry).
 
 Phase 4 — Sdk contract and Tools.
 
-- [ ] Sdk: read-only policy section accessor on the context (minor version bump, CHANGELOG, ONBOARDING §Sdk)
-- [ ] `AiProviderRegistry`: policy providers, `apiKeyEnv`, `allowUserProviders`
-- [ ] `AppLog`: policy logging sink
+- [x] Sdk 1.3: `HostPolicy.GetSection<T>(name)` / `GetSectionJson` (static, registered by Core) and `HostTelemetry.Emit` — additive; ONBOARDING §Sdk in the docs phase
+- [x] `AiProviderRegistry`: managed providers from `ai.providers` (`apiKeyEnv`, gateway without key, `ollama` type), `allowUserProviders=false` hides and refuses, never deletes; `managed` flag on the wire
+- [x] `AppLog`: `logging.sink` / `logging.level` as a second rolling file sink ({user}, {machine}, %ENV%)
 
 Phase 5 — telemetry (company sink only).
 
-- [ ] `telemetry` policy section: `sink` (https OTLP / Seq / folder), `identity`, `events`; absent = off; `events` absent = `inventory` only
-- [ ] `CommandQueue` hook → `command` events (name, extension id, transport, duration, outcome); never the payload
-- [ ] `inventory` event at bootstrap and after Join / Leave / extension update
-- [ ] `ai` events from `AiClientFactory` via the Sdk policy accessor (provider, model, tokens)
-- [ ] Dedicated Serilog logger + sink selection from policy; background buffer, drop on sink failure
-- [ ] Organization panel: **Show recent events**; Join preview line "Sends telemetry to: …"
-- [ ] Tier-1 tests: off by default, inventory-only default, payload never leaks, JSON-lines file sink, dead sink is harmless
+- [x] `telemetry` policy section: `sink` (https NDJSON — Seq raw ingestion or any collector — or a folder), `identity`, `events`; absent = off; `events` absent = `inventory` only
+- [x] `CommandQueue` hook → `command` events (name, transport, duration, outcome); never the payload (`TelemetryEvents` builders are the only writers)
+- [x] `inventory` event after every background pass (startup, Join, Leave, Reload)
+- [x] `ai` events via `TelemetryChatClient` (provider, model, duration, outcome, token counts) through `HostTelemetry`
+- [x] `TelemetryHub`: bounded queue, 10-second worker, file or https sink from the policy, drop on failure, last 50 lines kept for the panel (`GetTelemetryRecent`)
+- [ ] Organization panel: **Show recent events** (UI phase); the Join preview carries the raw telemetry section
+- [x] Tier-1 tests: off by default, inventory-only default, payload never leaks (property set asserted), JSON-lines file sink, identity modes
 
 Phase 6 — UI.
 

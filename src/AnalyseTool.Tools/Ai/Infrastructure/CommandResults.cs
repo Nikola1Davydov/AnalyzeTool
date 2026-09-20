@@ -89,7 +89,9 @@ namespace AnalyseTool.Tools.Ai
         [property: JsonProperty("baseUrl")] string BaseUrl,
         [property: JsonProperty("hasKey")] bool HasKey,
         [property: JsonProperty("timeoutSeconds")] int TimeoutSeconds,
-        [property: JsonProperty("builtIn")] bool BuiltIn);
+        [property: JsonProperty("builtIn")] bool BuiltIn,
+        // Declared by the organization policy: shown, usable, not editable on this seat.
+        [property: JsonProperty("managed")] bool Managed = false);
 
     /// <summary>The provider registry after a read, a save or a delete. All three commands answer the same
     /// question — what the registry looks like NOW — so they share one shape, and a caller that just

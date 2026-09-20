@@ -1,4 +1,4 @@
-﻿using AnalyseTool.Sdk;
+using AnalyseTool.Sdk;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
@@ -156,14 +156,31 @@ namespace AnalyseTool.Core.Common.Dispatch
                 });
                 NotifyRunningChanged();
             }
+            // Telemetry (design §10): the one hook that sees every transport. Name, source, duration
+            // and outcome only — the payload never leaves this method in any form.
+            long startedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            string outcome = "ok";
             try
             {
                 return await _dispatcher
                     .DispatchAsync(request.Command, request.Payload, token, progress)
                     .ConfigureAwait(false);
             }
+            catch (OperationCanceledException)
+            {
+                outcome = "cancelled";
+                throw;
+            }
+            catch (Exception ex)
+            {
+                outcome = "error:" + ex.GetType().Name;
+                throw;
+            }
             finally
             {
+                if (track)
+                    Telemetry.TelemetryEvents.Command(request.Command, request.Source,
+                        (long)System.Diagnostics.Stopwatch.GetElapsedTime(startedTicks).TotalMilliseconds, outcome);
                 if (track)
                 {
                     _running.TryRemove(runId, out _);
