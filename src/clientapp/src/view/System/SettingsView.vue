@@ -54,15 +54,297 @@ interface PolicyStatus {
     outcomes: { id: string; state: string; version?: string | null; detail?: string | null }[];
   };
   backgroundApply: { running: boolean; lastCompleted?: string | null; error?: string | null };
+  belowMinimumVersion?: boolean;
+  update?: { downloadUrl?: string | null; pinned: boolean } | null;
+  /** The organization layer: joined by the user, or set by the machine pointer. */
+  membership?: {
+    policyUrl: string;
+    enforced: boolean;
+    organization?: string | null;
+    fetchedAt?: string | null;
+    applied: boolean;
+    signed: boolean;
+    signingKeyFingerprint?: string | null;
+    lastRefreshProblem?: string | null;
+  } | null;
+  layers?: { machine: boolean; organization: boolean };
+  sources?: {
+    declared?: { name: string; kind: string; sharepoint?: string | null; syncUrl?: string | null; resolved?: string | null }[] | null;
+    unresolved: Record<string, string>;
+    overrides: Record<string, string>;
+  } | null;
+  telemetry?: {
+    enabled: boolean;
+    sink?: string | null;
+    identity: string;
+    events: string[];
+    pending: number;
+    lastError?: string | null;
+  } | null;
+  logging?: string | null;
 }
 const policy = ref<PolicyStatus | null>(null);
 const policyBusy = ref(false);
+
+/** Not joined and no machine pointer: the seat may join an organization on its own. */
+const canJoin = computed(() => !!policy.value && !policy.value.membership);
 
 async function loadPolicy() {
   try {
     policy.value = await invoke<PolicyStatus>("GetPolicyStatus");
   } catch (e) {
     console.error("Failed to load the organization policy status", e);
+  }
+}
+
+// --- Join / leave an organization (design §8: preview first, consent, then apply). ------------
+interface PolicyPreview {
+  reference: string;
+  location?: string | null;
+  how?: string | null;
+  organization: { name?: string | null; contact?: string | null };
+  signature: "nokey" | "verified" | string;
+  signingKeyFingerprint?: string | null;
+  locks: string[];
+  codeExecution?: boolean | null;
+  mcpEnabled?: boolean | null;
+  extensionRoots: string[];
+  catalogUrl?: string | null;
+  allowedFeeds?: string[] | null;
+  allowInstallFromRepository?: boolean | null;
+  requiredExtensions: { id: string; source?: string | null; pinned: boolean }[];
+  sources: string[];
+  minimumVersion?: string | null;
+  aiSection?: string | null;
+  telemetrySection?: string | null;
+  loggingSection?: string | null;
+  alreadyJoined: boolean;
+  machinePolicyPresent: boolean;
+}
+interface DiscoverTried {
+  reference: string;
+  how: string;
+  problem?: string | null;
+}
+interface DiscoverResult {
+  found: boolean;
+  tried: DiscoverTried[];
+  preview: PolicyPreview | null;
+}
+
+const joinInput = ref("");
+const joinKey = ref("");
+const joinKeyVisible = ref(false);
+const joinBusy = ref(false);
+const joinTried = ref<DiscoverTried[]>([]); // shown when nothing was found
+const joinSearched = ref(false);
+
+const preview = ref<PolicyPreview | null>(null);
+const previewVisible = ref(false);
+const previewKey = ref(""); // the signing key the preview was fetched with; travels into Join
+
+// First-start banner: discovered in the background, dismissed for this window only.
+const bannerPreview = ref<PolicyPreview | null>(null);
+const bannerDismissed = ref(false);
+
+async function discover(input: string, signingKey: string): Promise<DiscoverResult> {
+  return await invoke<DiscoverResult>("DiscoverOrganizationPolicy", {
+    input: input.trim() || undefined,
+    signingKey: signingKey.trim() || undefined,
+  });
+}
+
+async function findOrganization() {
+  joinBusy.value = true;
+  joinSearched.value = false;
+  joinTried.value = [];
+  try {
+    const res = await discover(joinInput.value, joinKey.value);
+    joinSearched.value = !res?.found; // the "tried" list is only interesting when nothing came of it
+    joinTried.value = res?.tried ?? [];
+    if (res?.found && res.preview) {
+      openPreview(res.preview, joinKey.value);
+    }
+  } catch (e) {
+    notifications.error(`Could not look for an organization policy: ${errorText(e)}`);
+  } finally {
+    joinBusy.value = false;
+  }
+}
+
+function openPreview(p: PolicyPreview, signingKey: string) {
+  preview.value = p;
+  previewKey.value = signingKey;
+  previewVisible.value = true;
+}
+
+async function joinOrganization() {
+  const p = preview.value;
+  if (!p) return;
+  joinBusy.value = true;
+  try {
+    const res = await invoke<{ joined: boolean; organization?: string | null; signature: string }>(
+      "JoinOrganization",
+      { reference: p.reference, signingKey: previewKey.value.trim() || undefined, consent: true },
+    );
+    previewVisible.value = false;
+    bannerPreview.value = null;
+    await Promise.all([loadPolicy(), loadCodeExec(), loadMcp()]);
+    notifications.success(
+      `Joined ${res?.organization ?? p.organization?.name ?? "the organization"}. Required extensions install in the background.`,
+    );
+  } catch (e) {
+    notifications.error(`Could not join: ${errorText(e)}`);
+  } finally {
+    joinBusy.value = false;
+  }
+}
+
+/** Parse a raw policy section (JSON string) without ever throwing — the preview must not break on it. */
+function parseSection(json: string | null | undefined): Record<string, any> | null {
+  if (!json) return null;
+  try {
+    const v = JSON.parse(json);
+    return v && typeof v === "object" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A sink value is a string or an object with a url/path; anything else is shown raw. */
+function sinkText(sink: any): string {
+  if (sink == null) return "";
+  if (typeof sink === "string") return sink;
+  if (typeof sink === "object") return sink.url ?? sink.path ?? sink.baseUrl ?? JSON.stringify(sink);
+  return String(sink);
+}
+
+/** "Sends AI requests to": the provider endpoints, or the raw section when the shape is unknown. */
+const previewAiTargets = computed<string[]>(() => {
+  const raw = preview.value?.aiSection;
+  const s = parseSection(raw);
+  if (!s) return raw ? [raw] : [];
+  const providers = Array.isArray(s.providers) ? s.providers : [];
+  const targets = providers
+    .map((p: any) => (p && typeof p === "object" ? p.baseUrl ?? p.url ?? p.name ?? p.type : null))
+    .filter((t: unknown): t is string => typeof t === "string" && t.length > 0);
+  return targets.length ? targets : [raw as string];
+});
+
+const previewTelemetryTarget = computed<string | null>(() => {
+  const raw = preview.value?.telemetrySection;
+  if (!raw) return null;
+  const s = parseSection(raw);
+  const sink = sinkText(s?.sink);
+  const events = Array.isArray(s?.events) ? s!.events.join(", ") : "";
+  return sink ? `${sink}${events ? ` (${events})` : ""}` : raw;
+});
+
+const previewLoggingTarget = computed<string | null>(() => {
+  const raw = preview.value?.loggingSection;
+  if (!raw) return null;
+  const s = parseSection(raw);
+  return sinkText(s?.sink) || raw;
+});
+
+// Leave: releases the locks, then offers — never performs — the removal of what the policy installed.
+const leaveDialogVisible = ref(false);
+const leaveBusy = ref(false);
+const removableDialogVisible = ref(false);
+const removable = ref<string[]>([]);
+const removeSelected = ref<string[]>([]);
+const removeBusy = ref(false);
+
+async function leaveOrganization() {
+  leaveBusy.value = true;
+  try {
+    const res = await invoke<{ left: boolean; organization?: string | null; removableExtensions?: string[]; reason?: string }>(
+      "LeaveOrganization",
+    );
+    leaveDialogVisible.value = false;
+    await Promise.all([loadPolicy(), loadCodeExec(), loadMcp()]);
+    if (!res?.left) {
+      notifications.info(res?.reason ?? "This seat is not joined to an organization.");
+      return;
+    }
+    notifications.info(`Left ${res.organization ?? "the organization"}. Your own settings apply again.`);
+    removable.value = res.removableExtensions ?? [];
+    removeSelected.value = [...removable.value];
+    if (removable.value.length) removableDialogVisible.value = true;
+  } catch (e) {
+    notifications.error(`Could not leave: ${errorText(e)}`);
+  } finally {
+    leaveBusy.value = false;
+  }
+}
+
+async function removeSelectedExtensions() {
+  removeBusy.value = true;
+  const failed: string[] = [];
+  for (const id of removeSelected.value) {
+    try {
+      await invoke("RemoveExtension", { id });
+    } catch (e) {
+      failed.push(`${id}: ${errorText(e)}`);
+    }
+  }
+  removeBusy.value = false;
+  removableDialogVisible.value = false;
+  if (failed.length) notifications.error(`Could not uninstall: ${failed.join("; ")}`);
+  else if (removeSelected.value.length) notifications.success(`Uninstalled ${removeSelected.value.length} extension(s).`);
+}
+
+// --- Sources the policy names but this computer cannot resolve (SharePoint libraries, §9). -----
+const unresolvedSources = computed(() => {
+  const p = policy.value;
+  if (!p?.sources) return [];
+  const declared = p.sources.declared ?? [];
+  return Object.entries(p.sources.unresolved ?? {}).map(([name, reason]) => ({
+    name,
+    reason,
+    syncUrl: declared.find((d) => d.name === name)?.syncUrl ?? null,
+  }));
+});
+const sourceBusy = ref<string | null>(null);
+
+async function pickSourceFolder(name: string) {
+  sourceBusy.value = name;
+  try {
+    const picked = await invoke<{ path: string | null }>("BrowseForFolder");
+    if (!picked?.path) return;
+    await invoke("SetSourceLocation", { name, path: picked.path });
+    await loadPolicy();
+    notifications.success(`"${name}" now points to ${picked.path}. Required extensions refresh in the background.`);
+  } catch (e) {
+    notifications.error(`Could not set the folder for "${name}": ${errorText(e)}`);
+  } finally {
+    sourceBusy.value = null;
+  }
+}
+
+/** odopen:// and other custom schemes hand off to the registered app; http(s) opens like any link. */
+function openExternal(url: string) {
+  if (/^https?:/i.test(url)) window.open(url, "_blank", "noopener");
+  else window.location.href = url;
+}
+
+// --- Telemetry: what leaves this seat, on demand (§10 "Show recent events"). --------------------
+const telemetryVisible = ref(false);
+const telemetryEvents = ref<string[]>([]);
+const telemetryError = ref<string | null>(null);
+const telemetryBusy = ref(false);
+
+async function showTelemetry() {
+  telemetryVisible.value = true;
+  telemetryBusy.value = true;
+  telemetryError.value = null;
+  try {
+    const res = await invoke<{ enabled: boolean; events: string[] }>("GetTelemetryRecent");
+    telemetryEvents.value = res?.events ?? [];
+  } catch (e) {
+    telemetryError.value = errorText(e);
+  } finally {
+    telemetryBusy.value = false;
   }
 }
 
@@ -297,9 +579,18 @@ async function loadCommands() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadEnvironment();
-  loadPolicy();
+  await loadPolicy();
+  // First start on a managed network: look for a published policy quietly. Found = a banner, never a
+  // dialog; the person decides when to read the preview.
+  if (canJoin.value) {
+    discover("", "")
+      .then((res) => {
+        if (res?.found && res.preview) bannerPreview.value = res.preview;
+      })
+      .catch((e) => console.error("Background policy discovery failed", e));
+  }
   loadCodeExec();
   loadMcp();
   loadCommands();
@@ -315,6 +606,42 @@ onMounted(() => {
       The plugin itself. Extensions live in their own window — the <b>Extensions</b> button on the
       ribbon.
     </p>
+
+    <!-- First-start banner: the network publishes a policy and this seat is not joined. Non-modal;
+         the preview dialog is one click away and the dismissal lasts for this window only. -->
+    <div
+      v-if="bannerPreview && !bannerDismissed && canJoin"
+      class="mb-4 rounded-xl border border-primary-300 bg-primary-50 px-4 py-3 flex items-center gap-3 flex-wrap"
+    >
+      <i class="pi pi-building text-primary-600" />
+      <span class="text-sm flex-1">
+        <b>{{ bannerPreview.organization?.name ?? "Your organization" }}</b> publishes AnalyseTool
+        settings. Join?
+      </span>
+      <Button label="See what changes" size="small" @click="openPreview(bannerPreview, '')" />
+      <Button icon="pi pi-times" size="small" text severity="secondary" v-tooltip.top="'Not now'" @click="bannerDismissed = true" />
+    </div>
+
+    <!-- Below the organization's minimum version: the policy may not apply fully until updated. -->
+    <div
+      v-if="policy?.belowMinimumVersion"
+      class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-center gap-3 flex-wrap text-sm text-amber-800"
+    >
+      <i class="pi pi-exclamation-triangle" />
+      <span class="flex-1">
+        Your organization requires version <b>{{ policy?.minimumVersion }}</b> (you have
+        {{ policy?.pluginVersion }}).
+      </span>
+      <a
+        v-if="policy?.update?.downloadUrl"
+        :href="policy.update.downloadUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline font-semibold inline-flex items-center gap-1"
+      >
+        <i class="pi pi-download text-xs" />Download
+      </a>
+    </div>
 
     <!-- 1. AI ---------------------------------------------------------------------------------
          Two different assistants live behind the one word, and confusing them was easy: the model
@@ -467,7 +794,7 @@ onMounted(() => {
          Read-only: the policy file belongs to IT (machine layer) or the BIM coordinator. This panel is
          the one place a broken or surprising policy becomes visible without reading the log. -->
     <section
-      v-if="policy && (policy.present || policy.origin === 'invalid')"
+      v-if="policy && (policy.present || policy.origin === 'invalid' || canJoin)"
       class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4"
     >
       <div class="flex items-start justify-between gap-3 mb-3">
@@ -476,20 +803,24 @@ onMounted(() => {
             <i class="pi pi-building" />
             Organization
             <Tag
-              v-if="policy.organization?.name"
-              :value="`Managed by ${policy.organization.name}`"
+              v-if="policy.membership?.organization || policy.organization?.name"
+              :value="`Managed by ${policy.membership?.organization ?? policy.organization?.name}`"
               severity="info"
             />
           </h2>
-          <p class="text-xs text-surface-500 mt-1">
+          <p v-if="policy.present" class="text-xs text-surface-500 mt-1">
             Settings below marked with a lock come from
-            <span class="font-mono break-all">{{ policy.path }}</span
+            <span class="font-mono break-all">{{ policy.membership?.policyUrl ?? policy.path }}</span
             ><template v-if="policy.organization?.contact">
               — questions go to <b>{{ policy.organization.contact }}</b></template
             >.
           </p>
+          <p v-else class="text-xs text-surface-500 mt-1">
+            Not managed. Your own settings apply.
+          </p>
         </div>
         <Button
+          v-if="policy.present || policy.origin === 'invalid'"
           icon="pi pi-refresh"
           size="small"
           text
@@ -498,6 +829,137 @@ onMounted(() => {
           v-tooltip.left="'Re-read the policy file'"
           @click="reloadPolicy"
         />
+      </div>
+
+      <!-- Not joined: the compact join card. Empty input = automatic discovery (domain, OneDrive). -->
+      <div v-if="canJoin" class="rounded-lg border border-surface-200 p-3 mb-3">
+        <div class="font-semibold text-sm mb-1">Join your organization</div>
+        <p class="text-xs text-surface-600 mb-2">
+          Your BIM coordinator or IT may publish AnalyseTool settings — approved sources, required
+          extensions, locks. Enter the policy URL, your company domain or a folder, or leave the field
+          empty to look automatically. Nothing changes before you have seen a preview and confirmed.
+        </p>
+        <div class="flex items-center gap-2 flex-wrap">
+          <InputText
+            v-model="joinInput"
+            placeholder="https://…/policy.json, company.com, a folder — or empty"
+            class="flex-1 min-w-[16rem]"
+            size="small"
+            :disabled="joinBusy"
+            @keyup.enter="findOrganization"
+          />
+          <Button label="Find" icon="pi pi-search" size="small" :loading="joinBusy" @click="findOrganization" />
+          <Button
+            :label="joinKeyVisible ? 'Hide signing key' : 'Signing key…'"
+            size="small"
+            text
+            severity="secondary"
+            @click="joinKeyVisible = !joinKeyVisible"
+          />
+        </div>
+        <div v-if="joinKeyVisible" class="mt-2">
+          <label class="block text-xs text-surface-500 mb-1">
+            Signing key (optional, base64 — handed out by the organization; the policy must then be signed with it)
+          </label>
+          <InputText v-model="joinKey" class="w-full font-mono" size="small" :disabled="joinBusy" />
+        </div>
+        <div v-if="joinSearched" class="mt-2 text-xs">
+          <div class="text-surface-600 mb-1">No organization policy found. Tried:</div>
+          <div v-for="t in joinTried" :key="t.reference" class="text-surface-500 break-all">
+            <span class="font-mono">{{ t.reference }}</span>
+            <span class="text-surface-400"> ({{ t.how }})</span>
+            <span v-if="t.problem"> — {{ t.problem }}</span>
+          </div>
+          <div v-if="!joinTried.length" class="text-surface-500">nothing — no domain or synced library on this computer</div>
+        </div>
+      </div>
+
+      <!-- Joined: where the policy comes from, how fresh it is, and the way out. -->
+      <div v-if="policy.membership" class="rounded-lg border border-surface-200 p-3 mb-3 text-xs">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="flex flex-col gap-1">
+            <div>
+              Managed by <b>{{ policy.membership.organization ?? "your organization" }}</b>
+              <Tag v-if="policy.membership.enforced" value="set by an administrator" severity="secondary" icon="pi pi-lock" class="ml-1" />
+              <Tag v-if="!policy.membership.applied" value="not applied" severity="warn" class="ml-1" />
+            </div>
+            <div class="text-surface-500">
+              policy: <span class="font-mono break-all">{{ policy.membership.policyUrl }}</span>
+            </div>
+            <div class="text-surface-500">
+              <template v-if="policy.membership.fetchedAt">
+                last fetched {{ new Date(policy.membership.fetchedAt).toLocaleString() }} ·
+              </template>
+              <template v-if="policy.membership.signed">
+                signed · key <span class="font-mono">{{ policy.membership.signingKeyFingerprint }}</span>
+              </template>
+              <template v-else>not signed (trusted by location)</template>
+            </div>
+            <div v-if="policy.membership.lastRefreshProblem" class="text-amber-700">
+              <i class="pi pi-exclamation-triangle mr-1" />{{ policy.membership.lastRefreshProblem }}
+            </div>
+          </div>
+          <div class="shrink-0">
+            <Button
+              v-if="!policy.membership.enforced"
+              label="Leave organization"
+              icon="pi pi-sign-out"
+              size="small"
+              text
+              severity="danger"
+              @click="leaveDialogVisible = true"
+            />
+            <span v-else class="text-surface-500">
+              This computer's organization is set by an administrator and cannot be changed here.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sources the policy names but this seat cannot find (a SharePoint library not synced yet). -->
+      <div
+        v-for="s in unresolvedSources"
+        :key="s.name"
+        class="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+      >
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="flex-1">
+            <i class="pi pi-question-circle mr-1" />Where is <b>{{ s.name }}</b> on this computer?
+            <span class="text-amber-700">{{ s.reason }}</span>
+          </span>
+          <Button
+            v-if="s.syncUrl"
+            label="Connect the library"
+            icon="pi pi-cloud-download"
+            size="small"
+            text
+            v-tooltip.top="'Opens OneDrive to sync the library; the next start finds it automatically'"
+            @click="openExternal(s.syncUrl)"
+          />
+          <Button
+            label="Pick folder…"
+            icon="pi pi-folder-open"
+            size="small"
+            severity="secondary"
+            :loading="sourceBusy === s.name"
+            @click="pickSourceFolder(s.name)"
+          />
+        </div>
+      </div>
+
+      <!-- Telemetry: never silent. One line saying where and what, and the exact events on demand. -->
+      <div
+        v-if="policy.telemetry?.enabled"
+        class="mb-2 rounded-lg border border-surface-200 px-3 py-2 text-xs flex items-center gap-2 flex-wrap"
+      >
+        <i class="pi pi-send text-surface-500" />
+        <span class="flex-1">
+          Sends telemetry to <span class="font-mono break-all">{{ policy.telemetry.sink }}</span>
+          ({{ policy.telemetry.events.join(", ") || "inventory" }}; identity: {{ policy.telemetry.identity }})
+          <span v-if="policy.telemetry.pending" class="text-surface-500"> · {{ policy.telemetry.pending }} pending</span>
+          <span v-if="policy.telemetry.lastError" class="text-amber-700"> · {{ policy.telemetry.lastError }}</span>
+        </span>
+        <Button label="Show recent events" size="small" text @click="showTelemetry" />
       </div>
 
       <div
@@ -690,6 +1152,160 @@ onMounted(() => {
         </template>
       </DataTable>
     </Panel>
+
+    <!-- Join preview: every consequence named, then consent. Nothing is applied before "Join". -->
+    <Dialog
+      v-model:visible="previewVisible"
+      modal
+      header="Join organization"
+      :style="{ width: 'min(40rem, 95vw)' }"
+    >
+      <div v-if="preview" class="text-sm flex flex-col gap-3 max-h-[65vh] overflow-y-auto pr-1">
+        <div>
+          <div class="font-semibold">{{ preview.organization?.name ?? "Unnamed organization" }}</div>
+          <div v-if="preview.organization?.contact" class="text-xs text-surface-500">
+            Contact: {{ preview.organization.contact }}
+          </div>
+          <div class="text-xs text-surface-500 break-all">
+            Policy: <span class="font-mono">{{ preview.location ?? preview.reference }}</span>
+            <span v-if="preview.how"> ({{ preview.how }})</span>
+          </div>
+          <div class="text-xs mt-1 flex items-center gap-2 flex-wrap">
+            <Tag
+              :value="preview.signature === 'verified' ? 'signature verified' : 'not signed / no key'"
+              :severity="preview.signature === 'verified' ? 'success' : 'warn'"
+              :icon="preview.signature === 'verified' ? 'pi pi-shield' : 'pi pi-exclamation-triangle'"
+            />
+            <span v-if="preview.signingKeyFingerprint" class="font-mono text-surface-500">
+              key {{ preview.signingKeyFingerprint }}
+            </span>
+          </div>
+          <div v-if="preview.alreadyJoined" class="text-xs text-amber-700 mt-1">
+            This seat is already joined to an organization; joining replaces that membership.
+          </div>
+          <div v-if="preview.machinePolicyPresent" class="text-xs text-surface-500 mt-1">
+            A machine policy set by IT is present; its locked values stay in force.
+          </div>
+        </div>
+
+        <div class="text-xs text-surface-600">After joining, this policy will:</div>
+        <ul class="text-xs flex flex-col gap-1.5 pl-1">
+          <li>
+            <b>Lock:</b>
+            <template v-if="preview.locks?.length">
+              <Tag v-for="l in preview.locks" :key="l" :value="l" severity="secondary" icon="pi pi-lock" class="ml-1" />
+            </template>
+            <span v-else class="text-surface-500">nothing — the policy only sets defaults</span>
+          </li>
+          <li v-if="preview.codeExecution != null">
+            <b>C# code execution by external assistants:</b> {{ preview.codeExecution ? "on" : "off" }}
+          </li>
+          <li v-if="preview.mcpEnabled != null">
+            <b>MCP server:</b> {{ preview.mcpEnabled ? "on" : "off" }}
+          </li>
+          <li v-if="preview.extensionRoots?.length">
+            <b>Extension folders:</b>
+            <div v-for="r in preview.extensionRoots" :key="r" class="font-mono break-all pl-3">{{ r }}</div>
+          </li>
+          <li v-if="preview.catalogUrl">
+            <b>Catalog:</b> <span class="font-mono break-all">{{ preview.catalogUrl }}</span>
+          </li>
+          <li v-if="preview.allowedFeeds">
+            <b>Approved sources:</b>
+            <span v-if="preview.allowedFeeds.length" class="font-mono break-all">{{ preview.allowedFeeds.join(", ") }}</span>
+            <span v-else class="text-surface-500">none — only the catalog and required extensions</span>
+          </li>
+          <li v-if="preview.allowInstallFromRepository === false">
+            <b>"Install from repository…"</b> switched off
+          </li>
+          <li v-if="preview.requiredExtensions?.length">
+            <b>Required extensions</b> (installed, kept up to date, cannot be removed):
+            <div v-for="r in preview.requiredExtensions" :key="r.id" class="pl-3 flex items-center gap-2 flex-wrap">
+              <span class="font-mono">{{ r.id }}</span>
+              <span v-if="r.source" class="text-surface-500 break-all">{{ r.source }}</span>
+              <Tag v-if="r.pinned" value="sha256" severity="secondary" v-tooltip.top="'Package hash pinned by the policy'" />
+            </div>
+          </li>
+          <li v-if="preview.sources?.length">
+            <b>Named sources:</b> <span class="font-mono">{{ preview.sources.join(", ") }}</span>
+          </li>
+          <li v-if="preview.minimumVersion">
+            <b>Minimum plugin version:</b> {{ preview.minimumVersion }}
+            <span v-if="policy?.pluginVersion" class="text-surface-500">(you have {{ policy.pluginVersion }})</span>
+          </li>
+          <li v-if="previewAiTargets.length">
+            <b>Sends AI requests to:</b>
+            <div v-for="t in previewAiTargets" :key="t" class="font-mono break-all pl-3">{{ t }}</div>
+          </li>
+          <li v-if="previewTelemetryTarget">
+            <b>Sends telemetry to:</b> <span class="font-mono break-all">{{ previewTelemetryTarget }}</span>
+          </li>
+          <li v-if="previewLoggingTarget">
+            <b>Writes logs to:</b> <span class="font-mono break-all">{{ previewLoggingTarget }}</span>
+          </li>
+        </ul>
+        <p class="text-xs text-surface-500">
+          You can leave at any time from this page; your own settings then apply again.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" :disabled="joinBusy" @click="previewVisible = false" />
+        <Button label="Join" icon="pi pi-check" :loading="joinBusy" @click="joinOrganization" />
+      </template>
+    </Dialog>
+
+    <!-- Leave: confirm, then offer to uninstall what the policy brought in. -->
+    <Dialog v-model:visible="leaveDialogVisible" modal header="Leave organization" class="w-[28rem]">
+      <div class="text-sm flex flex-col gap-3">
+        <p>
+          Leave <b>{{ policy?.membership?.organization ?? "the organization" }}</b>? The locks are
+          released and your own settings apply again. Extensions the policy installed stay until you
+          remove them — you will be asked next.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" :disabled="leaveBusy" @click="leaveDialogVisible = false" />
+        <Button label="Leave" severity="danger" :loading="leaveBusy" @click="leaveOrganization" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="removableDialogVisible" modal header="Extensions the organization required" class="w-[28rem]">
+      <div class="text-sm flex flex-col gap-3">
+        <p>These were installed because the policy required them. Uninstall the ones you no longer need:</p>
+        <div class="flex flex-col gap-2">
+          <label v-for="id in removable" :key="id" class="flex items-center gap-2 text-sm">
+            <Checkbox v-model="removeSelected" :value="id" :disabled="removeBusy" />
+            <span class="font-mono">{{ id }}</span>
+          </label>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Keep all" text severity="secondary" :disabled="removeBusy" @click="removableDialogVisible = false" />
+        <Button
+          :label="`Uninstall ${removeSelected.length}`"
+          severity="danger"
+          :disabled="!removeSelected.length"
+          :loading="removeBusy"
+          @click="removeSelectedExtensions"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Telemetry: the last events exactly as they were sent. -->
+    <Dialog v-model:visible="telemetryVisible" modal dismissableMask header="Recent telemetry events" :style="{ width: 'min(44rem, 95vw)' }">
+      <div v-if="telemetryError" class="text-sm text-red-600">{{ telemetryError }}</div>
+      <div v-else-if="telemetryBusy" class="text-surface-500 text-sm p-4 text-center">
+        <i class="pi pi-spin pi-spinner mr-2" />Loading…
+      </div>
+      <div v-else-if="!telemetryEvents.length" class="text-surface-500 text-sm p-4 text-center">
+        Nothing sent yet.
+      </div>
+      <pre
+        v-else
+        class="bg-surface-100 text-surface-700 text-xs rounded p-3 max-h-[60vh] overflow-auto whitespace-pre-wrap break-all font-mono"
+        >{{ telemetryEvents.join("\n") }}</pre
+      >
+    </Dialog>
 
     <!-- Changelog (CHANGELOG.md shipped with the plugin, rendered as markdown) -->
     <Dialog

@@ -1,4 +1,4 @@
-# Enterprise Deployment — design (central configuration, policy, CLI)
+﻿# Enterprise Deployment — design (central configuration, policy, CLI)
 
 Status: proposed direction, pre-implementation. Answers the question "how does a company
 with hundreds of Revit seats roll AnalyseTool out and keep it configured?" Today the tool is
@@ -658,8 +658,8 @@ Phase 2 — catalog and required extensions.
 Phase 2b — minimal CLI (`policy show`, `policy validate`), pulled forward: the coordinator needs
 to validate a file before it reaches hundreds of seats, and that is before Join exists.
 
-- [ ] `AnalyseTool.Cli` project skeleton (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row, shipped via `PluginAssets.targets` + MSI
-- [ ] `policy show [--json]`, `policy validate <file>` (schema + semantic checks, exit code for CI)
+- [x] `AnalyseTool.Cli` project (Core + Sdk), `InternalsVisibleTo`, `Check-Boundaries.ps1`, CLAUDE.md / AGENTS.md table row, shipped inside the plugin folder via `PluginAssets.targets` (exe + dll + deps + runtimeconfig next to Core)
+- [x] `policy show [--json]`, `policy validate <file>` (`PolicyValidation`: loader problems + semantic checks, exit 2), plus `keygen` / `sign` / `verify` / `fingerprint` for the signing flow
 
 Phase 3a — policy sources and discovery (no join yet; everything the machine pointer and Join
 will share).
@@ -685,7 +685,7 @@ Phase 3b — Join organization (the organization layer, on top of 3a).
 - [x] Host change (after redirects) is a refresh problem, never followed silently; `PointerEnforced` refuses Join and Leave
 - [x] `minimumVersion`: `GetPolicyStatus.belowMinimumVersion` + `update` block (banner is the UI phase)
 - [ ] Organization panel: "Where is <source> on this computer?" folder picker (writes `sourceOverrides`) and **Connect the library** via `sources.<name>.syncUrl` when unresolved
-- [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
+- [x] Installer: `POLICYURL` (+ `POLICYKEY`) properties — a deferred managed action writes `org.json` on a per-user install and the machine pointer on a per-machine one (`Installer/PolicyActions.cs`)
 - [ ] `enforced` accepted only for non-user-writable sources; otherwise reported as a policy problem
 - [ ] Tier-1 tests: resolution order, leave semantics, enforced, preview contents
 
@@ -721,13 +721,13 @@ Phase 6 — UI.
 
 Phase 7 — CLI.
 
-- [ ] (project skeleton and `policy show` / `policy validate` shipped in phase 2b)
-- [ ] `ext list`, `ext install`, `ext validate`, `ext update`
-- [ ] Per-user self-update (moved here from 3b: needs a process that outlives Revit): download from the policy host only, verify `update.sha256`, run `msiexec /qn` after Revit exits; disabled on per-machine installs
-- [ ] `org join <url|domain>`, `org leave`, `org status`
-- [ ] `analysetool://join?url=…` protocol handler registered by the installer, served by the CLI exe
-- [ ] `diag collect`
-- [ ] Ship via `PluginAssets.targets` + MSI; tier-1 tests drive the exe like `McpExeTests`
+- [x] (project skeleton and `policy show` / `policy validate` shipped in phase 2b)
+- [x] `ext list`, `ext install`, `ext validate` (`ext update` is `org join`'s required pass; a plain update stays in the Extensions window)
+- [x] Per-user self-update: `StartSelfUpdate` command downloads the MSI (https, `update.sha256` required), starts `AnalyseTool.Cli update wait-and-install --pid --msi --sha256` detached; the CLI waits for Revit to exit and runs `msiexec /qn`; refused on per-machine installs
+- [x] `org join <url|domain|folder|source:>` (preview, `--yes`, runs the required pass inline), `org leave`, `org status`
+- [ ] `analysetool://join?url=…` protocol handler — deferred: a URL handler is a registry entry the per-user MSI can add later; the installer property and Settings → Join cover the same need today
+- [x] `diag collect` (logs, machine policy, profile state files, status.json)
+- [x] Shipped via `PluginAssets.targets`; tier-1 `CliTests` drive the exe (validate, keygen/sign/verify, help, ext validate)
 
 Phase 8 — docs.
 

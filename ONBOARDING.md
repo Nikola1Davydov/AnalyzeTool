@@ -6,7 +6,8 @@ shows up — a new command callable from JavaScript, a ribbon button, a UI page,
 
 This guide is for **extension authors**. It covers the three kinds of extension, the folder
 layout, the manifest, the C# command contract, the JS UI contract, the build/deploy/reload loop,
-and how to publish so your users get updates.
+and how to publish so your users get updates. §11 is for the people who roll the tool out in a
+company — BIM coordinators, IT, and users joining a company's configuration.
 
 ---
 
@@ -913,6 +914,478 @@ Two traps worth knowing before your first release:
 
 ---
 
+## 11. Deploying in a company
+
+Everything above is one seat. This section is about hundreds of them: how a company rolls
+AnalyseTool out, keeps it configured, and keeps the configuration in the hands of the person who
+actually changes it. It is written for three readers — the BIM coordinator (§11.2), the IT
+administrator (§11.3) and everyone else (§11.4) — with the file they all share in §11.5.
+
+### 11.1 The idea
+
+**One file.** A company's configuration is a single `policy.json`: what is locked, where
+extensions come from, which extensions every seat must have, where AI requests go, where logs go.
+Every section of it is optional, and a file with only `{ "version": 1 }` is valid and changes
+nothing. The schema is `docs/policy.schema.json` — point your editor at it and you get completion.
+
+**Two places it can sit.** The plugin reads the policy from up to two layers, on top of the
+user's own settings:
+
+| Layer | Where | Put there by | Needs admin | The user can leave |
+| --- | --- | --- | --- | --- |
+| **Machine** | `%ProgramData%\AnalyseTool\policy.json` | IT, via GPO / Intune / SCCM | yes | no |
+| **Organization** | `%LOCALAPPDATA%\AnalyseTool\org.json` (a policy the user **joined** by URL) | the user, from Settings — or the installer, or the machine file pointing at it | no | yes, unless the machine file says `enforced` |
+| User | `%LOCALAPPDATA%\AnalyseTool\*.json` | the plugin | no | these *are* the user's settings |
+
+The machine file usually holds nothing but a **pointer** to the real policy at a URL (§11.3).
+That split is the whole point: IT touches a seat once; everything that changes afterwards lives at
+an address the BIM coordinator owns. When both layers carry a section, the machine layer supplies it.
+
+**Mandatory vs. default.** A policy value is a *default* unless its setting is listed under
+`locked`. A default applies until the user makes their own choice, which then wins. A locked value
+is *mandatory*: it wins over the user's choice, Settings shows it read-only with the reason, and
+the command that would change it refuses with a message naming the organization and the file.
+Three settings can be locked today: `codeExecution.enabled`, `extensions.roots`, `mcp.enabled`.
+Everything else the policy does — required extensions, the source whitelist, managed AI
+providers, sinks — is not a setting the user has, so it needs no lock.
+
+**Nothing changes without a policy.** A seat with no machine file and no membership is exactly
+the single-seat product described in §1–§10: no fetch, no telemetry, no lock. The plugin never
+writes the machine file.
+
+### 11.2 For BIM coordinators
+
+**Read this paragraph first: whoever can write the policy can run code on every seat.** Through
+`extensions.required` and its feed, a policy installs DLLs that load into Revit with each user's
+rights. The pointer form moves that power from an admin-only folder to a URL or a folder you own
+without admin rights — that is the feature, and it is the attack surface: a compromised account, a
+Git branch anyone can push to, a SharePoint folder with too many editors. So:
+
+- Keep `policy.json` in a Git repository with a **protected branch and review**, or in a folder
+  with a deliberately **short write ACL**. Validate it in CI with `AnalyseTool.Cli policy validate`
+  before it reaches anyone.
+- Pin every required package with `sha256`. A feed that serves a different file is refused.
+- **Sign** the policy (below) and hand the key's fingerprint to IT and to staff. Without a key,
+  HTTPS plus the join preview plus the two points above are the whole defense.
+
+#### Owning `policy.json`
+
+A complete, annotated policy. Delete what you do not need — every section is optional.
+
+```jsonc
+{
+  "version": 1,
+  // Required for a policy people JOIN: shown as "Managed by Contoso BIM" and in the join preview.
+  "organization": { "name": "Contoso BIM", "contact": "bim-support@contoso.com" },
+
+  // Seats below this plugin version see it in Settings → Organization, with the download link.
+  "minimumVersion": "1.6.0",
+  "update": { "downloadUrl": "https://git.contoso.com/bim/analysetool/raw/main/AnalyseTool-1.6.0-SingleUser.msi",
+              "sha256": "3f1a…64 hex characters…" },
+
+  // Mandatory settings. Anything set below but NOT listed here is only a default.
+  "locked": ["codeExecution.enabled", "mcp.enabled"],
+  "codeExecution": { "enabled": false },   // ad-hoc C# in the Revit process: the recommended enterprise default
+  "mcp": { "enabled": false },             // the in-Revit MCP bridge for AI clients
+
+  // Named locations. Everything below refers to them as source:<name>/<relative>, so one policy
+  // serves every seat although the local path of a synced library differs per machine.
+  "sources": {
+    "bimtools": {
+      "sharepoint": "https://contoso.sharepoint.com/sites/BIM/Shared Documents/AnalyseTool",
+      "markerId": "contoso.bimtools",
+      "syncUrl": "odopen://sync/?siteId=…"
+    },
+    "share": { "path": "\\\\fileserver\\revit\\analysetool" }
+  },
+
+  "extensions": {
+    // Extra folders every seat scans (dev zone, not removable). Synced folders are fine.
+    "roots": ["source:bimtools/extensions"],
+    // Your catalog, in the same shape as catalog.json (§10). Tagged "organization" in Find extensions.
+    "catalogUrl": "source:bimtools/catalog.json",
+    // Prefix whitelist for update feeds and install sources. Absent = everything allowed.
+    "allowedFeeds": ["https://git.contoso.com/bim/", "github:contoso-bim/"],
+    // Installed when missing, updated when the feed is newer, never disabled or removed by the user.
+    "required": [
+      { "id": "contoso.standards",
+        "source": "source:bimtools/packages/contoso.standards/feed.json",
+        "sha256": "9c4e…64 hex characters…" }
+    ],
+    // false hides the free-form "Install from repository…" paste. Catalog entries still work.
+    "allowInstallFromRepository": false
+  },
+
+  "ai": {
+    "providers": [
+      { "id": "contoso-gateway", "name": "Contoso AI Gateway",
+        "baseUrl": "https://ai.contoso.com/v1", "apiKeyEnv": "ANALYSETOOL_AI_KEY" }
+    ],
+    "allowUserProviders": false
+  },
+
+  "logging": { "sink": "\\\\fileserver\\logs\\analysetool\\{user}\\", "level": "Information" },
+
+  // Absent = nothing is sent. Read the telemetry paragraph before adding "command" or "ai".
+  "telemetry": { "sink": "https://seq.contoso.com/api/events/raw", "identity": "hashed",
+                 "events": ["inventory"] }
+}
+```
+
+Unknown keys are ignored and listed as a problem in Settings → Organization, so a newer policy
+still works on an older plugin. A joined seat re-fetches the policy on every Revit start (in the
+background, with the cached ETag); a change you commit reaches a seat the next time Revit starts,
+and an offline seat keeps the last copy.
+
+#### Where to host it
+
+A policy source is anything the plugin can read **without an interactive login**: an `https://`
+URL or a file-system path (`%ENV%` is expanded). Plain `http://` is refused everywhere — a policy
+installs code and redirects AI traffic, so it must not be tamperable in transit.
+
+| Hosting | Form | Notes |
+| --- | --- | --- |
+| Git hosting (GitHub / GitLab raw, an internal GitLab) | `https://…/raw/main/policy.json` | the best choice: history, review, `policy validate` in CI |
+| Azure Blob Storage with a SAS token | `https://…?sv=…` | cheap static hosting, no Azure AD on the client |
+| Internal web server (IIS, nginx) | `https://…` | classic |
+| File share | `\\server\bim\analysetool\policy.json` | a path, not a URL — same loader, protected by the share's ACL |
+| **Synced SharePoint / OneDrive library** | a named source (below) | **the SharePoint answer** |
+| SharePoint https link | — | **does not work.** The link needs an Azure AD sign-in; the plugin gets a 401 or a login page. "Anyone" links are tenant-disabled more often than not. |
+
+Corporate proxies are handled: every fetch uses the system proxy with the user's Windows
+credentials.
+
+#### Named sources and the SharePoint library
+
+Users have the BIM library on disk through the OneDrive client, but *where* differs by how each
+person added it (**Sync** on the library, **Add shortcut to My files**, a synced sub-folder). A
+path in the policy therefore cannot work. Instead the policy names **what** the folder is, and the
+plugin finds **where** it is on each seat:
+
+```json
+"sources": {
+  "bimtools": {
+    "sharepoint": "https://contoso.sharepoint.com/sites/BIM/Shared Documents/AnalyseTool",
+    "markerId": "contoso.bimtools",
+    "syncUrl": "odopen://sync/?siteId=…&webId=…&listId=…&webUrl=…&listTitle=Shared%20Documents"
+  }
+}
+```
+
+`sharepoint` is the library or folder URL as you see it in the browser (the plugin matches its
+site and library against what the OneDrive client recorded on the machine, then appends the rest
+of the path). `syncUrl` is the `odopen://` link SharePoint's **Sync** button produces; it is shown
+to a user whose seat has not synced the library. A `path` source (UNC share, local folder) and a
+`url` source (an https base) exist so the same `source:` syntax covers every hosting kind.
+
+Resolution is three fallbacks: the OneDrive client's own library-to-folder mapping; a **marker
+file**; and a folder the user pointed the plugin at once (kept per seat in
+`%LOCALAPPDATA%\AnalyseTool\sources.json`, never in the policy). For the marker, drop
+`analysetool-source.json` into the folder root:
+
+```json
+{ "id": "contoso.bimtools", "policy": "policy.json" }
+```
+
+`id` must equal the source's `markerId`; the plugin scans every OneDrive mount point three levels
+deep for it. `policy` is optional and serves **discovery**: a seat that joins with an empty input
+(§11.4) looks for a marker across its synced folders and offers the policy the marker names
+(relative to the folder, or a `policy.json` next to the marker when the key is absent).
+
+Two rules of thumb for a synced library:
+
+1. **Files On-Demand.** Files may be placeholders that download on first read. Right-click the
+   AnalyseTool folder in Explorer and choose **Always keep on this device**. The plugin reads
+   policy files off the UI thread with a timeout, so a slow sync delays the background pass, not
+   Revit.
+2. **Half-synced states.** A DLL and its `plugin.json` may arrive seconds apart. Bump `version` in
+   the manifest *last*, after the binaries; for anything that matters, use a packaged feed with
+   `sha256` (next paragraph) instead of loose folders.
+
+Why a synced folder is a fine extension root: assemblies are loaded from a byte copy (§6), so
+Revit holds no handle on the DLL and the sync client can replace it under a running Revit; the
+next Reload picks it up.
+
+#### Feeds and packages on a share
+
+An update feed on a share or a synced library is the same JSON the https form uses (§10), read
+from disk, and its `downloadUrl` may be **relative to the feed's own folder**:
+
+```
+source:bimtools/packages/contoso.standards/
+    feed.json          { "version": "1.4.0", "downloadUrl": "contoso.standards-1.4.0.zip" }
+    contoso.standards-1.4.0.zip
+```
+
+The zip comes out of `dotnet build -t:PackExtension` (§10). A feed on disk must serve a package on
+disk — a file feed whose `downloadUrl` points at the internet is refused. Publishing a new
+version is replacing two files.
+
+#### Required extensions
+
+```json
+"required": [
+  { "id": "contoso.standards",
+    "source": "source:bimtools/packages/contoso.standards/feed.json",
+    "sha256": "9c4e…" }
+]
+```
+
+After Revit has started (a few seconds later, in the background, never on the startup path), the
+plugin walks the list: an id that is missing is installed from `source`; one that is installed is
+updated when the feed's version is newer; the package must carry the declared `id`; and when
+`sha256` is present the downloaded zip must match it or is refused. The user cannot disable or
+uninstall a required extension (the Extensions window shows a **required** badge), and an id the
+user had disabled before the policy arrived is re-enabled. A copy of the same id in the dev zone
+or in the machine zone satisfies the requirement as it is. `source` may be omitted when the
+installed extension already declares an `updateFeed`. What happened to each entry is listed in
+Settings → Organization.
+
+#### Catalog, whitelist, and the download-host rule
+
+- `catalogUrl` — your `catalog.json` (§10), an https URL (cached with its ETag) or a path. It is
+  merged after the shipped catalog and before the user's own; user entries cannot override yours,
+  and yours show an **organization** tag in Find extensions.
+- `allowedFeeds` — a prefix whitelist over every update feed and install source:
+  `"github:contoso-bim/"` (an owner; a bare owner is read as `owner/`) or `"https://host/path/"`.
+  Absent means everything is allowed, as today. A `source:` reference is always allowed: the
+  policy that declares the whitelist declares the source. With a whitelist in place, a catalog
+  entry that is not on it shows as **not approved**.
+- **The download-host rule.** The whitelist governs the feed; the package URL is whatever the feed
+  serves. When a whitelist exists, a download is accepted only from the feed's own host, from
+  GitHub's asset hosts for a `github:` feed, or from a host that itself matches the whitelist.
+- `allowInstallFromRepository: false` hides the free-form **Install from repository…** paste and
+  refuses the command behind it.
+
+#### `minimumVersion` and `update`
+
+A seat below `minimumVersion` shows the minimum next to its own version in Settings →
+Organization. `update.downloadUrl` and `update.sha256` tell the seat where
+the installer is and what it must hash to. The plugin does not update itself — that is the
+user's or IT's step (§11.3, §11.4).
+
+#### Signing
+
+Signing turns "trust the hosting" into "trust the key". A signature is a detached
+`policy.json.sig` (ECDSA P-256 over the exact bytes of `policy.json`, base64) next to the policy;
+the public key travels out of band as base64 `SubjectPublicKeyInfo`.
+
+```
+AnalyseTool.Cli policy keygen [--out <folder>]                 # writes policy-signing.key + .pub, prints the fingerprint
+AnalyseTool.Cli policy sign policy.json --key policy-signing.key   # writes policy.json.sig — run it on every change
+AnalyseTool.Cli policy verify policy.json --pub policy-signing.pub # exit code 0 when the signature holds
+```
+
+Keep `policy-signing.key` where the policy's write ACL is (keygen refuses to overwrite an
+existing one); hand the **public key** (`.pub`, base64) to IT for the machine pointer's
+`signingKey` (§11.3) and read the **fingerprint** (16 hex characters in groups of four,
+`policy fingerprint policy-signing.pub`) out to staff who join by hand, so they can compare it in
+the preview.
+
+What happens on a seat: when it knows a key — from the pointer or typed once at Join — an
+unsigned policy is refused, a policy whose signature does not match is refused, and a refresh that
+fails verification keeps the last accepted copy. When no key is known, nothing is checked and the
+preview says so. An inline machine file is never signed; it is trusted because only an
+administrator can write `%ProgramData%`.
+
+#### Telemetry
+
+There is no telemetry in the single-seat product, and AnalyseTool the project has no endpoint.
+**A seat without a policy, or with a policy that omits `telemetry`, sends nothing.** With a
+`telemetry` section, data goes to the sink you name and nowhere else:
+
+```json
+"telemetry": {
+  "sink": "https://seq.contoso.com/api/events/raw",   // or a folder: one .jsonl file per seat per day
+  "identity": "hashed",                                // "hashed" (default) | "user"
+  "events": ["inventory"]                              // absent = inventory only
+}
+```
+
+- `sink` — an https endpoint that accepts newline-delimited JSON (Seq's raw ingestion, any
+  collector with an NDJSON input), or a folder (a share, the synced library). Events are buffered,
+  flushed every ten seconds, and **dropped** when the sink is down; they never delay a command.
+- `events` — `inventory` (plugin and Revit version, installed extensions with version, zone and
+  enabled state, join state; sent after every background pass) is the default and the harmless
+  one. `command` (command name, transport, duration, outcome) and `ai` (provider, model, duration,
+  outcome, token counts) are **per-seat usage** and must be listed deliberately.
+- `identity` — `hashed` sends a stable per-seat hash so you can count seats without naming them;
+  `user` sends the user and machine name.
+- No event ever carries a payload, a file name, an element name or a parameter value; the event
+  builders take names, numbers and outcomes only, and a test asserts it.
+
+**Pseudonymous is not anonymous.** A stable per-seat hash is still personal data under the GDPR,
+and per-employee usage records (`command`, `ai`) in Germany usually need a works-council
+(Betriebsrat) agreement. The plugin cannot make that decision for you; it only makes the default
+the harmless one. The join preview shows the telemetry section verbatim, so a user always sees
+what a policy would send before accepting it.
+
+#### `logging.sink`
+
+`"logging": { "sink": "\\\\fileserver\\logs\\analysetool\\{user}\\", "level": "Information" }`
+adds a second Serilog file sink; the local rolling file under `%LOCALAPPDATA%\AnalyseTool\logs`
+stays. A folder gets `analysetool-<date>.log` inside it; `{user}`, `{machine}` and `%ENV%` are
+expanded; one file per day, 31 kept. `level` defaults to `Information`. This is diagnostics —
+exceptions and stack traces for support — not telemetry.
+
+#### `ai.providers` and `apiKeyEnv`
+
+```json
+"ai": {
+  "providers": [
+    { "id": "contoso-gateway", "name": "Contoso AI Gateway", "type": "openaiCompatible",
+      "baseUrl": "https://ai.contoso.com/v1", "apiKeyEnv": "ANALYSETOOL_AI_KEY", "timeoutSeconds": 120 }
+  ],
+  "allowUserProviders": false
+}
+```
+
+Providers listed here appear on every seat as **managed**: usable, not editable, not deletable.
+`type` is `openaiCompatible` (default) or `ollama`. The API key is never stored on the seat: it is
+read from the environment variable named in `apiKeyEnv` (set by GPO or a login script, §11.3), or
+omitted entirely when `baseUrl` is a gateway that holds the real key. `allowUserProviders: false`
+hides the user's own providers and refuses new ones — it deletes nothing, and leaving the
+organization brings them back.
+
+### 11.3 For IT administrators
+
+Your part is the MSI and, optionally, one small file. Everything that changes later lives at a
+URL the BIM coordinator owns (§11.2); nothing here is AnalyseTool-specific machinery.
+
+**1. The plugin.** Put `AnalyseTool-<version>-MultiUser.msi` on a share readable by domain
+computers. In the GPO linked to the BIM workstations OU: *Computer Configuration → Policies →
+Software Settings → Software Installation → New Package*, deployment **Assigned**. The MSI installs
+as SYSTEM at the next boot into `%ProgramData%\Autodesk\Revit\Addins\<year>\`; new versions go in
+through the package's *Upgrades* tab (the MSI carries a major upgrade). This is the one step that
+legitimately needs admin rights: code loaded into Revit must arrive through a trusted path. It is
+silent-install ready for other tools:
+
+```
+msiexec /i AnalyseTool-<version>-MultiUser.msi /qn
+```
+
+**2. The pointer.** Same GPO: *Computer Configuration → Preferences → Windows Settings → Files →
+New File*, action **Replace**, destination `%ProgramData%\AnalyseTool\policy.json`, content:
+
+```json
+{ "version": 1, "policyUrl": "https://git.contoso.com/bim/analysetool/raw/main/policy.json",
+  "enforced": true, "signingKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE…" }
+```
+
+Written once; it changes only if the URL moves. The plugin follows `policyUrl` (an https URL, a
+UNC path, or a `source:` reference) and applies that policy to every user of the machine as their
+organization layer. `enforced: true` means users cannot leave it or join another. `signingKey` is
+the coordinator's public key (§11.2, Signing): with it present, an unsigned or tampered policy is
+refused. A pointer may not point at another pointer.
+
+`enforced` only means something when the target is not user-writable — an https host the user
+does not control, or a share with read-only ACLs. Pointing an enforced policy at a folder under
+the user's own profile is a contradiction the plugin does not detect: the user can edit the file.
+
+*Alternative:* put the full policy inline into the same file instead of a pointer. Then every
+change travels through GPO, and the file is trusted by location (no signature involved).
+
+**Intune / Azure AD only.** Same shape: the MSI as a Win32 app (`msiexec /i … /qn`), the pointer
+written by an Intune PowerShell script.
+
+**3. Optional: the AI key.** *Preferences → Environment* (or the login script) for the variable
+named in the policy's `ai.providers[].apiKeyEnv`, for example `ANALYSETOOL_AI_KEY`. The plugin
+reads it at call time and never stores it.
+
+**4. Optional: pre-installed packages.** *Preferences → Folders/Files* can drop ready extension
+packages into `%ProgramData%\AnalyseTool\extensions-dist\<id>\` — the unpacked package layout
+from §2 (`plugin.json` at the root, DLLs in `<year>\`). That root is scanned read-only for every
+user of the machine (a **machine** badge; no install, update or uninstall there) and is first in
+load order, so a machine copy wins over a user-installed one with the same id. Use it only when an
+extension must not be user-writable; otherwise `extensions.required` plus a feed keeps updates in
+the coordinator's hands without an IT ticket.
+
+**Verify a seat** without opening Revit, with the CLI that ships next to the plugin
+(`<plugin>\cli\AnalyseTool.Cli.exe`):
+
+```
+AnalyseTool.Cli policy show     # the effective configuration with the origin of every setting
+AnalyseTool.Cli org status      # joined where, enforced, signed, last fetch
+AnalyseTool.Cli ext list        # installed extensions per zone
+AnalyseTool.Cli diag collect    # a zip of logs, versions, policy and extension list for support
+```
+
+### 11.4 For everyone else: joining your company's configuration
+
+If you installed the plugin yourself — the SingleUser MSI, no admin rights, a contractor's
+laptop — there is no machine file. You adopt the company's configuration from Settings, and you
+can drop it again.
+
+**Join.** *AnalyseTool tab → Settings → Organization → Join organization…* and enter one of:
+
+| You type | The plugin tries |
+| --- | --- |
+| a full `https://` URL | that URL as is |
+| a domain, `contoso.com` | `https://contoso.com/.well-known/analysetool/policy.json` |
+| a folder, `\\server\bim\analysetool` or a synced library path | `policy.json` in that folder |
+| a `source:` reference | the named source |
+| nothing | the well-known URL of the domain this computer is joined to, then a marker file (`analysetool-source.json`) across your synced OneDrive folders |
+
+**The preview is the consent.** Before anything is applied you see the organization's name and
+contact, whether the policy is signed (and the key's fingerprint, to compare with what your
+coordinator told you), which settings become locked, which folders and catalog are added, which
+extensions will be installed and from where, and the AI, logging and telemetry sections as they
+are. Nothing is applied until you confirm. Then the policy takes effect, required extensions
+install in the background, and the panel reads *Managed by <name>*. A policy that does not name an
+organization and a contact cannot be joined.
+
+**Leave.** *Leave organization* forgets the membership, releases the locks and gives your own
+settings back — they were never overwritten. Extensions that were installed because the policy
+required them are listed so you can uninstall them; nothing is removed for you. If the computer's
+administrator set the organization (§11.3, `enforced`), Join and Leave are both refused.
+
+**Joining at install time.** A coordinator can hand you a command line that joins before Revit
+ever starts:
+
+```
+msiexec /i AnalyseTool-<version>-SingleUser.msi POLICYURL=https://git.contoso.com/bim/analysetool/raw/main/policy.json /qn
+```
+
+**One MSI per machine.** The SingleUser and MultiUser installers must not coexist on one
+machine — Revit would load both `.addin` files. If IT deployed the MultiUser MSI, do not install
+the SingleUser one on top.
+
+**What a required extension means.** It cannot be disabled or uninstalled while you are joined
+(the Extensions window shows a **required** badge instead of those actions), it updates itself
+when the company publishes a new version, and if you had disabled it before joining it is
+switched back on. Everything else in the Extensions window works as before.
+
+### 11.5 The `policy.json` reference
+
+The full schema is `docs/policy.schema.json`; this is the short form. Every key is optional.
+
+| Key | Meaning |
+| --- | --- |
+| `version` | Format version; always `1`. |
+| `policyUrl` | Pointer form (machine file only): the real policy lives at this https URL, path or `source:` reference. Nothing else in the file matters then; pointers do not chain. |
+| `enforced` | Pointer form: users cannot leave or join another organization. |
+| `signingKey` | Pointer form: base64 SubjectPublicKeyInfo (ECDSA P-256). With it, the policy at `policyUrl` must carry a valid `policy.json.sig`. |
+| `organization.name`, `organization.contact` | Shown as "Managed by …"; both required for a policy people join. |
+| `minimumVersion` | Seats below it see the minimum in Settings and via the CLI. |
+| `update.downloadUrl`, `update.sha256` | Where the installer is and its hash. |
+| `locked[]` | Settings the user may not change: `codeExecution.enabled`, `extensions.roots`, `mcp.enabled`. Anything set but not listed is a default. |
+| `codeExecution.enabled` | Ad-hoc C# execution in the Revit process. Recommended: `false` and locked. |
+| `mcp.enabled` | Whether the in-Revit MCP bridge may run. |
+| `sources.<name>` | A named location: exactly one of `sharepoint` (library URL), `path` (UNC or local, `%ENV%`), `url` (https base); plus `markerId` and `syncUrl` for a SharePoint library. Referenced as `source:<name>/<relative>`. |
+| `extensions.roots[]` | Extra folders every seat scans, as dev zone, not removable. `%ENV%` and `source:` resolved. |
+| `extensions.catalogUrl` | Your catalog (`catalog.json` shape), https or path; merged after the shipped one and before the user's. |
+| `extensions.allowedFeeds[]` | Prefix whitelist for feeds and install sources (`github:owner/`, `https://host/path/`). Absent = all. Also constrains the package host. |
+| `extensions.required[]` | `{ id, source?, sha256? }`: installed when missing, updated when newer, never disabled or removed. |
+| `extensions.allowInstallFromRepository` | `false` hides the free-form paste; the catalog still works. |
+| `ai.providers[]` | `{ id, name?, type?, baseUrl, apiKeyEnv?, timeoutSeconds? }` — managed providers; key from the environment or a gateway. |
+| `ai.allowUserProviders` | `false` hides the user's own providers and refuses new ones; deletes nothing. |
+| `logging.sink`, `logging.level` | A second daily log file; `{user}`, `{machine}`, `%ENV%` expanded. |
+| `telemetry.sink` | https NDJSON endpoint or a folder. Absent section = nothing is sent. |
+| `telemetry.identity` | `hashed` (default, per-seat hash) or `user` (names). |
+| `telemetry.events[]` | `inventory`, `command`, `ai`. Absent = `inventory` only. |
+
+---
+
 ## Reference: the SDK surface
 
 ```csharp
@@ -957,6 +1430,34 @@ public interface IProgressAware
 {
     IProgress<ProgressInfo>? Progress { get; set; }
 }
+
+// OPTIONAL (SDK 1.3+): read-only access to the company policy (§11) and the company's telemetry sink.
+// Both are static, registered by the host at startup; RegisterReader / RegisterSink are host-only.
+public static class HostPolicy
+{
+    public static string? GetSectionJson(string section);   // the top-level section as JSON text, or null
+    public static T?      GetSection<T>(string section);    // deserialized, or default when absent/unreadable
+}
+
+public static class HostTelemetry
+{
+    // No-op unless the policy names a telemetry sink AND lists eventKind in telemetry.events.
+    // Never throws, never blocks. Pass names, numbers and outcomes — never model data.
+    public static void Emit(string eventKind, IReadOnlyDictionary<string, object?> properties);
+}
+```
+
+An extension reads its own section of `policy.json` — a top-level key named after the extension,
+which the host neither knows nor validates — instead of shipping a second configuration channel.
+`null` means no policy, or no such section; it never throws:
+
+```csharp
+internal sealed record AcmeStandards(string? Server, bool Strict);
+
+// In policy.json: { "acme.standards": { "server": "https://std.acme.local", "strict": true } }
+AcmeStandards? standards = HostPolicy.GetSection<AcmeStandards>("acme.standards");
+string server = standards?.Server ?? "https://std.acme.local";   // your default when no policy applies
+HostTelemetry.Emit("acme.standards.check", new Dictionary<string, object?> { ["outcome"] = "ok", ["durationMs"] = 42 });
 ```
 
 The working reference implementation is `samples/Acme.Sample/` — copy it as a starting point.

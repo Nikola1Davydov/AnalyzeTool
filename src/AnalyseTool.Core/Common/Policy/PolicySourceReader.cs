@@ -142,6 +142,24 @@ namespace AnalyseTool.Core.Common.Policy
             }
         }
 
+        /// <summary>Downloads a binary (an installer) into the download cache and returns its path.
+        /// https only — the caller verifies the hash the policy pins.</summary>
+        public static async Task<string> DownloadFileAsync(string url, string fileName, CancellationToken ct)
+        {
+            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Refusing non-https download: {url}");
+            string dir = Path.Combine(PathProvider.ProfilePath, "cache", "downloads");
+            Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, fileName);
+            using HttpRequestMessage request = new(HttpMethod.Get, url);
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue(SharedData.ToolData.PLUGIN_NAME, SharedData.ToolData.PLUGIN_VERSION));
+            using HttpResponseMessage response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+            await using (FileStream target = File.Create(file))
+                await response.Content.CopyToAsync(target, ct);
+            return file;
+        }
+
         private static string CacheBodyPath(string url)
         {
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(url.Trim().ToLowerInvariant())))[..24];

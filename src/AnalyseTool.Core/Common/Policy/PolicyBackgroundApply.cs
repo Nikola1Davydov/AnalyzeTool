@@ -53,6 +53,19 @@ namespace AnalyseTool.Core.Common.Policy
             catch (Exception ex) { Log.Debug(ex, "Inventory event skipped"); }
         }
 
+        /// <summary>One pass, awaited: the CLI's <c>org join</c> runs it inline.</summary>
+        public static async Task<bool> RunOnceAsync(CancellationToken ct)
+        {
+            // The organization layer first: everything below reads the merged policy.
+            bool policyChanged = await OrgPolicySource.RefreshAsync(ct);
+            await ExtensionSourceCatalog.RefreshPolicyCatalogAsync(ct);
+            bool changed = await RequiredExtensions.ApplyAsync(ct) || policyChanged;
+            if (changed)
+                CoreServices.ReloadExtensions(); // thread-safe; ribbon subscribers hop to the UI thread themselves; no-op headless
+            ReportInventory();
+            return changed;
+        }
+
         private static async Task RunAsync(TimeSpan delay)
         {
             try
@@ -60,16 +73,7 @@ namespace AnalyseTool.Core.Common.Policy
                 // Let Revit finish drawing its ribbon before any I/O.
                 await Task.Delay(delay);
                 using CancellationTokenSource cts = new(TimeSpan.FromMinutes(5));
-
-                // The organization layer first: everything below reads the merged policy.
-                bool policyChanged = await OrgPolicySource.RefreshAsync(cts.Token);
-                await ExtensionSourceCatalog.RefreshPolicyCatalogAsync(cts.Token);
-                bool changed = await RequiredExtensions.ApplyAsync(cts.Token) || policyChanged;
-
-                if (changed)
-                    CoreServices.ReloadExtensions(); // thread-safe; ribbon subscribers hop to the UI thread themselves
-
-                ReportInventory();
+                await RunOnceAsync(cts.Token);
                 lock (Gate) { _lastError = null; _lastCompleted = DateTimeOffset.Now; }
             }
             catch (Exception ex)

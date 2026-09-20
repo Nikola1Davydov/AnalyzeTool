@@ -718,6 +718,27 @@ the user to pick one.
 
 ---
 
+## 9a. Company policy and telemetry (SDK 1.3+, optional)
+
+A company may distribute one `policy.json` to its seats (locks, required extensions, AI endpoint).
+An extension can read **its own top-level section** of that file — named after the extension — instead
+of inventing a second configuration channel:
+
+```csharp
+internal sealed record AcmeStandards(string? Server, bool Strict);
+// policy.json: { "acme.standards": { "server": "https://std.acme.local", "strict": true } }
+AcmeStandards? cfg = AnalyseTool.Sdk.HostPolicy.GetSection<AcmeStandards>("acme.standards");
+string server = cfg?.Server ?? "https://std.acme.local";   // ALWAYS have a default: cfg is null without a policy
+```
+
+- `HostPolicy.GetSection<T>(name)` returns **null** when no policy is present or the section is absent
+  or unparsable; it never throws. `GetSectionJson(name)` gives the raw JSON. Read only — never write.
+- `HostTelemetry.Emit(kind, props)` reports an event to the **company's** sink. It is a **no-op** unless
+  the company's policy turned telemetry on and listed that kind; never throws, never blocks. Pass
+  names, durations and outcomes only — never model data, file names or element names.
+
+---
+
 ## 10. Checklist for a generated extension
 
 - [ ] A compiled C# project — not a script — unless a script was explicitly requested (§1, §5).

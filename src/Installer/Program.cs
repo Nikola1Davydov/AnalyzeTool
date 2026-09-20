@@ -50,6 +50,23 @@ Project project = new Project
 
 WixEntity[] wixEntities = Generator.GenerateWixEntities(versions);
 
+// Joining at install time: POLICYURL (and optionally POLICYKEY) on the msiexec command line — see
+// PolicyActions. Public (upper-case) so they can be passed from the command line; deferred so the
+// file is written with the install's own rights; UsesProperties hands them into the deferred context.
+project.Properties = new[]
+{
+    new Property("POLICYURL", string.Empty),
+    new Property("POLICYKEY", string.Empty),
+};
+project.Actions = new WixSharp.Action[]
+{
+    new ManagedAction(PolicyActions.WriteMembership, Return.check, When.After, Step.InstallFiles, Condition.NOT_Installed)
+    {
+        Execute = Execute.deferred,
+        UsesProperties = "POLICYURL,POLICYKEY,ALLUSERS",
+    },
+};
+
 BuildSingleUserMsi();
 BuildMultiUserUserMsi();
 

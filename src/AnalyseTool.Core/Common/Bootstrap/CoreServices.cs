@@ -50,6 +50,14 @@ namespace AnalyseTool.Core.Common.Bootstrap
             RegisterSdkHooks();
         }
 
+        /// <summary>The CLI's entry: no queue, no loader — commands that need them are not offered there.
+        /// Sets the Revit year the catalog and installer scope by, and the Sdk hooks.</summary>
+        public static void InitializeHeadless(string revitVersion)
+        {
+            RevitVersion = revitVersion;
+            RegisterSdkHooks();
+        }
+
         /// <summary>The Sdk's static hooks (SDK 1.3): extensions and Tools read policy sections and emit
         /// telemetry through them without a reference to Core. Safe to call more than once.</summary>
         public static void RegisterSdkHooks()

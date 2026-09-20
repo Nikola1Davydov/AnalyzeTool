@@ -1,5 +1,6 @@
 using AnalyseTool.Core.Common;
 using AnalyseTool.Core.Common.Policy;
+using Newtonsoft.Json.Linq;
 using Serilog;
 using Serilog.Events;
 using System.IO;
@@ -78,7 +79,7 @@ namespace AnalyseTool.App.Common
             level = LogEventLevel.Information;
             try
             {
-                Newtonsoft.Json.Linq.JObject? logging = PolicyStore.Current.IsPresent ? PolicyStore.Current.Document.Logging : null;
+                JObject? logging = PolicyStore.Current.IsPresent ? PolicyStore.Current.Document.Logging : null;
                 string? sink = logging?["sink"]?.Value<string>();
                 if (string.IsNullOrWhiteSpace(sink)) return null;
                 if (Enum.TryParse(logging?["level"]?.Value<string>(), ignoreCase: true, out LogEventLevel parsed)) level = parsed;

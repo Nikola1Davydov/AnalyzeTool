@@ -47,6 +47,11 @@
       <Private>false</Private>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <!-- Build order only, same reason: the CLI tests start the exe from its build output. -->
+    <ProjectReference Include="..\AnalyseTool.Cli\AnalyseTool.Cli.csproj">
+      <Private>false</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

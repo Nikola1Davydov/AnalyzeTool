@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
 
   <!--
     Shared plugin-folder assets, imported by BOTH plugin-shaped outputs:
@@ -31,6 +31,27 @@
       <ATMcpFiles Include="$(ATMcpPublishDir)**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(ATMcpFiles)" DestinationFolder="$(OutputPath)\mcp\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- The command line into Core (AnalyseTool.Cli) ships INSIDE the plugin folder, next to
+       AnalyseTool.Core.dll, so it resolves Core and every shared dependency from there: only the exe,
+       its dll, deps.json and runtimeconfig.json are copied. Built with the same configuration, so the
+       TFM matches the folder's. -->
+  <PropertyGroup>
+    <ATCliProject>$(MSBuildThisFileDirectory)AnalyseTool.Cli\AnalyseTool.Cli.csproj</ATCliProject>
+  </PropertyGroup>
+  <Target Name="ATBuildAndCopyCli" AfterTargets="Build" BeforeTargets="CopyToRevitFolder">
+    <Message Text="Building AnalyseTool.Cli into the plugin folder..." Importance="high" />
+    <MSBuild Projects="$(ATCliProject)" Properties="Configuration=$(Configuration)" Targets="Build">
+      <Output TaskParameter="TargetOutputs" ItemName="ATCliAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <ATCliFiles Include="@(ATCliAssembly->'%(RootDir)%(Directory)AnalyseTool.Cli.exe')" />
+      <ATCliFiles Include="@(ATCliAssembly->'%(RootDir)%(Directory)AnalyseTool.Cli.dll')" />
+      <ATCliFiles Include="@(ATCliAssembly->'%(RootDir)%(Directory)AnalyseTool.Cli.deps.json')" />
+      <ATCliFiles Include="@(ATCliAssembly->'%(RootDir)%(Directory)AnalyseTool.Cli.runtimeconfig.json')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ATCliFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="Exists('%(FullPath)')" />
   </Target>
 
   <!-- The compiled web frontend (clientapp/dist) is served from the plugin folder in Release. -->

@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using System.IO;
 
 namespace AnalyseTool.Core.Common.Policy
@@ -57,7 +58,7 @@ namespace AnalyseTool.Core.Common.Policy
                 string marker = Path.Combine(root, PolicySourceResolver.MarkerFileName);
                 if (File.Exists(marker))
                 {
-                    string? policy = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(marker))["policy"]?.Value<string>();
+                    string? policy = JObject.Parse(File.ReadAllText(marker))["policy"]?.Value<string>();
                     if (!string.IsNullOrWhiteSpace(policy))
                     {
                         string full = Path.IsPathRooted(policy) ? policy : Path.Combine(root, policy);

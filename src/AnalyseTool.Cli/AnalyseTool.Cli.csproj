@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AnalyseTool.Cli — the second entry point into Core (design §6): what an administrator or a BIM
+    coordinator runs WITHOUT opening Revit. Validates and signs policies, installs and lists extensions,
+    joins or inspects an organization, collects diagnostics, and finishes a per-user self-update once
+    Revit has exited.
+
+    References Core + Sdk only — the same caller position as Mcp.Bridge (Check-Boundaries.ps1). Core is
+    headless and takes the Revit API compile-only through the shared props, so this exe never loads
+    Revit. It ships INSIDE the plugin folder (PluginAssets.targets copies the exe, its dll, deps and
+    runtimeconfig next to AnalyseTool.Core.dll) and resolves Core and the rest from there — no second
+    copy of Roslyn, Newtonsoft or Serilog.
+  -->
+  <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AnalyseTool.Cli</AssemblyName>
+    <RootNamespace>AnalyseTool.Cli</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RollForward>Major</RollForward>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+  </ItemGroup>
+
+  <!-- SharedData is NOT imported: Core grants this assembly InternalsVisibleTo, and a second internal
+       ToolData would be CS0433. ToolData is read through Core. -->
+
+</Project>

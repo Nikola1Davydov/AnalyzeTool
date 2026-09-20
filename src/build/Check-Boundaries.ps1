@@ -30,6 +30,7 @@ $contract = @{
     'AnalyseTool.Mcp.Bridge' = @('AnalyseTool.Core', 'AnalyseTool.Sdk')
     'AnalyseTool.App'        = @('AnalyseTool.Core', 'AnalyseTool.Mcp.Bridge', 'AnalyseTool.Sdk', 'AnalyseTool.Tools')
     'AnalyseTool.Mcp'        = @()
+    'AnalyseTool.Cli'        = @('AnalyseTool.Core', 'AnalyseTool.Sdk')
 }
 
 foreach ($name in $contract.Keys) {
@@ -72,5 +73,5 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Dependency contract OK: Tools->Sdk, Core->Sdk, Mcp.Bridge->Core+Sdk, App->Core+Tools+Mcp.Bridge+Sdk; Core/Tools headless." -ForegroundColor Green
+Write-Host "Dependency contract OK: Tools->Sdk, Core->Sdk, Mcp.Bridge->Core+Sdk, Cli->Core+Sdk, App->Core+Tools+Mcp.Bridge+Sdk; Core/Tools headless." -ForegroundColor Green
 exit 0
