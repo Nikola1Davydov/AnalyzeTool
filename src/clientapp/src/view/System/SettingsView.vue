@@ -85,6 +85,20 @@ interface PolicyStatus {
 }
 const policy = ref<PolicyStatus | null>(null);
 const policyBusy = ref(false);
+const selfUpdateBusy = ref(false);
+
+/** Downloads the organization's installer, verifies its pin and schedules it for when Revit exits. */
+async function startSelfUpdate() {
+  selfUpdateBusy.value = true;
+  try {
+    const res = await invoke<{ scheduled: boolean; message: string }>("StartSelfUpdate", { consent: true });
+    notifications.info(res?.message ?? "Update scheduled. Close Revit to finish it.");
+  } catch (e) {
+    notifications.error(`Could not schedule the update: ${errorText(e)}`);
+  } finally {
+    selfUpdateBusy.value = false;
+  }
+}
 
 /** Not joined and no machine pointer: the seat may join an organization on its own. */
 const canJoin = computed(() => !!policy.value && !policy.value.membership);
@@ -641,6 +655,16 @@ onMounted(async () => {
       >
         <i class="pi pi-download text-xs" />Download
       </a>
+      <!-- Per-user installs only, and only with a sha256 pin: the backend refuses everything else. -->
+      <Button
+        v-if="policy?.update?.downloadUrl && policy?.update?.pinned"
+        label="Install when Revit closes"
+        icon="pi pi-clock"
+        size="small"
+        severity="warn"
+        :loading="selfUpdateBusy"
+        @click="startSelfUpdate"
+      />
     </div>
 
     <!-- 1. AI ---------------------------------------------------------------------------------
