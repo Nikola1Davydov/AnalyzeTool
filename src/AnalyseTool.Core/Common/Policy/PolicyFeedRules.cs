@@ -61,6 +61,13 @@ namespace AnalyseTool.Core.Common.Policy
         /// <summary>Pure form of <see cref="DownloadRefusal"/>.</summary>
         public static bool IsDownloadAllowed(string normalizedFeed, string downloadUrl, IEnumerable<string> allowedFeeds)
         {
+            // A file feed (share, synced library, source: reference) serves files: the package must be a
+            // file too — a feed on disk that redirects the download to the internet is refused.
+            bool fileFeed = ExtensionUpdateFeed.IsFilePath(normalizedFeed) || PolicySourceResolver.IsReference(normalizedFeed);
+            bool fileDownload = ExtensionUpdateFeed.IsFilePath(downloadUrl) || PolicySourceResolver.IsReference(downloadUrl);
+            if (fileFeed) return fileDownload;
+            if (fileDownload) return false;
+
             if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out Uri? download)) return false;
             if (!string.Equals(download.Scheme, "https", StringComparison.OrdinalIgnoreCase)) return false;
 
@@ -81,6 +88,10 @@ namespace AnalyseTool.Core.Common.Policy
         /// name merely starts the same way.</summary>
         public static bool IsAllowed(string normalizedSource, IEnumerable<string> allowedFeeds)
         {
+            // A named source is approved by definition: the policy that declares the whitelist declares
+            // the source. A raw path must be listed as a prefix like any URL.
+            if (PolicySourceResolver.IsReference(normalizedSource)) return true;
+
             foreach (string raw in allowedFeeds)
             {
                 string entry = ExtensionUpdateFeed.Normalize(raw);

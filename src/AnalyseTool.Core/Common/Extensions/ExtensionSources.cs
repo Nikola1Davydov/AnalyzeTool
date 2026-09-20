@@ -91,7 +91,18 @@ namespace AnalyseTool.Core.Common.Extensions
                 if (string.IsNullOrWhiteSpace(raw)) continue;
                 try
                 {
-                    roots.Add(Path.GetFullPath(Environment.ExpandEnvironmentVariables(raw.Trim())));
+                    string? resolved = PolicySourceResolver.Resolve(raw.Trim(), out string? problem);
+                    if (resolved is null)
+                    {
+                        Serilog.Log.Warning("Policy extension root {Root} skipped: {Problem}", raw, problem);
+                        continue;
+                    }
+                    if (resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Serilog.Log.Warning("Policy extension root {Root} is a URL; roots must be folders", raw);
+                        continue;
+                    }
+                    roots.Add(Path.GetFullPath(Environment.ExpandEnvironmentVariables(resolved)));
                 }
                 catch (Exception ex)
                 {

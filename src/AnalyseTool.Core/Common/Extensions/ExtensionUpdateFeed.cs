@@ -1,3 +1,4 @@
+using AnalyseTool.Core.Common.Policy;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -68,11 +69,43 @@ namespace AnalyseTool.Core.Common.Extensions
             if (github.Success)
                 return await ResolveGithubAsync(github.Groups["owner"].Value, github.Groups["repo"].Value, extensionId, ct);
 
+            // A policy source reference (source:name/…) or a file-system path: the same {version,
+            // downloadUrl} JSON, read from disk (a share, a synced SharePoint library). A relative
+            // downloadUrl is resolved against the feed's own folder.
+            if (PolicySourceResolver.IsReference(feed) || IsFilePath(feed))
+            {
+                string? resolved = PolicySourceResolver.Resolve(feed, out string? problem);
+                if (resolved is null) throw new InvalidOperationException(problem ?? $"Cannot resolve '{feed}'.");
+                if (resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    return await ResolveJsonFeedAsync(resolved, ct);
+                return await ResolveFileFeedAsync(PolicySourceReader.ResolvePath(resolved), ct);
+            }
+
             if (feed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 return await ResolveJsonFeedAsync(feed, ct);
 
             throw new InvalidOperationException(
-                $"Unsupported updateFeed '{feed}' — expected 'github:owner/repo' or an https:// URL.");
+                $"Unsupported updateFeed '{feed}' — expected 'github:owner/repo', an https:// URL, a file path or a source: reference.");
+        }
+
+        /// <summary>A UNC path, a drive-rooted path, or one starting with an environment variable.</summary>
+        public static bool IsFilePath(string value) =>
+            value.StartsWith(@"\\") || value.Length > 2 && value[1] == ':' || value.StartsWith('%');
+
+        private static async Task<ExtensionUpdateInfo> ResolveFileFeedAsync(string path, CancellationToken ct)
+        {
+            if (!System.IO.File.Exists(path))
+                throw new InvalidOperationException($"The update feed '{path}' was not found.");
+            string json = await System.IO.File.ReadAllTextAsync(path, ct);
+            JsonFeed? feed = JsonConvert.DeserializeObject<JsonFeed>(json);
+            if (feed is null || string.IsNullOrWhiteSpace(feed.Version) || string.IsNullOrWhiteSpace(feed.DownloadUrl))
+                throw new InvalidOperationException(
+                    $"The update feed '{path}' did not contain the expected {{\"version\", \"downloadUrl\"}} JSON.");
+
+            string download = feed.DownloadUrl!;
+            if (!download.StartsWith("https://", StringComparison.OrdinalIgnoreCase) && !System.IO.Path.IsPathRooted(download))
+                download = System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(path)!, download));
+            return new ExtensionUpdateInfo(feed.Version!, download, feed.ReleaseUrl);
         }
 
         private static async Task<ExtensionUpdateInfo> ResolveGithubAsync(
@@ -132,15 +165,30 @@ namespace AnalyseTool.Core.Common.Extensions
             return await response.Content.ReadAsStringAsync(ct);
         }
 
-        /// <summary>Downloads the vendor's package to a local temp file and returns its path.</summary>
+        /// <summary>Downloads the vendor's package to a local temp file and returns its path. A file
+        /// path (a share, a synced library) is copied into the same cache — the installer then works
+        /// on a local file whatever the sync client is doing to the original.</summary>
         public static async Task<string> DownloadPackageAsync(string url, string extensionId, CancellationToken ct)
         {
-            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException($"Refusing non-https download URL: {url}");
-
             string dir = System.IO.Path.Combine(PathProvider.ProfilePath, "cache", "downloads");
             System.IO.Directory.CreateDirectory(dir);
             string file = System.IO.Path.Combine(dir, extensionId + ".zip");
+
+            if (IsFilePath(url) || PolicySourceResolver.IsReference(url))
+            {
+                string? resolved = PolicySourceResolver.Resolve(url, out string? problem);
+                if (resolved is null) throw new InvalidOperationException(problem ?? $"Cannot resolve '{url}'.");
+                string sourcePath = PolicySourceReader.ResolvePath(resolved);
+                if (!System.IO.File.Exists(sourcePath))
+                    throw new InvalidOperationException($"The package '{sourcePath}' was not found.");
+                await using (System.IO.FileStream from = System.IO.File.OpenRead(sourcePath))
+                await using (System.IO.FileStream to = System.IO.File.Create(file))
+                    await from.CopyToAsync(to, ct);
+                return file;
+            }
+
+            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Refusing non-https download URL: {url}");
 
             using HttpRequestMessage request = new(HttpMethod.Get, url);
             request.Headers.UserAgent.Add(

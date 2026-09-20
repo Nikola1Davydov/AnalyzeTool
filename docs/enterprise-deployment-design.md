@@ -664,26 +664,26 @@ to validate a file before it reaches hundreds of seats, and that is before Join 
 Phase 3a — policy sources and discovery (no join yet; everything the machine pointer and Join
 will share).
 
-- [ ] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds
-- [ ] `HttpClient` with system proxy + default Windows credentials, per-request timeouts
-- [ ] Named sources: `sources.<name>` with `sharepoint` / `path` / `url`, referenced as `source:<name>/<relative>` from roots, `required`, `catalogUrl`, pointer
-- [ ] SharePoint source resolver: OneDrive registry + settings `.ini` mapping (step 1), marker-file scan across mount points (step 2), `sourceOverrides` in the user layer (step 3)
-- [ ] Pointer with `enforced` at a user-writable target is reported as a policy problem
-- [ ] Fetch with `If-None-Match` / file timestamp; cache under the user profile; offline keeps cache
-- [ ] Machine pointer form `{ policyUrl, enforced }` resolved through the source abstraction (completes the phase-1 placeholder)
-- [ ] Discovery: URL / domain / path / `USERDNSDOMAIN`; DNS TXT `_analysetool.<domain>`, `/.well-known/analysetool/policy.json`, synced-folder scan (`%USERPROFILE%\*\* - Documents\AnalyseTool`, `%OneDriveCommercial%`)
-- [ ] `ExtensionUpdateFeed`: file-system feeds, relative `downloadUrl`; install-from-folder copies into `extensions-dist`
-- [ ] Files On-Demand: reads with timeout off the UI thread, "downloading from OneDrive…" status
-- [ ] `organization.name` / `contact` required for a joinable policy
-- [ ] Tier-1 tests: input parsing, `%ENV%` expansion, `http://` refusal, refresh cases (unchanged / changed / failure), relative feed paths
+- [x] Policy source abstraction: `https://` **or** file-system path with `%ENV%` expansion; `http://` refused; shared by pointer, Join, `catalogUrl`, feeds (phase 2's `PolicySourceReader`)
+- [x] `HttpClient` with system proxy + default Windows credentials, per-request timeouts
+- [x] Named sources: `sources.<name>` with `sharepoint` / `path` / `url`, referenced as `source:<name>/<relative>` from roots, `required`, `catalogUrl`, pointer (`PolicySourceResolver`)
+- [x] SharePoint source resolver: OneDrive settings `.ini` mapping (step 1), marker-file scan across mount points (step 2), `sources.json` overrides in the user layer (step 3, `SetSourceLocation`)
+- [ ] Pointer with `enforced` at a user-writable target is reported as a policy problem (deferred: needs an ACL check; documented instead)
+- [x] Fetch with `If-None-Match`; cache under the user profile; offline keeps cache; the final location after redirects is recorded
+- [x] Machine pointer form `{ policyUrl, enforced, signingKey }` followed as the organization layer (`PolicyStore.LoadLayered`)
+- [x] Discovery: URL / domain / path / `source:` / `USERDNSDOMAIN` well-known URL / marker file across OneDrive mount points. DNS TXT deferred (no TXT resolver in the BCL; the well-known URL covers the same need)
+- [x] `ExtensionUpdateFeed`: file-system and `source:` feeds, relative `downloadUrl`; packages copied into the download cache before install
+- [x] Files On-Demand: policy reads are async with a token off the UI thread (status text is the UI phase)
+- [x] `organization.name` / `contact` required for a joinable policy
+- [x] Tier-1 tests: reference parsing, path/url/unknown/unresolved sources, override, library URL matching, ini line parsing, marker scan, discovery candidates
 
 Phase 3b — Join organization (the organization layer, on top of 3a).
 
-- [ ] `org.json` model + `OrgPolicySource` loader in `PolicyStore`; three-layer merge with `Origin`
-- [ ] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `GetOrganizationStatus`
-- [ ] Preview model listing changes, locks, extensions to install, AI endpoint, log sink, telemetry sink
-- [ ] Host change invalidates the join and asks again; `enforced` hides Leave
-- [ ] `minimumVersion` banner + `GetOrganizationStatus` reports version
+- [x] `org.json` model + `OrgPolicySource` (fetch, verify, refresh) + `PolicyStore.LoadLayered` / `Merge` with `LayerOf`
+- [x] Commands `DiscoverOrganizationPolicy`, `JoinOrganization`, `LeaveOrganization`, `SetSourceLocation`; status folded into `GetPolicyStatus` (`membership`, `layers`, `sources`)
+- [x] Preview model listing organization, signature state, locks, settings, roots, catalog, whitelist, required extensions, sources, and the raw ai / telemetry / logging sections
+- [x] Host change (after redirects) is a refresh problem, never followed silently; `PointerEnforced` refuses Join and Leave
+- [x] `minimumVersion`: `GetPolicyStatus.belowMinimumVersion` + `update` block (banner is the UI phase)
 - [ ] Organization panel: "Where is <source> on this computer?" folder picker (writes `sourceOverrides`) and **Connect the library** via `sources.<name>.syncUrl` when unresolved
 - [ ] Installer: `POLICYURL` property writes `org.json` at install time (SingleUser and MultiUser MSI)
 - [ ] `enforced` accepted only for non-user-writable sources; otherwise reported as a policy problem
@@ -691,9 +691,9 @@ Phase 3b — Join organization (the organization layer, on top of 3a).
 
 Phase 3c — policy signing (right after Join, before telemetry).
 
-- [ ] Detached signature next to `policy.json`; public key / fingerprint delivered via the machine pointer, the invite link, or typed once at Join
-- [ ] Unsigned or mismatching policy: refused for the organization layer when a key is known; machine layer inline form exempt (trusted by location)
-- [ ] Tier-1 tests: good signature, tampered file, missing signature with and without a known key
+- [x] Detached `policy.json.sig` (ECDSA P-256, SHA-256, DER); key via the machine pointer's `signingKey` or typed at Join; fingerprint shown (`PolicySignature`)
+- [x] Unsigned or mismatching policy refused for the organization layer when a key is known; the inline machine file is trusted by location
+- [x] Tier-1 tests: good signature, tampered file, wrong key, missing signature with and without a known key, folder fetch
 
 Phase 4 — Sdk contract and Tools.
 

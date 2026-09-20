@@ -47,8 +47,8 @@ namespace AnalyseTool.Core.Common.Policy
             if (string.IsNullOrWhiteSpace(source)) return "A source is required.";
             if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                 return $"'{source}' is plain http. A policy source must be https or a file-system path.";
-            if (source.StartsWith("source:", StringComparison.OrdinalIgnoreCase))
-                return $"'{source}' names a policy source; named sources are not supported by this plugin version yet.";
+            if (PolicySourceResolver.IsReference(source) && PolicySourceResolver.Parse(source)!.Value.Name.Length == 0)
+                return $"'{source}' names no source.";
             return null;
         }
 
@@ -61,6 +61,9 @@ namespace AnalyseTool.Core.Common.Policy
         public static PolicySourceContent? ReadCached(string source)
         {
             if (Validate(source) is not null) return null;
+            string? resolved = PolicySourceResolver.Resolve(source, out _);
+            if (resolved is null) return null;
+            source = resolved;
 
             if (!IsUrl(source))
             {
@@ -79,6 +82,9 @@ namespace AnalyseTool.Core.Common.Policy
         {
             string? invalid = Validate(source);
             if (invalid is not null) return (null, invalid);
+            string? resolved = PolicySourceResolver.Resolve(source, out string? unresolved);
+            if (resolved is null) return (null, unresolved);
+            source = resolved;
 
             if (!IsUrl(source))
             {
@@ -112,8 +118,11 @@ namespace AnalyseTool.Core.Common.Policy
                 }
 
                 using HttpResponseMessage response = await Http.SendAsync(request, ct);
+                // Where the bytes actually came from — after redirects. A policy that moved to another
+                // host is a decision for the user, not something to follow quietly.
+                string location = response.RequestMessage?.RequestUri?.ToString() ?? source;
                 if (response.StatusCode == System.Net.HttpStatusCode.NotModified && File.Exists(bodyPath))
-                    return (new PolicySourceContent(File.ReadAllText(bodyPath), FromCache: true, source), null);
+                    return (new PolicySourceContent(File.ReadAllText(bodyPath), FromCache: true, location), null);
 
                 response.EnsureSuccessStatusCode();
                 string text = await response.Content.ReadAsStringAsync(ct);
@@ -121,7 +130,7 @@ namespace AnalyseTool.Core.Common.Policy
                 Directory.CreateDirectory(CacheDir);
                 File.WriteAllText(bodyPath, text);
                 File.WriteAllText(etagPath, response.Headers.ETag?.ToString() ?? string.Empty);
-                return (new PolicySourceContent(text, FromCache: false, source), null);
+                return (new PolicySourceContent(text, FromCache: false, location), null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

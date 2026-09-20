@@ -65,6 +65,41 @@ namespace AnalyseTool.Core.Features.Policy
                     },
                 },
                 machineExtensionsRoot = PathProvider.MachineExtensionsDistRoot,
+                belowMinimumVersion = IsBelow(SharedData.ToolData.PLUGIN_VERSION, doc.MinimumVersion),
+                update = doc.Update is null ? null : new { doc.Update.DownloadUrl, pinned = doc.Update.Sha256 is not null },
+                // The organization layer: joined by the user, or set by the machine pointer.
+                membership = policy.Membership is null ? null : new
+                {
+                    policyUrl = policy.Membership.PolicyUrl,
+                    enforced = policy.PointerEnforced,
+                    organization = policy.Membership.OrganizationName,
+                    fetchedAt = policy.Membership.FetchedAt,
+                    applied = policy.Organization is not null,
+                    signed = policy.Membership.SigningKey is not null,
+                    signingKeyFingerprint = PolicySignature.Fingerprint(policy.Membership.SigningKey),
+                    lastRefreshProblem = PolicyStore.OrgRefreshProblem,
+                },
+                layers = new
+                {
+                    machine = policy.Machine.CodeExecution is not null || policy.Machine.Extensions is not null || policy.Machine.Mcp is not null || policy.Machine.IsPointer,
+                    organization = policy.Organization is not null,
+                    codeExecution = policy.LayerOf("codeExecution"),
+                    extensions = policy.LayerOf("extensions"),
+                    mcp = policy.LayerOf("mcp"),
+                },
+                sources = new
+                {
+                    declared = doc.Sources?.Select(kv => new
+                    {
+                        name = kv.Key,
+                        kind = kv.Value.Url is not null ? "url" : kv.Value.Path is not null ? "path" : "sharepoint",
+                        sharepoint = kv.Value.Sharepoint,
+                        syncUrl = kv.Value.SyncUrl,
+                        resolved = PolicySourceResolver.Resolve("source:" + kv.Key, out _),
+                    }),
+                    unresolved = PolicySourceResolver.UnresolvedSources(),
+                    overrides = PolicySourceResolver.CurrentOverrides(),
+                },
                 catalog = new
                 {
                     source = ExtensionSourceCatalog.PolicyCatalogSource,
@@ -78,6 +113,12 @@ namespace AnalyseTool.Core.Features.Policy
                 backgroundApply = new { running = applying, lastCompleted, error = applyError },
             });
         }
+
+        /// <summary>True when the plugin is older than the organization's minimum. Unparseable = false.</summary>
+        internal static bool IsBelow(string plugin, string? minimum) =>
+            !string.IsNullOrWhiteSpace(minimum)
+            && Version.TryParse(plugin, out Version? p) && Version.TryParse(minimum, out Version? m)
+            && p < m;
     }
 
     /// <summary>Re-reads the policy file. For a Settings "Reload" button and for the CLI; an edited

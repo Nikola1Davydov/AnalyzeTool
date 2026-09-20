@@ -27,6 +27,35 @@ namespace AnalyseTool.Core.Common.Policy
     {
         public bool IsPresent => Origin == PolicyOrigin.Loaded;
 
+        /// <summary>The machine file as read (inline form), or empty. <see cref="Document"/> is the merge.</summary>
+        public PolicyDocument Machine { get; init; } = new();
+
+        /// <summary>The organization policy the seat joined (or the machine pointer targets), or null.</summary>
+        public PolicyDocument? Organization { get; init; }
+
+        /// <summary>The membership record behind <see cref="Organization"/>, or null.</summary>
+        public OrgMembership? Membership { get; init; }
+
+        /// <summary>The machine file is a pointer: the organization layer is mandatory and Leave is refused.</summary>
+        public bool PointerEnforced { get; init; }
+
+        /// <summary>Which layer supplies a top-level section: "machine", "organization" or null.</summary>
+        public string? LayerOf(string section)
+        {
+            if (Has(Machine, section)) return "machine";
+            if (Organization is not null && Has(Organization, section)) return "organization";
+            return null;
+
+            static bool Has(PolicyDocument d, string section) => section switch
+            {
+                "codeExecution" => d.CodeExecution is not null,
+                "extensions" => d.Extensions is not null,
+                "mcp" => d.Mcp is not null,
+                "sources" => d.Sources is not null,
+                _ => false,
+            };
+        }
+
         /// <summary>The user may not change this setting: it is present in the policy AND listed under
         /// <c>locked</c>. A present-but-unlocked value is only a default.</summary>
         public bool IsLocked(string setting) =>
@@ -80,15 +109,130 @@ namespace AnalyseTool.Core.Common.Policy
         private static PolicyState? _current;
         private static string? _pathOverride;
 
-        /// <summary>The effective policy. Loaded on first access; call <see cref="Reload"/> after the
-        /// file changed.</summary>
+        private static string? _orgRefreshProblem;
+
+        /// <summary>The effective policy: the machine file merged with the organization layer. Loaded
+        /// on first access from local files only; call <see cref="Reload"/> after either changed.</summary>
         public static PolicyState Current
         {
             get
             {
                 lock (Gate)
-                    return _current ??= Load(_pathOverride ?? PathProvider.PolicyPath);
+                    return _current ??= LoadLayered(_pathOverride ?? PathProvider.PolicyPath, _membershipOverride);
             }
+        }
+
+        /// <summary>What the last background refresh of the organization policy reported, if anything.</summary>
+        public static string? OrgRefreshProblem { get { lock (Gate) return _orgRefreshProblem; } }
+        public static void SetOrgRefreshProblem(string? problem) { lock (Gate) _orgRefreshProblem = problem; }
+
+        private static Func<OrgMembership?>? _membershipOverride;
+
+        /// <summary>Tests only: supply the membership instead of reading org.json.</summary>
+        internal static void OverrideMembershipForTests(Func<OrgMembership?>? membership)
+        {
+            lock (Gate) { _membershipOverride = membership; _current = null; }
+        }
+
+        /// <summary>Machine file + organization layer → one state. Local disk only (the organization
+        /// policy comes from the org.json cache; the background refresh keeps that cache fresh).</summary>
+        public static PolicyState LoadLayered(string machinePath, Func<OrgMembership?>? membershipSource = null)
+        {
+            PolicyState machine = Load(machinePath);
+            List<string> problems = new(machine.Problems);
+
+            OrgMembership? membership = null;
+            bool pointerEnforced = false;
+            if (machine.IsPresent && machine.Document.IsPointer)
+            {
+                // The pointer IS the membership: mandatory when enforced, and never written by the plugin.
+                pointerEnforced = machine.Document.Enforced == true;
+                OrgMembership? stored = (membershipSource ?? OrgMembershipStore.Load)();
+                membership = new OrgMembership
+                {
+                    PolicyUrl = machine.Document.PolicyUrl!.Trim(),
+                    Enforced = pointerEnforced,
+                    SigningKey = machine.Document.SigningKey,
+                    CachedPolicy = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.CachedPolicy : null,
+                    LastLocation = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.LastLocation : null,
+                    FetchedAt = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.FetchedAt : null,
+                    OrganizationName = SameTarget(stored, machine.Document.PolicyUrl!) ? stored!.OrganizationName : null,
+                };
+                problems.RemoveAll(p => p.Contains("policyUrl", StringComparison.Ordinal)); // followed now
+            }
+            else
+            {
+                membership = (membershipSource ?? OrgMembershipStore.Load)();
+            }
+
+            PolicyDocument? org = null;
+            if (membership is not null)
+            {
+                if (membership.HasCachedPolicy)
+                {
+                    try
+                    {
+                        org = JsonConvert.DeserializeObject<PolicyDocument>(membership.CachedPolicy!);
+                        if (org is not null) org.Locked ??= new List<string>();
+                    }
+                    catch (Exception ex)
+                    {
+                        problems.Add($"The cached organization policy could not be parsed: {ex.Message}");
+                    }
+                }
+                else
+                    problems.Add($"Joined '{membership.PolicyUrl}' but its policy has not been fetched yet; it applies once the background refresh succeeds.");
+            }
+
+            PolicyDocument merged = Merge(machine.IsPresent ? machine.Document : new PolicyDocument(), org);
+            bool present = machine.IsPresent || org is not null;
+            return new PolicyState(merged, machine.Path, present ? PolicyOrigin.Loaded : machine.Origin, problems)
+            {
+                Machine = machine.IsPresent ? machine.Document : new PolicyDocument(),
+                Organization = org,
+                Membership = membership,
+                PointerEnforced = pointerEnforced,
+            };
+
+            static bool SameTarget(OrgMembership? stored, string url) =>
+                stored is not null && string.Equals(stored.PolicyUrl, url.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Section-wise: the machine layer supplies a section when it has it, else the
+        /// organization. A setting is locked when the layer that supplies its section locks it.
+        /// Pure — tested directly.</summary>
+        internal static PolicyDocument Merge(PolicyDocument machine, PolicyDocument? org)
+        {
+            if (org is null) return machine;
+
+            PolicyDocument merged = new()
+            {
+                Version = 1,
+                Organization = machine.Organization ?? org.Organization,
+                MinimumVersion = machine.MinimumVersion ?? org.MinimumVersion,
+                Update = machine.Update ?? org.Update,
+                CodeExecution = machine.CodeExecution ?? org.CodeExecution,
+                Extensions = machine.Extensions ?? org.Extensions,
+                Mcp = machine.Mcp ?? org.Mcp,
+                Sources = machine.Sources ?? org.Sources,
+                Locked = new List<string>(),
+            };
+
+            foreach (string setting in PolicySettings.All)
+            {
+                string section = setting[..setting.IndexOf('.')];
+                bool fromMachine = section switch
+                {
+                    "codeExecution" => machine.CodeExecution is not null,
+                    "extensions" => machine.Extensions is not null,
+                    "mcp" => machine.Mcp is not null,
+                    _ => false,
+                };
+                List<string> locks = fromMachine ? machine.Locked : org.Locked;
+                if (locks.Any(l => string.Equals(l, setting, StringComparison.OrdinalIgnoreCase)))
+                    merged.Locked.Add(setting);
+            }
+            return merged;
         }
 
         /// <summary>Drops the cached state so the next read goes back to disk.</summary>
@@ -108,8 +252,8 @@ namespace AnalyseTool.Core.Common.Policy
             }
         }
 
-        /// <summary>Reads and validates one policy file. Pure: no cache, no global state — the unit
-        /// the tier-1 tests exercise.</summary>
+        /// <summary>Reads and validates one policy FILE (the machine layer). Pure: no cache, no global
+        /// state — the unit the tier-1 tests exercise.</summary>
         public static PolicyState Load(string path)
         {
             if (!File.Exists(path))
@@ -142,9 +286,8 @@ namespace AnalyseTool.Core.Common.Policy
                 if (!PolicySettings.All.Any(s => string.Equals(s, locked, StringComparison.OrdinalIgnoreCase)))
                     problems.Add($"'locked' names an unknown setting '{locked}'. Known: {string.Join(", ", PolicySettings.All)}.");
 
-            if (document.IsPointer)
-                problems.Add("This file points at a policy URL (policyUrl). Following pointers is not " +
-                             "supported by this plugin version yet; only the settings in this file apply.");
+            if (document.IsPointer && PolicySourceReader.Validate(document.PolicyUrl!) is string bad)
+                problems.Add($"policyUrl is not usable: {bad}");
 
             foreach (string problem in problems)
                 Log.Warning("Organization policy {Path}: {Problem}", path, problem);

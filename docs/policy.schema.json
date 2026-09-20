@@ -8,9 +8,10 @@
     "version": { "type": "integer", "const": 1 },
     "policyUrl": {
       "type": "string",
-      "description": "Pointer form: the real policy lives at this https URL or file-system path. Followed from plugin phase 3a on."
+      "description": "Pointer form: the real policy lives at this https URL, file-system path or source: reference. The plugin follows it (organization layer, enforced or not)."
     },
-    "enforced": { "type": "boolean", "description": "Pointer form: the user cannot leave the organization." },
+    "enforced": { "type": "boolean", "description": "Pointer form: the user cannot leave the organization. Meaningful only when the target is not user-writable." },
+    "signingKey": { "type": "string", "description": "Pointer form: base64 SubjectPublicKeyInfo (ECDSA P-256). When present the policy at policyUrl must carry a valid policy.json.sig." },
     "organization": {
       "type": "object",
       "properties": {
@@ -82,14 +83,15 @@
     },
     "sources": {
       "type": "object",
-      "description": "Named sources referenced as 'source:<name>/<relative>' anywhere a path or URL is expected. Phase 3a. Exactly one of sharepoint / path / url per entry.",
+      "description": "Named sources referenced as 'source:<name>/<relative>' anywhere a path or URL is expected. Exactly one of sharepoint / path / url per entry.",
       "additionalProperties": {
         "type": "object",
         "properties": {
           "sharepoint": { "type": "string", "description": "Library or folder URL (https://<tenant>.sharepoint.com/sites/<site>/<library>/<folder>); resolved to this machine's OneDrive mount point." },
           "path": { "type": "string", "description": "UNC share or local folder; %ENV% expanded." },
           "url": { "type": "string", "description": "https base URL." },
-          "markerId": { "type": "string", "description": "Fallback: id inside analysetool-source.json at the folder root, found by scanning OneDrive mount points." }
+          "markerId": { "type": "string", "description": "Fallback: id inside analysetool-source.json at the folder root, found by scanning OneDrive mount points." },
+          "syncUrl": { "type": "string", "description": "The odopen:// link SharePoint's Sync button produces; offered when the library is not synced on this seat." }
         },
         "additionalProperties": false
       }

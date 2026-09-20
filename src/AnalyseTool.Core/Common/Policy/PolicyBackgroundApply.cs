@@ -20,7 +20,8 @@ namespace AnalyseTool.Core.Common.Policy
         /// <summary>Kicks off one pass unless one is already running. Returns immediately.</summary>
         public static void Start(TimeSpan? delay = null)
         {
-            if (!PolicyStore.Current.IsPresent) return; // no policy, nothing to apply — single-seat behavior
+            // A joined seat whose policy is not cached yet is "present" only after the first fetch.
+            if (!PolicyStore.Current.IsPresent && PolicyStore.Current.Membership is null) return;
 
             lock (Gate)
             {
@@ -42,8 +43,10 @@ namespace AnalyseTool.Core.Common.Policy
                 await Task.Delay(delay);
                 using CancellationTokenSource cts = new(TimeSpan.FromMinutes(5));
 
+                // The organization layer first: everything below reads the merged policy.
+                bool policyChanged = await OrgPolicySource.RefreshAsync(cts.Token);
                 await ExtensionSourceCatalog.RefreshPolicyCatalogAsync(cts.Token);
-                bool changed = await RequiredExtensions.ApplyAsync(cts.Token);
+                bool changed = await RequiredExtensions.ApplyAsync(cts.Token) || policyChanged;
 
                 if (changed)
                     CoreServices.ReloadExtensions(); // thread-safe; ribbon subscribers hop to the UI thread themselves

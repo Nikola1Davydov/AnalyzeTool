@@ -25,6 +25,16 @@ namespace AnalyseTool.Core.Common.Policy
         /// <summary>Pointer form: the user may not leave the organization the pointer names.</summary>
         [JsonProperty("enforced")] public bool? Enforced { get; set; }
 
+        /// <summary>Pointer form: the organization's policy signing key (base64 SubjectPublicKeyInfo,
+        /// ECDSA P-256). When known, the policy at <see cref="PolicyUrl"/> must carry a valid
+        /// detached signature (<c>policy.json.sig</c>) or it is refused (design §3c).</summary>
+        [JsonProperty("signingKey")] public string? SigningKey { get; set; }
+
+        /// <summary>Named locations referenced as <c>source:&lt;name&gt;/&lt;relative&gt;</c> wherever a
+        /// path or URL is expected — the one mechanism that makes a SharePoint library addressable
+        /// although its local path differs on every seat (design §9).</summary>
+        [JsonProperty("sources")] public Dictionary<string, PolicySource>? Sources { get; set; }
+
         [JsonProperty("organization")] public PolicyOrganization? Organization { get; set; }
 
         /// <summary>Seats below this plugin version are shown a non-blocking banner (phase 3b).</summary>
@@ -47,6 +57,28 @@ namespace AnalyseTool.Core.Common.Policy
 
         /// <summary>True for the pointer form: nothing but the pointer is meaningful in the file.</summary>
         public bool IsPointer => !string.IsNullOrWhiteSpace(PolicyUrl);
+    }
+
+    /// <summary>One named source. Exactly one of <see cref="Sharepoint"/>, <see cref="Path"/>,
+    /// <see cref="Url"/> is expected; <see cref="MarkerId"/> and <see cref="SyncUrl"/> help resolve
+    /// and connect a SharePoint library.</summary>
+    internal sealed class PolicySource
+    {
+        /// <summary>Library or folder URL: <c>https://&lt;tenant&gt;.sharepoint.com/sites/&lt;site&gt;/&lt;library&gt;/&lt;folder&gt;</c>.</summary>
+        [JsonProperty("sharepoint")] public string? Sharepoint { get; set; }
+
+        /// <summary>UNC share or local folder; <c>%ENV%</c> expanded.</summary>
+        [JsonProperty("path")] public string? Path { get; set; }
+
+        /// <summary>https base URL.</summary>
+        [JsonProperty("url")] public string? Url { get; set; }
+
+        /// <summary>Fallback: the id inside <c>analysetool-source.json</c> at the folder root.</summary>
+        [JsonProperty("markerId")] public string? MarkerId { get; set; }
+
+        /// <summary>The <c>odopen://</c> link SharePoint's Sync button produces — offered when the
+        /// library is not synced on this seat.</summary>
+        [JsonProperty("syncUrl")] public string? SyncUrl { get; set; }
     }
 
     internal sealed class PolicyOrganization
