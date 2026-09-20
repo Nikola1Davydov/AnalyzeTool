@@ -35,6 +35,12 @@
       <Private>false</Private>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <!-- Same for the CLI: restored and built with us, copied into the plugin folder by
+         PluginAssets.targets (only the exe, dll, deps and runtimeconfig — it shares Core's DLLs). -->
+    <ProjectReference Include="..\AnalyseTool.Cli\AnalyseTool.Cli.csproj">
+      <Private>false</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ProjectReference Include="..\AnalyseTool.App\AnalyseTool.App.csproj" />
   </ItemGroup>
 
