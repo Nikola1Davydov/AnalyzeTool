@@ -1188,9 +1188,17 @@ the preview.
 
 What happens on a seat: when it knows a key — from the pointer or typed once at Join — an
 unsigned policy is refused, a policy whose signature does not match is refused, and a refresh that
-fails verification keeps the last accepted copy. When no key is known, nothing is checked and the
-preview says so. An inline machine file is never signed; it is trusted because only an
+fails verification keeps the last accepted copy. The cached copy in the seat's own `org.json` is
+re-verified against the key on every start, so editing that file changes nothing. When no key is
+known, nothing is checked and the preview says so — then the organization layer is exactly as
+trustworthy as the user's profile folder, which is why a machine pointer should carry
+`signingKey`. An inline machine file is never signed; it is trusted because only an
 administrator can write `%ProgramData%`.
+
+**Rollback.** A signature proves who wrote a file, not that it is the newest one: whoever can
+write the hosting could serve an older, still validly signed policy. Put `"revision": <n>` in the
+policy and bump it on every change; a seat refuses a fetched policy whose revision is lower than
+the one it applied.
 
 #### Telemetry
 

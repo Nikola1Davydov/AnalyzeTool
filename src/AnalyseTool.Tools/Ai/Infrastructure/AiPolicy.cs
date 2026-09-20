@@ -19,12 +19,28 @@ namespace AnalyseTool.Tools.Ai
 
         public static bool UserProvidersAllowed => Current?.AllowUserProviders != false;
 
+        /// <summary>Environment variables a policy may name for an API key must start with this.</summary>
+        public const string KeyEnvPrefix = "ANALYSETOOL_";
+
+        /// <summary>https anywhere, or plain http on the local machine only.</summary>
+        internal static bool IsAcceptableEndpoint(string baseUrl)
+        {
+            if (!Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out Uri? u)) return false;
+            if (string.Equals(u.Scheme, "https", StringComparison.OrdinalIgnoreCase)) return true;
+            return string.Equals(u.Scheme, "http", StringComparison.OrdinalIgnoreCase) && u.IsLoopback;
+        }
+
         public static IReadOnlyList<AiProvider> ManagedProviders()
         {
             List<AiProvider> result = new();
             foreach (AiPolicyProvider p in Current?.Providers ?? new List<AiPolicyProvider>())
             {
                 if (string.IsNullOrWhiteSpace(p.Id) || string.IsNullOrWhiteSpace(p.BaseUrl)) continue;
+                // A managed provider receives a bearer token read from the environment: the endpoint must
+                // be https (or the local machine), and the variable must be one meant for this plugin —
+                // a policy must not be able to name OPENAI_API_KEY and ship it to an arbitrary host.
+                if (!IsAcceptableEndpoint(p.BaseUrl)) continue;
+                if (!string.IsNullOrWhiteSpace(p.ApiKeyEnv) && !p.ApiKeyEnv.Trim().StartsWith(KeyEnvPrefix, StringComparison.OrdinalIgnoreCase)) continue;
                 result.Add(new AiProvider
                 {
                     Id = p.Id.Trim(),

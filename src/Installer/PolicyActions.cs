@@ -24,7 +24,8 @@ public static class PolicyActions
             if (string.IsNullOrWhiteSpace(url)) return ActionResult.Success;
             string key = session.Property("POLICYKEY");
             bool perMachine = session.Property("ALLUSERS") == "1";
-            string keyJson = string.IsNullOrWhiteSpace(key) ? "null" : "\"" + key.Trim() + "\"";
+            string keyJson = string.IsNullOrWhiteSpace(key) ? "null" : Quote(key.Trim());
+            string urlJson = Quote(url.Trim());
 
             string folder = Path.Combine(
                 Environment.GetFolderPath(perMachine ? Environment.SpecialFolder.CommonApplicationData : Environment.SpecialFolder.LocalApplicationData),
@@ -36,14 +37,14 @@ public static class PolicyActions
                 string pointer = Path.Combine(folder, "policy.json");
                 if (!System.IO.File.Exists(pointer)) // never overwrite what GPO put there
                     System.IO.File.WriteAllText(pointer,
-                        "{ \"version\": 1, \"policyUrl\": \"" + url.Trim().Replace("\\", "\\\\") + "\", \"enforced\": false, \"signingKey\": " + keyJson + " }");
+                        "{ \"version\": 1, \"policyUrl\": " + urlJson + ", \"enforced\": false, \"signingKey\": " + keyJson + " }");
                 session.Log("AnalyseTool: wrote machine pointer " + pointer);
             }
             else
             {
                 string membership = Path.Combine(folder, "org.json");
                 System.IO.File.WriteAllText(membership,
-                    "{ \"policyUrl\": \"" + url.Trim().Replace("\\", "\\\\") + "\", \"enforced\": false, \"signingKey\": " + keyJson + " }");
+                    "{ \"policyUrl\": " + urlJson + ", \"enforced\": false, \"signingKey\": " + keyJson + " }");
                 session.Log("AnalyseTool: wrote membership " + membership);
             }
             return ActionResult.Success;
@@ -53,5 +54,26 @@ public static class PolicyActions
             session.Log("AnalyseTool: POLICYURL could not be applied: " + ex.Message);
             return ActionResult.Success; // the plugin still installs; the user can join from Settings
         }
+    }
+
+    /// <summary>A JSON string literal (quotes, backslashes and control characters escaped).</summary>
+    private static string Quote(string value)
+    {
+        var sb = new System.Text.StringBuilder("\"");
+        foreach (char c in value)
+        {
+            switch (c)
+            {
+                case '"': sb.Append("\\\""); break;
+                case '\\': sb.Append("\\\\"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                default:
+                    if (c < ' ') sb.Append("\\u").Append(((int)c).ToString("x4")); else sb.Append(c);
+                    break;
+            }
+        }
+        return sb.Append('"').ToString();
     }
 }

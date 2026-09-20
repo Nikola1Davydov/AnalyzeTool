@@ -42,10 +42,19 @@ namespace AnalyseTool.Tools.Ai
         {
             long started = Stopwatch.GetTimestamp();
             string outcome = "ok";
+            // yield may not sit inside a try with a catch, so the enumerator is stepped by hand.
+            await using IAsyncEnumerator<ChatResponseUpdate> e = base.GetStreamingResponseAsync(messages, options, cancellationToken).GetAsyncEnumerator(cancellationToken);
             try
             {
-                await foreach (ChatResponseUpdate update in base.GetStreamingResponseAsync(messages, options, cancellationToken))
-                    yield return update;
+                while (true)
+                {
+                    bool more;
+                    try { more = await e.MoveNextAsync(); }
+                    catch (OperationCanceledException) { outcome = "cancelled"; throw; }
+                    catch (Exception ex) { outcome = "error:" + ex.GetType().Name; throw; }
+                    if (!more) break;
+                    yield return e.Current;
+                }
             }
             finally
             {

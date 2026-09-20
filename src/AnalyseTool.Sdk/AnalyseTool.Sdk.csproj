@@ -67,6 +67,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="AnalyseTool.App" />
     <InternalsVisibleTo Include="AnalyseTool.Core" />
+    <InternalsVisibleTo Include="AnalyseTool.Tests" />
   </ItemGroup>
 
   <!-- Ship the authoring props and the PackExtension publishing target (both auto-imported by

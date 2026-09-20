@@ -51,7 +51,7 @@ internal static class Program
 
             CoreServices.InitializeHeadless(a.Option("--revit") ?? DetectRevitYear());
 
-            return (a[0], a[1]) switch
+            return (a.Positional(0) ?? string.Empty, a.Positional(1) ?? string.Empty) switch
             {
                 ("policy", "show") => PolicyShow(a),
                 ("policy", "validate") => PolicyValidate(a),
@@ -240,7 +240,7 @@ internal static class Program
     {
         string? reference = a.Positional(2);
         if (reference is null) return Fail("org join <url|domain|folder|source:name> [--key <base64>] [--yes]");
-        if (PolicyStore.Current.PointerEnforced) return Fail("this computer's organization is set by an administrator");
+        if (PolicyStore.Current.PointerEnforced) return Refuse("this computer's organization is set by an administrator");
 
         string? key = a.Option("--key");
         foreach (PolicyCandidate candidate in PolicyDiscovery.Candidates(reference))
@@ -280,7 +280,7 @@ internal static class Program
     private static int OrgLeave()
     {
         PolicyState state = PolicyStore.Current;
-        if (state.PointerEnforced) return Fail("this computer's organization is set by an administrator");
+        if (state.PointerEnforced) return Refuse("this computer's organization is set by an administrator");
         if (state.Membership is null) { Console.WriteLine("not joined"); return 0; }
         OrgMembershipStore.Delete();
         PolicyStore.Reload();
@@ -305,8 +305,23 @@ internal static class Program
             foreach (string log in Directory.GetFiles(logs).OrderByDescending(File.GetLastWriteTimeUtc).Take(3))
                 AddFile(log, "logs/" + Path.GetFileName(log));
         AddFile(PathProvider.PolicyPath, "machine/policy.json");
-        foreach (string name in new[] { "org.json", "sources.json", "extensions.json", "extensions-state.json", "codeexec.json", "mcp.json", "catalog.json" })
+        foreach (string name in new[] { "org.json", "sources.json", "extensions.json", "extensions-state.json", "codeexec.json", "catalog.json" })
             AddFile(Path.Combine(PathProvider.ProfilePath, name), "profile/" + name);
+
+        // mcp.json carries the bridge's shared secret: shipped redacted, never as-is.
+        string mcp = Path.Combine(PathProvider.ProfilePath, "mcp.json");
+        if (File.Exists(mcp))
+        {
+            try
+            {
+                JObject redacted = JObject.Parse(File.ReadAllText(mcp));
+                if (redacted["Token"] is not null) redacted["Token"] = "<redacted>";
+                using Stream entry = zip.CreateEntry("profile/mcp.json").Open();
+                using StreamWriter writer = new(entry);
+                writer.Write(redacted.ToString(Formatting.Indented));
+            }
+            catch { /* unreadable: leave it out */ }
+        }
 
         PolicyState state = PolicyStore.Current;
         var status = new
@@ -384,6 +399,13 @@ internal static class Program
         return 1;
     }
 
+    /// <summary>A policy said no: exit 2, like a failed validation.</summary>
+    private static int Refuse(string message)
+    {
+        Console.Error.WriteLine(message);
+        return 2;
+    }
+
     /// <summary>Tiny argument reader: positionals by index, <c>--name value</c> options, <c>--flag</c> switches.</summary>
     private sealed class Args
     {
@@ -409,7 +431,7 @@ internal static class Program
             {
                 if (_args[i].StartsWith("--", StringComparison.Ordinal))
                 {
-                    bool isSwitch = _args[i] is "--json" or "--yes" or "--overwrite" or "--help" || _args[i].Contains('=');
+                    bool isSwitch = _args[i] is "--json" or "--yes" or "--overwrite" or "--help" or "-h" || _args[i].Contains('=');
                     if (!isSwitch) i++;
                     continue;
                 }

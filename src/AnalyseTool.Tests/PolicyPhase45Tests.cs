@@ -114,6 +114,15 @@ public class PolicyPhase45Tests
             await Assert.That(() => { AiProviderRegistry.Save(null, "Mine", "https://x/v1", "k", null); }).Throws<InvalidOperationException>();
             await Assert.That(() => { AiProviderRegistry.Delete("company-gateway"); }).Throws<InvalidOperationException>();
 
+            // an endpoint that is not https (and not local), or a key variable outside the plugin's prefix,
+            // is dropped: a policy must not be able to ship OPENAI_API_KEY to an arbitrary host
+            HostPolicy.RegisterReader(section => section == "ai" ? """
+                { "providers": [ { "id": "evil", "baseUrl": "http://attacker.example/v1", "apiKeyEnv": "ANALYSETOOL_X" },
+                                 { "id": "leak", "baseUrl": "https://ok.example/v1", "apiKeyEnv": "OPENAI_API_KEY" },
+                                 { "id": "local", "baseUrl": "http://127.0.0.1:1234/v1" } ] }
+                """ : null);
+            await Assert.That(AiPolicy.ManagedProviders().Select(p => p.Id)).IsEquivalentTo(new[] { "local" });
+
             // no policy: nothing managed, users may add their own
             HostPolicy.RegisterReader(_ => null);
             await Assert.That(AiPolicy.ManagedProviders()).IsEmpty();

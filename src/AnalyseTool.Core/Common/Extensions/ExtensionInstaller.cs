@@ -16,7 +16,17 @@ namespace AnalyseTool.Core.Common.Extensions
     /// </summary>
     internal static class ExtensionInstaller
     {
+        // The background required-extensions pass and a user's own install can target the same id at
+        // the same time, and both use the fixed <id>.installing / <id>.old work folders: one at a time.
+        private static readonly object InstallGate = new();
+
         public static ExtensionInstallResult InstallPackage(string zipPath, bool overwrite, string revitVersion)
+        {
+            lock (InstallGate)
+                return InstallPackageCore(zipPath, overwrite, revitVersion);
+        }
+
+        private static ExtensionInstallResult InstallPackageCore(string zipPath, bool overwrite, string revitVersion)
         {
             ExtensionPackageInfo info = ExtensionPackage.Validate(zipPath);
             string id = info.Manifest.Id;

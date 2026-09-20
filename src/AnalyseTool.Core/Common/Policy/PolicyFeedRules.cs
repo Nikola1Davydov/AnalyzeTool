@@ -99,6 +99,11 @@ namespace AnalyseTool.Core.Common.Policy
 
                 if (entry.StartsWith("github:", StringComparison.OrdinalIgnoreCase) && !entry.Contains('/'))
                     entry += "/";
+                // "https://git.company.local" must not match "https://git.company.local.evil.example/…":
+                // a bare host is a host, so the prefix ends at its slash.
+                if (entry.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    && Uri.TryCreate(entry, UriKind.Absolute, out Uri? u) && u.AbsolutePath == "/" && !entry.EndsWith('/'))
+                    entry += "/";
 
                 if (normalizedSource.StartsWith(entry, StringComparison.OrdinalIgnoreCase))
                     return true;

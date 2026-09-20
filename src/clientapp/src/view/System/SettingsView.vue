@@ -240,7 +240,11 @@ const previewAiTargets = computed<string[]>(() => {
   if (!s) return raw ? [raw] : [];
   const providers = Array.isArray(s.providers) ? s.providers : [];
   const targets = providers
-    .map((p: any) => (p && typeof p === "object" ? p.baseUrl ?? p.url ?? p.name ?? p.type : null))
+    .map((p: any) =>
+      p && typeof p === "object"
+        ? `${p.baseUrl ?? p.url ?? p.name ?? p.type}${p.apiKeyEnv ? ` (key from %${p.apiKeyEnv}%)` : ""}`
+        : null,
+    )
     .filter((t: unknown): t is string => typeof t === "string" && t.length > 0);
   return targets.length ? targets : [raw as string];
 });
@@ -337,9 +341,12 @@ async function pickSourceFolder(name: string) {
 }
 
 /** odopen:// and other custom schemes hand off to the registered app; http(s) opens like any link. */
+// Only the two schemes a policy legitimately carries: https links and OneDrive's odopen:// sync
+// link. Anything else (javascript:, file:, http:) is refused — the page hosts the command bridge.
 function openExternal(url: string) {
-  if (/^https?:/i.test(url)) window.open(url, "_blank", "noopener");
-  else window.location.href = url;
+  if (/^https:/i.test(url)) window.open(url, "_blank", "noopener");
+  else if (/^odopen:/i.test(url)) window.location.href = url;
+  else notifications.error(`Refusing to open '${url}': only https and odopen links are allowed.`);
 }
 
 // --- Telemetry: what leaves this seat, on demand (§10 "Show recent events"). --------------------
@@ -647,7 +654,7 @@ onMounted(async () => {
         {{ policy?.pluginVersion }}).
       </span>
       <a
-        v-if="policy?.update?.downloadUrl"
+        v-if="policy?.update?.downloadUrl && /^https:/i.test(policy.update.downloadUrl)"
         :href="policy.update.downloadUrl"
         target="_blank"
         rel="noopener noreferrer"

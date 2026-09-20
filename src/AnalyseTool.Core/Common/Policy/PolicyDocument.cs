@@ -37,6 +37,10 @@ namespace AnalyseTool.Core.Common.Policy
 
         [JsonProperty("organization")] public PolicyOrganization? Organization { get; set; }
 
+        /// <summary>Monotonic counter the coordinator bumps on every change. Covered by the signature;
+        /// a seat refuses a fetched policy with a lower revision than the one it applied (rollback).</summary>
+        [JsonProperty("revision")] public long? Revision { get; set; }
+
         /// <summary>Seats below this plugin version are shown a non-blocking banner (phase 3b).</summary>
         [JsonProperty("minimumVersion")] public string? MinimumVersion { get; set; }
 

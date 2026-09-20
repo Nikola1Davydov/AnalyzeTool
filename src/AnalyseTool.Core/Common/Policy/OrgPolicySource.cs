@@ -90,11 +90,21 @@ namespace AnalyseTool.Core.Common.Policy
         /// on failure. Returns true when the effective policy changed (the caller reloads).</summary>
         public static async Task<bool> RefreshAsync(CancellationToken ct)
         {
-            OrgMembership? membership = OrgMembershipStore.Load();
+            // Pointer-aware: for a machine pointer the URL, the signing key and "enforced" come from the
+            // pointer, never from the user-writable org.json (which only caches the fetched copy).
+            PolicyState state = PolicyStore.Current;
+            OrgMembership? membership = state.Membership;
             if (membership is null) return false;
 
             OrgPolicyFetch fetch = await FetchAsync(membership.PolicyUrl, membership.SigningKey,
                 HostOf(membership.LastLocation), ct);
+            if (fetch.Accepted && state.Organization?.Revision is long cachedRevision
+                && fetch.Document!.Revision is long fetchedRevision && fetchedRevision < cachedRevision)
+                fetch = fetch with
+                {
+                    Document = null,
+                    Problem = $"The policy served is revision {fetchedRevision}, older than the revision {cachedRevision} this seat already applied. Refusing the rollback.",
+                };
             PolicyStore.SetOrgRefreshProblem(fetch.Problem);
             if (!fetch.Accepted) return false;
 

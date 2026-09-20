@@ -313,3 +313,115 @@ public class PolicyPhase3Tests
         await Assert.That(Directory.Exists(profile)).IsFalse();
     }
 }
+
+/// <summary>The two promises the security review found broken: a machine pointer fetches its target on
+/// its own, and a cached organization policy is trusted only as far as the signing key vouches for it.</summary>
+public class PolicyPointerAndCacheTests
+{
+    private string _dir = null!;
+
+    [Before(Test)]
+    public void MakeTempDir()
+    {
+        _dir = Path.Combine(Path.GetTempPath(), "at-policy3b-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_dir);
+    }
+
+    [After(Test)]
+    public void RemoveTempDir()
+    {
+        try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
+    }
+
+    [Test]
+    [NotInParallel("PolicyStore")]
+    public async Task A_machine_pointer_fetches_its_target_without_any_org_json_and_caches_it_under_the_pointer_url()
+    {
+        (string pub, string priv) = PolicySignature.GenerateKeyPair();
+        string target = Path.Combine(_dir, "company", "policy.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.WriteAllText(target, """{ "version": 1, "revision": 3, "organization": { "name": "Contoso BIM", "contact": "x" }, "codeExecution": { "enabled": false }, "locked": ["codeExecution.enabled"] }""");
+        File.WriteAllText(target + ".sig", PolicySignature.Sign(priv, File.ReadAllBytes(target)));
+
+        string machine = Path.Combine(_dir, "policy.json");
+        File.WriteAllText(machine, Newtonsoft.Json.JsonConvert.SerializeObject(new { version = 1, policyUrl = target, enforced = true, signingKey = pub }));
+        string orgJson = Path.Combine(_dir, "org.json");
+        try
+        {
+            OrgMembershipStore.OverridePathForTests(orgJson);
+            PolicyStore.OverridePathForTests(machine);
+            PolicyStore.OverrideMembershipForTests(null);
+
+            // before the first refresh: pointer known, nothing applied yet
+            await Assert.That(PolicyStore.Current.PointerEnforced).IsTrue();
+            await Assert.That(PolicyStore.Current.Organization).IsNull();
+            await Assert.That(File.Exists(orgJson)).IsFalse();
+
+            bool changed = await OrgPolicySource.RefreshAsync(CancellationToken.None);
+            await Assert.That(changed).IsTrue();
+            await Assert.That(PolicyStore.OrgRefreshProblem).IsNull();
+            await Assert.That(File.Exists(orgJson)).IsTrue();
+
+            PolicyState state = PolicyStore.Current;
+            await Assert.That(state.Organization).IsNotNull();
+            await Assert.That(state.IsLocked(PolicySettings.CodeExecutionEnabled)).IsTrue();
+            await Assert.That(state.Document.Organization!.Name).IsEqualTo("Contoso BIM");
+            await Assert.That(state.Membership!.Enforced).IsTrue();
+            await Assert.That(state.Membership.SigningKey).IsEqualTo(pub); // from the pointer, never from org.json
+
+            // a rollback (lower revision, still validly signed) is refused; the applied policy stays
+            File.WriteAllText(target, """{ "version": 1, "revision": 2, "organization": { "name": "Contoso BIM", "contact": "x" } }""");
+            File.WriteAllText(target + ".sig", PolicySignature.Sign(priv, File.ReadAllBytes(target)));
+            await Assert.That(await OrgPolicySource.RefreshAsync(CancellationToken.None)).IsFalse();
+            await Assert.That(PolicyStore.OrgRefreshProblem!).Contains("rollback");
+            await Assert.That(PolicyStore.Current.IsLocked(PolicySettings.CodeExecutionEnabled)).IsTrue();
+        }
+        finally
+        {
+            PolicyStore.SetOrgRefreshProblem(null);
+            PolicyStore.OverrideMembershipForTests(null);
+            PolicyStore.OverridePathForTests(null);
+            OrgMembershipStore.OverridePathForTests(null);
+        }
+    }
+
+    [Test]
+    [NotInParallel("PolicyStore")]
+    public async Task A_tampered_cached_policy_is_not_applied_when_a_signing_key_is_known()
+    {
+        (string pub, string priv) = PolicySignature.GenerateKeyPair();
+        string genuine = """{ "version": 1, "organization": { "name": "Contoso BIM", "contact": "x" }, "codeExecution": { "enabled": false }, "locked": ["codeExecution.enabled"] }""";
+        string sig = PolicySignature.Sign(priv, PolicySignature.Utf8(genuine));
+        string edited = """{ "version": 1, "organization": { "name": "Contoso BIM", "contact": "x" }, "codeExecution": { "enabled": true } }""";
+        try
+        {
+            PolicyStore.OverridePathForTests(Path.Combine(_dir, "no-machine.json"));
+
+            PolicyStore.OverrideMembershipForTests(() => new OrgMembership { PolicyUrl = "https://x/policy.json", SigningKey = pub, CachedPolicy = genuine, LastSignature = sig });
+            await Assert.That(PolicyStore.Current.Organization).IsNotNull();
+            await Assert.That(PolicyStore.Current.IsLocked(PolicySettings.CodeExecutionEnabled)).IsTrue();
+
+            // the user edits org.json's cached copy: the signature no longer matches → nothing applied
+            PolicyStore.OverrideMembershipForTests(() => new OrgMembership { PolicyUrl = "https://x/policy.json", SigningKey = pub, CachedPolicy = edited, LastSignature = sig });
+            await Assert.That(PolicyStore.Current.Organization).IsNull();
+            await Assert.That(PolicyStore.Current.Problems.Any(p => p.Contains("does not verify"))).IsTrue();
+
+            // without a key the cache is trusted as-is (documented: only as trustworthy as the profile)
+            PolicyStore.OverrideMembershipForTests(() => new OrgMembership { PolicyUrl = "https://x/policy.json", CachedPolicy = edited });
+            await Assert.That(PolicyStore.Current.Organization).IsNotNull();
+        }
+        finally
+        {
+            PolicyStore.OverrideMembershipForTests(null);
+            PolicyStore.OverridePathForTests(null);
+        }
+    }
+
+    [Test]
+    public async Task A_bare_https_host_in_the_whitelist_does_not_match_a_longer_host()
+    {
+        string[] allowed = ["https://git.company.local"];
+        await Assert.That(PolicyFeedRules.IsAllowed("https://git.company.local/bim/feed.json", allowed)).IsTrue();
+        await Assert.That(PolicyFeedRules.IsAllowed("https://git.company.local.evil.example/feed.json", allowed)).IsFalse();
+    }
+}

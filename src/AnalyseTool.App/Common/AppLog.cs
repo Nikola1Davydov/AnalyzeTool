@@ -41,22 +41,15 @@ namespace AnalyseTool.App.Common
                             flushToDiskInterval: TimeSpan.FromSeconds(1),
                             outputTemplate: template);
 
+                    Log.Logger = config.CreateLogger();
+
                     // The organization policy's additional sink (design §2, "logging"): a folder or file
                     // path on a share, {user}/{machine} expanded, one file per day. The local file stays.
+                    // Attached OFF the startup path: opening a file on a share is a network call, and an
+                    // unreachable share must cost a background task a timeout, not the ribbon.
                     string? policySink = PolicyLogSink(out LogEventLevel policyLevel);
                     if (policySink is not null)
-                        config = config.WriteTo.File(
-                            path: policySink,
-                            rollingInterval: RollingInterval.Day,
-                            retainedFileCountLimit: 31,
-                            shared: true,
-                            restrictedToMinimumLevel: policyLevel,
-                            flushToDiskInterval: TimeSpan.FromSeconds(5),
-                            outputTemplate: template);
-
-                    Log.Logger = config.CreateLogger();
-                    if (policySink is not null)
-                        Log.Information("Organization log sink: {Sink} ({Level}+)", policySink, policyLevel);
+                        _ = Task.Run(() => AttachPolicySink(policySink, policyLevel, template));
 
                     // Last-resort capture of crashes anywhere in the process.
                     AppDomain.CurrentDomain.UnhandledException += (_, e) =>
@@ -69,6 +62,43 @@ namespace AnalyseTool.App.Common
                 {
                     // No logging available — swallow; the plugin keeps working.
                 }
+            }
+        }
+
+        private static void AttachPolicySink(string policySink, LogEventLevel level, string template)
+        {
+            try
+            {
+                string? folder = Path.GetDirectoryName(policySink);
+                if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) // the probe that may hang: here, not on the UI thread
+                {
+                    Log.Warning("Organization log sink folder not reachable: {Sink}", policySink);
+                    return;
+                }
+                string logDir = Path.Combine(PathProvider.ProfilePath, "logs");
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File(
+                        path: Path.Combine(logDir, "analysetool-.log"),
+                        rollingInterval: RollingInterval.Day,
+                        retainedFileCountLimit: 14,
+                        shared: true,
+                        flushToDiskInterval: TimeSpan.FromSeconds(1),
+                        outputTemplate: template)
+                    .WriteTo.File(
+                        path: policySink,
+                        rollingInterval: RollingInterval.Day,
+                        retainedFileCountLimit: 31,
+                        shared: true,
+                        restrictedToMinimumLevel: level,
+                        flushToDiskInterval: TimeSpan.FromSeconds(5),
+                        outputTemplate: template)
+                    .CreateLogger();
+                Log.Information("Organization log sink attached: {Sink} ({Level}+)", policySink, level);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Organization log sink could not be attached: {Sink}", policySink);
             }
         }
 

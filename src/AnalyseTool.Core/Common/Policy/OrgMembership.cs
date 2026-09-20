@@ -38,7 +38,14 @@ namespace AnalyseTool.Core.Common.Policy
     internal static class OrgMembershipStore
     {
         private static readonly object Gate = new();
-        public static string FilePath => Path.Combine(PathProvider.ProfilePath, "org.json");
+        private static string? _pathOverride;
+        public static string FilePath => _pathOverride ?? Path.Combine(PathProvider.ProfilePath, "org.json");
+
+        /// <summary>Tests only.</summary>
+        internal static void OverridePathForTests(string? path)
+        {
+            lock (Gate) _pathOverride = path;
+        }
 
         public static OrgMembership? Load()
         {
@@ -62,7 +69,7 @@ namespace AnalyseTool.Core.Common.Policy
         {
             lock (Gate)
             {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
                 File.WriteAllText(FilePath, JsonConvert.SerializeObject(membership, Formatting.Indented));
             }
         }

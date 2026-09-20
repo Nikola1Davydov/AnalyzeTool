@@ -40,8 +40,17 @@ namespace AnalyseTool.Core.Features.Extensions
 
             // Organization policy, before anything is fetched: the free-form paste (no catalog id) may
             // be switched off, and every source must match the approved prefixes when a list exists.
-            if (expectedId is null && !PolicyFeedRules.InstallFromRepositoryAllowed)
-                throw new InvalidOperationException(PolicyFeedRules.InstallFromRepositoryRefusal());
+            // With the paste switched off, only what the catalog lists may be installed — and expectedId is
+            // just a field on the request, so it has to be matched against the catalog, not trusted.
+            if (!PolicyFeedRules.InstallFromRepositoryAllowed)
+            {
+                bool listed = expectedId is not null && ExtensionSourceCatalog.Load().Entries.Any(e =>
+                    string.Equals(e.Id, expectedId, StringComparison.OrdinalIgnoreCase)
+                    && e.Source is not null
+                    && string.Equals(ExtensionUpdateFeed.Normalize(e.Source), source, StringComparison.OrdinalIgnoreCase));
+                if (!listed)
+                    throw new InvalidOperationException(PolicyFeedRules.InstallFromRepositoryRefusal());
+            }
             if (PolicyFeedRules.Refusal(source) is string refused)
                 throw new InvalidOperationException(refused);
 

@@ -295,12 +295,25 @@ namespace AnalyseTool.Core.Common.Policy
             return roots;
         }
 
+        /// <summary>A Files On-Demand placeholder: reading it would block on a cloud download. The scan
+        /// runs on the startup path, so such a file is skipped rather than hydrated.</summary>
+        internal static bool IsDehydrated(string path)
+        {
+            const FileAttributes recallOnDataAccess = (FileAttributes)0x400000;
+            try
+            {
+                FileAttributes a = File.GetAttributes(path);
+                return (a & FileAttributes.Offline) != 0 || (a & recallOnDataAccess) != 0;
+            }
+            catch { return false; }
+        }
+
         internal static string? ScanForMarker(string root, string markerId, int depth)
         {
             try
             {
                 string marker = Path.Combine(root, PolicySourceResolver.MarkerFileName);
-                if (File.Exists(marker))
+                if (File.Exists(marker) && !IsDehydrated(marker))
                 {
                     string? id = JObject.Parse(File.ReadAllText(marker))["id"]?.Value<string>();
                     if (string.Equals(id, markerId, StringComparison.OrdinalIgnoreCase)) return root;

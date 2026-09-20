@@ -20,6 +20,7 @@
       },
       "additionalProperties": false
     },
+    "revision": { "type": "integer", "description": "Bump on every change. A seat refuses a fetched policy with a lower revision than the one it applied (rollback protection; covered by the signature)." },
     "minimumVersion": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
     "update": {
       "type": "object",
@@ -94,7 +95,7 @@
               "name": { "type": "string" },
               "type": { "type": "string", "enum": ["openaiCompatible", "ollama"] },
               "baseUrl": { "type": "string" },
-              "apiKeyEnv": { "type": "string", "description": "Environment variable holding the API key; omit when baseUrl is a gateway that holds it." },
+              "apiKeyEnv": { "type": "string", "pattern": "^ANALYSETOOL_", "description": "Environment variable holding the API key (must start with ANALYSETOOL_); omit when baseUrl is a gateway that holds it. baseUrl must be https, or http on the local machine." },
               "timeoutSeconds": { "type": "integer" }
             },
             "required": ["id", "baseUrl"],

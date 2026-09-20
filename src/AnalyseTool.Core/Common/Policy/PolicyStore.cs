@@ -168,7 +168,14 @@ namespace AnalyseTool.Core.Common.Policy
             PolicyDocument? org = null;
             if (membership is not null)
             {
-                if (membership.HasCachedPolicy)
+                if (!membership.HasCachedPolicy)
+                    problems.Add($"Joined '{membership.PolicyUrl}' but its policy has not been fetched yet; it applies once the background refresh succeeds.");
+                else if (!string.IsNullOrWhiteSpace(membership.SigningKey)
+                         && PolicySignature.Verify(membership.SigningKey, PolicySignature.Utf8(membership.CachedPolicy!), membership.LastSignature) != SignatureState.Verified)
+                    // org.json is the user's own file: a cached copy is trusted only as far as the key
+                    // (from the pointer, or recorded at Join) still vouches for it. Edited = not applied.
+                    problems.Add("The cached organization policy does not verify against the organization's signing key; it is not applied until a fresh signed copy is fetched.");
+                else
                 {
                     try
                     {
@@ -180,8 +187,6 @@ namespace AnalyseTool.Core.Common.Policy
                         problems.Add($"The cached organization policy could not be parsed: {ex.Message}");
                     }
                 }
-                else
-                    problems.Add($"Joined '{membership.PolicyUrl}' but its policy has not been fetched yet; it applies once the background refresh succeeds.");
             }
 
             PolicyDocument merged = Merge(machine.IsPresent ? machine.Document : new PolicyDocument(), org);
@@ -209,6 +214,7 @@ namespace AnalyseTool.Core.Common.Policy
             {
                 Version = 1,
                 Organization = machine.Organization ?? org.Organization,
+                Revision = machine.Revision ?? org.Revision,
                 MinimumVersion = machine.MinimumVersion ?? org.MinimumVersion,
                 Update = machine.Update ?? org.Update,
                 CodeExecution = machine.CodeExecution ?? org.CodeExecution,

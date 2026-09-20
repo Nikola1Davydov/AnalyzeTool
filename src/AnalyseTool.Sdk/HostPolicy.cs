@@ -13,8 +13,9 @@ namespace AnalyseTool.Sdk
     {
         private static Func<string, string?>? _reader;
 
-        /// <summary>Host only: installs the function that answers <see cref="GetSectionJson"/>.</summary>
-        public static void RegisterReader(Func<string, string?> reader) => _reader = reader;
+        /// <summary>Host only (internal; Core has InternalsVisibleTo): installs the function that
+        /// answers <see cref="GetSectionJson"/>. An extension cannot replace it.</summary>
+        internal static void RegisterReader(Func<string, string?> reader) => _reader = reader;
 
         /// <summary>The section's JSON text, or null when absent.</summary>
         public static string? GetSectionJson(string section)
@@ -44,8 +45,8 @@ namespace AnalyseTool.Sdk
     {
         private static Action<string, IReadOnlyDictionary<string, object?>>? _sink;
 
-        /// <summary>Host only.</summary>
-        public static void RegisterSink(Action<string, IReadOnlyDictionary<string, object?>> sink) => _sink = sink;
+        /// <summary>Host only (internal; Core has InternalsVisibleTo).</summary>
+        internal static void RegisterSink(Action<string, IReadOnlyDictionary<string, object?>> sink) => _sink = sink;
 
         public static void Emit(string eventKind, IReadOnlyDictionary<string, object?> properties)
         {
