@@ -968,6 +968,119 @@ Git branch anyone can push to, a SharePoint folder with too many editors. So:
 - **Sign** the policy (below) and hand the key's fingerprint to IT and to staff. Without a key,
   HTTPS plus the join preview plus the two points above are the whole defense.
 
+#### Your first `policy.json`, step by step
+
+The shortest path from nothing to a working company configuration, with a SharePoint library as
+the home for everything. Every step is a plain file or one CLI call; nothing needs IT until the
+optional last step.
+
+**1. Make the folder.** In the BIM library create a folder — say `AnalyseTool` — and put two files
+in it:
+
+```
+AnalyseTool/
+  policy.json                 ← the policy (below)
+  analysetool-source.json     ← { "id": "contoso.bimtools", "policy": "policy.json" }
+```
+
+The marker is what lets a seat *find* this folder: the plugin looks for it across every OneDrive
+mount point and offers to join, and it also resolves the `bimtools` source when OneDrive's own
+mapping is not available. Later add `catalog.json` and a `packages\` folder here as well.
+
+**2. Write the policy.** Start minimal; every section is optional and can be added later:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/Nikola1Davydov/AnalyzeTool/main/docs/policy.schema.json",
+  "version": 1,
+  "revision": 1,
+  "organization": { "name": "Contoso BIM", "contact": "bim@contoso.com" },
+
+  "sources": {
+    "bimtools": {
+      "sharepoint": "https://contoso.sharepoint.com/sites/BIM/Shared Documents/AnalyseTool",
+      "markerId": "contoso.bimtools"
+    }
+  },
+
+  "codeExecution": { "enabled": false },
+  "locked": ["codeExecution.enabled"],
+
+  "extensions": {
+    "catalogUrl": "source:bimtools/catalog.json",
+    "allowedFeeds": ["source:bimtools/", "github:contoso-bim/"],
+    "allowInstallFromRepository": false
+  }
+}
+```
+
+What each line buys you: `organization` is what the join preview and the Settings panel show (a
+policy without it cannot be joined); `revision` is what you bump on every change so a seat never
+accepts an older copy; `sources.bimtools` names the library once so nothing below carries a path
+that differs per seat; the `codeExecution` lock keeps arbitrary C# off; the `extensions` block
+limits installs to your library and your GitHub organization. The `$schema` line gives you
+completion and validation in VS Code.
+
+**3. Validate it** with the CLI that ships inside the plugin folder (any seat that has the plugin):
+
+```
+"%AppData%\Autodesk\Revit\Addins\2025\AnalyseTool\AnalyseTool.Cli.exe" policy validate policy.json
+```
+
+Exit code 0 prints `OK`; 2 prints one line per problem (an unknown lock, a whitelist entry in
+the wrong form, a source declaring two kinds, a required package whose source the whitelist
+does not cover). Put the same call into the CI of the repository that holds the file.
+
+**4. Add what people should have.** A required extension is a package zip plus a two-line feed in
+`packages\`, published with `dotnet build -t:PackExtension` (§10):
+
+```
+packages/
+  contoso.standards-1.0.0.zip
+  contoso.standards.feed.json   ← { "version": "1.0.0", "downloadUrl": "contoso.standards-1.0.0.zip" }
+```
+
+and one entry in the policy — pin it (`AnalyseTool.Cli ext validate <zip>` prints the hash):
+
+```json
+"required": [
+  { "id": "contoso.standards", "source": "source:bimtools/packages/contoso.standards.feed.json",
+    "sha256": "3f9c…" }
+]
+```
+
+Publishing a new version is: drop the new zip, edit the feed's `version`, update the `sha256`,
+bump `revision`, re-sign. Every seat picks it up on its next Revit start.
+
+**5. Sign it** (recommended as soon as more than a handful of people join, mandatory if IT rolls
+out a pointer):
+
+```
+AnalyseTool.Cli policy keygen --out C:\keys                      # once; keep the .key out of SharePoint
+AnalyseTool.Cli policy sign policy.json --key C:\keys\policy-signing.key   # after every change
+```
+
+Hand out the **fingerprint** it prints (or `policy fingerprint policy-signing.pub`) so people can
+compare it in the join preview, and give IT the `.pub` for the pointer's `signingKey`.
+
+**6. Roll it out.** Three ways, any mix:
+
+- *Self-service:* people sync the library (SharePoint → **Sync**), open Revit, and accept the
+  "Your organization publishes AnalyseTool settings — join?" banner. Or Settings → Organization →
+  Join with the folder path.
+- *At install:* `msiexec /i AnalyseTool-<ver>-SingleUser.msi POLICYURL="source:bimtools/policy.json" /qn`
+  — but a `source:` pointer needs the library synced on that seat first, so for installs prefer an
+  https location (a GitLab raw URL of the same file).
+- *Enforced by IT:* the machine pointer in `%ProgramData%\AnalyseTool\policy.json` (§11.3) with an
+  **https** `policyUrl` and the `signingKey`. A `source:` reference in the machine pointer resolves
+  through the current user's OneDrive, which is fine for shared workstations only when everyone
+  syncs the library.
+
+**Changing it later.** Edit, bump `revision`, validate, sign, save. There is no second step: seats
+re-read the file on their next start (ETag / timestamp), and the Organization panel shows the
+new fetch time. Removing a required extension from the list stops enforcing it; it does not
+uninstall it.
+
 #### Owning `policy.json`
 
 A complete, annotated policy. Delete what you do not need — every section is optional.
