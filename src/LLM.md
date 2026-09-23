@@ -97,18 +97,6 @@ namespace AnalyseTool.Sdk
     }
 }
 
-namespace AnalyseTool.Sdk.Underlays   // SDK 1.3+: DWG/PDF underlays as data — see "Reading DWG / PDF underlays"
-{
-    public static class UnderlayReader   // call INSIDE RunInRevitAsync; every length is mm
-    {
-        public static UnderlaysResult   GetUnderlays(Document doc, long? viewId = null, IReadOnlyCollection<string>? kinds = null,
-                                                     bool includeLayers = true, bool includeLinks = true);
-        public static CadLayersResult   GetCadLayers(Document doc, long importId, long? viewId = null, long? linkInstanceId = null);
-        public static CadGeometryResult GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
-                                                       IReadOnlyCollection<string>? types = null, int? limit = null,
-                                                       long? linkInstanceId = null);
-    }
-}
 ```
 
 ### The ONE rule
@@ -192,33 +180,10 @@ When a task involves a DWG, DXF, PDF, scan or "the drawing under the plan":
   - `GetCadLayers { importId }` for line weight, pattern and visibility per layer;
   - `GetCadGeometry { importId, layers, types, limit }` for the primitives;
   - `GetPdfPageAsImage { id }` to *look at* a PDF page, since it has no vector geometry in Revit.
-- **In C#, don't walk `ImportInstance` geometry yourself.** Call `UnderlayReader` from
-  `AnalyseTool.Sdk.Underlays`, the same code those commands run. It handles nested
-  `GeometryInstance` transforms, `GraphicsStyle` → layer names, file status and PDF scale:
-
-```csharp
-using AnalyseTool.Sdk.Underlays;
-
-return revitContext.RunInRevitAsync<object?>(app =>
-{
-    Document doc = app.ActiveUIDocument.Document;
-    UnderlayInfo dwg = UnderlayReader.GetUnderlays(doc, kinds: new[] { "dwg" }).Underlays.First();
-    CadGeometryResult grid = UnderlayReader.GetCadGeometry(doc, dwg.Id, layers: new[] { "A-GRID" }, types: new[] { "line" });
-
-    using Transaction t = new(doc, "Grids from DWG");
-    t.Start();
-    foreach (CadPrimitive line in grid.Primitives)
-    {
-        // mm → Revit internal feet: divide by 304.8. Coordinates are already project coordinates.
-        XYZ a = new(line.Points![0][0] / 304.8, line.Points[0][1] / 304.8, 0);
-        XYZ b = new(line.Points[1][0] / 304.8, line.Points[1][1] / 304.8, 0);
-        Grid.Create(doc, Line.CreateBound(a, b));
-    }
-    t.Commit();
-    return new { created = grid.Returned, matched = grid.Count };
-});
-```
-
+- **To build from a drawing** (for example grids from the DWG's grid layer), read the lines with
+  `GetCadGeometry` first, then write the Revit code with those coordinates. Divide mm by 304.8 to get
+  feet. Don't walk `ImportInstance` geometry yourself in a script: nested blocks, the instance
+  transform and link transforms are easy to get wrong, and `GetCadGeometry` has already applied them.
 - **Underlays inside a linked Revit model** (a consultant's DWG in their RVT) are listed too, with
   `linkInstanceId` and `linkName`. Their `id` is an id in the LINKED model, so always pass
   `linkInstanceId` along with it to `GetCadLayers` / `GetCadGeometry` / `GetPdfPageAsImage`.

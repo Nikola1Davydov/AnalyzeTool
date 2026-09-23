@@ -1,17 +1,18 @@
+using AnalyseTool.Sdk;
 using Autodesk.Revit.DB;
 
-namespace AnalyseTool.Sdk.Underlays
+namespace AnalyseTool.Tools.Underlays
 {
     /// <summary>
     /// Reads what is IN the underlays of a document — CAD imports and links (DWG, DXF, DGN, SAT…) and
     /// PDF/raster images — as plain data: file, placement, layers, primitives, page and scale.
     /// <para>Every method is a function of a <see cref="Document"/> and must be called on the Revit
     /// thread, i.e. inside <see cref="IRevitContext.RunInRevitAsync{T}"/>. Nothing is modified.</para>
-    /// <para>Part of the Sdk (not of a built-in command) so an extension reuses the reading instead of
-    /// re-deriving it: geometry through nested <see cref="GeometryInstance"/>s with their transforms,
-    /// layers through <see cref="GraphicsStyle"/>s, file state through external file references, image
-    /// size through pixels and DPI. The built-in commands GetUnderlays, GetCadLayers and GetCadGeometry
-    /// are thin wrappers around it.</para>
+    /// <para>The commands GetUnderlays, GetCadLayers and GetCadGeometry are thin wrappers around it; the
+    /// work is here — geometry through nested <see cref="GeometryInstance"/>s with their transforms, layers
+    /// through <see cref="GraphicsStyle"/>s, file state through external file references, image size
+    /// through pixels and DPI, Revit links through their instance transform. Deliberately NOT in the Sdk:
+    /// that would make it a public, versioned contract for extensions before anyone has asked for one.</para>
     /// </summary>
     public static class UnderlayReader
     {

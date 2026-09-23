@@ -1,4 +1,3 @@
-using AnalyseTool.Sdk.Underlays;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Serilog;
@@ -10,9 +9,7 @@ using Graphics = System.Drawing.Graphics;
 namespace AnalyseTool.Tools.Underlays
 {
     /// <summary>Renders a PDF page or raster image placed in the model to a PNG — the picture a
-    /// multimodal model needs to read a drawing that has no vector geometry in Revit. Lives in Tools,
-    /// not beside <see cref="AnalyseTool.Sdk.Underlays.UnderlayReader"/>: it needs System.Drawing, which
-    /// the Sdk does not carry.</summary>
+    /// multimodal model needs to read a drawing that has no vector geometry in Revit.</summary>
     public sealed class UnderlayImageService
     {
         public const int DefaultMaxPixels = 1568; // what vision models downscale to anyway: more is paid for, not seen

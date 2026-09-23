@@ -25,25 +25,19 @@
                 PackExtension publishing target.
          1.2: added RevitCommandAttribute.OutputType (additive — commands may now declare the type
               they return, completing the pair InputType has formed alone; callers stop inferring the
-              response shape from prose, and two commands can be checked for compatibility).
-         1.3: added AnalyseTool.Sdk.Underlays — UnderlayReader and its result types (additive, #136). The
-              first piece of the Sdk that READS the model rather than describing the contract: a
-              deliberate decision, because an extension must be able to understand a DWG/PDF underlay
-              without copying the platform's code, and the Sdk is the only assembly an extension
-              compiles against. The host's copy is the one that runs (shared by simple name), so a fix
-              in the reader reaches every extension with the next plugin release. -->
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
-    <FileVersion>1.3.0.0</FileVersion>
+              response shape from prose, and two commands can be checked for compatibility). -->
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
     <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). Ahead of
          nuget.org on purpose: 1.1.2 dropped the duplicated Revit API references (NU1504) and 1.2.0
-         adds OutputType and 1.3.0 the underlay reader. A published version is immutable, so each fix needs a new number to reach
+         adds OutputType. A published version is immutable, so each fix needs a new number to reach
          anyone. Docs still pin 1.1.2 — what authors can restore today — and move only in the same
          commit as the push. -->
-    <Version>1.3.0</Version>
+    <Version>1.2.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>

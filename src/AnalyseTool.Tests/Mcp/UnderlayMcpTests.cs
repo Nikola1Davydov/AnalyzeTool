@@ -1,7 +1,6 @@
 using System.Reflection;
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Sdk;
-using AnalyseTool.Sdk.Underlays;
 using AnalyseTool.Tools.Underlays;
 using Newtonsoft.Json.Linq;
 using NJsonSchema;
@@ -14,7 +13,7 @@ namespace AnalyseTool.Tests.Mcp;
 /// would pick (its description), the schema it may validate against, the answer's shape, and the PDF
 /// page arriving as an image it can look at. The commands' own descriptions and schemas are taken from
 /// the built Tools assembly, exactly as the dispatcher registers them; only the Revit answer is canned,
-/// built from the Sdk's result types and serialized the way the bridge serializes it.
+/// built from the result types and serialized the way the bridge serializes it.
 /// </summary>
 [NotInParallel("mcp-exe")]
 public class UnderlayMcpTests
