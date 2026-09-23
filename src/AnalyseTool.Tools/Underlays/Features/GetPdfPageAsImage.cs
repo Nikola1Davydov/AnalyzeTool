@@ -6,7 +6,8 @@ namespace AnalyseTool.Tools.Underlays
     [RevitCommand(
         Description = "Shows a PDF page or raster image placed in the model AS AN IMAGE, so a model that sees " +
                       "images can read the drawing itself — title block, dimensions, room names, what is drawn. " +
-                      "Payload: { id, maxPixels? } — id of the image (or its type) from GetUnderlays. Returns a PNG " +
+                      "Payload: { id, maxPixels?, linkInstanceId? } — id of the image (or its type) from GetUnderlays, " +
+                      "plus its linkInstanceId when it lives inside a Revit link. Returns a PNG " +
                       "of the page as Revit rasterised it (at the DPI GetUnderlays reports), scaled down so its " +
                       "longer edge is at most maxPixels (default 1568), as an image attachment plus 'file', the " +
                       "PNG's path on the Revit machine. Metadata only for CAD: use GetCadGeometry for DWG/DXF. " +
@@ -26,7 +27,7 @@ namespace AnalyseTool.Tools.Underlays
                 });
 
             return ctx.RunInRevitAsync<object?>(app =>
-                new UnderlayImageService().Render(app.ActiveUIDocument.Document, id, data.MaxPixels));
+                new UnderlayImageService().Render(app.ActiveUIDocument.Document, id, data.MaxPixels, linkInstanceId: data.LinkInstanceId));
         }
 
         internal sealed record Request
@@ -37,6 +38,10 @@ namespace AnalyseTool.Tools.Underlays
             [Description("Optional: longest edge of the returned PNG in pixels, 256-4096, default 1568. Larger " +
                          "shows more detail and costs more tokens.")]
             public int? MaxPixels { get; set; }
+
+            [Description("Only for an underlay inside a Revit link: its linkInstanceId from GetUnderlays. The id is " +
+                         "then the element's id in the LINKED model. Omit for underlays of this model.")]
+            public long? LinkInstanceId { get; set; }
         }
     }
 }

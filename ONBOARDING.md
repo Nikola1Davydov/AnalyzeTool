@@ -575,6 +575,10 @@ return revitContext.RunInRevitAsync<object?>(app =>
 ```
 
 - Call it **inside `RunInRevitAsync`** — it reads the model.
+- **Underlays inside loaded Revit links** are included, for example a consultant's DWG in their linked
+  model. They carry `LinkInstanceId`, and their coordinates are already in your project. Pass
+  `linkInstanceId:` to `GetCadLayers` / `GetCadGeometry` to read one. `includeLinks: false` leaves
+  them out.
 - **Units are millimetres**, coordinates are project-internal (not shared). Divide by 304.8 for the
   Revit internal feet the API takes when you create elements from them.
 - CAD **text, dimensions and hatch patterns** are not exposed by the Revit API, so they are not in the
@@ -1006,11 +1010,13 @@ public interface IProgressAware
 public static class UnderlayReader
 {
     public const string Units = "mm";
-    public static UnderlaysResult    GetUnderlays(Document doc, long? viewId = null,
-                                                  IReadOnlyCollection<string>? kinds = null, bool includeLayers = true);
-    public static CadLayersResult    GetCadLayers(Document doc, long importId, long? viewId = null);
+    public static UnderlaysResult    GetUnderlays(Document doc, long? viewId = null, IReadOnlyCollection<string>? kinds = null,
+                                                  bool includeLayers = true, bool includeLinks = true);
+    public static CadLayersResult    GetCadLayers(Document doc, long importId, long? viewId = null, long? linkInstanceId = null);
     public static CadGeometryResult  GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
-                                                    IReadOnlyCollection<string>? types = null, int? limit = null);
+                                                    IReadOnlyCollection<string>? types = null, int? limit = null,
+                                                    long? linkInstanceId = null);
+    public static Document?          GetSourceDocument(Document doc, long? linkInstanceId, out string? error);
 }
 // Result types: UnderlaysResult, UnderlayInfo, UnderlayImageInfo, CadLayerSummary, CadLayerInfo,
 // CadLayersResult, CadGeometryResult, CadPrimitive — plain records, serializable as they are.

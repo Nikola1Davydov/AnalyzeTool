@@ -38,40 +38,70 @@ namespace AnalyseTool.Sdk.Underlays
         /// Null or empty for all.</param>
         /// <param name="includeLayers">Walk CAD geometry for the per-layer summary. The walk is linear in the
         /// size of the file; false skips it for a quick inventory.</param>
-        public static UnderlaysResult GetUnderlays(Document doc, long? viewId = null, IReadOnlyCollection<string>? kinds = null, bool includeLayers = true)
+        /// <param name="includeLinks">Also report the underlays INSIDE loaded Revit links (a consultant's
+        /// model with its own DWG), with coordinates transformed into this project and
+        /// <see cref="UnderlayInfo.LinkInstanceId"/> set. With a view, only their model-wide CAD — a
+        /// view-specific underlay of a link lives on a view of the link, not on this one.</param>
+        public static UnderlaysResult GetUnderlays(Document doc, long? viewId = null, IReadOnlyCollection<string>? kinds = null,
+                                                   bool includeLayers = true, bool includeLinks = true)
         {
-            FilteredElementCollector collector;
+            View? view = null;
             if (viewId is { } vid)
             {
-                if (doc.GetElement(new ElementId(vid)) is not View view)
+                view = doc.GetElement(new ElementId(vid)) as View;
+                if (view is null)
                     return new UnderlaysResult { Error = $"No view with id {vid}. GetViewsAndSheets lists the views and sheets." };
-                try { collector = new FilteredElementCollector(doc, view.Id); }
-                catch (Autodesk.Revit.Exceptions.ArgumentException)
-                {
-                    // Schedules, legends' browser nodes and the like: views that cannot show elements.
-                    return new UnderlaysResult { Error = $"View {vid} ('{view.Name}', {view.ViewType}) cannot show underlays." };
-                }
             }
-            else
+
+            FilteredElementCollector? InScope()
             {
-                collector = new FilteredElementCollector(doc);
+                if (view is null) return new FilteredElementCollector(doc);
+                // Schedules, legends' browser nodes and the like: views that cannot show elements.
+                try { return new FilteredElementCollector(doc, view.Id); }
+                catch (Autodesk.Revit.Exceptions.ArgumentException) { return null; }
             }
+
+            FilteredElementCollector? collector = InScope();
+            if (collector is null)
+                return new UnderlaysResult { Error = $"View {viewId} ('{view!.Name}', {view.ViewType}) cannot show underlays." };
 
             HashSet<string>? wanted = kinds is { Count: > 0 }
                 ? new HashSet<string>(kinds.Select(k => k.Trim().ToLowerInvariant()))
                 : null;
 
             List<UnderlayInfo> underlays = new();
-            foreach (Element element in collector
-                         .WherePasses(new ElementMulticlassFilter(new[] { typeof(ImportInstance), typeof(ImageInstance) }))
-                         .ToElements())
+            AddUnderlays(doc, collector.WherePasses(UnderlayFilter()).ToElements(), null, wanted, includeLayers, underlays);
+
+            if (includeLinks)
+            {
+                foreach (RevitLinkInstance link in InScope()!.OfClass(typeof(RevitLinkInstance)).Cast<RevitLinkInstance>())
+                {
+                    Document? linkDoc = Try<Document?>(() => link.GetLinkDocument());
+                    if (linkDoc is null) continue; // an unloaded link has no content to read; GetLinksInRevit lists it
+                    LinkContext context = new(link.Id.Value, LinkName(doc, link), link.GetTotalTransform());
+                    IEnumerable<Element> inLink = new FilteredElementCollector(linkDoc).WherePasses(UnderlayFilter()).ToElements();
+                    if (view is not null) inLink = inLink.Where(e => !e.ViewSpecific);
+                    AddUnderlays(linkDoc, inLink, context, wanted, includeLayers, underlays);
+                }
+            }
+
+            return new UnderlaysResult { Count = underlays.Count, Underlays = underlays };
+        }
+
+        private static ElementMulticlassFilter UnderlayFilter() =>
+            new(new[] { typeof(ImportInstance), typeof(ImageInstance) });
+
+        private static void AddUnderlays(Document source, IEnumerable<Element> elements, LinkContext? link,
+                                         HashSet<string>? wanted, bool includeLayers, List<UnderlayInfo> underlays)
+        {
+            foreach (Element element in elements)
             {
                 // The kind is decided BEFORE describing: describing a CAD file walks its geometry, and a
                 // request for PDFs has no business paying for every DWG in the model.
                 string? kind = element switch
                 {
-                    ImportInstance cad => CadKind(ExternalFile(doc, doc.GetElement(cad.GetTypeId())).Path ?? CadName(doc, cad)),
-                    ImageInstance image => ImageKind(doc, image),
+                    ImportInstance cad => CadKind(ExternalFile(source, source.GetElement(cad.GetTypeId())).Path ?? CadName(source, cad)),
+                    ImageInstance image => ImageKind(source, image),
                     _ => null,
                 };
                 if (kind is null) continue;
@@ -79,21 +109,64 @@ namespace AnalyseTool.Sdk.Underlays
                     continue;
 
                 underlays.Add(element is ImportInstance import
-                    ? DescribeCad(doc, import, includeLayers)
-                    : DescribeImage(doc, (ImageInstance)element));
+                    ? DescribeCad(source, import, includeLayers, link)
+                    : DescribeImage(source, (ImageInstance)element, link));
             }
-
-            return new UnderlaysResult { Count = underlays.Count, Underlays = underlays };
         }
+
+        /// <summary>
+        /// The document an underlay id belongs to: <paramref name="doc"/> itself, or — with a
+        /// <paramref name="linkInstanceId"/> from <see cref="UnderlayInfo.LinkInstanceId"/> — the loaded
+        /// Revit link it lives in. Null with an <paramref name="error"/> when the link is unknown or not loaded.
+        /// </summary>
+        public static Document? GetSourceDocument(Document doc, long? linkInstanceId, out string? error)
+        {
+            ResolveLink(doc, linkInstanceId, out Document? source, out error);
+            return source;
+        }
+
+        private static LinkContext? ResolveLink(Document doc, long? linkInstanceId, out Document? source, out string? error)
+        {
+            error = null;
+            source = doc;
+            if (linkInstanceId is not { } id) return null;
+
+            if (doc.GetElement(new ElementId(id)) is not RevitLinkInstance link)
+            {
+                source = null;
+                error = $"No Revit link instance with id {id}. linkInstanceId comes from GetUnderlays.";
+                return null;
+            }
+            source = Try<Document?>(() => link.GetLinkDocument());
+            if (source is null)
+            {
+                error = $"The Revit link '{LinkName(doc, link)}' is not loaded, so its underlays cannot be read. Reload it in Manage Links.";
+                return null;
+            }
+            return new LinkContext(id, LinkName(doc, link), link.GetTotalTransform());
+        }
+
+        private static string LinkName(Document doc, RevitLinkInstance link) =>
+            doc.GetElement(link.GetTypeId())?.Name ?? link.Name;
+
+        /// <summary>Where an underlay inside a Revit link sits in the host: the link instance, its name and
+        /// the transform from link coordinates into host coordinates.</summary>
+        private sealed record LinkContext(long Id, string Name, Transform ToHost);
 
         /// <summary>The layers of one CAD import with colour, line weight and pattern, visibility in a view
         /// and primitive counts.</summary>
         /// <param name="doc">The document to read.</param>
         /// <param name="importId">Element id of the ImportInstance.</param>
         /// <param name="viewId">The view to report layer visibility for. Null: the owner view of a
-        /// view-specific import, else no visibility.</param>
-        public static CadLayersResult GetCadLayers(Document doc, long importId, long? viewId = null)
+        /// view-specific import, else no visibility. For an import inside a link, a view of the LINKED model.</param>
+        /// <param name="linkInstanceId">The Revit link the import lives in (<see cref="UnderlayInfo.LinkInstanceId"/>);
+        /// null for an import of this document.</param>
+        public static CadLayersResult GetCadLayers(Document doc, long importId, long? viewId = null, long? linkInstanceId = null)
         {
+            ResolveLink(doc, linkInstanceId, out Document? source, out string? linkError);
+            if (source is null) return new CadLayersResult { ImportId = importId, Error = linkError };
+            doc = source;
+
             if (doc.GetElement(new ElementId(importId)) is not ImportInstance cad)
                 return new CadLayersResult { ImportId = importId, Error = NotCadMessage(doc, importId) };
 
@@ -123,9 +196,16 @@ namespace AnalyseTool.Sdk.Underlays
         /// <param name="types">Only these primitive types ("line", "polyline", "arc", "block"…). Null or empty for all.</param>
         /// <param name="limit">Cap on primitives returned (default <see cref="DefaultGeometryLimit"/>, at most
         /// <see cref="MaxGeometryLimit"/>). The answer's count still says how many matched.</param>
+        /// <param name="linkInstanceId">The Revit link the import lives in (<see cref="UnderlayInfo.LinkInstanceId"/>);
+        /// null for an import of this document. Coordinates are then transformed into THIS project.</param>
         public static CadGeometryResult GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
-                                                       IReadOnlyCollection<string>? types = null, int? limit = null)
+                                                       IReadOnlyCollection<string>? types = null, int? limit = null,
+                                                       long? linkInstanceId = null)
         {
+            LinkContext? link = ResolveLink(doc, linkInstanceId, out Document? source, out string? linkError);
+            if (source is null) return new CadGeometryResult { ImportId = importId, Error = linkError };
+            doc = source;
+
             if (doc.GetElement(new ElementId(importId)) is not ImportInstance cad)
                 return new CadGeometryResult { ImportId = importId, Error = NotCadMessage(doc, importId) };
 
@@ -139,7 +219,7 @@ namespace AnalyseTool.Sdk.Underlays
                 ? new HashSet<string>(types.Select(t => t.Trim().ToLowerInvariant()))
                 : null;
 
-            List<CadItem> items = CadGeometryWalker.Walk(cad);
+            List<CadItem> items = CadGeometryWalker.Walk(cad, link?.ToHost);
             if (items.Count == 0 && !IsLoaded(doc, cad))
                 return new CadGeometryResult { ImportId = importId, Name = name, Error = NotLoadedMessage(doc, cad) };
 
@@ -188,16 +268,17 @@ namespace AnalyseTool.Sdk.Underlays
 
         // ── CAD ─────────────────────────────────────────────────────────────────────────────────────
 
-        private static UnderlayInfo DescribeCad(Document doc, ImportInstance cad, bool includeLayers)
+        private static UnderlayInfo DescribeCad(Document doc, ImportInstance cad, bool includeLayers, LinkContext? link)
         {
+            Transform toHost = link?.ToHost ?? Transform.Identity;
             Element? type = doc.GetElement(cad.GetTypeId());
             string name = CadName(doc, cad);
             (string? path, string? status) = ExternalFile(doc, type);
             string kind = CadKind(path ?? name);
             View? owner = cad.ViewSpecific ? doc.GetElement(cad.OwnerViewId) as View : null;
 
-            Transform transform = cad.GetTotalTransform();
-            (double[]? min, double[]? max) = Bounds(cad.get_BoundingBox(owner));
+            Transform transform = toHost.Multiply(cad.GetTotalTransform());
+            (double[]? min, double[]? max) = Bounds(cad.get_BoundingBox(owner), toHost);
 
             // A level means something only for a model-wide import; a view-specific one belongs to its view.
             Level? level = null;
@@ -221,6 +302,8 @@ namespace AnalyseTool.Sdk.Underlays
                 Name = name,
                 Kind = kind,
                 Source = cad.IsLinked ? "link" : "import",
+                LinkInstanceId = link?.Id,
+                LinkName = link?.Name,
                 FilePath = path,
                 FileStatus = status ?? (cad.IsLinked ? null : "imported"),
                 ViewSpecific = cad.ViewSpecific,
@@ -263,7 +346,8 @@ namespace AnalyseTool.Sdk.Underlays
             string extent = u.BboxMin is { Length: 3 } lo && u.BboxMax is { Length: 3 } hi
                 ? $", {(hi[0] - lo[0]) / 1000:0.##} × {(hi[1] - lo[1]) / 1000:0.##} m"
                 : string.Empty;
-            return $"{(u.Source == "link" ? "Linked" : "Imported")} {u.Kind.ToUpperInvariant()} '{u.Name}' {where}{extent}{what}{state}.";
+            string inLink = u.LinkName is null ? string.Empty : $" in Revit link '{u.LinkName}'";
+            return $"{(u.Source == "link" ? "Linked" : "Imported")} {u.Kind.ToUpperInvariant()} '{u.Name}'{inLink} {where}{extent}{what}{state}.";
         }
 
         private static List<CadLayerInfo> BuildLayers(Document doc, ImportInstance cad, View? view, bool detailed)
@@ -484,15 +568,16 @@ namespace AnalyseTool.Sdk.Underlays
 
         // ── Images (PDF / raster) ───────────────────────────────────────────────────────────────────
 
-        private static UnderlayInfo DescribeImage(Document doc, ImageInstance image)
+        private static UnderlayInfo DescribeImage(Document doc, ImageInstance image, LinkContext? link)
         {
+            Transform toHost = link?.ToHost ?? Transform.Identity;
             ImageType? type = doc.GetElement(image.GetTypeId()) as ImageType;
             View? owner = doc.GetElement(image.OwnerViewId) as View;
             string? path = Try<string?>(() => type?.Path);
             string name = !string.IsNullOrWhiteSpace(path) ? Path.GetFileName(path)! : type?.Name ?? image.Name;
             string kind = ImageKind(doc, image);
 
-            (double[]? min, double[]? max) = Bounds(image.get_BoundingBox(owner));
+            (double[]? min, double[]? max) = Bounds(image.get_BoundingBox(owner), toHost);
 
             int? pixelWidth = Positive(Try<int?>(() => type?.WidthInPixels));
             int? pixelHeight = Positive(Try<int?>(() => type?.HeightInPixels));
@@ -528,6 +613,8 @@ namespace AnalyseTool.Sdk.Underlays
                     ImageTypeSource.Internal => "internal",
                     _ => "import",
                 },
+                LinkInstanceId = link?.Id,
+                LinkName = link?.Name,
                 FilePath = string.IsNullOrWhiteSpace(path) ? null : path,
                 FileStatus = Try<ImageTypeStatus?>(() => type?.Status) switch
                 {
@@ -552,7 +639,7 @@ namespace AnalyseTool.Sdk.Underlays
                     Autodesk.Revit.DB.DrawLayer.Foreground => "foreground",
                     _ => null,
                 },
-                Origin = PointOrNull(Try<XYZ?>(() => image.GetLocation(BoxPlacement.Center))),
+                Origin = PointOrNull(Try<XYZ?>(() => image.GetLocation(BoxPlacement.Center)) is { } centre ? toHost.OfPoint(centre) : null),
                 BboxMin = min,
                 BboxMax = max,
                 Image = imageInfo,
@@ -579,7 +666,8 @@ namespace AnalyseTool.Sdk.Underlays
             string where = u.SheetNumber is not null ? $"on sheet {u.SheetNumber} '{u.OwnerViewName}'"
                 : u.OwnerViewName is not null ? $"on view '{u.OwnerViewName}'" : "on no view";
             string state = u.FileStatus is null or "loaded" or "imported" ? string.Empty : $", file {u.FileStatus}";
-            return $"{(u.Kind == "pdf" ? "PDF" : "Image")} '{u.Name}' {where}" +
+            string inLink = u.LinkName is null ? string.Empty : $" in Revit link '{u.LinkName}'";
+            return $"{(u.Kind == "pdf" ? "PDF" : "Image")} '{u.Name}'{inLink} {where}" +
                    (parts.Count > 0 ? ", " + string.Join(", ", parts) : string.Empty) +
                    $", {(u.Pinned ? "pinned" : "not pinned")}{state}.";
         }
@@ -639,12 +727,17 @@ namespace AnalyseTool.Sdk.Underlays
             return $"#{color.Red:X2}{color.Green:X2}{color.Blue:X2}";
         }
 
-        private static (double[]? Min, double[]? Max) Bounds(BoundingBoxXYZ? box)
+        private static (double[]? Min, double[]? Max) Bounds(BoundingBoxXYZ? box, Transform toHost)
         {
             if (box is null) return (null, null);
-            // A bounding box carries its own transform; for these elements it is the identity, but
-            // applying it costs nothing and keeps the answer right if it is not.
-            return Extent(new[] { box.Transform.OfPoint(box.Min), box.Transform.OfPoint(box.Max) });
+            // All eight corners, through the box's own transform and then into the host: a link may be
+            // rotated, and the extent of a rotated box is not the box of its two transformed corners.
+            List<XYZ> corners = new(8);
+            foreach (double x in new[] { box.Min.X, box.Max.X })
+            foreach (double y in new[] { box.Min.Y, box.Max.Y })
+            foreach (double z in new[] { box.Min.Z, box.Max.Z })
+                corners.Add(toHost.OfPoint(box.Transform.OfPoint(new XYZ(x, y, z))));
+            return Extent(corners);
         }
 
         private static (double[]? Min, double[]? Max) Extent(IEnumerable<XYZ> points)

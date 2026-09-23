@@ -17,12 +17,15 @@ namespace AnalyseTool.Sdk.Underlays
     {
         private const int MaxDepth = 16;
 
-        public static List<CadItem> Walk(ImportInstance cad)
+        /// <param name="cad">The import.</param>
+        /// <param name="toHost">Applied on top of everything: the link transform for an import that lives in
+        /// a Revit link, so its items land in the host's coordinates. Null for an import of the host.</param>
+        public static List<CadItem> Walk(ImportInstance cad, Transform? toHost = null)
         {
             List<CadItem> items = new();
             GeometryElement? root = RootGeometry(cad);
             string? fileName = cad.Document.GetElement(cad.GetTypeId())?.Name;
-            if (root is not null) Visit(root, Transform.Identity, 0, null, fileName, items);
+            if (root is not null) Visit(root, toHost ?? Transform.Identity, 0, null, fileName, items);
             return items;
         }
 

@@ -8,7 +8,8 @@ namespace AnalyseTool.Tools.Underlays
         Description = "Returns the layers of one CAD import/link (DWG, DXF…): name, colour, line weight, line " +
                       "pattern, whether the layer is hidden in a view, and how many primitives of each type " +
                       "(line, polyline, arc, circle, block…) it holds. Use it to decide which layer is which " +
-                      "before GetCadGeometry. Payload: { importId, viewId? } — importId from GetUnderlays; " +
+                      "before GetCadGeometry. Payload: { importId, viewId?, linkInstanceId? } — importId (and, for an " +
+                      "underlay inside a Revit link, linkInstanceId) from GetUnderlays; " +
                       "visibility refers to viewId, else to the owner view of a view-specific import. " +
                       "Read-only. Cost: walks the file's geometry once.",
         ReadOnly = true,
@@ -23,7 +24,7 @@ namespace AnalyseTool.Tools.Underlays
                 return Task.FromResult<object?>(new CadLayersResult { Error = MissingImportId });
 
             return ctx.RunInRevitAsync<object?>(app =>
-                UnderlayReader.GetCadLayers(app.ActiveUIDocument.Document, importId, data.ViewId));
+                UnderlayReader.GetCadLayers(app.ActiveUIDocument.Document, importId, data.ViewId, data.LinkInstanceId));
         }
 
         internal const string MissingImportId =
@@ -34,8 +35,13 @@ namespace AnalyseTool.Tools.Underlays
             [Description("Required: element id of the CAD import or link (ImportInstance), from GetUnderlays.")]
             public long? ImportId { get; set; }
 
-            [Description("Optional: the view to report layer visibility ('hiddenInView') for.")]
+            [Description("Optional: the view to report layer visibility ('hiddenInView') for — a view of the " +
+                         "linked model when linkInstanceId is given.")]
             public long? ViewId { get; set; }
+
+            [Description("Only for an underlay inside a Revit link: its linkInstanceId from GetUnderlays. The id is " +
+                         "then the element's id in the LINKED model. Omit for underlays of this model.")]
+            public long? LinkInstanceId { get; set; }
         }
     }
 }

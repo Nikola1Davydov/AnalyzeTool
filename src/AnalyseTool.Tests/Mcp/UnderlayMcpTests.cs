@@ -40,10 +40,11 @@ public class UnderlayMcpTests
         typeof(UnderlayImageService).Assembly.GetType($"AnalyseTool.Tools.Underlays.{name}")
         ?? typeof(UnderlayImageService).Assembly.GetType($"AnalyseTool.Tools.Elements.{name}", throwOnError: true)!;
 
-    /// <summary>The model of the issue: a linked DWG on the ground-floor plan and a PDF on a sheet.</summary>
+    /// <summary>The model of the issue: a linked DWG on the ground-floor plan, a PDF on an elevation —
+    /// and a DWG that is not ours at all but sits inside the MEP consultant's linked Revit model.</summary>
     internal static UnderlaysResult Scenario() => new()
     {
-        Count = 2,
+        Count = 3,
         Underlays =
         [
             new UnderlayInfo
@@ -77,6 +78,16 @@ public class UnderlayMcpTests
                     Scale = 100, LockProportions = true,
                 },
                 Summary = "PDF 'Fassade.pdf' on view 'Fassade Nord', page 2, 300 DPI, 594 × 420 mm, placed at 1:100, not pinned.",
+            },
+            new UnderlayInfo
+            {
+                Id = 912, Name = "TGA-Schacht.dwg", Kind = "dwg", Source = "import", FileStatus = "imported",
+                LinkInstanceId = 8800, LinkName = "TGA.rvt",
+                ViewSpecific = false, LevelId = 77, LevelName = "EG",
+                Origin = [60000, 0, 0], RotationDegrees = 0, BboxMin = [60000, 0, 0], BboxMax = [64000, 3000, 0],
+                LayerCount = 1, PrimitiveCount = 4,
+                Layers = [new CadLayerSummary { Name = "M-DUCT", PrimitiveCount = 4, Primitives = new Dictionary<string, int> { ["line"] = 4 } }],
+                Summary = "Imported DWG 'TGA-Schacht.dwg' in Revit link 'TGA.rvt' model-wide on level 'EG', 4 × 3 m, 1 layers, 4 primitives (busiest: M-DUCT 4).",
             },
         ],
     };
@@ -174,7 +185,7 @@ public class UnderlayMcpTests
         JsonSchema schema = await JsonSchema.FromJsonAsync(tool["outputSchema"]!.ToString());
         ICollection<NJsonSchema.Validation.ValidationError> errors = schema.Validate(structured.ToString());
 
-        JToken dwg = structured["underlays"]!.Single(u => (string)u["kind"]! == "dwg");
+        JToken dwg = structured["underlays"]!.Single(u => (string)u["name"]! == "A-101.dwg");
         JToken pdf = structured["underlays"]!.Single(u => (string)u["kind"]! == "pdf");
         using (Assert.Multiple())
         {
@@ -197,6 +208,12 @@ public class UnderlayMcpTests
             await Assert.That((double)pdf["image"]!["scale"]!).IsEqualTo(100);
             await Assert.That((bool)pdf["pinned"]!).IsFalse();
 
+            // A DWG inside a Revit link says so, and says how to reach it.
+            JToken inLink = structured["underlays"]!.Single(u => (string)u["name"]! == "TGA-Schacht.dwg");
+            await Assert.That((long)inLink["linkInstanceId"]!).IsEqualTo(8800);
+            await Assert.That((string)inLink["linkName"]!).IsEqualTo("TGA.rvt");
+            await Assert.That(dwg["linkInstanceId"]).IsNull();
+
             // Absent, not null: an optional field the host has no value for is left out.
             await Assert.That(pdf["layers"]).IsNull();
             await Assert.That((string)reply["content"]![0]!["text"]!).Contains("A-101.dwg");
@@ -215,7 +232,7 @@ public class UnderlayMcpTests
         JObject reply = await exe.RequestAsync("tools/call", new JObject
         {
             ["name"] = "GetCadGeometry",
-            ["arguments"] = new JObject { ["importId"] = 4711, ["layers"] = new JArray("A-GRID"), ["types"] = new JArray("line"), ["limit"] = 2 },
+            ["arguments"] = new JObject { ["importId"] = 4711, ["layers"] = new JArray("A-GRID"), ["types"] = new JArray("line"), ["limit"] = 2, ["linkInstanceId"] = 8800 },
         });
         JToken structured = reply["structuredContent"]!;
         JsonSchema schema = await JsonSchema.FromJsonAsync(tool["outputSchema"]!.ToString());
@@ -231,6 +248,7 @@ public class UnderlayMcpTests
             JToken? payload = bridge.Invocations.Single(i => i.Command == "GetCadGeometry").Payload;
             await Assert.That((long)payload!["importId"]!).IsEqualTo(4711);
             await Assert.That((string)payload["layers"]![0]!).IsEqualTo("A-GRID");
+            await Assert.That((long)payload["linkInstanceId"]!).IsEqualTo(8800);
         }
     }
 

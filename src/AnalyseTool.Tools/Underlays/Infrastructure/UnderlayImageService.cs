@@ -1,3 +1,4 @@
+using AnalyseTool.Sdk.Underlays;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using Serilog;
@@ -22,8 +23,13 @@ namespace AnalyseTool.Tools.Underlays
         /// <param name="id">An ImageInstance id, or an ImageType id.</param>
         /// <param name="maxPixels">Longest edge of the PNG, clamped to 256-4096.</param>
         /// <param name="outputFolder">Where the PNG is also written; defaults to %TEMP%\AnalyseTool\underlays.</param>
-        public PageImageResult Render(Document doc, long id, int? maxPixels, string? outputFolder = null)
+        /// <param name="linkInstanceId">The Revit link the image lives in, when it does (GetUnderlays says so).</param>
+        public PageImageResult Render(Document doc, long id, int? maxPixels, string? outputFolder = null, long? linkInstanceId = null)
         {
+            Document? inDocument = UnderlayReader.GetSourceDocument(doc, linkInstanceId, out string? linkError);
+            if (inDocument is null) return new PageImageResult { Id = id, Error = linkError };
+            doc = inDocument;
+
             Element? element = doc.GetElement(new ElementId(id));
             ImageType? type = element switch
             {

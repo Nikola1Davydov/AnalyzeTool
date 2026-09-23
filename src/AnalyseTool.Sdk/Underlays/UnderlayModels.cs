@@ -64,6 +64,18 @@ namespace AnalyseTool.Sdk.Underlays
         [Description("link, import or internal.")]
         public string Source { get; init; } = string.Empty;
 
+        /// <summary>Set when the underlay lives INSIDE a loaded Revit link: the link instance's id in this
+        /// document. The underlay's own id, owner view and level are then ids of the LINKED model — pass this
+        /// id along with them to GetCadLayers / GetCadGeometry / GetPdfPageAsImage. Coordinates are already
+        /// transformed into this project.</summary>
+        [DataMember(Name = "linkInstanceId", EmitDefaultValue = false)]
+        [Description("Set if inside a Revit link: pass it with id to the other underlay tools. Ids are then the link's; coordinates are ours.")]
+        public long? LinkInstanceId { get; init; }
+
+        /// <summary>Name of that Revit link.</summary>
+        [DataMember(Name = "linkName", EmitDefaultValue = false)]
+        public string? LinkName { get; init; }
+
         /// <summary>Path of the source file as Revit stores it; absent for an import that no longer knows it.</summary>
         [DataMember(Name = "filePath", EmitDefaultValue = false)]
         public string? FilePath { get; init; }

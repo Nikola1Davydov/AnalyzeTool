@@ -8,7 +8,8 @@ namespace AnalyseTool.Tools.Underlays
         Description = "Returns the geometry of one CAD import/link (DWG, DXF…) as primitives in PROJECT coordinates, " +
                       "in mm, with the import's position, rotation, scale and nested blocks already applied — ready " +
                       "to build from (\"take the axes on layer A-GRID and create grids\": pass layers [\"A-GRID\"], " +
-                      "types [\"line\"]). Each primitive: { type, layer, block?, points [[x,y,z]…], center?, radius?, " +
+                      "types [\"line\"]). For a DWG inside a Revit link pass its linkInstanceId too; coordinates " +
+                      "come back in THIS project. Each primitive: { type, layer, block?, points [[x,y,z]…], center?, radius?, " +
                       "length?, closed? }. Types: line, arc, circle, ellipse, spline, polyline, point, solid, mesh, " +
                       "block (a block reference: its insertion point). CAD text, dimensions and hatch patterns are not " +
                       "exposed by the Revit API. 'count' is the matches before 'limit', so a truncated answer says so; " +
@@ -27,7 +28,7 @@ namespace AnalyseTool.Tools.Underlays
                 return Task.FromResult<object?>(new CadGeometryResult { Error = GetCadLayers.MissingImportId });
 
             return ctx.RunInRevitAsync<object?>(app =>
-                UnderlayReader.GetCadGeometry(app.ActiveUIDocument.Document, importId, data.Layers, data.Types, data.Limit));
+                UnderlayReader.GetCadGeometry(app.ActiveUIDocument.Document, importId, data.Layers, data.Types, data.Limit, data.LinkInstanceId));
         }
 
         internal sealed record Request
@@ -46,6 +47,10 @@ namespace AnalyseTool.Tools.Underlays
             [Description("Optional: cap on primitives returned, default 1000, at most 20000. 'count' still says " +
                          "how many matched.")]
             public int? Limit { get; set; }
+
+            [Description("Only for an underlay inside a Revit link: its linkInstanceId from GetUnderlays. The id is " +
+                         "then the element's id in the LINKED model. Omit for underlays of this model.")]
+            public long? LinkInstanceId { get; set; }
         }
     }
 }

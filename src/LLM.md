@@ -101,11 +101,12 @@ namespace AnalyseTool.Sdk.Underlays   // SDK 1.3+: DWG/PDF underlays as data —
 {
     public static class UnderlayReader   // call INSIDE RunInRevitAsync; every length is mm
     {
-        public static UnderlaysResult   GetUnderlays(Document doc, long? viewId = null,
-                                                     IReadOnlyCollection<string>? kinds = null, bool includeLayers = true);
-        public static CadLayersResult   GetCadLayers(Document doc, long importId, long? viewId = null);
+        public static UnderlaysResult   GetUnderlays(Document doc, long? viewId = null, IReadOnlyCollection<string>? kinds = null,
+                                                     bool includeLayers = true, bool includeLinks = true);
+        public static CadLayersResult   GetCadLayers(Document doc, long importId, long? viewId = null, long? linkInstanceId = null);
         public static CadGeometryResult GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
-                                                       IReadOnlyCollection<string>? types = null, int? limit = null);
+                                                       IReadOnlyCollection<string>? types = null, int? limit = null,
+                                                       long? linkInstanceId = null);
     }
 }
 ```
@@ -218,6 +219,10 @@ return revitContext.RunInRevitAsync<object?>(app =>
 });
 ```
 
+- **Underlays inside a linked Revit model** (a consultant's DWG in their RVT) are listed too, with
+  `linkInstanceId` and `linkName`. Their `id` is an id in the LINKED model, so always pass
+  `linkInstanceId` along with it to `GetCadLayers` / `GetCadGeometry` / `GetPdfPageAsImage`.
+  Coordinates are already in this project.
 - **Coordinates are mm, project-internal** (Revit internal origin, not shared coordinates), with the
   import's position, rotation and scale already applied. Divide by 304.8 for Revit feet.
 - **Check `count` against `returned`.** Geometry answers are capped (default 1000, at most 20000); a

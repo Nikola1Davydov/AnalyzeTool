@@ -20,13 +20,52 @@ public sealed class UnderlayTests : SeededModel
 
     private ViewPlan Plan()
     {
-        ViewFamilyType type = new FilteredElementCollector(Document)
+        ViewPlan plan = null!;
+        InTransaction("plan", () => plan = CreatePlan(Document, Level));
+        return plan;
+    }
+
+    private static ViewPlan CreatePlan(Document document, Level level)
+    {
+        ViewFamilyType type = new FilteredElementCollector(document)
             .OfClass(typeof(ViewFamilyType))
             .Cast<ViewFamilyType>()
             .First(t => t.ViewFamily == ViewFamily.FloorPlan);
-        ViewPlan plan = null!;
-        InTransaction("plan", () => plan = ViewPlan.Create(Document, type.Id, Level.Id));
-        return plan;
+        return ViewPlan.Create(document, type.Id, level.Id);
+    }
+
+    /// <summary>A consultant's model saved next to the DWG: its own level and plan, the DWG imported
+    /// model-wide — then linked into the seeded document and moved, like a real linked RVT.</summary>
+    private RevitLinkInstance LinkModelContaining(string dwgPath, XYZ moveBy)
+    {
+        string rvtPath = Path.Combine(_folder, "consultant.rvt");
+        Document consultant = Application.NewProjectDocument(UnitSystem.Metric);
+        try
+        {
+            using (Transaction t = new(consultant, "consultant"))
+            {
+                t.Start();
+                ViewPlan plan = CreatePlan(consultant, Level.Create(consultant, 0));
+                if (!consultant.Import(dwgPath, new DWGImportOptions { ThisViewOnly = false }, plan, out _))
+                    throw new InvalidOperationException("DWG import into the consultant model failed");
+                t.Commit();
+            }
+            consultant.SaveAs(rvtPath, new SaveAsOptions { OverwriteExistingFile = true });
+        }
+        finally
+        {
+            consultant.Close(false);
+        }
+
+        RevitLinkInstance link = null!;
+        InTransaction("link rvt", () =>
+        {
+            LinkLoadResult loaded = RevitLinkType.Create(Document, ModelPathUtils.ConvertUserVisiblePathToModelPath(rvtPath), new RevitLinkOptions(false));
+            link = RevitLinkInstance.Create(Document, loaded.ElementId);
+            link.Pinned = false;
+            ElementTransformUtils.MoveElement(Document, link.Id, moveBy);
+        });
+        return link;
     }
 
     /// <summary>The plan of the seeded walls as a DWG file (exports run outside a transaction).</summary>
@@ -193,6 +232,42 @@ public sealed class UnderlayTests : SeededModel
             // A capped answer says it is capped.
             await Assert.That(capped.Returned).IsEqualTo(1);
             await Assert.That(capped.Count).IsGreaterThan(1);
+        }
+    }
+
+    [Test]
+    public async Task A_dwg_inside_a_revit_link_is_found_and_lands_in_host_coordinates()
+    {
+        // The consultant's DWG sits at x = 0…10 ft in THEIR model; their model is linked 200 ft east.
+        RevitLinkInstance link = LinkModelContaining(ExportDwg(), new XYZ(200, 0, 0));
+
+        UnderlaysResult all = UnderlayReader.GetUnderlays(Document);
+        UnderlaysResult ownOnly = UnderlayReader.GetUnderlays(Document, includeLinks: false);
+        UnderlayInfo inLink = all.Underlays.Single(u => u.LinkInstanceId == link.Id.Value);
+        CadGeometryResult geometry = UnderlayReader.GetCadGeometry(Document, inLink.Id, linkInstanceId: link.Id.Value);
+        CadLayersResult layers = UnderlayReader.GetCadLayers(Document, inLink.Id, linkInstanceId: link.Id.Value);
+        CadGeometryResult notALink = UnderlayReader.GetCadGeometry(Document, inLink.Id, linkInstanceId: Walls[0].Id.Value);
+        List<double> xs = geometry.Primitives.Where(p => p.Points is not null).SelectMany(p => p.Points!).Select(p => p[0]).ToList();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(inLink.Kind).IsEqualTo("dwg");
+            await Assert.That(inLink.Source).IsEqualTo("import");
+            await Assert.That(inLink.LinkName).IsNotNull();
+            await Assert.That(inLink.ViewSpecific).IsFalse();
+            await Assert.That(inLink.PrimitiveCount).IsNotNull().And.IsGreaterThan(0);
+            await Assert.That(inLink.Summary).Contains("in Revit link");
+            // Placement and extent are in the HOST's coordinates — the link's move is applied.
+            await Assert.That(inLink.BboxMin![0]).IsGreaterThan(195 * MmPerFoot);
+            await Assert.That(ownOnly.Underlays.Any(u => u.LinkInstanceId is not null)).IsFalse();
+
+            await Assert.That(geometry.Error).IsNull();
+            await Assert.That(xs).IsNotEmpty();
+            await Assert.That(xs.Min()).IsGreaterThan(195 * MmPerFoot);
+            await Assert.That(xs.Max()).IsLessThan(215 * MmPerFoot);
+            await Assert.That(layers.Error).IsNull();
+            await Assert.That(layers.Layers.Sum(l => l.PrimitiveCount)).IsEqualTo(inLink.PrimitiveCount!.Value);
+            await Assert.That(notALink.Error).IsNotNull().And.Contains("No Revit link instance");
         }
     }
 

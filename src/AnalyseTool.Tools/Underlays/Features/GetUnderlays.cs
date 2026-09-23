@@ -7,7 +7,8 @@ namespace AnalyseTool.Tools.Underlays
     [RevitCommand(
         Description = "START HERE whenever the user mentions a DWG, DXF, CAD file, PDF, scan, image, underlay or " +
                       "\"the drawing under the plan\": one call returns every CAD import/link and PDF/raster image in " +
-                      "the model (or on one view) with what it IS — kind, file path and load status, linked or " +
+                      "the model — including those INSIDE loaded Revit links, e.g. a consultant's model with its own " +
+                      "DWG (marked with linkInstanceId, coordinates already in this project) — or on one view, with what it IS — kind, file path and load status, linked or " +
                       "imported, the view/sheet or level it sits on, pinned, position, rotation and extent in mm — " +
                       "and what it CONTAINS: for CAD every layer with colour and primitive counts by type (so the " +
                       "grid layer, the wall layer and the door-block layer are visible at once), for a PDF the page, " +
@@ -31,7 +32,8 @@ namespace AnalyseTool.Tools.Underlays
                     app.ActiveUIDocument.Document,
                     data.ViewId,
                     data.Kinds,
-                    data.IncludeLayers ?? true));
+                    data.IncludeLayers ?? true,
+                    data.IncludeLinks ?? true));
         }
 
         internal sealed record Request
@@ -47,6 +49,10 @@ namespace AnalyseTool.Tools.Underlays
             [Description("Optional, default true: include the per-layer summary of each CAD file. False answers " +
                          "faster on very large files, without 'layers'.")]
             public bool? IncludeLayers { get; set; }
+
+            [Description("Optional, default true: also report the DWG/PDF inside loaded Revit links. False answers " +
+                         "for this model's own underlays only.")]
+            public bool? IncludeLinks { get; set; }
         }
     }
 }
