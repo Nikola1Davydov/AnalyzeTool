@@ -15,6 +15,26 @@ namespace AnalyseTool.App.Common
         private const string DownloadUrl = "https://developer.microsoft.com/microsoft-edge/webview2/";
         private static bool _warned;
 
+        /// <summary>
+        /// Makes WebView2 register its Win32 window classes under a unique suffix
+        /// (<c>Chrome_WidgetWin_0_EmbeddedBrowserWebView</c>). Revit 2025 hosts an older CEF (Manage Links
+        /// and other dialogs) that registers the same <c>Chrome_WidgetWin_0</c> class; once a newer WebView2
+        /// has claimed it, CEF's CreateWindowEx fails and Revit dies in libcef.dll (#138). This is
+        /// Microsoft's opt-in fix for exactly that collision; it is harmless on Revit versions without it.
+        /// </summary>
+        internal const string BrowserArguments = "--edge-webview-unique-window-class";
+
+        /// <summary>
+        /// The one way to create a <see cref="CoreWebView2Environment"/> in this add-in. Every WebView2
+        /// shares the profile's user-data folder, and WebView2 refuses a second environment on the same
+        /// folder with different options — so all windows must go through here.
+        /// </summary>
+        public static Task<CoreWebView2Environment> CreateEnvironmentAsync()
+        {
+            CoreWebView2EnvironmentOptions options = new(additionalBrowserArguments: BrowserArguments);
+            return CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath, options);
+        }
+
         /// <summary>True when the Evergreen WebView2 Runtime is installed.</summary>
         public static bool IsAvailable()
         {
