@@ -546,6 +546,50 @@ per chunk — a single long call blocks Revit's UI thread, and the updates only 
 Commands that don't implement `IProgressAware` are completely unaffected; SDK 1.0 extensions keep
 working unchanged.
 
+### 4.7 Working with DWG and PDF underlays (SDK 1.3)
+
+An underlay — a DWG/DXF/DGN import or link, a PDF page or a scan placed on a view — is something
+your command should not have to take apart itself. Doing so by hand means walking `ImportInstance`
+geometry through nested `GeometryInstance`s and applying their transforms, mapping every object's
+`GraphicsStyleId` to a layer, reading the file state through external file references, and working
+out a PDF's paper size and scale from pixels and DPI. `AnalyseTool.Sdk.Underlays.UnderlayReader`
+does all of that, as plain data, and it is the same code the built-in `GetUnderlays`,
+`GetCadLayers` and `GetCadGeometry` run:
+
+```csharp
+using AnalyseTool.Sdk.Underlays;
+
+return revitContext.RunInRevitAsync<object?>(app =>
+{
+    Document doc = app.ActiveUIDocument.Document;
+
+    // Every underlay (or those on one view): kind, file, linked/imported, load status, owner view or
+    // level, pinned, position and extent — and for CAD every layer with primitive counts by type.
+    UnderlaysResult all = UnderlayReader.GetUnderlays(doc, viewId: null, kinds: new[] { "dwg" });
+
+    // The lines of one layer, in PROJECT coordinates (mm), the import's transform already applied.
+    UnderlayInfo dwg = all.Underlays.First();
+    CadGeometryResult grid = UnderlayReader.GetCadGeometry(doc, dwg.Id, layers: new[] { "A-GRID" }, types: new[] { "line" });
+    return grid.Primitives;
+});
+```
+
+- Call it **inside `RunInRevitAsync`** — it reads the model.
+- **Units are millimetres**, coordinates are project-internal (not shared). Divide by 304.8 for the
+  Revit internal feet the API takes when you create elements from them.
+- CAD **text, dimensions and hatch patterns** are not exposed by the Revit API, so they are not in the
+  counts or the geometry. For a PDF there is no vector geometry at all; the host command
+  `GetPdfPageAsImage` renders the page to a PNG instead.
+- The host's copy of the Sdk is the one that runs, so a fix in the reader reaches your extension with
+  the next plugin release, without a rebuild.
+- `samples/Acme.Sample/DwgGridLines.cs` is a complete command built on it.
+
+**Returning a picture.** A command whose result has a top-level `image` property of the shape
+`{ "mimeType": "image/png", "data": "<base64>" }` hands that picture to an MCP client as an image
+content block, which is what a multimodal model actually looks at. `data` is left out of the text
+and structured content, so the tokens are not spent twice. `GetPdfPageAsImage` uses this, and any
+extension command can too: give its result type such a property.
+
 ## 5. Writing a JS / UI extension
 
 The host opens your page in its own WebView2 window and injects a `window.AT` bridge. **Any
@@ -957,6 +1001,19 @@ public interface IProgressAware
 {
     IProgress<ProgressInfo>? Progress { get; set; }
 }
+
+// AnalyseTool.Sdk.Underlays (SDK 1.3+): read DWG/PDF underlays as data (§4.7). Call inside RunInRevitAsync.
+public static class UnderlayReader
+{
+    public const string Units = "mm";
+    public static UnderlaysResult    GetUnderlays(Document doc, long? viewId = null,
+                                                  IReadOnlyCollection<string>? kinds = null, bool includeLayers = true);
+    public static CadLayersResult    GetCadLayers(Document doc, long importId, long? viewId = null);
+    public static CadGeometryResult  GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
+                                                    IReadOnlyCollection<string>? types = null, int? limit = null);
+}
+// Result types: UnderlaysResult, UnderlayInfo, UnderlayImageInfo, CadLayerSummary, CadLayerInfo,
+// CadLayersResult, CadGeometryResult, CadPrimitive — plain records, serializable as they are.
 ```
 
 The working reference implementation is `samples/Acme.Sample/` — copy it as a starting point.

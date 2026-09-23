@@ -112,6 +112,18 @@
         /// together or not at all.</summary>
         public const string OutputSchema = "outputSchema";
 
+        /// <summary>
+        /// A picture riding in a command's RESULT: a top-level property of this name holding
+        /// <c>{ mimeType: "image/png", data: "&lt;base64&gt;" }</c>. The exe lifts it into an MCP image
+        /// content block — what a multimodal client actually looks at — and drops <c>data</c> from the
+        /// text and structured content, where a megabyte of base64 would only be read as text. A plain
+        /// result convention rather than a wire field, so any command can return a picture, an
+        /// extension's included, with nothing but a property on its result type (GetPdfPageAsImage, #136).
+        /// </summary>
+        public const string ImageAttachment = "image";
+        public const string ImageMimeType = "mimeType";
+        public const string ImageData = "data";
+
         // Error object fields
         public const string ErrorCode = "code";
         public const string ErrorMessage = "message";

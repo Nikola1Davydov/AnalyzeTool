@@ -12,9 +12,9 @@ WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools comman
 
 | Project | References | Role |
 | --- | --- | --- |
-| `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. |
+| `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. Since 1.3 also `Underlays/` — `UnderlayReader`, the one piece that reads the model (DWG/PDF underlays as data, #136), public so extensions reuse it instead of copying it. |
 | `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn scripting, `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
-| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/` (Family Manager left the platform for an extension on 2026-09-01) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
+| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/`, `Underlays/` (DWG/PDF commands over the Sdk's `UnderlayReader`, plus the PDF→PNG renderer that needs System.Drawing) (Family Manager left the platform for an extension on 2026-09-01) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
 | `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
 | `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
 | `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
@@ -58,12 +58,15 @@ nobody runs in CI.
 Rules: every fixed bug gets a test on its tier; a command's core is a function of a `Document` (or of
 plain data) so it can be tested on tier 1 or 3 without `UIApplication` — tests inside Revit never
 touch `RevitAPIUI` and exercise the SERVICES (`DataElementsCollectorService`, `ViewsSheetsService`,
-`TypeAndWorksetService`, `ParameterWriteService`) on a document seeded in code (`SeededModel`: one
+`TypeAndWorksetService`, `ParameterWriteService`, the Sdk's `UnderlayReader` + `UnderlayImageService` — their
+DWG/PDF are exported from the seeded plan and linked back in the test) on a document seeded in code (`SeededModel`: one
 level, four walls), never the commands — plus `RoslynScriptCompiler` against the live `RevitAPI`
 (the test engine has no `RevitAPIUI`, so "UIApplication not referenced" is the one error every
 compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
 must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
-button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher.
+button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher. Tier 2 also holds every
+underlay command's output schema under the 4096-char listing cap (`SchemaListing`) — over it the tool loses its
+outputSchema and every field description, silently.
 
 ```powershell
 dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"

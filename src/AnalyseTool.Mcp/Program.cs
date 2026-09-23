@@ -131,12 +131,16 @@ builder.Services
             if (binding is { WrapsArray: true } && result is JsonArray array)
                 result = new JsonObject { [ArrayItemsField] = array.DeepClone() };
 
+            // A picture in the answer (McpWire.ImageAttachment) becomes an image block, and leaves the JSON.
+            ImageContentBlock? image = LiftImage(ref result);
+
             // Text mirrors structured content, as the spec asks — one shape, whichever block a client reads.
             string text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
 
             // The text block stays unconditionally: it is what every client can read, including the ones
             // that ignore structured output entirely.
             CallToolResult callResult = new CallToolResult { Content = { new TextContentBlock { Text = text } } };
+            if (image is not null) callResult.Content.Add(image);
 
             // Structured content ONLY where the tool promised a schema at listing time. Promising a
             // schema and then not delivering is the one way to be worse than saying nothing. Always an
@@ -333,10 +337,16 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
     switch (status)
     {
         case McpWire.JobStates.Done:
-            return new CallToolResult
+        {
+            JsonNode? result = job![McpWire.JobResult];
+            ImageContentBlock? image = LiftImage(ref result);
+            CallToolResult done = new()
             {
-                Content = { new TextContentBlock { Text = job![McpWire.JobResult]?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null" } },
+                Content = { new TextContentBlock { Text = result?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null" } },
             };
+            if (image is not null) done.Content.Add(image);
+            return done;
+        }
         case McpWire.JobStates.Running:
             return new CallToolResult
             {
@@ -511,6 +521,30 @@ static JsonObject WrapArraySchema(JsonNode arraySchema) => new JsonObject
     ["properties"] = new JsonObject { [ArrayItemsField] = arraySchema.DeepClone() },
     ["required"] = new JsonArray(ArrayItemsField),
 };
+
+/// <summary>
+/// Takes the picture out of a result that carries one (McpWire.ImageAttachment): returns it as an image
+/// content block and replaces <paramref name="result"/> with a copy whose attachment keeps its mimeType
+/// but not its data. Anything that is not exactly that shape — no such property, a non-image mime type,
+/// data that is not base64 — is left alone and travels as JSON, as it always did.
+/// </summary>
+static ImageContentBlock? LiftImage(ref JsonNode? result)
+{
+    if (result is not JsonObject obj || obj[McpWire.ImageAttachment] is not JsonObject attachment) return null;
+    if (attachment[McpWire.ImageMimeType] is not JsonValue mimeNode || !mimeNode.TryGetValue(out string? mimeType)
+        || mimeType is null || !mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+    if (attachment[McpWire.ImageData] is not JsonValue dataNode || !dataNode.TryGetValue(out string? data)
+        || string.IsNullOrEmpty(data)) return null;
+
+    byte[] bytes;
+    try { bytes = Convert.FromBase64String(data); }
+    catch (FormatException) { return null; }
+
+    JsonObject stripped = (JsonObject)obj.DeepClone();
+    ((JsonObject)stripped[McpWire.ImageAttachment]!).Remove(McpWire.ImageData);
+    result = stripped;
+    return ImageContentBlock.FromBytes(bytes, mimeType);
+}
 
 /// <summary>
 /// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error

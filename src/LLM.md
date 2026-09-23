@@ -96,6 +96,18 @@ namespace AnalyseTool.Sdk
         IProgress<ProgressInfo>? Progress { get; set; }
     }
 }
+
+namespace AnalyseTool.Sdk.Underlays   // SDK 1.3+: DWG/PDF underlays as data — see "Reading DWG / PDF underlays"
+{
+    public static class UnderlayReader   // call INSIDE RunInRevitAsync; every length is mm
+    {
+        public static UnderlaysResult   GetUnderlays(Document doc, long? viewId = null,
+                                                     IReadOnlyCollection<string>? kinds = null, bool includeLayers = true);
+        public static CadLayersResult   GetCadLayers(Document doc, long importId, long? viewId = null);
+        public static CadGeometryResult GetCadGeometry(Document doc, long importId, IReadOnlyCollection<string>? layers = null,
+                                                       IReadOnlyCollection<string>? types = null, int? limit = null);
+    }
+}
 ```
 
 ### The ONE rule
@@ -165,6 +177,57 @@ public sealed class SetComment : IRevitTask
     }
 }
 ```
+
+### Reading DWG / PDF underlays
+
+When a task involves a DWG, DXF, PDF, scan or "the drawing under the plan":
+
+- **Over MCP, start with `GetUnderlays`.** One call lists every CAD import/link and PDF/raster image
+  with its file, load status, linked vs imported, owner view or level, pinned, position and extent,
+  and a one-line `summary`. For CAD it also lists every layer with its colour and primitive counts by
+  type, which is usually enough to tell the grid layer (lines), the wall layer (polylines) and the
+  door layer (blocks) apart. For a PDF it gives page, DPI, paper size and placed scale. Filter with
+  `viewId` / `kinds`. Then:
+  - `GetCadLayers { importId }` for line weight, pattern and visibility per layer;
+  - `GetCadGeometry { importId, layers, types, limit }` for the primitives;
+  - `GetPdfPageAsImage { id }` to *look at* a PDF page, since it has no vector geometry in Revit.
+- **In C#, don't walk `ImportInstance` geometry yourself.** Call `UnderlayReader` from
+  `AnalyseTool.Sdk.Underlays`, the same code those commands run. It handles nested
+  `GeometryInstance` transforms, `GraphicsStyle` → layer names, file status and PDF scale:
+
+```csharp
+using AnalyseTool.Sdk.Underlays;
+
+return revitContext.RunInRevitAsync<object?>(app =>
+{
+    Document doc = app.ActiveUIDocument.Document;
+    UnderlayInfo dwg = UnderlayReader.GetUnderlays(doc, kinds: new[] { "dwg" }).Underlays.First();
+    CadGeometryResult grid = UnderlayReader.GetCadGeometry(doc, dwg.Id, layers: new[] { "A-GRID" }, types: new[] { "line" });
+
+    using Transaction t = new(doc, "Grids from DWG");
+    t.Start();
+    foreach (CadPrimitive line in grid.Primitives)
+    {
+        // mm → Revit internal feet: divide by 304.8. Coordinates are already project coordinates.
+        XYZ a = new(line.Points![0][0] / 304.8, line.Points[0][1] / 304.8, 0);
+        XYZ b = new(line.Points[1][0] / 304.8, line.Points[1][1] / 304.8, 0);
+        Grid.Create(doc, Line.CreateBound(a, b));
+    }
+    t.Commit();
+    return new { created = grid.Returned, matched = grid.Count };
+});
+```
+
+- **Coordinates are mm, project-internal** (Revit internal origin, not shared coordinates), with the
+  import's position, rotation and scale already applied. Divide by 304.8 for Revit feet.
+- **Check `count` against `returned`.** Geometry answers are capped (default 1000, at most 20000); a
+  larger `count` means the answer was truncated, so narrow by `layers` / `types`.
+- **Not everything is there.** CAD text, dimensions and hatch patterns are not exposed by the Revit
+  API. A link whose `fileStatus` is not `loaded` has no geometry; tell the user to reload it rather
+  than reporting an empty drawing.
+- **To return a picture from your own command**, give its result a top-level
+  `image: { mimeType: "image/png", data: "<base64>" }`. The MCP server sends it to the client as an
+  image content block and leaves `data` out of the text.
 
 ### Command naming
 Wire name = `[RevitCommand]` name, else the class name. The host prefixes it with the extension `id`:

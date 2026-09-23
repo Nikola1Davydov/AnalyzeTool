@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+- 🗺️ **An agent understands DWG and PDF underlays in one call (#136).** Until now the platform knew about an underlay only that it existed: `GetCadImports` and `GetLinksInRevit` gave an id and a name, and PDFs were not visible at all. Every question about a drawing under the plan meant a hand-written script that walked import geometry and applied its transforms. Four read-only commands close that gap, and their descriptions tell an agent when to use them, so no system prompt is needed:
+  - `GetUnderlays` lists every DWG/DXF/DGN/SAT… import or link and every PDF/raster image. For each it gives the file and its load status, whether it is linked or imported, the view or sheet (or the level) it sits on, whether it is pinned, and its position, rotation and extent in mm. For CAD it adds every layer with its colour and primitive counts by type, so the grid, wall and door layers can be told apart at once. For a PDF it adds page, DPI, paper size and the scale it is placed at. Each underlay also gets a one-sentence `summary`, and the list can be filtered by view and kind.
+  - `GetCadLayers` gives each layer's line weight, pattern and visibility in a view.
+  - `GetCadGeometry` returns the lines, polylines, arcs, circles, splines and block references of chosen layers in project coordinates, with the import's position, rotation, scale and nested blocks already applied. It also says when an answer was cut off at the limit.
+  - `GetPdfPageAsImage` renders a placed PDF page to a PNG that reaches the AI client as an image, so a model that sees images can read the drawing itself.
+
+  `GetCadImports` and `GetLinksInRevit` now point to `GetUnderlays`. CAD text, dimensions and hatches are still not reported: the Revit API does not expose them.
+- 🖼️ **Commands can return pictures over MCP.** A result with a top-level `image: { mimeType, data }` is sent to the client as an image content block, and the base64 is left out of the text and structured content so it is not read twice. `GetPdfPageAsImage` is the first command to use this; any extension command can do the same.
+- 🧩 **SDK 1.3: the underlay reader is public.** `AnalyseTool.Sdk.Underlays.UnderlayReader` and its result types are the code the three CAD/underlay commands run, and an extension calls the same methods instead of copying them. It is the first part of the SDK that reads the model rather than describing the command contract, and it was added on purpose: the SDK is the only assembly an extension compiles against. `samples/Acme.Sample` gained `DwgGridLines`, a command built on the reader, and CI builds it against the packed SDK. The guides have a new section on underlays (ONBOARDING §4.7, LLM.md).
+- 🧪 **Tests.**
+  - Tier 2 drives the real MCP exe with the new commands' own descriptions and schemas: an agent finds them, the answers validate against the schemas they were listed with, and a PDF page arrives as an image block.
+  - Also on tier 2: each output schema must fit under the 4096-character listing cap. Past the cap the bridge lists a free-form object, which drops the outputSchema, the structured content and every field description. The first draft of `GetUnderlays` was 7,360 characters, and this test caught it.
+  - Tier 3 exports the seeded model's plan to DWG and PDF, links, imports and places them back, and then checks the reader: layers are counted, geometry follows a moved link, and the PDF page renders to a PNG.
+  - TUnit is pinned to 1.67.0. The per-year `Nice3point.TUnit.Revit` packages float, and their current versions no longer restore against 1.61.38 (NU1605), so the in-Revit tests could not be built at all.
+
 ## [1.5.2] / 2026-09-14
 
 - 🧹 **A lighter plugin folder.** Roslyn used to ship its compiler diagnostics in thirteen languages into every Revit version's folder (6 MB each, three times in the installer). Only the English satellite assemblies are deployed now; a script author reads diagnostics in the language `ExecuteRevitCode` reports anyway. One Revit version's folder: 31 MB → 24 MB.
