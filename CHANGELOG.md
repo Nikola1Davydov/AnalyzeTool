@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- 💥 **Revit 2025 no longer crashes in Manage Links after an AnalyseTool window was open (#138).** Revit 2025 draws Manage Links and a few other dialogs with an older CEF (Chromium) that registers the same Win32 window class, `Chrome_WidgetWin_0`, as a current WebView2 Runtime. Whoever came second lost: once an AnalyseTool window or the dock pane had started WebView2, opening Manage Links killed Revit in `libcef.dll` (Autodesk's known issue). Every WebView2 is now started with Microsoft's `--edge-webview-unique-window-class`, which gives WebView2's windows a class name of their own; environment creation lives in one place (`WebView2Runtime.CreateEnvironmentAsync`), since all windows share one profile folder and WebView2 refuses mismatched options on it.
+
 ## [1.5.2] / 2026-09-14
 
 - 🧹 **A lighter plugin folder.** Roslyn used to ship its compiler diagnostics in thirteen languages into every Revit version's folder (6 MB each, three times in the installer). Only the English satellite assemblies are deployed now; a script author reads diagnostics in the language `ExecuteRevitCode` reports anyway. One Revit version's folder: 31 MB → 24 MB.
