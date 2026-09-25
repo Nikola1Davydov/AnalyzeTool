@@ -375,7 +375,8 @@ namespace AnalyseTool.Mcp.Bridge
             }
             catch (Exception ex)
             {
-                string reply = Failed(id, new JObject { [McpWire.Command] = command, [McpWire.Payload] = payload }, ex);
+                // The queue's LoggingExecutor has already logged this failure with its chain and payload.
+                string reply = Failed(id, new JObject { [McpWire.Command] = command, [McpWire.Payload] = payload }, ex, log: false);
                 job.Finish(McpWire.JobStates.Failed, null, (JObject?)JObject.Parse(reply)[McpWire.Error]);
                 return reply;
             }
@@ -472,28 +473,25 @@ namespace AnalyseTool.Mcp.Bridge
         }
 
         /// <summary>The command-failed reply, and the log line that goes with it.</summary>
-        private static string Failed(string? id, JObject? req, Exception ex)
+        /// <param name="log">False when the failure came out of the CommandQueue, whose logging stage
+        /// has written the same line already — one failure, one log entry.</param>
+        private static string Failed(string? id, JObject? req, Exception ex, bool log = true)
         {
             // The exception arrives marshalled off the Revit thread, so the OUTER one is regularly a
             // wrapper ("One or more errors occurred.") and the sentence that says what broke sits
             // in InnerException. Walk to the root, log the whole chain, and send the root's type and
             // message: an error that lives nowhere — not in the reply, not in the log — cost a whole
             // Revit session per bug to isolate (#97).
-            Exception root = ex;
-            while (root.InnerException is not null) root = root.InnerException;
-            string commandName = (string?)req?[McpWire.Command] ?? "?";
-            Log.Error(ex, "MCP: command {Command} failed — {ExceptionType}: {Message}. Payload: {Payload}",
-                commandName, root.GetType().Name, root.Message, Abbreviate(req?[McpWire.Payload]));
+            Exception root = LoggingExecutor.Root(ex);
+            if (log)
+            {
+                string commandName = (string?)req?[McpWire.Command] ?? "?";
+                Log.Error(ex, "MCP: command {Command} failed — {ExceptionType}: {Message}. Payload: {Payload}",
+                    commandName, root.GetType().Name, root.Message, LoggingExecutor.Abbreviate(req?[McpWire.Payload]));
+            }
             return Err(id, McpWire.Codes.CommandFailed,
                 $"{root.GetType().Name}: {root.Message}",
                 ReferenceEquals(root, ex) ? null : $"Outer exception: {ex.GetType().Name}: {ex.Message}");
-        }
-
-        /// <summary>The payload for the log line: enough to reproduce, not enough to flood.</summary>
-        private static string Abbreviate(JToken? payload)
-        {
-            string text = payload?.ToString(Formatting.None) ?? "null";
-            return text.Length <= 500 ? text : text.Substring(0, 500) + "…";
         }
 
         /// <summary>Constant-time token comparison. An empty configured token means the host could not

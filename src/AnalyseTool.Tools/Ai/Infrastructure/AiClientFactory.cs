@@ -19,13 +19,19 @@ namespace AnalyseTool.Tools.Ai
             AiProvider provider = AiProviderRegistry.Get(providerId)
                 ?? throw new InvalidOperationException($"Unknown AI provider '{providerId}'. Check Settings → AI providers.");
 
-            IChatClient client = provider.Type == AiProviderType.Ollama
+            IChatClient transport = provider.Type == AiProviderType.Ollama
                 ? new OllamaApiClient(new Uri(provider.BaseUrl), model)
                 : new OpenAiCompatibleChatClient(
                     provider.BaseUrl,
                     AiProviderRegistry.GetApiKey(provider),
                     model,
-                    TimeSpan.FromSeconds(provider.TimeoutSeconds + 5)); // outer CTS in BuildAnswer fires first
+                    TimeSpan.FromSeconds(provider.TimeoutSeconds + 5)); // TimeoutChatClient fires first
+
+            // Decorators, outermost first: logging must see the CALLER's token to tell a cancel from
+            // a timeout, so it wraps the deadline, not the other way round.
+            IChatClient client = new SerilogChatClient(
+                new TimeoutChatClient(transport, TimeSpan.FromSeconds(provider.TimeoutSeconds)),
+                provider.DisplayName, model);
 
             return (client, provider);
         }
