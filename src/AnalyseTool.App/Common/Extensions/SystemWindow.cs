@@ -41,7 +41,7 @@ namespace AnalyseTool.App.Common.Extensions
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
-            CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
+            CoreWebView2Environment env = await WebView2Runtime.CreateEnvironmentAsync();
             await _webView.EnsureCoreWebView2Async(env);
 
             _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
