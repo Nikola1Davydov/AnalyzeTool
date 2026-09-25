@@ -69,6 +69,16 @@ button ordering, the manifest writer's merge rules, the bridge's payload validat
 dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
 ```
 
+Performance lives beside tier 3, on the same rails: `src/AnalyseTool.Benchmarks` (Nice3point.BenchmarkDotNet.Revit —
+BenchmarkDotNet with a `RevitApiBenchmark` base that starts a real Revit per benchmark process). Same rules as the
+in-Revit tests: services on a document seeded in code (`BenchmarkModel`: thousands of walls, ten wall types, one shared
+parameter), never commands; licensed Revit, run by hand, not in the solution build or CI. Each class states the question
+it answers — add a benchmark only for a decision someone is about to make. One class at a time (every case starts Revit):
+
+```powershell
+dotnet run -c Release.R25 --project src/AnalyseTool.Benchmarks/AnalyseTool.Benchmarks.csproj -- --filter *ElementSummary*
+```
+
 `dotnet test` runs in Microsoft.Testing.Platform mode (repo-root `global.json`, `test.runner`), which
 the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not as a positional path.
 

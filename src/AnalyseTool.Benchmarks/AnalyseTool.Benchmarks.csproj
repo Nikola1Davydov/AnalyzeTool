@@ -1,0 +1,51 @@
+<Project Sdk="Nice3point.Revit.Sdk/6.2.3">
+
+  <!--
+    Performance benchmarks INSIDE Revit — the sibling of AnalyseTool.RevitTests, on the same rails.
+
+    Nice3point.BenchmarkDotNet.Revit (github.com/Nice3point/RevitBenchmark) is BenchmarkDotNet with a
+    RevitApiBenchmark base class: every benchmark process starts a real Revit of the selected year and
+    runs the [Benchmark] methods on its API thread. So, like the in-Revit tests, this needs a licensed
+    Revit on the machine, is NOT part of the solution build and NOT run in CI. Run it by hand:
+
+        dotnet run -c Release.R25 ‑‑project src/AnalyseTool.Benchmarks/AnalyseTool.Benchmarks.csproj
+        dotnet run -c Release.R25 ‑‑project src/AnalyseTool.Benchmarks/AnalyseTool.Benchmarks.csproj ‑‑ ‑‑filter *ParameterLookup*
+
+    Without ‑‑filter BenchmarkDotNet asks which class to run. Every benchmark case is a fresh process with
+    a fresh Revit (tens of seconds to start) plus warmup and measured iterations, so run one class at a
+    time. Results land in BenchmarkDotNet.Artifacts/ (git-ignored).
+
+    What belongs here: the SERVICES the commands delegate to, on a document seeded in code (BenchmarkModel:
+    thousands of walls, a handful of wall types, one shared parameter), never the commands themselves — the
+    same rule and the same reason as the in-Revit tests (no UIApplication in this host). A benchmark earns
+    its place by answering a question someone is about to act on; see the header of each class.
+
+    Configurations are the Revit SDK's (Release.R25 …), not the plugin's ("Release R25"): the Revit SDK
+    derives the Revit year from them. Always Release.*: BenchmarkDotNet refuses a non-optimized build.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Configurations>Debug.R25;Debug.R26;Debug.R27;Release.R25;Release.R26;Release.R27</Configurations>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <!-- RevitAPI.dll is AMD64; without this MSBuild warns about MSIL vs AMD64 on every build (MSB3270). -->
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AnalyseTool.Benchmarks</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Floating by Revit year, as in AnalyseTool.RevitTests; VersionOverride because central package
+         management (src/Directory.Packages.props) refuses floating versions otherwise. BenchmarkDotNet
+         itself comes transitively, in the version this package was built against. -->
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" VersionOverride="$(RevitVersion).*" />
+    <PackageReference Include="Nice3point.BenchmarkDotNet.Revit" VersionOverride="$(RevitVersion).*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
+  </ItemGroup>
+
+</Project>

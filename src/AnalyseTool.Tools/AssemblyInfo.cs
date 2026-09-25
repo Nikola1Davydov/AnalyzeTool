@@ -16,3 +16,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("AnalyseTool.App")]
 [assembly: InternalsVisibleTo("AnalyseTool.Tests")]
 [assembly: InternalsVisibleTo("AnalyseTool.RevitTests")] // the in-Revit tests reach the services the commands delegate to
+[assembly: InternalsVisibleTo("AnalyseTool.Benchmarks")] // so do the in-Revit benchmarks (ParameterExtensions)
