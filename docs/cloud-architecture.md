@@ -46,7 +46,8 @@ switches the cloud mode on.
 
 ## Roles and teams
 
-Roles are per team: `Membership(UserId, TeamId, Role)`. A user may be in several teams.
+Roles are per team: `Membership(UserId, TeamId, RoleId)`. A user may be in several teams. Each
+role has a company-defined access level (see *Access levels per button*).
 
 | Role | Own buttons | Sees | Can |
 | --- | --- | --- | --- |
@@ -62,6 +63,33 @@ Roles are per team: `Membership(UserId, TeamId, Role)`. A user may be in several
 
 "Sees" (catalog, code, analytics) is not "has on the ribbon": nothing lands on anyone's ribbon
 without an explicit install, except toolsets a Lead pins for the team or project.
+
+## Access levels per button
+
+Seeing a button and being allowed to download it are separate rights. Roles carry an ordered
+**access level** that the company defines (e.g. 1 Member, 2 Power user, 3 BIM coordinator /
+Lead, 4 Admin) — the names are the firm's, the platform only compares numbers.
+
+| Right | Meaning | Set on the listing / button as |
+| --- | --- | --- |
+| **View** | appears in the catalog with description and stats | `ViewLevel` (default: everyone in scope) |
+| **Install** | download the package, put it on the ribbon, run it | `InstallLevel` (+ optional allowed teams / groups) |
+| **Inspect** | see the source, download the package for review | `InspectLevel` (default: Lead and above) |
+| **Edit / publish versions** | change it | owner + reviewers of its scope |
+
+- A button visible but above the user's `InstallLevel` shows as **locked** with "Request
+  access" — the request goes to the Lead of the user's team. A button above `ViewLevel` is not
+  listed at all.
+- Typical use: destructive or model-wide tools (purge, mass rename, workset moves) listed for
+  everyone to see, installable from level 3 only.
+- Defaults by origin: a personal button — Install for the owner, Inspect for the team's Lead;
+  a share grants Install to its targets; a listing takes the levels the reviewer sets.
+- Enforced **server-side**, never only in the UI: `/me/ribbon` omits what the user may not
+  install, and a SAS download URL is issued only after the check. Lowering a user's level or
+  raising a listing's `InstallLevel` removes the package from that user's ribbon and cache on
+  the next sync.
+- Install is not secrecy: a downloaded DLL can be decompiled. Anything that must stay
+  confidential (credentials, proprietary rules) belongs on the server, not in the package.
 
 ## Button lifecycle
 
@@ -182,13 +210,17 @@ analytics **per button**; per-person breakdown is a company-level setting, off b
 ```
 User          (Id, EntraObjectId, Name)
 Team          (Id, Name)
-Membership    (UserId, TeamId, Role: Member | Lead)        -- Admin is a company flag on User
+Role          (Id, Name, Level)                             -- company-defined, ordered by Level
+Membership    (UserId, TeamId, RoleId)                      -- Admin is a company flag on User
 Group         (Id, Name) + GroupMember(GroupId, UserId)      -- optional, for sharing to many
 Button        (Id, OwnerUserId, Kind: Personal | Team | Project, TeamId?, ProjectId?)
 ButtonVersion (Id, ButtonId, Version, BlobPath, Sha256, Signature, CreatedAt,
                SourceVersionId?)                             -- provenance of copies and forks
 Share         (ButtonId | ToolsetId, TargetUserId | TargetGroupId, GrantedBy, At)
-Listing       (Id, ButtonVersionId, Scope: Team | Company, TeamId?, Status, Certified)
+Listing       (Id, ButtonVersionId, Scope: Team | Company, TeamId?, Status, Certified,
+               ViewLevel, InstallLevel, InspectLevel)
+ListingAudience(ListingId, TeamId | GroupId)               -- optional narrowing of Install
+AccessRequest (Id, UserId, ListingId, State, DecidedBy?)
 ReviewRequest (Id, ButtonVersionId, TargetScope, ReviewerId?, State, Comments)
 Install       (UserId, ListingId | ButtonId, PinnedVersionId?, At)
 Toolset       (Id, OwnerUserId, Scope, TeamId?, ProjectId?, Pinned)
