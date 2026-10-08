@@ -42,6 +42,9 @@ namespace AnalyseTool.Core.Features.Extensions
                     // "dll" = commands in an assembly (declared, even if no build for this year —
                     // the author's own build or one the host compiles from src\), "js" = UI-only.
                     kind = d.DeclaresDll ? "dll" : "js",
+                    // Built by AnalyseTool from <ext>\src\ (a command saved over MCP): its sources live in
+                    // THIS folder, so deleting the folder deletes them — the UI has to say so.
+                    hostBuilt = HostBuild.IsHostBuilt(d.Directory),
                     // False = declared DLL has no build for the running Revit year (never loaded).
                     compatible = d.IsCompatibleWithHost,
                     zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",

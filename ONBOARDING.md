@@ -677,12 +677,13 @@ so the file on disk is never locked — you can overwrite the DLL while Revit is
 Reload.
 
 The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Installed**
-packages and **Your own** folders separately, each row showing the version, whether it has C#
-commands / UI, an enable/disable switch, **Open folder**, and — for installed packages with an
-`updateFeed` — an update badge. There is also **Install from file…** for a `.zip`, a global
-**Reload**, the host **Environment** (Revit / SDK / plugin version), the **Extension paths** it
-scans, the **Commands** catalog (§5.2), and the **MCP server** controls. The **Catalog** tab is the
-other direction — the repositories extensions can be installed *from* (§10).
+packages and **Your own** folders separately, each row showing the version, a **Status** that only
+speaks up about a problem (not built, failed to compile, no build for this Revit year) or an update,
+an enable/disable switch, edit, **Open folder** and delete. Installed packages with an `updateFeed`
+are checked for updates when the window opens. **Install** takes a `.zip` or a repository,
+**Reload** applies changes, **Available** lists catalog entries you do not have yet (§10), and the
+collapsed **Folders scanned** panel holds the extension paths. New extensions are made with **New**
+on the ribbon.
 
 Every row also has **Edit** (the pencil): the ribbon button's name, tooltip, tab, panel, shape and
 dock setting, plus description, publisher, links and update feed — written back into `plugin.json`
@@ -836,7 +837,7 @@ dotnet build -t:PackExtension
 It builds the project for Revit 2025/2026/2027 (narrow it with `-p:AnalyseToolPackYears=2025;2026`),
 lays out per-year DLLs in year subfolders with `plugin.json` / UI / assets at the root, and zips
 it to `artifacts/<id>-<version>.zip` — the format your users install via Extensions →
-**Install from file…**. UI-only extensions need no build at all: zip the folder.
+**Install → From a file**. UI-only extensions need no build at all: zip the folder.
 
 **`plugin.json` owns the version.** It travels inside the package and is what the installed
 extension reports; a git tag lives only in your repository. Bump `version` there and let the tag
@@ -857,8 +858,8 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
 
 
-**Getting listed.** Extensions → **Find extensions** is the "where do extensions come from" page: a list of
-repositories with their links, each with an **Install** button that downloads the package from the
+**Getting listed.** The **Available** block of the Extensions window is the "where do extensions come
+from" list: repositories not installed yet, with their links, each with an **Install** button that downloads the package from the
 publisher's own release. Two ways onto it:
 
 - **The shipped list** — `src/AnalyseTool.Core/Features/Extensions/Catalog/catalog.json` in the
@@ -885,7 +886,7 @@ publisher's own release. Two ways onto it:
 
 `source` is the same value as `updateFeed`, and `website` is what a reader clicks — an entry with
 only `website` still earns its place, it just says "download it yourself". Users who have a
-repository that is on no list at all can paste it into **Install from repository…**, which takes a
+repository that is on no list at all can paste it into **Install → From a repository**, which takes a
 GitHub URL, `owner/repo`, `github:owner/repo` or an https feed.
 
 Listing is a directory entry, not an endorsement: the package is always fetched from your release,

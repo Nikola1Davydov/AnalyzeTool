@@ -1627,3 +1627,12 @@ CreateExtensionTemplateDrawer из окна Extensions удалены. `entities
 По слову владельца. Лента: AnalyseTool · (Settings · Report a bug) · (Extensions · New) — две колонки
 по две. Кнопка обрабатывается в Launcher, поэтому открывает GitHub и при незагрузившемся плагине.
 `entities/ribbon-host.md` поправлен.
+
+## 2026-10-08 — окно Extensions упрощено
+
+Одна страница вместо двух вкладок: Installed, Your own, **Available** (каталог — только то, чего ещё
+нет), свёрнутые Folders scanned. Одна кнопка **Install** (zip или репозиторий); обновления проверяются
+сами при открытии. Метки Script / DLL / Page / Legacy layout убраны, колонка **Status** говорит только о
+проблеме или обновлении. Удаление сохранённой команды предупреждает, что её исходники в `src\` уйдут
+вместе с папкой (`GetInstalledExtensions` отдаёт `hostBuilt`). `concepts/extension-distribution.md`
+поправлен.

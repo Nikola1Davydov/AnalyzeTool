@@ -487,15 +487,15 @@ dotnet build -t:PackExtension
 builds the project for Revit 2025/2026/2027 (override with `-p:AnalyseToolPackYears=2025;2026`),
 lays out the distribution bundle (per-year DLLs in year subfolders, `plugin.json`/UI at the root)
 and zips it to `artifacts/<id>-<version>.zip` — exactly the format users install via Extensions →
-"Install from file…". UI-only extensions need no build: zip the folder itself.
+Install → "From a file". UI-only extensions need no build: zip the folder itself.
 
 To publish on GitHub, add `.github/workflows/release.yml` — then publishing is `git tag v1.0.0 &&
 git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json gives users update
 notifications for free:
 
 Once it is published, the repository itself is the install source: users reach it through Extensions
-→ Find extensions (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
-repository into "Install from repository…". Both routes download the zip from your release.
+→ Available (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
+repository into Install → "From a repository". Both routes download the zip from your release.
 
 ```yaml
 name: Release

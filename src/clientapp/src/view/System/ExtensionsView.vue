@@ -6,17 +6,14 @@
  * create, delete — behind a door labelled with something you configure once. Splitting it out is the
  * whole point of this window: preferences live in Settings, extensions live here.
  *
- * Two tabs, by the question being asked: "what do I have" (Installed) and "what else is there"
- * (Find extensions). Everything that is plumbing rather than an answer — which folders are scanned,
- * where generated scripts land — sits in a collapsed panel at the bottom of the first tab.
+ * One page, top to bottom by how often it is needed: what is installed, what is your own, what else
+ * is available, and — collapsed — the plumbing (which folders are scanned, where saved commands
+ * land). A row says nothing while all is well: its status column only speaks about a problem or an
+ * update.
  */
 import { ref, computed, onMounted, defineAsyncComponent } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
-import Tabs from "primevue/tabs";
-import TabList from "primevue/tablist";
-import Tab from "primevue/tab";
-import TabPanels from "primevue/tabpanels";
-import TabPanel from "primevue/tabpanel";
+import Menu from "primevue/menu";
 import { invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 
@@ -46,8 +43,8 @@ interface ExtensionRow {
   compatible: boolean;
   binaryYears?: string[]; // Revit years this extension actually ships a build for
   zone: "managed" | "dev";
-  kind: "dll" | "script" | "js"; // what it is made of, not what it does
-  legacyLayout?: boolean;
+  kind: "dll" | "js"; // what it is made of, not what it does
+  hostBuilt?: boolean; // a command saved over MCP: AnalyseTool builds it from src\ in this folder
   compileError?: string | null;
   directory: string;
   icon?: string | null; // data URI served by the backend
@@ -83,7 +80,7 @@ interface PathRow {
   valid: boolean;
   reason: string;
   extensionCount: number;
-  isAuthoringRoot: boolean; // where generated scripts are saved when no root is named
+  isAuthoringRoot: boolean; // where saved commands go when no root is named
 }
 
 const data = ref<ExtensionsData | null>(null);
@@ -93,6 +90,11 @@ const data = ref<ExtensionsData | null>(null);
 // A freshly generated C# template hits the first one and used to be flagged as broken.
 function buildState(row: ExtensionRow): { label: string; tip: string } {
   const years = row.binaryYears ?? [];
+  if (row.hostBuilt)
+    return {
+      label: "Not built",
+      tip: "AnalyseTool builds this from its src\\ folder on Reload — the sources do not compile yet.",
+    };
   if (years.length === 0)
     return {
       label: "Not built",
@@ -104,33 +106,17 @@ function buildState(row: ExtensionRow): { label: string; tip: string } {
   };
 }
 
-// What an extension is MADE OF, as one tag. "C#" alone hid the difference that matters most in the
-// dev list: a script is a .cs the host compiles at load (edit, Reload, done), a DLL is a project you
-// build yourself — and the two fail in different ways.
-function kindTag(row: ExtensionRow): { label: string; severity: string; tip: string; icon: string } {
-  switch (row.kind) {
-    case "script":
-      return {
-        label: "Script",
-        severity: "info",
-        tip: "C# script (.cs) compiled by AnalyseTool at load — edit the file and Reload.",
-        icon: "pi pi-code",
-      };
-    case "dll":
-      return {
-        label: "DLL",
-        severity: "contrast",
-        tip: "Compiled project — build it (dotnet build) and Reload.",
-        icon: "pi pi-box",
-      };
-    default:
-      return {
-        label: "Page",
-        severity: "warn",
-        tip: "HTML/JS page only, no C#.",
-        icon: "pi pi-window-maximize",
-      };
-  }
+// What an extension is made of — no longer a tag of its own (it told a BIM user nothing), only the
+// placeholder icon and its tooltip when the extension ships no icon.
+function kindInfo(row: ExtensionRow): { tip: string; icon: string } {
+  if (row.hostBuilt)
+    return {
+      tip: "Saved command — AnalyseTool builds it from the sources in its src folder.",
+      icon: "pi pi-bolt",
+    };
+  if (row.kind === "dll")
+    return { tip: "Commands from a project you build (dotnet build).", icon: "pi pi-box" };
+  return { tip: "A page (HTML/JS) without commands of its own.", icon: "pi pi-window-maximize" };
 }
 
 // Two zones, two sections: installed packages (manager-owned) vs the user's own dev folders.
@@ -142,25 +128,16 @@ const devExtensions = computed(() =>
 );
 
 // ---- Finding your own: a session with an agent can leave a dozen folders behind, and by then the
-// list is a wall. Text matches name, id and description; the kind filter is the same split the tag
-// shows. Both are local UI state — nothing here asks the host.
+// list is a wall. Text matches name, id and description — local UI state, nothing asks the host.
 const devSearch = ref("");
-const devKind = ref<"all" | ExtensionRow["kind"]>("all");
-const devKindOptions = [
-  { label: "All", value: "all" },
-  { label: "Script", value: "script" },
-  { label: "DLL", value: "dll" },
-  { label: "Page", value: "js" },
-];
 const filteredDevExtensions = computed(() => {
   const q = devSearch.value.trim().toLowerCase();
   return devExtensions.value.filter(
     (e) =>
-      (devKind.value === "all" || e.kind === devKind.value) &&
-      (!q ||
-        (e.name ?? "").toLowerCase().includes(q) ||
-        e.id.toLowerCase().includes(q) ||
-        (e.description ?? "").toLowerCase().includes(q)),
+      !q ||
+      (e.name ?? "").toLowerCase().includes(q) ||
+      e.id.toLowerCase().includes(q) ||
+      (e.description ?? "").toLowerCase().includes(q),
   );
 });
 const loading = ref(true);
@@ -263,6 +240,17 @@ function askConsent(origin: InstallOrigin, overwrite = false) {
   installDialogVisible.value = true;
 }
 
+// One "Install" button with its two sources, instead of a file button in the header and a repository
+// button hidden on another tab.
+const installMenu = ref<InstanceType<typeof Menu> | null>(null);
+const installMenuItems = [
+  { label: "From a file (.zip)…", icon: "pi pi-file", command: () => pickPackageAndAskConsent() },
+  { label: "From a repository…", icon: "pi pi-github", command: () => askForSource() },
+];
+function toggleInstallMenu(event: Event) {
+  installMenu.value?.toggle(event);
+}
+
 async function pickPackageAndAskConsent() {
   try {
     const res = await invoke<{ path: string | null }>("BrowseForFile", {
@@ -334,6 +322,9 @@ interface CatalogRow {
 }
 
 const catalog = ref<CatalogRow[]>([]);
+// What the "Available" block offers: entries not installed and not present as a dev copy. An
+// installed one is already a row above, with its own update and uninstall.
+const availableCatalog = computed(() => catalog.value.filter((row) => !row.installed));
 const userCatalogPath = ref("");
 const catalogLoading = ref(false);
 const catalogError = ref("");
@@ -360,20 +351,7 @@ async function loadCatalog() {
 
 function installFromCatalog(row: CatalogRow) {
   if (!row.source) return;
-  askConsent(
-    { kind: "source", source: row.source, expectedId: row.id, name: row.name },
-    row.installed,
-  );
-}
-
-// Uninstall from the catalog card: the same dialog and the same command as the extension
-// list. The catalog knows an id, the remove flow wants the installed row — that lookup is the
-// whole difference, and duplicating the flow for it would mean two ways to delete one thing.
-function removeFromCatalog(row: CatalogRow) {
-  const installed = data.value?.extensions.find(
-    (e) => e.id.toLowerCase() === row.id.toLowerCase() && e.zone === "managed",
-  );
-  if (installed) askRemove(installed);
+  askConsent({ kind: "source", source: row.source, expectedId: row.id, name: row.name });
 }
 
 // ---- Install from a pasted repository: the same route, for anything not in the catalog.
@@ -392,7 +370,9 @@ function proceedWithSource() {
   askConsent({ kind: "source", source });
 }
 
-// ---- Update feeds: manual check (network), then per-row badge + Update action.
+// ---- Update feeds: checked once when the window opens (network, so only when an installed package
+// declares a feed), then a per-row status tag + Update action. No button: "is there an update?" is
+// a question the window answers by itself.
 interface UpdateCheckRow {
   id: string;
   installed: string;
@@ -406,6 +386,7 @@ const checkingUpdates = ref(false);
 const updatingId = ref("");
 
 async function checkUpdates() {
+  if (!managedExtensions.value.some((e) => e.updateFeed)) return;
   checkingUpdates.value = true;
   try {
     const res = await invoke<{ results: UpdateCheckRow[] }>("CheckExtensionUpdates");
@@ -413,9 +394,8 @@ async function checkUpdates() {
     for (const r of res?.results ?? []) map[r.id] = r;
     updateChecks.value = map;
   } catch (e) {
-    // The button stops spinning either way — without a message the user cannot tell "no updates"
-    // from "the check never ran".
-    notifications.error(`Update check failed: ${errorText(e)}`);
+    // Offline is normal for a check nobody asked for: no toast, the rows simply show no update.
+    console.warn("Update check failed", e);
   } finally {
     checkingUpdates.value = false;
   }
@@ -536,22 +516,23 @@ async function removePath(path: string) {
 // Where SaveAsCommand / SaveExtensionUi save when the caller names no folder — which is every call an
 // AI makes over MCP, since "save this as a command" names an id, not a path. Only re-lists: nothing
 // that is already loaded moves, so there is no reason to reload extensions.
-async function useForScripts(path: string) {
+async function useForSavedCommands(path: string) {
   pathsBusy.value = true;
   try {
     await invoke("SetAuthoringRoot", { path });
     await loadPaths();
   } catch (e) {
-    console.error("Failed to set the scripts folder", e);
+    console.error("Failed to set the folder for saved commands", e);
   } finally {
     pathsBusy.value = false;
   }
 }
 
-onMounted(() => {
-  load();
+onMounted(async () => {
   loadCatalog();
   loadPaths();
+  await load();
+  checkUpdates();
 });
 </script>
 
@@ -561,560 +542,470 @@ onMounted(() => {
       <div>
         <h1 class="text-xl font-bold">Extensions</h1>
         <p class="text-sm text-surface-500">
-          Everything that adds commands, buttons and pages to AnalyseTool.
+          Everything that adds commands, buttons and pages to AnalyseTool. New ones are made with
+          <b>New</b> on the ribbon.
         </p>
       </div>
-      <!-- The manager lifecycle in one row, ordered by how often it is used. -->
       <div class="flex flex-wrap gap-2 justify-end">
         <Button
-          label="Check updates"
-          icon="pi pi-sync"
-          severity="secondary"
-          :loading="checkingUpdates"
-          @click="checkUpdates"
-        />
-        <Button
-          label="Install from file…"
+          label="Install"
           icon="pi pi-download"
           severity="secondary"
-          @click="pickPackageAndAskConsent"
+          aria-haspopup="true"
+          @click="toggleInstallMenu"
         />
+        <Menu ref="installMenu" :model="installMenuItems" popup />
         <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
       </div>
     </div>
 
-    <!-- lazy: without it both panels mount and re-render on every refresh, including the catalog
-         list sitting on a hidden tab. -->
-    <Tabs value="installed" lazy>
-      <TabList>
-        <Tab value="installed">Installed</Tab>
-        <Tab value="catalog">Find extensions</Tab>
-      </TabList>
-      <TabPanels class="!px-0">
-        <TabPanel value="installed">
-          <!-- Installed: packages owned by the Extension Manager (extensions-dist). -->
-          <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-4">
-            <h2 class="text-sm font-bold mb-3">
-              Installed
-              <span class="text-surface-500 font-normal">— packages managed by AnalyseTool</span>
-            </h2>
-            <div
-              v-if="updateError"
-              class="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-start gap-2"
-            >
-              <i class="pi pi-exclamation-triangle mt-0.5" />
-              <span class="grow whitespace-pre-wrap break-words">{{ updateError }}</span>
-              <Button
-                icon="pi pi-times"
-                size="small"
-                text
-                severity="danger"
-                @click="updateError = ''"
+    <!-- Installed: packages owned by the Extension Manager (extensions-dist). -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <h2 class="text-sm font-bold mb-3">
+        Installed
+        <span class="text-surface-500 font-normal">— packages managed by AnalyseTool</span>
+        <i
+          v-if="checkingUpdates"
+          class="pi pi-spin pi-spinner text-xs text-surface-400 ml-2"
+          v-tooltip.top="'Checking for updates'"
+        />
+      </h2>
+      <div
+        v-if="updateError"
+        class="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-start gap-2"
+      >
+        <i class="pi pi-exclamation-triangle mt-0.5" />
+        <span class="grow whitespace-pre-wrap break-words">{{ updateError }}</span>
+        <Button icon="pi pi-times" size="small" text severity="danger" @click="updateError = ''" />
+      </div>
+      <DataTable :value="managedExtensions" :loading="loading" dataKey="id" class="text-sm">
+        <Column header="Extension">
+          <template #body="{ data: row }">
+            <div class="flex items-start gap-3">
+              <img
+                v-if="row.icon"
+                :src="row.icon"
+                class="w-8 h-8 rounded shrink-0 mt-0.5"
+                alt=""
               />
-            </div>
-            <DataTable :value="managedExtensions" :loading="loading" dataKey="id" class="text-sm">
-              <Column header="Extension">
-                <template #body="{ data: row }">
-                  <div class="flex items-start gap-3">
-                    <img
-                      v-if="row.icon"
-                      :src="row.icon"
-                      class="w-8 h-8 rounded shrink-0 mt-0.5"
-                      alt=""
-                    />
-                    <div
-                      v-else
-                      class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
-                    >
-                      <i class="pi pi-box" />
-                    </div>
-                    <div>
-                      <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
-                        {{ row.name || row.id }}
-                      </div>
-                      <div class="text-surface-500 text-xs">
-                        {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
-                        <a
-                          v-if="safeLink(row.website)"
-                          :href="safeLink(row.website)!"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="ml-1"
-                          v-tooltip.top="'Website'"
-                        >
-                          <i class="pi pi-external-link text-xs" />
-                        </a>
-                        <a
-                          v-if="safeLink(row.supportUrl)"
-                          :href="safeLink(row.supportUrl)!"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="ml-1"
-                          v-tooltip.top="'Support'"
-                        >
-                          <i class="pi pi-question-circle text-xs" />
-                        </a>
-                      </div>
-                      <div v-if="row.description" class="text-surface-500 text-xs">
-                        {{ row.description }}
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </Column>
-              <Column header="Version">
-                <template #body="{ data: row }">
-                  <span>{{ row.version }}</span>
-                  <Tag
-                    v-if="updateChecks[row.id]?.updateAvailable"
-                    :value="`→ ${updateChecks[row.id]?.latest}`"
-                    severity="success"
-                    class="ml-2"
-                    v-tooltip.top="'Update available'"
-                  />
-                  <!-- Independent of the update tag: an update that FAILS leaves updateAvailable true,
-                       so an v-else-if here would hide the very error the user needs to see. -->
-                  <Tag
-                    v-if="updateChecks[row.id]?.error"
-                    value="error"
-                    severity="danger"
-                    class="ml-2"
-                    v-tooltip.top="updateChecks[row.id]?.error"
-                  />
-                </template>
-              </Column>
-              <Column header="Type">
-                <template #body="{ data: row }">
-                  <Tag
-                    :value="kindTag(row).label"
-                    :severity="kindTag(row).severity"
-                    class="mr-1"
-                    v-tooltip.top="kindTag(row).tip"
-                  />
-                  <Tag v-if="row.hasUi && row.kind !== 'js'" value="UI" severity="warn" class="mr-1" />
-                  <Tag
-                    v-if="!row.compatible"
-                    :value="buildState(row).label"
-                    severity="danger"
-                    v-tooltip.top="row.compileError || buildState(row).tip"
-                  />
-                  <Tag
-                    v-else-if="row.compileError"
-                    value="Error"
-                    severity="danger"
-                    v-tooltip.top="row.compileError"
-                  />
-                </template>
-              </Column>
-              <Column header="Enabled" class="w-20">
-                <template #body="{ data: row }">
-                  <ToggleSwitch
-                    :modelValue="row.enabled"
-                    :disabled="loading"
-                    @update:modelValue="setExtensionEnabled(row, !row.enabled)"
-                  />
-                </template>
-              </Column>
-              <Column header="" class="w-40">
-                <template #body="{ data: row }">
-                  <Button
-                    v-if="updateChecks[row.id]?.updateAvailable"
-                    icon="pi pi-arrow-circle-up"
-                    size="small"
-                    text
-                    severity="success"
-                    :loading="updatingId === row.id"
-                    v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
-                    @click="updateExtension(row)"
-                  />
-                  <Button
-                    icon="pi pi-pencil"
-                    size="small"
-                    text
-                    severity="secondary"
-                    v-tooltip.left="'View manifest (installed packages are read-only)'"
-                    @click="openEdit(row)"
-                  />
-                  <Button
-                    icon="pi pi-folder-open"
-                    size="small"
-                    text
-                    severity="secondary"
-                    v-tooltip.left="'Open in Explorer'"
-                    @click="openFolder(row.directory)"
-                  />
-                  <Button
-                    icon="pi pi-trash"
-                    size="small"
-                    text
-                    severity="danger"
-                    v-tooltip.left="'Uninstall'"
-                    @click="askRemove(row)"
-                  />
-                </template>
-              </Column>
-              <template #empty>
-                <div class="text-surface-500 p-4">
-                  Nothing installed yet — look under <b>Find extensions</b>, or use
-                  <b>Install from file…</b>
-                </div>
-              </template>
-            </DataTable>
-          </section>
-
-          <!-- Development: the user's own folders (default dev root + added paths). Reload-driven. -->
-          <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
-            <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <h2 class="text-sm font-bold">
-                Your own
-                <span class="text-surface-500 font-normal">— folders you edit, reloaded live</span>
-                <span v-if="devExtensions.length" class="text-surface-400 font-normal ml-1">
-                  ({{ filteredDevExtensions.length }}/{{ devExtensions.length }})
-                </span>
-              </h2>
-              <!-- Search and kind filter, shown once there is enough to lose something in. -->
-              <div v-if="devExtensions.length > 3" class="flex items-center gap-2">
-                <SelectButton
-                  v-model="devKind"
-                  :options="devKindOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  :allowEmpty="false"
-                  size="small"
-                />
-                <IconField>
-                  <InputIcon class="pi pi-search" />
-                  <InputText v-model="devSearch" placeholder="Search…" size="small" class="w-48" />
-                </IconField>
-              </div>
-            </div>
-            <DataTable :value="filteredDevExtensions" :loading="loading" dataKey="id" class="text-sm">
-              <Column header="Extension">
-                <template #body="{ data: row }">
-                  <div class="flex items-start gap-3">
-                    <img
-                      v-if="row.icon"
-                      :src="row.icon"
-                      class="w-8 h-8 rounded shrink-0 mt-0.5"
-                      alt=""
-                    />
-                    <div
-                      v-else
-                      class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
-                      v-tooltip.top="kindTag(row).tip"
-                    >
-                      <i :class="kindTag(row).icon" />
-                    </div>
-                    <div>
-                      <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
-                        {{ row.name || row.id }}
-                      </div>
-                      <div class="text-surface-500 text-xs">{{ row.id }}</div>
-                      <div v-if="row.description" class="text-surface-500 text-xs">
-                        {{ row.description }}
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </Column>
-              <Column field="version" header="Version" />
-              <Column header="Type">
-                <template #body="{ data: row }">
-                  <Tag
-                    :value="kindTag(row).label"
-                    :severity="kindTag(row).severity"
-                    class="mr-1"
-                    v-tooltip.top="kindTag(row).tip"
-                  />
-                  <Tag v-if="row.hasUi && row.kind !== 'js'" value="UI" severity="warn" class="mr-1" />
-                  <Tag
-                    v-if="row.legacyLayout"
-                    value="Legacy layout"
-                    severity="secondary"
-                    class="mr-1"
-                    v-tooltip.top="
-                      'Old extensions\\<year>\\<id> layout — move the folder directly under the root'
-                    "
-                  />
-                  <Tag
-                    v-if="!row.compatible"
-                    :value="buildState(row).label"
-                    severity="danger"
-                    v-tooltip.top="row.compileError || buildState(row).tip"
-                  />
-                  <Tag
-                    v-else-if="row.compileError"
-                    value="Error"
-                    severity="danger"
-                    v-tooltip.top="row.compileError"
-                  />
-                </template>
-              </Column>
-              <Column header="Enabled" class="w-20">
-                <template #body="{ data: row }">
-                  <ToggleSwitch
-                    :modelValue="row.enabled"
-                    :disabled="loading"
-                    @update:modelValue="setExtensionEnabled(row, !row.enabled)"
-                  />
-                </template>
-              </Column>
-              <Column header="" class="w-32">
-                <template #body="{ data: row }">
-                  <div class="flex justify-end gap-1">
-                    <Button
-                      icon="pi pi-pencil"
-                      size="small"
-                      text
-                      severity="secondary"
-                      v-tooltip.left="'Edit name, button, description…'"
-                      @click="openEdit(row)"
-                    />
-                    <Button
-                      icon="pi pi-folder-open"
-                      size="small"
-                      text
-                      severity="secondary"
-                      v-tooltip.left="'Open in Explorer'"
-                      @click="openFolder(row.directory)"
-                    />
-                    <!-- Deleting your own folder used to mean going to Explorer and doing it by hand, which
-                         is fine for one extension and a chore for the ten a session can generate. -->
-                    <Button
-                      icon="pi pi-trash"
-                      size="small"
-                      text
-                      severity="danger"
-                      v-tooltip.left="'Delete folder'"
-                      @click="askRemove(row)"
-                    />
-                  </div>
-                </template>
-              </Column>
-              <template #empty>
-                <div class="text-surface-500 p-4">
-                  <template v-if="devExtensions.length">
-                    Nothing matches.
-                    <button type="button" class="underline" @click="devSearch = ''; devKind = 'all'">
-                      Clear the filter
-                    </button>
-                  </template>
-                  <template v-else>
-                    None yet — press <b>New</b> on the ribbon, or drop a folder into the dev root.
-                  </template>
-                </div>
-              </template>
-            </DataTable>
-          </section>
-
-          <!-- Folders: plumbing, not an answer. Collapsed by default — most people never open it,
-               and the ones who do are looking for exactly this. -->
-          <Panel toggleable collapsed class="mb-6">
-            <template #header>
-              <span class="text-sm font-bold">Folders scanned — for developers</span>
-            </template>
-            <p class="text-xs text-surface-500 mb-3">
-              Every extension found in these folders is loaded for this Revit version. The one tagged
-              <span class="font-medium">scripts</span> is where commands generated over MCP are saved
-              when no folder is named.
-            </p>
-            <div class="flex justify-end mb-2">
-              <Button
-                label="Add folder"
-                icon="pi pi-folder"
-                size="small"
-                severity="secondary"
-                :loading="pathsBusy"
-                @click="addPath"
-              />
-            </div>
-            <DataTable :value="paths" dataKey="path" class="text-sm">
-              <Column header="Path">
-                <template #body="{ data: row }">
-                  <div class="break-all">{{ row.scanDir }}</div>
-                  <div v-if="!row.valid" class="text-xs text-amber-600">{{ row.reason }}</div>
-                </template>
-              </Column>
-              <Column header="Status">
-                <template #body="{ data: row }">
-                  <Tag
-                    :value="row.valid ? `${row.extensionCount} ext` : 'invalid'"
-                    :severity="row.valid ? 'success' : 'warn'"
-                  />
-                  <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
-                  <Tag v-if="row.isAuthoringRoot" value="scripts" severity="info" class="ml-1" />
-                </template>
-              </Column>
-              <Column header="" class="w-32">
-                <template #body="{ data: row }">
-                  <div class="flex justify-end gap-1">
-                    <!-- Managed roots are not offered: the Extension Manager owns extensions-dist, and the
-                         next update there would overwrite anything generated into it. -->
-                    <Button
-                      v-if="row.zone === 'dev' && !row.isAuthoringRoot"
-                      icon="pi pi-code"
-                      size="small"
-                      text
-                      severity="secondary"
-                      :disabled="pathsBusy"
-                      v-tooltip.left="'Save generated scripts here'"
-                      @click="useForScripts(row.path)"
-                    />
-                    <Button
-                      icon="pi pi-folder-open"
-                      size="small"
-                      text
-                      severity="secondary"
-                      v-tooltip.left="'Open in Explorer'"
-                      @click="openFolder(row.scanDir)"
-                    />
-                    <Button
-                      v-if="!row.isDefault"
-                      icon="pi pi-trash"
-                      size="small"
-                      text
-                      severity="danger"
-                      :disabled="pathsBusy"
-                      @click="removePath(row.path)"
-                    />
-                  </div>
-                </template>
-              </Column>
-              <template #empty>
-                <div class="text-surface-500 p-3">No source paths.</div>
-              </template>
-            </DataTable>
-          </Panel>
-        </TabPanel>
-
-        <TabPanel value="catalog">
-          <!-- The directory: which repositories to get extensions from. Links first — that half works
-               offline and answers "where does this live" — with a one-click install where a
-               publisher ships releases. -->
-          <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6 mt-4">
-            <div class="flex items-start justify-between mb-4 gap-3">
-              <div>
-                <h2 class="text-sm font-bold">Where extensions come from</h2>
-                <p class="text-xs text-surface-500 max-w-2xl">
-                  Every entry is a public repository. <b>Install</b> downloads the package from the
-                  publisher's own release — AnalyseTool is only the courier and does not host, review
-                  or endorse third-party extensions.
-                </p>
-              </div>
-              <div class="flex gap-2 shrink-0">
-                <Button
-                  label="Install from repository…"
-                  icon="pi pi-cloud-download"
-                  size="small"
-                  severity="secondary"
-                  @click="askForSource"
-                />
-                <Button
-                  icon="pi pi-refresh"
-                  size="small"
-                  text
-                  severity="secondary"
-                  :loading="catalogLoading"
-                  v-tooltip.top="'Reload the catalog'"
-                  @click="loadCatalog"
-                />
-              </div>
-            </div>
-
-            <div
-              v-if="catalogError"
-              class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-            >
-              <i class="pi pi-exclamation-triangle mr-1" />{{ catalogError }}
-            </div>
-
-            <div class="flex flex-col gap-3">
               <div
-                v-for="row in catalog"
-                :key="row.id"
-                class="border border-surface-200 rounded-lg p-3 flex items-start justify-between gap-4"
+                v-else
+                class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
+                v-tooltip.top="kindInfo(row).tip"
               >
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium">{{ row.name }}</span>
-                    <Tag v-if="row.installed" value="installed" severity="success" />
-                    <Tag v-if="row.userSupplied" value="local catalog" severity="secondary" />
-                    <Tag v-for="tag in row.tags" :key="tag" :value="tag" severity="secondary" />
-                  </div>
-                  <div class="text-xs text-surface-500 mt-0.5">
-                    <span v-if="row.publisher">{{ row.publisher }}</span>
-                    <span v-if="row.license"> · {{ row.license }}</span>
-                    <span v-if="row.installedVersion"> · installed {{ row.installedVersion }}</span>
-                  </div>
-                  <p v-if="row.description" class="text-xs text-surface-600 mt-1">
-                    {{ row.description }}
-                  </p>
-                  <!-- The link is the part a person can act on without this window: it is where the
-                       code, the README and the releases are. -->
+                <i :class="kindInfo(row).icon" />
+              </div>
+              <div>
+                <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
+                  {{ row.name || row.id }}
+                </div>
+                <div class="text-surface-500 text-xs">
+                  {{ row.id }}<template v-if="row.publisher"> · {{ row.publisher }}</template>
                   <a
                     v-if="safeLink(row.website)"
                     :href="safeLink(row.website)!"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-xs font-mono break-all inline-flex items-center gap-1 mt-1"
+                    class="ml-1"
+                    v-tooltip.top="'Website'"
                   >
-                    <i class="pi pi-external-link text-[0.65rem]" />{{ row.website }}
+                    <i class="pi pi-external-link text-xs" />
                   </a>
-                  <div v-else-if="row.source" class="text-xs font-mono text-surface-500 mt-1">
-                    {{ row.source }}
-                  </div>
+                  <a
+                    v-if="safeLink(row.supportUrl)"
+                    :href="safeLink(row.supportUrl)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ml-1"
+                    v-tooltip.top="'Support'"
+                  >
+                    <i class="pi pi-question-circle text-xs" />
+                  </a>
                 </div>
-
-                <div class="shrink-0 flex flex-col items-end gap-1">
-                  <!-- A dev-zone hit is the author's own working copy of this id: installing the
-                       package on top would leave two extensions claiming one id. -->
-                  <Button
-                    v-if="row.source && row.zone !== 'dev'"
-                    :label="row.installed ? 'Reinstall' : 'Install'"
-                    :icon="row.installed ? 'pi pi-replay' : 'pi pi-download'"
-                    size="small"
-                    :severity="row.installed ? 'secondary' : undefined"
-                    @click="installFromCatalog(row)"
-                  />
-                  <span v-else-if="row.zone === 'dev'" class="text-xs text-surface-500">
-                    open as a dev copy
-                  </span>
-                  <span v-else class="text-xs text-surface-500">manual download</span>
-                  <!-- Installing and uninstalling belong to the same card: finding an extension
-                       here and then hunting for it in another tab to remove it is one place too
-                       many for one thing. -->
-                  <Button
-                    v-if="row.installed && row.zone === 'managed'"
-                    label="Uninstall"
-                    icon="pi pi-trash"
-                    size="small"
-                    text
-                    severity="danger"
-                    @click="removeFromCatalog(row)"
-                  />
+                <div v-if="row.description" class="text-surface-500 text-xs">
+                  {{ row.description }}
                 </div>
-              </div>
-
-              <div v-if="!catalog.length && !catalogLoading" class="text-surface-500 text-sm p-4">
-                The catalog is empty. Add entries in the file below, or use
-                <b>Install from repository…</b>
               </div>
             </div>
+          </template>
+        </Column>
+        <Column field="version" header="Version" />
+        <Column header="Status">
+          <template #body="{ data: row }">
+            <!-- Silent while all is well: a tag here means there is something to do. -->
+            <Tag
+              v-if="updateChecks[row.id]?.updateAvailable"
+              :value="`Update → ${updateChecks[row.id]?.latest}`"
+              severity="success"
+              class="mr-1"
+              v-tooltip.top="'An update is available — the arrow button installs it'"
+            />
+            <!-- Independent of the update tag: an update that FAILS leaves updateAvailable true,
+                 so an v-else-if here would hide the very error the user needs to see. -->
+            <Tag
+              v-if="updateChecks[row.id]?.error"
+              value="Update failed"
+              severity="danger"
+              class="mr-1"
+              v-tooltip.top="updateChecks[row.id]?.error"
+            />
+            <Tag
+              v-if="!row.compatible"
+              :value="buildState(row).label"
+              severity="danger"
+              v-tooltip.top="row.compileError || buildState(row).tip"
+            />
+            <Tag
+              v-else-if="row.compileError"
+              value="Error"
+              severity="danger"
+              v-tooltip.top="row.compileError"
+            />
+          </template>
+        </Column>
+        <Column header="Enabled" class="w-20">
+          <template #body="{ data: row }">
+            <ToggleSwitch
+              :modelValue="row.enabled"
+              :disabled="loading"
+              @update:modelValue="setExtensionEnabled(row, !row.enabled)"
+            />
+          </template>
+        </Column>
+        <Column header="" class="w-40">
+          <template #body="{ data: row }">
+            <Button
+              v-if="updateChecks[row.id]?.updateAvailable"
+              icon="pi pi-arrow-circle-up"
+              size="small"
+              text
+              severity="success"
+              :loading="updatingId === row.id"
+              v-tooltip.left="`Update to ${updateChecks[row.id]?.latest}`"
+              @click="updateExtension(row)"
+            />
+            <Button
+              icon="pi pi-pencil"
+              size="small"
+              text
+              severity="secondary"
+              v-tooltip.left="'View manifest (installed packages are read-only)'"
+              @click="openEdit(row)"
+            />
+            <Button
+              icon="pi pi-folder-open"
+              size="small"
+              text
+              severity="secondary"
+              v-tooltip.left="'Open in Explorer'"
+              @click="openFolder(row.directory)"
+            />
+            <Button
+              icon="pi pi-trash"
+              size="small"
+              text
+              severity="danger"
+              v-tooltip.left="'Uninstall'"
+              @click="askRemove(row)"
+            />
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-4">
+            Nothing installed yet — see <b>Available</b> below, or <b>Install</b> a package.
+          </div>
+        </template>
+      </DataTable>
+    </section>
 
-            <p class="text-xs text-surface-500 mt-4">
-              Own or company repositories go in
-              <span class="font-mono break-all">{{ userCatalogPath }}</span> — same shape as the
-              shipped list (<span class="font-mono">id, name, description, source, website</span>);
-              an entry with an existing id replaces the shipped one.
+    <!-- Your own: the user's folders (default dev root + added paths). Reload-driven. -->
+    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6">
+      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <h2 class="text-sm font-bold">
+          Your own
+          <span class="text-surface-500 font-normal">— folders you edit, reloaded live</span>
+          <span v-if="devExtensions.length > 3" class="text-surface-400 font-normal ml-1">
+            ({{ filteredDevExtensions.length }}/{{ devExtensions.length }})
+          </span>
+        </h2>
+        <!-- Search, shown once there is enough to lose something in. -->
+        <IconField v-if="devExtensions.length > 3">
+          <InputIcon class="pi pi-search" />
+          <InputText v-model="devSearch" placeholder="Search…" size="small" class="w-48" />
+        </IconField>
+      </div>
+      <DataTable :value="filteredDevExtensions" :loading="loading" dataKey="id" class="text-sm">
+        <Column header="Extension">
+          <template #body="{ data: row }">
+            <div class="flex items-start gap-3">
+              <img
+                v-if="row.icon"
+                :src="row.icon"
+                class="w-8 h-8 rounded shrink-0 mt-0.5"
+                alt=""
+              />
+              <div
+                v-else
+                class="w-8 h-8 rounded shrink-0 mt-0.5 bg-surface-100 flex items-center justify-center text-surface-400"
+                v-tooltip.top="kindInfo(row).tip"
+              >
+                <i :class="kindInfo(row).icon" />
+              </div>
+              <div>
+                <div class="font-semibold" :class="{ 'text-surface-400': !row.enabled }">
+                  {{ row.name || row.id }}
+                </div>
+                <div class="text-surface-500 text-xs">{{ row.id }}</div>
+                <div v-if="row.description" class="text-surface-500 text-xs">
+                  {{ row.description }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </Column>
+        <Column field="version" header="Version" />
+        <Column header="Status">
+          <template #body="{ data: row }">
+            <!-- Silent while all is well: a tag here means there is something to do. -->
+            <Tag
+              v-if="updateChecks[row.id]?.updateAvailable"
+              :value="`Update → ${updateChecks[row.id]?.latest}`"
+              severity="success"
+              class="mr-1"
+              v-tooltip.top="'An update is available — the arrow button installs it'"
+            />
+            <!-- Independent of the update tag: an update that FAILS leaves updateAvailable true,
+                 so an v-else-if here would hide the very error the user needs to see. -->
+            <Tag
+              v-if="updateChecks[row.id]?.error"
+              value="Update failed"
+              severity="danger"
+              class="mr-1"
+              v-tooltip.top="updateChecks[row.id]?.error"
+            />
+            <Tag
+              v-if="!row.compatible"
+              :value="buildState(row).label"
+              severity="danger"
+              v-tooltip.top="row.compileError || buildState(row).tip"
+            />
+            <Tag
+              v-else-if="row.compileError"
+              value="Error"
+              severity="danger"
+              v-tooltip.top="row.compileError"
+            />
+          </template>
+        </Column>
+        <Column header="Enabled" class="w-20">
+          <template #body="{ data: row }">
+            <ToggleSwitch
+              :modelValue="row.enabled"
+              :disabled="loading"
+              @update:modelValue="setExtensionEnabled(row, !row.enabled)"
+            />
+          </template>
+        </Column>
+        <Column header="" class="w-32">
+          <template #body="{ data: row }">
+            <div class="flex justify-end gap-1">
+              <Button
+                icon="pi pi-pencil"
+                size="small"
+                text
+                severity="secondary"
+                v-tooltip.left="'Edit name, button, description…'"
+                @click="openEdit(row)"
+              />
+              <Button
+                icon="pi pi-folder-open"
+                size="small"
+                text
+                severity="secondary"
+                v-tooltip.left="'Open in Explorer'"
+                @click="openFolder(row.directory)"
+              />
+              <!-- Deleting your own folder used to mean going to Explorer and doing it by hand, which
+                   is fine for one extension and a chore for the ten a session can generate. -->
+              <Button
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                v-tooltip.left="'Delete folder'"
+                @click="askRemove(row)"
+              />
+            </div>
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-4">
+            <template v-if="devExtensions.length">
+              Nothing matches.
+              <button type="button" class="underline" @click="devSearch = ''">Clear the search</button>
+            </template>
+            <template v-else>
+              None yet — press <b>New</b> on the ribbon, ask your AI to save a command, or drop a
+              folder into the dev root.
+            </template>
+          </div>
+        </template>
+      </DataTable>
+    </section>
+
+    <!-- Available: catalog entries that are not here yet. Installed ones are rows above, with
+         their own update and uninstall — the catalog is only the way in. -->
+    <section
+      v-if="availableCatalog.length || catalogError"
+      class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-6"
+    >
+      <h2 class="text-sm font-bold">Available</h2>
+      <p class="text-xs text-surface-500 mb-3 max-w-2xl">
+        Every entry is a public repository. <b>Install</b> downloads the package from the publisher's
+        own release — AnalyseTool is only the courier and does not host, review or endorse
+        third-party extensions.
+      </p>
+      <div
+        v-if="catalogError"
+        class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+      >
+        <i class="pi pi-exclamation-triangle mr-1" />{{ catalogError }}
+      </div>
+      <div class="flex flex-col gap-3">
+        <div
+          v-for="row in availableCatalog"
+          :key="row.id"
+          class="border border-surface-200 rounded-lg p-3 flex items-start justify-between gap-4"
+        >
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-medium">{{ row.name }}</span>
+                  <Tag v-if="row.userSupplied" value="local catalog" severity="secondary" />
+              <Tag v-for="tag in row.tags" :key="tag" :value="tag" severity="secondary" />
+            </div>
+            <div class="text-xs text-surface-500 mt-0.5">
+              <span v-if="row.publisher">{{ row.publisher }}</span>
+              <span v-if="row.license"> · {{ row.license }}</span>
+                </div>
+            <p v-if="row.description" class="text-xs text-surface-600 mt-1">
+              {{ row.description }}
             </p>
-          </section>
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+            <!-- The link is the part a person can act on without this window: it is where the
+                 code, the README and the releases are. -->
+            <a
+              v-if="safeLink(row.website)"
+              :href="safeLink(row.website)!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-xs font-mono break-all inline-flex items-center gap-1 mt-1"
+            >
+              <i class="pi pi-external-link text-[0.65rem]" />{{ row.website }}
+            </a>
+            <div v-else-if="row.source" class="text-xs font-mono text-surface-500 mt-1">
+              {{ row.source }}
+            </div>
+          </div>
 
-    <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48).
-         Outside the tab panels — the catalog and the extension list both open it, and a lazy
-         TabPanel would unmount it under the user's hands. -->
+          <div class="shrink-0">
+            <Button
+              v-if="row.source"
+              label="Install"
+              icon="pi pi-download"
+              size="small"
+              @click="installFromCatalog(row)"
+            />
+            <span v-else class="text-xs text-surface-500">manual download</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Folders: plumbing, not an answer. Collapsed by default — most people never open it,
+         and the ones who do are looking for exactly this. -->
+    <Panel toggleable collapsed class="mb-6">
+      <template #header>
+        <span class="text-sm font-bold">Folders scanned — for developers</span>
+      </template>
+      <p class="text-xs text-surface-500 mb-3">
+        Every extension found in these folders is loaded for this Revit version. The one tagged
+        <span class="font-medium">saved commands</span> is where commands your AI saves over MCP
+        go when no folder is named.
+      </p>
+      <div class="flex justify-end mb-2">
+        <Button
+          label="Add folder"
+          icon="pi pi-folder"
+          size="small"
+          severity="secondary"
+          :loading="pathsBusy"
+          @click="addPath"
+        />
+      </div>
+      <DataTable :value="paths" dataKey="path" class="text-sm">
+        <Column header="Path">
+          <template #body="{ data: row }">
+            <div class="break-all">{{ row.scanDir }}</div>
+            <div v-if="!row.valid" class="text-xs text-amber-600">{{ row.reason }}</div>
+          </template>
+        </Column>
+        <Column header="Status">
+          <template #body="{ data: row }">
+            <Tag
+              :value="row.valid ? `${row.extensionCount} ext` : 'invalid'"
+              :severity="row.valid ? 'success' : 'warn'"
+            />
+            <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
+            <Tag v-if="row.isAuthoringRoot" value="saved commands" severity="info" class="ml-1" />
+          </template>
+        </Column>
+        <Column header="" class="w-32">
+          <template #body="{ data: row }">
+            <div class="flex justify-end gap-1">
+              <!-- Managed roots are not offered: the Extension Manager owns extensions-dist, and the
+                   next update there would overwrite anything generated into it. -->
+              <Button
+                v-if="row.zone === 'dev' && !row.isAuthoringRoot"
+                icon="pi pi-code"
+                size="small"
+                text
+                severity="secondary"
+                :disabled="pathsBusy"
+                v-tooltip.left="'Save new commands here'"
+                @click="useForSavedCommands(row.path)"
+              />
+              <Button
+                icon="pi pi-folder-open"
+                size="small"
+                text
+                severity="secondary"
+                v-tooltip.left="'Open in Explorer'"
+                @click="openFolder(row.scanDir)"
+              />
+              <Button
+                v-if="!row.isDefault"
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                :disabled="pathsBusy"
+                @click="removePath(row.path)"
+              />
+            </div>
+          </template>
+        </Column>
+        <template #empty>
+          <div class="text-surface-500 p-3">No source paths.</div>
+        </template>
+      </DataTable>
+      <p class="text-xs text-surface-500 mt-3">
+        Own or company repositories for <b>Available</b> go in
+        <span class="font-mono break-all">{{ userCatalogPath }}</span> — same shape as the shipped
+        list (<span class="font-mono">id, name, description, source, website</span>); an entry with
+        an existing id replaces the shipped one.
+      </p>
+    </Panel>
+
+    <!-- Third-party install consent: the backend requires consent=true, logged host-side (#48). -->
     <Dialog
       v-model:visible="installDialogVisible"
       modal
@@ -1170,8 +1061,13 @@ onMounted(() => {
         <p v-if="removeTarget?.zone === 'dev'" class="text-xs text-surface-500 break-all font-mono">
           {{ removeTarget?.directory }}
         </p>
+        <!-- Two different losses, said differently. A saved command keeps its sources IN this folder
+             (src), so they go with it; a project someone builds keeps them elsewhere. -->
+        <p v-if="removeTarget?.zone === 'dev' && removeTarget?.hostBuilt" class="text-red-600">
+          This is a saved command — its C# sources are in this folder and are deleted with it.
+        </p>
         <p
-          v-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'"
+          v-else-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'"
           class="text-amber-600"
         >
           This is a compiled extension — its source project is somewhere else, but the built output
@@ -1227,7 +1123,6 @@ onMounted(() => {
         <Button label="Continue" :disabled="!sourceInput.trim()" @click="proceedWithSource" />
       </template>
     </Dialog>
-
 
     <EditExtensionDrawer
       v-model:visible="editDrawerVisible"
