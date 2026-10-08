@@ -54,11 +54,20 @@ namespace AnalyseTool.Core.Common.Extensions
                 // script folder and changes what the descriptor resolves to, so it is read again.
                 string? buildError = PrepareHostBuild(scanned, out ExtensionDescriptor descriptor);
 
+                // Nothing to load and a reason why (a script folder that could not be migrated, sources
+                // that never compiled): say so rather than skipping the extension in silence.
+                if (buildError is not null && !descriptor.HasDll)
+                {
+                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, buildError);
+                    Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, buildError);
+                    continue;
+                }
+
                 // Declared a DLL but ships no build for this Revit year: listed as incompatible,
                 // never loaded — surface WHY in diagnostics instead of failing on a missing file.
                 if (descriptor.DeclaresDll && !descriptor.HasDll)
                 {
-                    string error = buildError ?? $"No build for Revit {_revitVersion}: " +
+                    string error = $"No build for Revit {_revitVersion}: " +
                         $"'{descriptor.Manifest.EntryAssembly}' not found in '{_revitVersion}\\' or the extension root.";
                     ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
                     Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
@@ -118,11 +127,20 @@ namespace AnalyseTool.Core.Common.Extensions
             if (HostBuild.IsHostBuilt(directory))
             {
                 ExtensionDescriptor manifestNow = changed ? ExtensionCatalog.Reread(scanned, _revitVersion) ?? scanned : scanned;
-                string entryAssembly = manifestNow.Manifest.EntryAssembly ?? HostBuild.EntryAssemblyFor(id);
-
-                if (HostBuild.NeedsBuild(directory, entryAssembly, _revitVersion))
+                string? entryAssembly = manifestNow.Manifest.EntryAssembly;
+                if (string.IsNullOrWhiteSpace(entryAssembly))
                 {
-                    ScriptCompileResult result = HostBuild.Build(directory, entryAssembly, _revitVersion);
+                    // Sources in src\ but no entryAssembly — put there by hand. Without it the build
+                    // below would never be found, so the manifest is completed first.
+                    entryAssembly = HostBuild.EntryAssemblyFor(id);
+                    string? manifestError = HostBuild.SetEntryAssembly(directory, entryAssembly);
+                    if (manifestError is not null) return manifestError;
+                    changed = true;
+                }
+
+                if (HostBuild.NeedsBuild(directory, entryAssembly!, _revitVersion))
+                {
+                    ScriptCompileResult result = HostBuild.Build(directory, entryAssembly!, _revitVersion);
                     if (result.Success)
                     {
                         Log.Information("Extension {Id}: built {Assembly} for Revit {Year}", id, entryAssembly, _revitVersion);

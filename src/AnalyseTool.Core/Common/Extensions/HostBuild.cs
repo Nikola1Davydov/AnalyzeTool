@@ -72,14 +72,13 @@ namespace AnalyseTool.Core.Common.Extensions
                     if (File.Exists(target)) File.Delete(target);
                     File.Move(file, target);
                 }
-
-                SetEntryAssembly(directory, EntryAssemblyFor(id));
-                return null;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 return $"Could not move the scripts of '{id}' into {SourceFolder}\\: {ex.Message}";
             }
+
+            return SetEntryAssembly(directory, EntryAssemblyFor(id));
         }
 
         /// <summary>Whether the build for <paramref name="revitVersion"/> is missing or older than any
@@ -133,13 +132,22 @@ namespace AnalyseTool.Core.Common.Extensions
             Directory.Exists(directory)
             && Directory.EnumerateFiles(directory, "*.csproj", SearchOption.AllDirectories).Any();
 
-        /// <summary>Sets <c>entryAssembly</c> in place, leaving every other field as it is.</summary>
-        private static void SetEntryAssembly(string directory, string entryAssembly)
+        /// <summary>Sets <c>entryAssembly</c> in place, leaving every other field as it is. Null on
+        /// success, otherwise why it could not.</summary>
+        public static string? SetEntryAssembly(string directory, string entryAssembly)
         {
-            string path = Path.Combine(directory, "plugin.json");
-            JObject manifest = JObject.Parse(File.ReadAllText(path));
-            manifest["entryAssembly"] = entryAssembly;
-            File.WriteAllText(path, manifest.ToString(Formatting.Indented));
+            try
+            {
+                string path = Path.Combine(directory, "plugin.json");
+                JObject manifest = JObject.Parse(File.ReadAllText(path));
+                manifest["entryAssembly"] = entryAssembly;
+                File.WriteAllText(path, manifest.ToString(Formatting.Indented));
+                return null;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                return $"Could not record entryAssembly in plugin.json: {ex.Message}";
+            }
         }
     }
 }
