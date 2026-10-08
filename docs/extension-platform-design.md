@@ -43,11 +43,12 @@ MyExt/
 Resolution rules (host running year Y):
 1. `entryAssembly` is looked up in `<Y>/` first, then in the folder root. Generated projects
    produce the first form; the root remains the fallback for hand-made single-year folders.
-2. Scripts (`*.cs`) and `ui/` always come from the root.
+2. `ui/` always comes from the root. (Script extensions — loose `*.cs` compiled at load — were
+   replaced on 2026-10-08 by commands the host compiles from `src\` into a year-folder DLL.)
 3. Neither found for Y → the extension is listed as **incompatible with Revit Y**
    in the manager, and is not loaded (no silent invisibility).
 
-Script-only and UI-only extensions have no year folders at all.
+UI-only extensions have no year folders at all.
 
 ## Manifest v2 (additive — old manifests keep working)
 
@@ -65,7 +66,7 @@ ribbon builder. Applies to both zones. Commands: `EnableExtension`, `DisableExte
 
 - `InstallExtensionFromFile` (zip → validate manifest → third-party consent dialog,
   consent logged (#48) → unpack into the managed zone → Reload).
-- `RemoveExtension` (delete folder + script cache → Reload).
+- `RemoveExtension` (delete folder → Reload).
 - `CheckExtensionUpdates`: polls each installed extension's `updateFeed`.
   Two feed forms:
   - any HTTPS JSON returning `{version, downloadUrl}`;
@@ -129,7 +130,7 @@ trap on the way to publishing:
    whatever is missing (csproj, `.gitignore`, `release.yml`, README), runs the
    same git steps as project mode, registers the new folder as a dev root and
    removes the old dev-zone copy. The extension keeps working throughout.
-   Lifecycle: script for myself → (one click) → git project → (push + tag) →
+   Lifecycle: saved command for myself → (one click) → git project → (push + tag) →
    published package; every step is a valid place to stop.
 
 ## Registry (the curation point, later iteration — tracked as #76)

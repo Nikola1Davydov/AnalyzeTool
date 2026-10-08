@@ -5,15 +5,7 @@ using Autodesk.Revit.UI;
 namespace AnalyseTool.Launcher.RevitCommands
 {
 
-    /// <summary>Ribbon "Scripts" button — shows the dockable launcher listing every registered command.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class ScriptsCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("ShowScriptLauncher", commandData.Application);
-    }
-
-    /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
+    /// <summary>Ribbon "Settings" button — the plugin's own preferences (MCP, about).</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class SettingsCommand : IExternalCommand
     {
@@ -35,14 +27,6 @@ namespace AnalyseTool.Launcher.RevitCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
             => App.InvokeRibbon("OpenNewExtension", commandData.Application);
-    }
-
-    /// <summary>Ribbon "Reload" button — reloads extensions.</summary>
-    [Transaction(TransactionMode.Manual)]
-    internal sealed class ReloadCommand : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-            => App.InvokeRibbon("Reload", commandData.Application);
     }
 
     /// <summary>Ribbon "Report a bug" button — opens the GitHub issues page in the browser. Handled here

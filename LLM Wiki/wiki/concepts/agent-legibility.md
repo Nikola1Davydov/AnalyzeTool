@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -43,6 +43,24 @@ sources: [../sources/github-issues.md]
 
 Ничего из этого не ждёт новых глаголов протокола. Это поля в ответах, которые и так
 отправляются.
+
+## Подложки: то, что лежит в модели, но агенту не видно
+
+[#136](https://github.com/Nikola1Davydov/AnalyzeTool/issues/136) (2026-09-21) — тот же дефект в
+масштабе целого рода данных. DWG/DXF и PDF под планом — первое, о чём спрашивают («что в подложке
+архитектора?»), а платформа знает о них только «есть/нет»: `GetCadImports` и `GetLinksInRevit`
+отдают `id` + `name` (`src/AnalyseTool.Tools/Elements/Infrastructure/ImportsService.cs`,
+`LinksService.cs`), PDF и растры (`ImageInstance` / `ImageType`) не видны вовсе (проверено
+2026-10-08). Каждая сессия изобретает обход через `ExecuteRevitCode`: геометрия `ImportInstance`
+с ручным `Transform`, слои через `GraphicsStyle`, путь через `CADLinkType` — ровно то вытеснение
+специализированного пути, которое разобрано в [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md).
+
+Предложение issue — в духе этой страницы: **один вызов — готовое описание**. `GetUnderlays`
+отдаёт инвентарь DWG/DXF/PDF/растров *вместе со сводкой по слоям* (имя, цвет, число примитивов по
+типам), чтобы агент понял, где оси, а где стены, без второго вызова; `GetCadLayers` и
+`GetCadGeometry` (примитивы уже в координатах проекта) — следующие шаги; `GetPdfPageAsImage` —
+для мультимодальной модели. Описания сами говорят, когда их звать. Автотрассировка (DWG → оси,
+стены) сознательно вне объёма: сначала понимание.
 
 ## Плотность важнее полноты
 

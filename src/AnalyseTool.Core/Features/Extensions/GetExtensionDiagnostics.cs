@@ -12,8 +12,8 @@ namespace AnalyseTool.Core.Features.Extensions
     /// form an author could ask for, so the answer to "my button disappeared" was a human reading a log.
     ///
     /// The two failures it separates are the ones that look identical from outside:
-    /// a script that did not COMPILE (error text, fixable in the source) and a DLL extension with no
-    /// build for the running Revit year (compatible=false, nothing wrong with the code).
+    /// sources that did not COMPILE (error text, fixable in src\) and a DLL extension with no build
+    /// for the running Revit year (compatible=false, nothing wrong with the code).
     ///
     /// Not gated behind the C#-execution toggle, unlike the authoring commands: reading why something
     /// failed to load changes nothing, and it is most needed exactly when authoring is switched off and
@@ -24,7 +24,7 @@ namespace AnalyseTool.Core.Features.Extensions
                       "enabled/compatible state, the COMPILE ERROR if it has one, and shadowedBy when " +
                       "another folder claimed the same id first so this copy never runs. Use after " +
                       "SaveAsCommand or ReloadExtensions to find out why a command did not appear, or " +
-                      "why an edit had no effect — a script that failed to compile, a DLL with no build " +
+                      "why an edit had no effect — sources that failed to compile, a DLL with no build " +
                       "for this Revit year and a duplicate id look the same from outside, and this " +
                       "tells them apart. Read-only and cheap: it reads the extension registry, not the " +
                       "Revit model.",
@@ -42,7 +42,7 @@ namespace AnalyseTool.Core.Features.Extensions
             List<ExtensionDiagnostic> diagnostics = found
                 .Select(descriptor => new ExtensionDiagnostic(
                     descriptor.Manifest.Id,
-                    descriptor.DeclaresDll ? "dll" : descriptor.HasScript ? "script" : "js",
+                    descriptor.DeclaresDll ? "dll" : "js",
                     descriptor.Zone == ExtensionZone.Dev ? "dev" : "managed",
                     ExtensionStateStore.IsEnabled(descriptor.Manifest.Id),
                     descriptor.IsCompatibleWithHost,

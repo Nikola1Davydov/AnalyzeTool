@@ -74,7 +74,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// the caller names no root. Defaults to the built-in dev root.
         ///
         /// Falls back to that default whenever the stored choice is no longer a registered DEV root:
-        /// a folder the user has since removed must not keep swallowing generated scripts where
+        /// a folder the user has since removed must not keep swallowing saved commands where
         /// nothing scans for them.
         /// </summary>
         public static string AuthoringRoot
@@ -91,7 +91,7 @@ namespace AnalyseTool.Core.Common.Extensions
             }
         }
 
-        /// <summary>Chooses where generated scripts land. Null on success, otherwise why not.
+        /// <summary>Chooses where saved commands land. Null on success, otherwise why not.
         /// Managed roots are refused: the Extension Manager owns <c>extensions-dist</c>, and the next
         /// install or update there would overwrite whatever was generated into it.</summary>
         public static string? SetAuthoringRoot(string path)

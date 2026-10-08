@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -140,8 +140,8 @@ Apply — одна транзакция с внятным именем, чтоб
   шаг 5 из топологии [#118](https://github.com/Nikola1Davydov/AnalyzeTool/issues/118);
   ничего нового строить не нужно.
 - **Гейт** — есть, см. выше.
-- **Антипример, который лента должна заменить** — сегодняшнее подтверждение в доке:
-  `ScriptLauncherView.vue:513` показывает `{{ pendingRun?.command.name }} modifies the
+- **Антипример, который лента должна заменить** — подтверждение в доке (лаунчер Scripts,
+  удалён 2026-10-08 вместе с ним; урок остаётся): ScriptLauncherView.vue:513 показывал `{{ pendingRun?.command.name }} modifies the
   model.`, и на `:449` то же самое прозой. Это подтверждение без содержания, ровно то,
   что [#106](https://github.com/Nikola1Davydov/AnalyzeTool/issues/106) называет хуже
   отсутствия подтверждения. Комментарий на `:253` при этом верно называет это место

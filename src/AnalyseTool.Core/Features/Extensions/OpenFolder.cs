@@ -1,3 +1,4 @@
+using AnalyseTool.Core.Common.Extensions;
 using AnalyseTool.Sdk;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -21,12 +22,26 @@ namespace AnalyseTool.Core.Features.Extensions
             if (string.IsNullOrWhiteSpace(path))
                 throw new InvalidOperationException("Path is required.");
 
+            // The plugin's own extension folders are created on first use, not at install: "open my
+            // extensions folder" on a fresh machine must open an empty folder, not report it missing.
+            if (!Directory.Exists(path) && IsOwnRoot(path))
+                Directory.CreateDirectory(path);
+
             if (!Directory.Exists(path))
                 throw new InvalidOperationException($"Folder not found: {path}");
 
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
             return Task.FromResult<object?>(null);
         }
+
+        private static bool IsOwnRoot(string path) =>
+            SamePath(path, ExtensionSources.DefaultDevRoot) || SamePath(path, ExtensionSources.DefaultManagedRoot);
+
+        private static bool SamePath(string a, string b) =>
+            string.Equals(
+                Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar),
+                Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
     }
 
     internal sealed class OpenFolderPayload

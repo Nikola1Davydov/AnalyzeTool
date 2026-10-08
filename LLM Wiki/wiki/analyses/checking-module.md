@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-08-31
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -72,7 +72,8 @@ sidecar, тянет ли локальная модель, где порог пр
   не поток. Обычные возражения против перепродажи токенов
   ([#118](https://github.com/Nikola1Davydov/AnalyzeTool/issues/118)) при таком объёме почти
   не работают;
-- **ключом клиента** — инфраструктура уже есть, `AiProviderRegistry` с шифрованием DPAPI.
+- **ключом клиента** — инфраструктура была (AiProviderRegistry с шифрованием DPAPI), но удалена
+  2026-10-08 вместе со встроенным ИИ; понадобится — строить заново.
 
 Для периметрового сегмента ([#117](https://github.com/Nikola1Davydov/AnalyzeTool/issues/117))
 фаза 1 работает руками вообще без модели.

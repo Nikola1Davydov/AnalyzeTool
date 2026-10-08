@@ -131,8 +131,8 @@ namespace AnalyseTool.Core.Common.Extensions
         public string? Icon { get; init; }
 
         /// <summary>When set, clicking the ribbon button INVOKES this command (e.g. "&lt;id&gt;.Foo")
-        /// directly instead of opening a WebView window. Used by command-only script extensions
-        /// (SaveAsCommand). When null, the button opens the extension's UI page.</summary>
+        /// directly instead of opening a WebView window — what SaveAsCommand writes for a saved command.
+        /// When null, the button opens the extension's UI page.</summary>
         [JsonProperty("command")]
         public string? Command { get; init; }
 

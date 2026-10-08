@@ -18,8 +18,8 @@
                                 (e.g. "-p:UseSdkPackage=true") — needed because the year builds run
                                 as child processes, which do not inherit -p properties automatically.
 
-    Script/UI-only extensions have no project to build — they are zipped as-is (the folder IS the
-    bundle); this target serves compiled C# extensions.
+    UI-only extensions have no project to build — they are zipped as-is (the folder IS the bundle);
+    this target serves compiled C# extensions.
   -->
 
   <PropertyGroup>

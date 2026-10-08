@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-09-02
+updated: 2026-10-08
 status: draft
 ---
 
@@ -45,9 +45,9 @@ status: draft
 `McpServerController.cs`, `McpWire.cs`, `PayloadValidator.cs`, `NearestName.cs`,
 плюс команды `Features/GetMcpStatus.cs` и `Features/SetMcpServer.cs`.
 
-Слайс `Ai/` в `AnalyseTool.Tools` — это *другое* направление, плагин как AI-клиент:
-`AiProviderRegistry.cs`, `AiClientFactory.cs`, `AiAnalysisService.cs`,
-`OpenAiCompatibleChatClient.cs` и команды `OllamaAnalyse`, `OllamaEditParameters`,
+Слайс `Ai/` в `AnalyseTool.Tools` был *другим* направлением, плагин как AI-клиент (удалён
+2026-10-08, ИИ теперь только по MCP): AiProviderRegistry.cs, AiClientFactory.cs,
+AiAnalysisService.cs, OpenAiCompatibleChatClient.cs и команды `OllamaAnalyse`, `OllamaEditParameters`,
 `OllamaGetModels`, `OllamaSuggestName`, `OllamaSuggestNames`, `OllamaSuggestTemplate`,
 `AiProviderCommands`.
 

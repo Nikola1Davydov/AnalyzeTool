@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-09-02
+updated: 2026-10-08
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -91,7 +91,7 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `ExposeToMcp` — это `!HiddenFromMcp` из атрибута (`CommandDispatcher.cs`). А переключатель C#
 в Settings прячет **набор**, не один инструмент: `ExecuteRevitCode`, `SaveAsCommand`,
 `GetScriptSource`, `SaveExtensionUi`, `UpdateExtensionManifest`, `ReloadExtensions` — читать
-исходник скрипта значит отдать код с машины пользователя, а перезагрузка — шаг, которым
+исходник сохранённой команды значит отдать код с машины пользователя, а перезагрузка — шаг, которым
 написанный код вступает в силу. Выключенный инструмент отвечает `NotAvailable` с подсказкой
 попросить человека, а не «неизвестная команда».
 
@@ -228,7 +228,8 @@ intelligence → External assistant → Connection details** (свёрнуто; 
 
 ## Связанное
 
-- [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) — что сломано и в каком порядке чинить
+- [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) — что сломано и в каком порядке чинить; там же официальный сервер Autodesk (#137)
+- [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md) — единая модель ошибок (#146), отмена до потока Revit (#142)
 - [`../concepts/architecture-overview.md`](../concepts/architecture-overview.md) · [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md)
 - [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) · [`../overview.md`](../overview.md)
 - [`extension-manifest.md`](extension-manifest.md) — манифест, из которого растут инструменты расширений · [`ribbon-host.md`](ribbon-host.md) — `ribbon`, третий источник той же очереди

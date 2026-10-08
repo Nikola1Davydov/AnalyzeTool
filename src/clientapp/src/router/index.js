@@ -12,12 +12,11 @@ const routes = [
   { path: "/about", component: () => import("@/view/AboutView.vue") },
   { path: "/parameterFilledEmptyPage", component: () => import("@/view/ParameterFilledEmptyView.vue") },
   { path: "/parametervaluecheck", component: () => import("@/view/ParameterValueCheckView.vue") },
-  { path: "/connectParameters", component: () => import("@/view/ConnectParameters/ConnectParametersView.vue") },
   { path: "/parameterCanvasView", component: () => import("@/view/InfiniteCanvas/ParameterCanvasView.vue") },
   {
-    // Dockable, like the family palette: the launcher lives in the pane, not in a window of its own.
-    path: "/scripts",
-    component: () => import("@/view/Scripts/ScriptLauncherView.vue"),
+    // The dockable pane's resting content, before any extension page is docked.
+    path: "/dock",
+    component: () => import("@/view/DockEmptyView.vue"),
     meta: { layout: "bare" },
   },
   {

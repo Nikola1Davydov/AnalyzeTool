@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-10-08
 status: draft
 sources: [../sources/analysetool-repo-docs.md]
 ---
@@ -37,7 +37,7 @@ ProjectReference плюс одна строка `InternalsVisibleTo`, без и�
 | Проект | Роль |
 | --- | --- |
 | `AnalyseTool.Sdk` | публичный контракт: `IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`, `IProgressAware` — пять файлов, это вся поверхность |
-| `AnalyseTool.Core` | платформа: `CommandQueue`, `CommandDispatcher`, загрузчик расширений, Roslyn-скриптинг, `CoreServices`. Headless |
+| `AnalyseTool.Core` | платформа: `CommandQueue`, `CommandDispatcher`, загрузчик расширений, Roslyn (`ExecuteRevitCode`; сохранённые по MCP команды собираются хостом в DLL — `HostBuild`), `CoreServices`. Headless |
 | `AnalyseTool.Tools` | встроенные команды вертикальными слайсами: `Actions/ Ai/ Elements/` (слайса `Families/` нет с 2026-09-01: Family Manager — расширение, 63a1992) |
 | `AnalyseTool.Mcp.Bridge` | TCP-транспорт внутри Revit |
 | `AnalyseTool.Mcp` | внешний stdio-exe с MCP |

@@ -1551,3 +1551,95 @@ CHANGELOG поправлен. Проверено на Linux поддельным
 Владелец счёл self-contained лишним: exe нужен только на машинах с Revit, а Revit приносит .NET.
 Публикация без рантайма, single-file, `RollForward=LatestMajor` для машин с одним .NET 10 (Revit 2027).
 36 МБ → 5,6 МБ. Страница MCP-сервера дополнена, старый абзац оставлен как история.
+
+## 2026-10-08 — refresh: снимок трекера за пять недель
+
+Снимок `raw/github-issues-2026-10-08.md` (118 issue, 69 открытых) и комментариев (101 на 54).
+Против 2026-09-02: 24 новых issue, семь закрытий — все семь (#99, #107–#111, #113) вики уже знала из
+сессии 2026-09-02, снимок их подтвердил. Из закрытых вики ни на одну не опиралась как на открытую.
+
+Вплетено:
+
+- **Ревью архитектуры #141 и #142–#158** — новая страница `analyses/architecture-review-2026-09.md`.
+  Для AI-поверхности главное — #142: отмена не доходит до `RevitTaskHub`, и ещё не начатая работа
+  выполняется после ответа «Cancelled», с записью в модель. Дописано в `command-queue.md`,
+  `long-running-calls.md`, `write-safety-and-approval.md`. Sdk 1.3 (#145–#147, #151) — в
+  `contract-evolution.md`, путь «из правила — в тип» (#145, #149, #150, #157) — в
+  `command-schema-contract.md`.
+- **#136** (подложки DWG/PDF) — `agent-legibility.md` и `mcp-surface-state.md`; **#137** (официальный
+  Revit Public MCP Server, только 2027) — `mcp-surface-state.md`, возможности помечены «не проверено».
+- **#161** (конвейер без UI под расширение Batch) — `licensing-and-monetization.md`; **#163** (история
+  версий своих кнопок) — `write-safety-and-approval.md` и `extension-manifest.md`.
+- **#138** (падение Revit 2025 с WebView2) — первый внешний баг-репорт, починен 23ef92e; только отмечен.
+- Карта бэклога, страница источника, индекс.
+
+Попутно, по коду, а не по снимку: с 2026-09-25 (e5d9fe5) `CommandQueue` исполняет через цепочку
+декораторов `Logging → Gating → Tracking → Dispatching` (`CommandPipeline.cs`), а `Untracked` стал
+`CommandPipeline.Quiet`. Раздел `command-queue.md` про `ExecuteAsync` переписан — он описывал метод,
+которого больше нет. Это же делает [#153](https://github.com/Nikola1Davydov/AnalyzeTool/issues/153)
+сделанным по сути при открытом issue — **к обсуждению**: закрыть или сузить.
+
+Поправка к тексту issue при сверке: в #143 сказано 15 обращений к `ActiveUIDocument.Document` в Tools,
+в рабочей копии 13. А catch-all `Ollama*` из #146 агента сегодня не задевает — все `Ollama*`
+`HiddenFromMcp`; записано как риск образца, а не как текущий дефект MCP.
+
+## 2026-10-08 — lint после refresh
+
+Битых ссылок и сирот нет. Из семи «процитированных путей, которых нет», ни один не был устаревшей
+цитатой: три — голые расширения из нового текста (`.cs`, `.js`, `.ts`), один — имя будущего файла
+из #163 (перефразировано), `src/build/obj` — выход сборки, два — пути соседнего репозитория
+`AnalyseTool.FamilyManager`, не склонированного в облачной сессии. `scripts/lint.py` научен первым
+двум случаям и третьему (сосед без клона → «ожидаемо»), `scripts/README.md` дополнен. Итог: чисто.
+Незакрытое (12 страниц с «не проверено», включая новый блок про сервер Autodesk) и дыры — без
+изменений по существу, к обсуждению.
+
+## 2026-10-08 — упрощение плагина: без встроенного ИИ, без скриптов, три кнопки
+
+Решения владельца в сессии, не из снимка трекера:
+
+- **Встроенный ИИ удалён целиком.** Слайс `Ai/` (команды `Ollama*` / `Ai*`, реестр провайдеров,
+  OllamaSharp), режим ✦ AI таблицы параметров, AI-раздел Settings. ИИ — только внешний клиент по MCP.
+  Помечены историей: `entities/ollama.md`, `analyses/built-in-agent-plan.md` (#133 по сути снят),
+  второй пункт «двух AI» в `overview.md`; точечно — `agent-hosting.md`, `checking-module.md`,
+  `shadow-index.md`, `architecture-review-2026-09.md`, `sources/analysetool-repo-docs.md`.
+- **Скрипт-расширений больше нет — одна форма, DLL.** `SaveAsCommand` пишет исходник в `<id>\src\` и
+  собирает все исходники Roslyn-ом хоста в `<id>\<год>\<id>.dll` (`HostBuild`), так что .NET SDK по-
+  прежнему не нужен; загрузчик собирает недостающий или устаревший год и переносит старые скрипт-папки
+  в `src\` с теми же именами команд. Ушли панель Scripts и пины (`CommandButtons`, `SetCommandButton`).
+- **Лента — три кнопки**: AnalyseTool, Settings, Extensions (Reload, New, Report a bug, Scripts и
+  скрытые переключатели видимости убраны). `entities/ribbon-host.md` переписан.
+- Удалены недостижимая страница ConnectParameters, команда PickFolder, отдельное окно New, мёртвые
+  файлы фронта. Окно Extensions по просьбе владельца не трогалось — его тексты про «Script» и
+  «dotnet build» для DLL теперь неточны, это следующий шаг.
+
+`scripts/lint.py`: `log.md` больше не проверяется на пути (журнал — история, его не правят), файлы
+профиля (`codeexec.json`, `extensions.json`, …) добавлены в `RUNTIME`. Линт чист.
+
+## 2026-10-08 — New вернулась на ленту
+
+Владелец: кнопка New — «хорошая вещь», её убирать не надо; убрать нужно вторую дверь к той же форме
+внутри окна Extensions. Лента теперь AnalyseTool · Settings · Extensions · New; окно New
+(`#/system/new-extension`) восстановлено, кнопка «New extension» и выдвижная панель
+CreateExtensionTemplateDrawer из окна Extensions удалены. `entities/ribbon-host.md` поправлен.
+
+## 2026-10-08 — Report a bug вернулась на ленту
+
+По слову владельца. Лента: AnalyseTool · (Settings · Report a bug) · (Extensions · New) — две колонки
+по две. Кнопка обрабатывается в Launcher, поэтому открывает GitHub и при незагрузившемся плагине.
+`entities/ribbon-host.md` поправлен.
+
+## 2026-10-08 — окно Extensions упрощено
+
+Одна страница вместо двух вкладок: Installed, Your own, **Available** (каталог — только то, чего ещё
+нет), свёрнутые Folders scanned. Одна кнопка **Install** (zip или репозиторий); обновления проверяются
+сами при открытии. Метки Script / DLL / Page / Legacy layout убраны, колонка **Status** говорит только о
+проблеме или обновлении. Удаление сохранённой команды предупреждает, что её исходники в `src\` уйдут
+вместе с папкой (`GetInstalledExtensions` отдаёт `hostBuilt`). `concepts/extension-distribution.md`
+поправлен.
+
+## 2026-10-08 — ExtensionsView разобран на части (#158, частично)
+
+Чистый рефакторинг без изменения поведения: `view/System/extensions/` — `useExtensionManager.ts`
+(состояние и действия, provide/inject), `types.ts`, по компоненту на секцию (Installed, Your own,
+Available, Folders), ячейки (`ExtensionCell`, `ExtensionStatus`) и диалоги. `ExtensionsView.vue` —
+1133 → 85 строк. Проверено скриншотами с поддельным мостом: до и после совпадают побайтно.

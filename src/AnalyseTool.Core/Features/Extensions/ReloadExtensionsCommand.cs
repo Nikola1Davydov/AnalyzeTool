@@ -6,12 +6,13 @@ namespace AnalyseTool.Core.Features.Extensions
     /// <summary>Reloads extension command DLLs (collectible ALC) and refreshes the ribbon buttons,
     /// all without restarting Revit.</summary>
     [RevitCommand("ReloadExtensions",
-        Description = "Reloads extension command DLLs and script sources (collectible ALC) and refreshes " +
+        Description = "Reloads extension command DLLs (collectible ALC) and refreshes " +
                       "ribbon buttons, without restarting Revit. This is the 'apply' step of the authoring " +
                       "loop: after changing an extension's files, reload, then call " +
                       "GetExtensionDiagnostics to see whether it came back. SaveAsCommand reloads by " +
-                      "itself, so this is for changes made another way. Cost: unloads and recompiles " +
-                      "every script extension. Hidden from the AI while C# execution is off in " +
+                      "itself, so this is for changes made another way — an edited file in an extension's " +
+                      "src folder is compiled again here. Cost: unloads every extension and recompiles " +
+                      "the ones whose sources changed. Hidden from the AI while C# execution is off in " +
                       "AnalyseTool Settings.")]
     internal sealed class ReloadExtensionsCommand : IRevitTask
     {

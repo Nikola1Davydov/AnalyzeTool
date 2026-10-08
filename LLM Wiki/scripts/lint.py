@@ -30,7 +30,8 @@ CODE_DIR = r"^(src|docs|\.github|samples|img|libs|AnalyseTool\.[A-Za-z]+)/"
 SKIP = {"path/File.cs", "kebab-case.md", "wiki/Home.md", "wiki/Writing-extensions-with-AI.md"}
 
 # Файлы, создаваемые в рантайме (в профиле пользователя), а не лежащие в репозитории.
-RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json"}
+RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json", "codeexec.json",
+           "extensions.json", "extensions-state.json", "command-buttons.json", "ribbon-state.json"}
 
 # Существуют, но не в текущей ветке. Значение — где искать; это не ошибка.
 ELSEWHERE = {"docs/pipeline-design.md": "ветка claude/pipelines-plan-f8jrgf"}
@@ -117,6 +118,10 @@ def resolve(bare):
 def check_code_paths(pages):
     seen = {}
     for rel, p in pages:
+        # log.md only grows: its entries describe the repository AS IT WAS that day, and a path
+        # that was removed since is history, not a stale claim — and must not be edited away.
+        if rel == "wiki/log.md":
+            continue
         for m in re.finditer(r"`([^`\n]+)`", read(p)):
             t = m.group(1).strip()
             if t in SKIP or t in RUNTIME or "<" in t or ">" in t:
@@ -127,6 +132,12 @@ def check_code_paths(pages):
                 continue
             if t.startswith("../") or t.endswith("/") or "→" in t or "->" in t or " " in t:
                 continue
+            # Голое расширение («файлы `.cs`») — вид файла, а не путь.
+            if re.fullmatch(r"\.[A-Za-z0-9]+", t):
+                continue
+            # Выходы сборки (obj/, bin/) в git не лежат по определению — цитата о них не путь в репозитории.
+            if re.search(r"(^|/)(obj|bin)(/|$)", t):
+                continue
             if re.search(CODE_EXT, t) or re.match(CODE_DIR, t):
                 if t.endswith(".md") and not re.match(CODE_DIR, t):
                     continue          # внутренние ссылки вики проверяет check_links
@@ -136,6 +147,10 @@ def check_code_paths(pages):
         bare = t.split(":")[0]
         if bare in ELSEWHERE:
             elsewhere.append((t, ELSEWHERE[bare]))
+        elif any(bare.startswith(sib + "/") and not os.path.isdir(os.path.join(os.path.dirname(REPO), sib))
+                 for sib in SIBLINGS):
+            # Соседний репозиторий не склонирован рядом — проверить нечем; это не битая цитата.
+            elsewhere.append((t, "соседний репозиторий не склонирован рядом"))
         elif resolve(bare):
             ok.append((t, sorted(where)))
         else:

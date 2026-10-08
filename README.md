@@ -8,7 +8,7 @@
 
 **A free Revit plugin for family & parameter workflows — and an open framework for building your own AI-powered Revit tools.**
 
-Use the built-in tools (Family Manager, a dockable placement palette, parameter analytics), or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Free local AI via Ollama — your model data stays on your machine.
+Use the built-in tools (Family Manager, a dockable placement palette, parameter analytics), or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and save what it wrote as a ribbon button.
 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
@@ -17,7 +17,7 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 
 1. **Install** — download the latest installer from [Releases](https://github.com/Nikola1Davydov/AnalyzeTool/releases/latest), close Revit, run it.
 2. **Open** — start Revit → the **AnalyseTool** ribbon tab.
-3. **(Optional) AI** — install [Ollama](https://ollama.com/download), keep it running, then pick a model once in **Settings**.
+3. **(Optional) AI** — open **Settings**, turn on the MCP server and copy the client config into Claude Desktop, Cursor or any other MCP client.
 4. **YouTube: https:**//www.youtube.com/@AnalyseTool-Revit
 
 <details>
@@ -29,13 +29,11 @@ Use the built-in tools (Family Manager, a dockable placement palette, parameter 
 4. Start Revit and open the **AnalyseTool** ribbon tab.
 
 ### AI setup
-Install [Ollama](https://ollama.com/download) and keep it running. Then in **Settings** pick the model once — it's shared across every AnalyseTool window:
-- **Local models** (recommended): free local Ollama models.
-- **Cloud models** (optional): add a model name manually; saved cloud models are remembered.
+AnalyseTool has no AI of its own — you connect the one you already use. In **Settings → AI assistant**, turn the MCP server on, open *Connection details* and paste the config snippet into your client (Claude Desktop, Cursor, …). To let the assistant write and save commands, turn on **C# execution** in the same block.
 
 ### Troubleshooting
 - **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
-- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (Settings → Reload).
+- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (Extensions → Reload).
 - **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
 - **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
 - **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
@@ -50,7 +48,7 @@ Install [Ollama](https://ollama.com/download) and keep it running. Then in **Set
 
 | 🧰 **Use it** | 🛠️ **Build on it** |
 | --- | --- |
-| Family Manager, the Component palette, family libraries, parameter tools, local AI. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
+| Family Manager, the Component palette, family libraries, parameter tools. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
@@ -64,13 +62,14 @@ Install [Ollama](https://ollama.com/download) and keep it running. Then in **Set
 
 <p align="center"><img src="img/ribbon.png" width="680" alt="AnalyseTool ribbon" /></p>
 
-Open the **AnalyseTool** tab — four main buttons plus management:
+Open the **AnalyseTool** tab:
 
-- **AnalyseTool** — the main window: parameters, analytics, bulk editing and AI workflows.
-- **Family Manager** — browse, audit and clean up the project's families.
-- **Component** — a dockable palette for placing families and loading them from your libraries.
-- **Scripts** — a dockable list of your script commands, including the ones an AI wrote: run one straight from its row, or step into its form if it takes input. Any command can be pinned to the ribbon from here instead.
-- **Settings / Reload / Report a bug** — configure AI & extensions, reload extensions live, file an issue.
+- **AnalyseTool** — the main window: parameters, analytics and bulk editing.
+- **Settings** — the AI connection (MCP) and the plugin itself.
+- **Report a bug** — opens the GitHub issues page (works even if the plugin failed to load).
+- **Extensions** — install, update and reload extensions.
+- **New** — create an extension: a ribbon button with a page and a C# command.
+- Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and the commands your AI saved for you.
 
 ## 🧱 Family Manager
 
@@ -95,24 +94,14 @@ Switch to **Library** mode to browse your `.rfa` folders: each file shows its em
 - Category-based parameter exploration with filters (Instance/Type, BuiltIn/Shared/Project).
 - Parameter Filled/Empty analytics with chart-driven selection.
 - Parameter Value Check workflow.
-- Infinite Canvas workflow with AI-assisted edits.
+- Infinite Canvas workflow with bulk edits.
 - Select / Isolate actions directly in Revit.
 
-## 🧾 Scripts
+## 🤖 AI — the one you already use
 
-Commands that don't need a window of their own live in a dockable list — including the ones you had an AI write for you. Run one straight from its row, or step into its form if it takes input. The left border marks which is which, a destructive command asks before it runs, and the search box is there because the list grows.
-
-<p align="center"><img src="img/scripts_panel.png" width="340" alt="The Scripts pane listing generated commands" /></p>
-
-Prefer a button to a list? Pin a command from its row and it moves onto the ribbon instead. Where a command lives is your choice — it works the same for a command you generated, one from an installed package, and a built-in.
-
-<p align="center"><img src="img/ribbon_with_scripts.png" width="680" alt="Generated commands with ribbon buttons of their own" /></p>
-
-## 🧠 AI — free and local
-
-- Free local AI via **Ollama** — no paid subscription required.
-- One shared model across the whole plugin (with an Ollama status indicator); optional cloud models.
-- **Your data stays local:** AI runs against models on *your* machine — nothing about your model is sent to us or any AnalyseTool service. Cloud models are opt-in and go directly to the provider you configure.
+- Connect Claude Desktop, Cursor or any other **MCP** client: it reads and changes the model through AnalyseTool's commands — built-in and from your extensions.
+- Ask it to **build a button**: it writes the C#, tries it, and saves it — AnalyseTool compiles it into a ribbon button itself, no Visual Studio or .NET SDK needed.
+- **Nothing runs code until you allow it:** writing and running C# is off until you switch it on in Settings, and the assistant cannot switch it on itself.
 
 ---
 
@@ -143,29 +132,26 @@ flowchart LR
 
 ## AI, precisely
 
-Two distinct things — kept separate on purpose:
-
-- **Local AI (Ollama)** — the plugin's own AI features run on your machine.
-- **MCP server** — exposes every command (built-in *and* your extensions) to external AI agents like Claude Desktop, so an agent can drive Revit through your commands.
+The **MCP server** exposes every command (built-in *and* your extensions) to external AI agents like Claude Desktop, so an agent can drive Revit through your commands. AnalyseTool itself runs no model.
 
 ```mermaid
 flowchart LR
     AI["AI agent<br/>(Claude Desktop, …)"] --> M[MCP server] --> T[AnalyseTool] --> R[Revit]
 ```
 
-An agent can also **write** the commands. It reads the authoring guide, saves a C# command — plus a web page for it when it needs a form — gets the compiler error back when it fails, and fixes it. So a script a colleague sent you that doesn't work in your project is something you can hand to your AI to repair. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
+An agent can also **write** the commands. It reads the authoring guide, saves a C# command — plus a web page for it when it needs a form — and AnalyseTool compiles it into the extension's DLL itself. It gets the compiler error back when it fails, and fixes it. So a command a colleague sent you that doesn't work in your project is something you can hand to your AI to repair. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
 
 ## Extensions — plug in a DLL, don't fork the host
 
-You don't modify AnalyseTool — you drop an extension next to it. It gets its own ribbon button and can open a window **or reuse the shared dockable pane** (`"dockable": true`). C# command DLLs, web UI pages, and no-build script extensions (a plain `.cs` compiled on the fly) are all supported, and everything reloads live.
+You don't modify AnalyseTool — you drop an extension next to it. It gets its own ribbon button and can open a window **or reuse the shared dockable pane** (`"dockable": true`). C# command DLLs and web UI pages are supported, and everything reloads live. A command an AI saves is a DLL too — the plugin compiles it from the sources it keeps beside it.
 
 ```mermaid
 flowchart TB
-    E["Your extension<br/>(.dll or .cs)"] -->|"drop in + Reload"| AT["AnalyseTool host<br/>(Core · UI · MCP · AI)"]
+    E["Your extension<br/>(.dll + page)"] -->|"drop in + Reload"| AT["AnalyseTool host<br/>(Core · UI · MCP)"]
     AT --> R[Revit]
 ```
 
-Prefer clicking to typing? **Settings → New template** scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
+Prefer clicking to typing? **New** on the ribbon scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
 
 <p align="center"><img src="img/new-extension.png" width="460" alt="Create an extension from a template" /></p>
 
@@ -206,7 +192,7 @@ from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP �
 ```
 src/
   AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
-  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), scripting
+  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), Roslyn (ExecuteRevitCode, saved commands)
   AnalyseTool.Tools/      built-in feature commands (Get/Families/Ai/Actions) — references ONLY the Sdk
   AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
   AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)

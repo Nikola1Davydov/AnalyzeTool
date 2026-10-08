@@ -16,7 +16,7 @@ using AdWin = Autodesk.Windows;
 namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
-    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Reload) use the
+    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Report a bug / Extensions / New) use the
     /// official Revit API (stable). Per-extension buttons use the unofficial AdWindows API so they
     /// can be added, removed and updated live (Reload) without restarting Revit. Invoked from the
     /// Launcher's OnStartup via reflection, so all logic lives in the isolated AnalyseTool assembly.
@@ -24,15 +24,12 @@ namespace AnalyseTool.App.Common.Extensions
     internal static class RibbonHost
     {
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
-        private const string ScriptsCommandClass = "AnalyseTool.Launcher.RevitCommands.ScriptsCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
-        private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
-        private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
         private const string ExtensionsCommandClass = "AnalyseTool.Launcher.RevitCommands.ExtensionsCommand";
         private const string NewExtensionCommandClass = "AnalyseTool.Launcher.RevitCommands.NewExtensionCommand";
+        private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
-        private const string PinnedPanelTitle = "Scripts";
 
         private static readonly HashSet<string> _createdTabs = new(StringComparer.OrdinalIgnoreCase);
         // "extension id\nbutton index" -> (button, key of the panel it currently sits in). Keyed per
@@ -44,14 +41,6 @@ namespace AnalyseTool.App.Common.Extensions
         // tracked only to be removed. Keyed like _adwPanels.
         private static readonly Dictionary<string, List<AdWin.RibbonRowPanel>> _packedRows =
             new(StringComparer.Ordinal);
-        // command name -> its button, for commands the USER pinned in the launcher. Kept apart from
-        // _extButtons because the two are keyed differently and answer to different owners: a manifest
-        // button belongs to an extension, while a pin names a single command and may name one from an
-        // extension whose manifest we must not write, or from no extension at all.
-        private static readonly Dictionary<string, (AdWin.RibbonButton Button, string PanelKey)> _pinnedButtons =
-            new(StringComparer.OrdinalIgnoreCase);
-        // Built once, on the UI thread, the first time a pinned button needs it.
-        private static ImageSource? _pinnedIcon;
         // "tab\npanel" -> the AdWindows panel source we created for it
         private static readonly Dictionary<string, AdWin.RibbonPanelSource> _adwPanels =
             new(StringComparer.Ordinal);
@@ -70,26 +59,6 @@ namespace AnalyseTool.App.Common.Extensions
         private static readonly Dictionary<string, Window> _extWindows =
             new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>The host's togglable buttons: key -> (display name, PushButton). Only the main
-        /// button and Scripts — Reload, Settings and the rest of the Manage block are not here on
-        /// purpose, so Settings always stays reachable.</summary>
-        private static readonly Dictionary<string, (string Name, PushButton Button)> _staticButtons =
-            new(StringComparer.OrdinalIgnoreCase);
-
-        /// <summary>Keys + display names of the togglable host buttons, for the Settings listing.</summary>
-        public static IReadOnlyList<(string Key, string Name)> StaticButtonInfos() =>
-            _staticButtons.Select(kv => (kv.Key, kv.Value.Name)).ToList();
-
-        /// <summary>Re-applies <see cref="HostButtonState"/> to the host buttons. Revit UI thread only.</summary>
-        public static void ApplyStaticButtonVisibility()
-        {
-            foreach ((string key, (_, PushButton button)) in _staticButtons)
-            {
-                try { button.Visible = HostButtonState.IsVisible(key); }
-                catch { /* ribbon may not be ready; next Build applies the state anyway */ }
-            }
-        }
-
         public static void Build(UIControlledApplication app, string launcherPath)
         {
             AppLog.Initialize();
@@ -100,54 +69,37 @@ namespace AnalyseTool.App.Common.Extensions
 
             // The one large button: the tool itself.
             RibbonPanel mainPanel = GetOrCreatePanel(app, DefaultTab, "Parameter");
-            RegisterStaticButton("AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME,
-                AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
-                    MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png"));
+            AddStaticButton(mainPanel, "AnalyseToolMain", SharedData.ToolData.PLUGIN_NAME, launcherPath,
+                MainCommandClass, "Open AnalyseTool", appIcon: "AnalyzeTool_Icon.png");
 
             // Register the single dockable pane. Revit only permits pane registration during OnStartup,
             // which is why one always-present host pane is registered here and its content is swapped by
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // Everything else is small: two stacked columns of three in the Manage panel, so the tab
-            // reads as one big button and a tidy block beside it. The split is by JOB, not by size:
-            // the left column is what you use every day (scripts, preferences, feedback), the right
-            // column is the extension lifecycle (reload, manage, create). Extensions used to live
-            // inside Settings — a manager you visit to work, buried under a page you configure once.
+            // Four small buttons beside it, two columns by job: the plugin itself (preferences, feedback)
+            // and extensions (manage, create). "New" has a door of its own because making a button is the
+            // plugin's point; "Report a bug" stays on the ribbon because it is handled in the Launcher and
+            // still works when the plugin itself failed to load. Reload lives in the Extensions window.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
-            // The script launcher exists so that GENERATED commands do not each need a ribbon button of
-            // their own — the ribbon holds one entry and the list behind it grows.
-            PushButtonData scriptsData = MakeButtonData("AnalyseToolScripts", "Scripts", launcherPath,
-                ScriptsCommandClass, "Find and run any registered command — including the ones an AI wrote");
             PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "AI and everything else about the plugin itself");
-            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
-                BugsCommandClass, "Report a bug or request a feature on GitHub");
-
-            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(scriptsData, settingsData, bugsData);
-            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE943", 16)); // Scripts — Code (U+E943)
-            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
-            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
-
-            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
-                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
+                SettingsCommandClass, "The AI connection (MCP) and everything else about the plugin itself");
             PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
                 ExtensionsCommandClass, "Install, update and manage extensions");
             PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
                 NewExtensionCommandClass, "Create a new extension: a button, a page, C# commands");
 
-            IList<RibbonItem> workStack = managePanel.AddStackedItems(reloadData, extensionsData, newExtensionData);
-            SetStackedImage(workStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
-            SetStackedImage(workStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
-            SetStackedImage(workStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
+            PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
+                BugsCommandClass, "Report a bug or request a feature on GitHub");
 
-            // Scripts is togglable like the main button (a user without scripts can hide it); the rest of
-            // the block is not — Settings must always stay reachable, and Reload with it.
-            // Scripts sits at the top of the LEFT column now — the registration must follow it, or the
-            // "hide Scripts" switch in Settings hides whatever stands first on the right instead.
-            RegisterStaticButton("AnalyseToolScripts", "Scripts", pluginStack.Count > 0 ? pluginStack[0] as PushButton : null);
-            ApplyStaticButtonVisibility();
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(settingsData, bugsData);
+            SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
+            SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
+
+            IList<RibbonItem> extensionStack = managePanel.AddStackedItems(extensionsData, newExtensionData);
+            SetStackedImage(extensionStack, 0, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(extensionStack, 1, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -172,7 +124,7 @@ namespace AnalyseTool.App.Common.Extensions
                 .ToList();
 
             // Every button the manifests ask for, by ribbon key — the set the ribbon must end up
-            // holding. A button the user turned off in the launcher simply never enters it.
+            // holding.
             HashSet<string> wantedKeys = new(
                 found.SelectMany(GroupButtons).Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
 
@@ -180,7 +132,6 @@ namespace AnalyseTool.App.Common.Extensions
             foreach (ExtensionDescriptor descriptor in found)
                 SyncButtons(descriptor);
 
-            RefreshPinnedButtons(found);
             PackStacks();
             RemoveEmptyPanelsAndTabs();
         }
@@ -195,15 +146,12 @@ namespace AnalyseTool.App.Common.Extensions
 
         /// <summary>Splits a manifest's buttons into ribbon items. Consecutive <c>stacked</c> entries
         /// form one run (laid into columns of three by <see cref="PackStacks"/>, together with the
-        /// other extensions' small buttons on the same panel); everything else stands alone. Buttons
-        /// the user turned off in the launcher are dropped BEFORE grouping, so turning one off closes
-        /// the gap instead of leaving a hole in a column.</summary>
+        /// other extensions' small buttons on the same panel); everything else stands alone.</summary>
         private static List<ButtonGroup> GroupButtons(ExtensionDescriptor descriptor)
         {
             string id = descriptor.Manifest.Id;
             List<(ExtensionButton Info, int Index)> live = descriptor.Manifest.Ui!.EffectiveButtons()
                 .Select((b, i) => (Info: b, Index: i))
-                .Where(t => !UserTookButtonAway(t.Info))
                 // No DLL for this Revit year: a page still opens, a command would not — only the
                 // page buttons stay (the reason the descriptor is here at all, see RefreshExtensionButtons).
                 .Where(t => descriptor.IsCompatibleWithHost || string.IsNullOrWhiteSpace(t.Info.Command))
@@ -242,95 +190,6 @@ namespace AnalyseTool.App.Common.Extensions
         private const string KeySeparator = "\n";
 
         private static string ButtonKey(string extensionId, int index) => extensionId + KeySeparator + index;
-
-        /// <summary>A manifest button the user turned off in the launcher. Only COMMAND buttons can be
-        /// turned off there — the launcher lists commands, and a button that opens a page is not one,
-        /// so a UI extension keeps its button no matter what the store says about its commands.</summary>
-        private static bool UserTookButtonAway(ExtensionButton button)
-        {
-            string? command = button.Command;
-            return !string.IsNullOrWhiteSpace(command) && CommandButtons.Override(command!) == false;
-        }
-
-        /// <summary>
-        /// Brings the pinned-command buttons in sync — the ones the user asked for in the launcher.
-        ///
-        /// Runs from the same refresh as the manifest pass so every existing trigger (startup, Reload,
-        /// install/remove) covers it, and takes that pass's result so one command cannot end up with
-        /// two buttons: an author who already put it on the ribbon wins, and the pin adds nothing.
-        /// </summary>
-        private static void RefreshPinnedButtons(IReadOnlyCollection<ExtensionDescriptor> shownExtensions)
-        {
-            HashSet<string> alreadyShown = new(
-                shownExtensions.SelectMany(d => d.Manifest.Ui!.EffectiveButtons())
-                    .Select(b => b.Command)
-                    .Where(c => !string.IsNullOrWhiteSpace(c))
-                    .Select(c => c!),
-                StringComparer.OrdinalIgnoreCase);
-
-            List<CommandButtonPin> pins = CommandButtons.Pinned()
-                .Where(p => !alreadyShown.Contains(p.Command) && IsRegisteredOrUnknown(p.Command))
-                .ToList();
-
-            HashSet<string> wanted = new(pins.Select(p => p.Command), StringComparer.OrdinalIgnoreCase);
-            foreach (string command in _pinnedButtons.Keys.ToList())
-            {
-                if (wanted.Contains(command)) continue;
-
-                (AdWin.RibbonButton button, string panelKey) = _pinnedButtons[command];
-                if (_adwPanels.TryGetValue(panelKey, out AdWin.RibbonPanelSource? panel))
-                    panel.Items.Remove(button);
-                _pinnedButtons.Remove(command);
-            }
-
-            foreach (CommandButtonPin pin in pins)
-                SyncPinnedButton(pin);
-        }
-
-        /// <summary>Whether a pinned command still exists. The ribbon is built at Revit startup, before
-        /// the platform has registered anything, so "cannot tell yet" has to mean SHOW: a button that
-        /// appears and is pruned on the first reload beats one that is missing until the user happens
-        /// to click something else.</summary>
-        private static bool IsRegisteredOrUnknown(string command) =>
-            !CoreServices.IsInitialized || CoreServices.Queue.IsRegistered(command);
-
-        /// <summary>Creates or refreshes one pinned command's button.</summary>
-        private static void SyncPinnedButton(CommandButtonPin pin)
-        {
-            string panelKey = DefaultTab + "\n" + PinnedPanelTitle;
-
-            if (_pinnedButtons.TryGetValue(pin.Command, out (AdWin.RibbonButton Button, string PanelKey) entry))
-            {
-                entry.Button.Text = pin.Label;
-                entry.Button.ToolTip = pin.Tooltip;
-                return;
-            }
-
-            AdWin.RibbonPanelSource? source = GetOrCreateAdwPanel(DefaultTab, PinnedPanelTitle, panelKey);
-            if (source is null) return;
-
-            _pinnedIcon ??= BuildGlyphIcon("\uE943"); // Segoe MDL2 "Code" — same mark as the launcher
-
-            AdWin.RibbonButton button = new()
-            {
-                Id = "AnalyseTool.Pin." + pin.Command,
-                Text = pin.Label,
-                ShowText = true,
-                ShowImage = true,
-                Size = AdWin.RibbonItemSize.Large,
-                Orientation = System.Windows.Controls.Orientation.Vertical,
-                ToolTip = pin.Tooltip,
-                Image = _pinnedIcon,
-                LargeImage = _pinnedIcon,
-                // A pin can only be made from the launcher, which lists scripts and built-ins alone, so
-                // the command behind one is always something that window can show again.
-                CommandHandler = new RelayCommand(() =>
-                    RibbonEventHub.Run(uiApp => RunCommandFromRibbon(pin.Command, uiApp, canOpenLauncher: true))),
-            };
-
-            source.Items.Add(button);
-            _pinnedButtons[pin.Command] = (button, panelKey);
-        }
 
         /// <summary>Removes the AdWindows buttons (and cached descriptors) of extensions that are no
         /// longer present in the latest scan.</summary>
@@ -564,13 +423,12 @@ namespace AnalyseTool.App.Common.Extensions
         private static AdWin.RibbonButton MakeButton(string id, string key, ExtensionButton info,
             ImageSource? icon, bool small)
         {
-            // A button either INVOKES a command directly (command-only script extensions, where
-            // command is set) or OPENS the extension's page (UI extensions).
+            // A button either INVOKES a command directly (button.command is set) or OPENS the
+            // extension's page (UI extensions).
             string? command = info.Command;
             RelayCommand handler = string.IsNullOrWhiteSpace(command)
                 ? new RelayCommand(() => RibbonEventHub.Run(uiApp => OpenExtension(id, key, info, uiApp)))
-                : new RelayCommand(() => RibbonEventHub.Run(uiApp =>
-                    RunCommandFromRibbon(command!, uiApp, LauncherLists(id))));
+                : new RelayCommand(() => RibbonEventHub.Run(uiApp => RunCommandFromRibbon(command!, uiApp)));
 
             AdWin.RibbonButton button = new()
             {
@@ -619,7 +477,7 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
-        /// <summary>Ribbon "Settings" button — the plugin's own preferences (AI, about).</summary>
+        /// <summary>Ribbon "Settings" button — the plugin's own preferences (MCP, about).</summary>
         public static void OpenSettings(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "settings", "#/system/settings", "AnalyseTool — Settings", 880, 720);
 
@@ -659,25 +517,6 @@ namespace AnalyseTool.App.Common.Extensions
             window.Activate();
         }
 
-        /// <summary>Ribbon "Scripts" button — shows the dockable command launcher (#/scripts). Same
-        /// pattern the dockable extensions use: initialize the host so the pane's transport has a dispatcher,
-        /// then route the single registered pane.</summary>
-        public static void ShowScriptLauncher(UIApplication uiApp)
-        {
-            AnalyseToolBootstrap.Initialize(uiApp);
-            if (!WebView2Runtime.EnsureOrWarn()) return;
-            DockPaneHost.ShowRoute("#/scripts");
-        }
-
-        public static void Reload(UIApplication uiApp)
-        {
-            AnalyseToolBootstrap.Initialize(uiApp);
-            CoreServices.ReloadExtensions();                                  // C# command DLLs
-            RefreshExtensionButtons(uiApp.Application.VersionNumber);                 // ribbon buttons
-
-            TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
-        }
-
         private static void OpenExtension(string id, string key, ExtensionButton info, UIApplication uiApp)
         {
             if (!_descriptors.TryGetValue(id, out ExtensionDescriptor? descriptor)) return;
@@ -715,76 +554,23 @@ namespace AnalyseTool.App.Common.Extensions
             window.Show();
         }
 
-        /// <summary>Whether the script launcher would list this command's extension. It shows generated
-        /// scripts that stand on their own, so neither a compiled extension nor one whose button opens a
-        /// page may be sent there — the user would land on a window that refuses to show it.
-        /// <para>Must stay in step with <c>listable()</c> in ScriptLauncherView.vue; both read the same
-        /// two facts, and this side is the one that decides whether to navigate at all.</para></summary>
-        private static bool LauncherLists(string source) =>
-            // "core" is not an extension id and never will be in _descriptors, so it has to be named:
-            // the window stopped listing built-ins, and a predicate called LauncherLists must not claim
-            // otherwise just because the lookup missed.
-            !string.Equals(source, "core", StringComparison.Ordinal)
-            && (!_descriptors.TryGetValue(source, out ExtensionDescriptor? descriptor)
-                || (!descriptor.DeclaresDll && !descriptor.OpensPage));
-
-        /// <summary>
-        /// What a ribbon button for a COMMAND does — whether the author declared it in a manifest or
-        /// the user pinned it in the launcher.
-        ///
-        /// A command that takes no arguments is simply run. One that takes them cannot be: a click has
-        /// no arguments to give, and dispatching with an empty payload is precisely how a command with
-        /// an optional filter quietly returns nothing and reads as "no matches". So it opens the
-        /// launcher with that command selected, where the form is built from its input schema.
-        ///
-        /// Unless the launcher does not list it. A compiled extension is absent from that window by
-        /// design, so its own button falls back to running the command as it always has — an author who
-        /// points a button at a command that needs arguments is choosing that, and it is not this
-        /// method's place to invent a form the extension never shipped.
-        /// </summary>
-        private static void RunCommandFromRibbon(string commandName, UIApplication uiApp, bool canOpenLauncher)
+        /// <summary>What a ribbon button for a COMMAND does: runs it with no arguments and shows the
+        /// result. A command that needs input ships a page for it — a click has nothing to give it.</summary>
+        private static void RunCommandFromRibbon(string commandName, UIApplication uiApp)
         {
             AnalyseToolBootstrap.Initialize(uiApp); // ensure the dispatcher is ready
 
-            Core.Common.Dispatch.CommandRegistration? registration =
-                CoreServices.Queue.GetRegistration(commandName);
-            if (registration is null)
+            if (CoreServices.Queue.GetRegistration(commandName) is null)
             {
                 TaskDialog.Show("AnalyseTool", $"'{commandName}' is not registered. Its extension may " +
                                                "have been removed, disabled, or failed to load.");
                 return;
             }
 
-            // Asked of the command that is actually registered, not only of the caller. A PIN passes true
-            // because pins can only be made from the launcher — but a pin outlives the listing it was made
-            // from: give an extension a page, and yesterday's pin now points at a command that window no
-            // longer shows. Re-checking here means one answer for both callers and no stranded button.
-            if (!canOpenLauncher || !LauncherLists(registration.Source) || !TakesArguments(registration))
-            {
-                InvokeSavedCommand(commandName); // fire-and-forget (no deadlock on the hub)
-                return;
-            }
-
-            if (!WebView2Runtime.EnsureOrWarn()) return;
-            DockPaneHost.ShowRoute("#/scripts?command=" + Uri.EscapeDataString(commandName));
+            InvokeSavedCommand(commandName); // fire-and-forget (no deadlock on the hub)
         }
 
-        /// <summary>Whether the command declares any input. A command with no InputType is left with
-        /// the empty-object schema, which is exactly "takes nothing".</summary>
-        private static bool TakesArguments(Core.Common.Dispatch.CommandRegistration registration)
-        {
-            try
-            {
-                return JObject.Parse(registration.InputSchemaJson)["properties"] is JObject properties
-                       && properties.Count > 0;
-            }
-            catch (JsonException)
-            {
-                return false; // an unreadable schema is no reason to refuse to run the command
-            }
-        }
-
-        /// <summary>Dispatches a script-extension's command from a ribbon click and shows its result in a
+        /// <summary>Dispatches an extension's command from a ribbon click and shows its result in a
         /// dialog. Fire-and-forget on purpose: it must NOT be awaited inside the RibbonEventHub handler,
         /// or the command's own RunInRevitAsync (queued on the RevitTaskHub external event) would
         /// deadlock waiting for the event we're currently inside.</summary>
@@ -896,14 +682,6 @@ namespace AnalyseTool.App.Common.Extensions
                 try { button.Image = image; }
                 catch { /* icon is best-effort */ }
             }
-        }
-
-        /// <summary>Remembers a togglable host button so Settings can list it and
-        /// <see cref="ApplyStaticButtonVisibility"/> can show/hide it live.</summary>
-        private static void RegisterStaticButton(string key, string displayName, PushButton? button)
-        {
-            if (button is not null)
-                _staticButtons[key] = (displayName, button);
         }
 
         private static PushButton? AddStaticButton(RibbonPanel panel, string name, string text, string assemblyPath,

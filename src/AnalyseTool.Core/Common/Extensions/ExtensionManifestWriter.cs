@@ -17,6 +17,9 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>The command the extension registers, from SaveAsCommand.</summary>
         public string? CommandName { get; init; }
 
+        /// <summary>The DLL the host built from the extension's sources, from SaveAsCommand.</summary>
+        public string? EntryAssembly { get; init; }
+
         /// <summary>The page's entry file, from SaveExtensionUi.</summary>
         public string? EntryHtml { get; init; }
 
@@ -56,6 +59,7 @@ namespace AnalyseTool.Core.Common.Extensions
 
             manifest["id"] = id;
             if (manifest["version"] is null) manifest["version"] = "1.0.0";
+            if (!string.IsNullOrWhiteSpace(edit.EntryAssembly)) manifest["entryAssembly"] = edit.EntryAssembly!.Trim();
 
             SetOrRemove(manifest, "description", edit.Description);
             SetOrRemove(manifest, "publisher", edit.Publisher);
