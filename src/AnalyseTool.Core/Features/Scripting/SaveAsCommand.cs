@@ -13,18 +13,21 @@ namespace AnalyseTool.Core.Features.Scripting
 {
     /// <summary>
     /// Promotes a working C# snippet (e.g. one just run via <see cref="ExecuteRevitCode"/>) into a
-    /// PERMANENT script extension: wraps a bare body into a named IRevitTask class (or saves a full
-    /// class as-is), writes <c>Command.cs</c> + <c>plugin.json</c> into a chosen extension root, then
-    /// reloads — so the code becomes a ribbon button + a named command callable from JS and MCP.
+    /// PERMANENT command: wraps a bare body into a named IRevitTask class (or saves a full class as-is),
+    /// writes it to <c>&lt;id&gt;\src\</c>, compiles every source there into <c>&lt;id&gt;\&lt;year&gt;\&lt;id&gt;.dll</c>
+    /// with the host's own Roslyn, merges <c>plugin.json</c> and reloads — so the code becomes a ribbon
+    /// button + a named command callable from JS and MCP. The result is an ordinary DLL extension
+    /// (<see cref="HostBuild"/>): the person saving needs no .NET SDK and no build step.
     ///
     /// Gated by the same C#-execution toggle as ExecuteRevitCode (and hidden from MCP while off).
     /// </summary>
     [RevitCommand(
-        Description = "Saves a working C# snippet as a permanent script extension: creates a ribbon button " +
-                      "plus a named command callable from JS/MCP, then reloads. The snippet is a bare body or a " +
-                      "full IRevitTask. Disabled by default — enable C# execution in AnalyseTool Settings. " +
-                      "MODIFIES the extensions on disk and reloads them; it does not touch the Revit model. " +
-                      "Cost: compiles and writes files, then a full extension reload.",
+        Description = "Saves a working C# snippet as a permanent command with a ribbon button, callable " +
+                      "from JS/MCP: the host compiles it into the extension's DLL (no .NET SDK needed) " +
+                      "and reloads. The snippet is a bare body or a full IRevitTask. Disabled by default " +
+                      "— enable C# execution in AnalyseTool Settings. MODIFIES the extensions on disk and " +
+                      "reloads them; it does not touch the Revit model. Cost: compiles and writes files, " +
+                      "then a full extension reload.",
         InputType = typeof(Request),
         OutputType = typeof(SaveCommandResult),
         Destructive = true)]
@@ -54,40 +57,53 @@ namespace AnalyseTool.Core.Features.Scripting
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     "Id may contain only letters, digits, '.', '-' and '_'."));
 
-            // Scripts are version-independent, so they live directly under the root (no year folder).
-            // An existing id resolves to ITS OWN folder, wherever that is — editing a script from a
-            // shared team folder must fix that script, not leave a copy behind in the user's own root.
+            // An existing id resolves to ITS OWN folder, wherever that is — editing a command from a
+            // shared team folder must fix that command, not leave a copy behind in the user's own root.
             SaveTarget target = ExtensionFolder.ResolveSaveDirectory(id, req.TargetRoot);
             if (target.Directory is null)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(target.Error!));
 
             string directory = target.Directory;
 
-            // Overwrite is what makes this iterable. Without it "now also group by type" forced a new id
-            // or a manual delete, so a generated command could never be refined — and refining is the
-            // whole point of generating one. Guarded, though: only a folder that looks like OUR OWN
-            // output is replaceable, so a hand-written extension or a DLL extension that happens to
-            // share the id is refused rather than quietly flattened.
-            // Default Command.cs, as before. An explicit name is how several commands come to live in
-            // ONE extension: Roslyn compiles every .cs in the folder, so the limit was never the loader,
-            // only this command writing a single fixed file. It matters because one extension means one
-            // ribbon button — twenty generated tools should not be twenty buttons.
+            // An explicit name is how several commands come to live in ONE extension: every .cs in src\
+            // is compiled into the same DLL. It matters because one extension means one ribbon button —
+            // twenty generated tools should not be twenty buttons.
             string fileName = string.IsNullOrWhiteSpace(req.FileName) ? "Command.cs" : req.FileName!.Trim();
             string? nameProblem = ExtensionFolder.ValidateFileName(fileName, new[] { ".cs" });
             if (nameProblem is not null)
                 return Task.FromResult<object?>(SaveCommandResult.Failed(nameProblem));
 
+            // Overwrite is what makes this iterable. Without it "now also group by type" forced a new id
+            // or a manual delete, so a generated command could never be refined — and refining is the
+            // whole point of generating one. Guarded, though: only a folder that looks like OUR OWN
+            // output is replaceable, so a hand-written extension or a DLL project that happens to share
+            // the id is refused rather than quietly flattened.
             bool exists = Directory.Exists(directory);
-            // Asked of the FILE, not the folder: adding a second command to an extension is not
-            // overwriting it, and demanding overwrite:true for that would make the flag mean two things.
-            if (exists && File.Exists(Path.Combine(directory, fileName)) && !req.Overwrite)
-                return Task.FromResult<object?>(SaveCommandResult.Failed(
-                    $"'{id}' already has {fileName}. Pass overwrite:true to replace it, or fileName to " +
-                    "add another command to the same extension."));
             if (exists && !ExtensionFolder.IsGeneratedFolder(directory))
                 return Task.FromResult<object?>(SaveCommandResult.Failed(
                     $"'{id}' exists but was not created by these commands — it holds files they never " +
                     "write. Refusing to overwrite; choose another id."));
+
+            // A folder saved before host builds keeps its sources in the root until its next load.
+            // Moved now, so the new file joins them in src\ instead of being compiled without them.
+            if (exists)
+            {
+                ExtensionManifest? manifest = ReadManifest(directory);
+                if (manifest is not null && HostBuild.IsScriptFolder(directory, manifest))
+                {
+                    string? migrationError = HostBuild.MigrateScriptFolder(directory, id);
+                    if (migrationError is not null)
+                        return Task.FromResult<object?>(SaveCommandResult.Failed(migrationError));
+                }
+            }
+
+            string sourcePath = Path.Combine(directory, HostBuild.SourceFolder, fileName);
+            // Asked of the FILE, not the folder: adding a second command to an extension is not
+            // overwriting it, and demanding overwrite:true for that would make the flag mean two things.
+            if (File.Exists(sourcePath) && !req.Overwrite)
+                return Task.FromResult<object?>(SaveCommandResult.Failed(
+                    $"'{id}' already has {fileName}. Pass overwrite:true to replace it, or fileName to " +
+                    "add another command to the same extension."));
 
             // Body → named class (or keep a full class the AI already wrote).
             bool isFullClass = RoslynScriptCompiler.LooksLikeFullCommand(req.Code);
@@ -96,22 +112,35 @@ namespace AnalyseTool.Core.Features.Scripting
                 ? req.Code
                 : BuildCommandClass(req.Code, DeriveNamespace(id), className, req.Description, req.ReadOnly, req.Destructive);
 
-            // Compile once up front so we never write code that won't load.
-            ScriptCompileResult compiled = RoslynScriptCompiler.CompileSnippet(source, "validate_" + id, req.Description);
+            // The whole extension, as it will be after this save: the other sources plus this one. It
+            // compiles BEFORE anything is written, so a failed save leaves the working build in place.
+            List<(string Path, string Text)> sources = HostBuild.SourceFiles(directory)
+                .Where(f => !string.Equals(Path.GetFileName(f), fileName, StringComparison.OrdinalIgnoreCase))
+                .Select(f => (f, File.ReadAllText(f)))
+                .Append((sourcePath, source))
+                .ToList();
+
+            string entryAssembly = HostBuild.EntryAssemblyFor(id);
+            ScriptCompileResult compiled = RoslynScriptCompiler.CompileSources(
+                sources, Path.GetFileNameWithoutExtension(entryAssembly));
             if (!compiled.Success)
                 return Task.FromResult<object?>(SaveCommandResult.Failed("Compilation failed.", compiled.Errors));
 
             // The button must invoke the actual registered command name (<id>.<baseName>), resolved the
-            // same way the dispatcher does — from the compiled type's [RevitCommand] name or class name.
-            CommandShape shape = InspectCommand(compiled);
+            // same way the dispatcher does — from the compiled type's [RevitCommand] name or class name,
+            // looked up among the types THIS file declares (the assembly holds the others too).
+            CommandShape shape = InspectCommand(compiled, RoslynScriptCompiler.CommandTypeNames(source));
             string commandName = $"{id}.{shape.BaseName}";
 
-            Directory.CreateDirectory(directory);
-            File.WriteAllText(Path.Combine(directory, fileName), source);
+            Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+            File.WriteAllText(sourcePath, source);
+            HostBuild.Write(directory, entryAssembly, CoreServices.RevitVersion, compiled);
+
             // Merged, not rewritten: a page saved by SaveExtensionUi, and any vendor metadata, must
             // survive a re-save of the code. The writer also decides what the ribbon button does.
             ExtensionManifestWriter.Write(directory, id, new ManifestEdit
             {
+                EntryAssembly = entryAssembly,
                 // button:false leaves the manifest's button alone rather than removing one — "do not
                 // give THIS command a button" is not "take the extension's button away".
                 ButtonName = req.Button ? req.Name : null,
@@ -124,13 +153,28 @@ namespace AnalyseTool.Core.Features.Scripting
             Log.Information("SaveAsCommand: {Action} command {Command} at {Directory}",
                 exists ? "updated" : "created", commandName, directory);
 
-            // Reload picks up the new script (compiles it); the host's ExtensionsReloaded handler
-            // refreshes the ribbon so the new button appears.
+            // Reload loads the new DLL; the host's ExtensionsReloaded handler refreshes the ribbon so the
+            // new button appears.
             CoreServices.ReloadExtensions();
 
             return Task.FromResult<object?>(new SaveCommandResult(
                 true, !exists, commandName, directory, fileName, null, null,
                 SchemaWarnings(shape, isFullClass)));
+        }
+
+        private static ExtensionManifest? ReadManifest(string directory)
+        {
+            try
+            {
+                string path = Path.Combine(directory, "plugin.json");
+                return File.Exists(path)
+                    ? JsonConvert.DeserializeObject<ExtensionManifest>(File.ReadAllText(path))
+                    : null;
+            }
+            catch (Exception ex) when (ex is IOException or JsonException)
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -159,16 +203,19 @@ namespace AnalyseTool.Core.Features.Scripting
         private sealed record CommandShape(string BaseName, bool DeclaresInput, bool DeclaresOutput);
 
         /// <summary>Inspects the compiled assembly — the name exactly as the dispatcher will resolve it
-        /// (attribute name, else class name), plus the declared schemas. Reflection over metadata only:
-        /// nothing in the generated command runs here.</summary>
-        private static CommandShape InspectCommand(ScriptCompileResult compiled)
+        /// (attribute name, else class name), plus the declared schemas. Prefers the types the saved file
+        /// declares; reflection over metadata only: nothing in the generated command runs here.</summary>
+        private static CommandShape InspectCommand(ScriptCompileResult compiled, IReadOnlyList<string> preferredTypes)
         {
             ExtensionLoadContext alc = new("inspect_" + Guid.NewGuid().ToString("N"));
             try
             {
                 Assembly assembly = alc.LoadImage(compiled.Assembly!, compiled.Pdb);
-                Type? type = assembly.GetTypes().FirstOrDefault(t =>
-                    typeof(IRevitTask).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
+                List<Type> commands = assembly.GetTypes()
+                    .Where(t => typeof(IRevitTask).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
+                    .ToList();
+                Type? type = commands.FirstOrDefault(t => preferredTypes.Contains(t.Name, StringComparer.Ordinal))
+                             ?? commands.FirstOrDefault();
                 if (type is null) return new CommandShape("Command", false, false);
 
                 RevitCommandAttribute? attr = type.GetCustomAttribute<RevitCommandAttribute>();
@@ -311,7 +358,7 @@ namespace AnalyseTool.Core.Features.Scripting
 
             [Description("Source file name, e.g. \"CreateSheets.cs\". Default \"Command.cs\". Give " +
                          "each command its own name to put SEVERAL commands in one extension — they all " +
-                         "compile together and share one ribbon button, instead of becoming one " +
+                         "compile into the same DLL and share one ribbon button, instead of becoming one " +
                          "extension and one button each.")]
             public string? FileName { get; set; }
 

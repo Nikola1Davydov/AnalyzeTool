@@ -56,9 +56,6 @@ namespace AnalyseTool.Core.Features.Extensions
             Directory.Move(target, parking);
             TryDelete(parking);
 
-            string scriptCache = PathProvider.ScriptCacheDir(id);
-            if (Directory.Exists(scriptCache)) TryDelete(scriptCache);
-
             // Forget the disabled flag so a future reinstall starts enabled — but only when no OTHER
             // extension shares this id (a deliberately disabled dev twin must stay disabled).
             bool twinRemains = descriptors.Any(d =>

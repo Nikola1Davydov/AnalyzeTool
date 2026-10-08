@@ -37,7 +37,7 @@ namespace AnalyseTool.App.Common.Bootstrap
 
             CommandDispatcher dispatcher = new CommandDispatcher(hub);
             // Built-ins live in three assemblies: platform commands in Core, feature commands in
-            // Tools, host commands (CheckUpdate, GetChangelog, PickFolder, …) here.
+            // Tools, host commands (CheckUpdate, GetChangelog, BrowseForFolder, …) here.
             dispatcher.RegisterBuiltIns(
                 typeof(CommandDispatcher).Assembly,
                 typeof(AnalyseTool.Tools.Elements.GetElements).Assembly,
@@ -49,7 +49,7 @@ namespace AnalyseTool.App.Common.Bootstrap
             ExtensionLoadContext.ShareWithExtensions(Assembly.GetExecutingAssembly());
             ExtensionLoadContext.ShareWithExtensions(typeof(AnalyseTool.Tools.Elements.GetElements).Assembly);
 
-            // Load user-authored C# extensions from %LOCALAPPDATA%\<plugin>\extensions\<revitVersion>\
+            // Load user-authored C# extensions (building the ones the host compiles from source).
             ExtensionLoader loader = new ExtensionLoader(dispatcher, revitVersion);
             loader.LoadAll();
 
@@ -63,10 +63,9 @@ namespace AnalyseTool.App.Common.Bootstrap
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
-            // Pinning a command in the launcher changes the ribbon and nothing else — same refresh,
-            // without unloading and rebuilding every extension load context to redraw one button.
-            CoreServices.RibbonButtonsChanged += () =>
-                RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
+            // The ribbon was built at Revit startup, before this first load — which may have built an
+            // extension from its sources for this Revit year, so its command buttons can appear now.
+            RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
 
             // Busy-state push: every window/pane shows what the platform is doing (bottom status bar).
             // The payload mirrors GetQueueStatus so event and poll stay one shape.

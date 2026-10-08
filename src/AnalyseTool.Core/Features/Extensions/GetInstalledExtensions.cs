@@ -39,9 +39,9 @@ namespace AnalyseTool.Core.Features.Extensions
                     enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
-                    // "dll" = prebuilt assembly (declared, even if no build for this year),
-                    // "script" = Roslyn-compiled .cs, "js" = UI-only.
-                    kind = d.DeclaresDll ? "dll" : d.HasScript ? "script" : "js",
+                    // "dll" = commands in an assembly (declared, even if no build for this year —
+                    // the author's own build or one the host compiles from src\), "js" = UI-only.
+                    kind = d.DeclaresDll ? "dll" : "js",
                     // False = declared DLL has no build for the running Revit year (never loaded).
                     compatible = d.IsCompatibleWithHost,
                     zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",

@@ -28,7 +28,7 @@ namespace AnalyseTool.Launcher
             return Result.Succeeded;
         }
 
-        /// <summary>Reflects into RibbonHost (isolated AnalyseTool.App) — the only way slot/Settings/Reload
+        /// <summary>Reflects into RibbonHost (isolated AnalyseTool.App) — the only way the Settings/Extensions
         /// commands, which Revit loads from this Launcher DLL, can reach the plugin's logic.</summary>
         internal static Result InvokeRibbon(string method, params object[] args)
         {

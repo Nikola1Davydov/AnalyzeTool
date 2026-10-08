@@ -15,8 +15,8 @@ namespace AnalyseTool.Core.Common.Extensions
     {
         private static readonly Regex ValidId = new(@"^[A-Za-z0-9._-]+$", RegexOptions.Compiled);
 
-        /// <summary>Extensions these commands write. A folder holding only these is one they may replace;
-        /// anything else — a DLL, a year subfolder, a file someone put there — means hands off.</summary>
+        /// <summary>Files these commands write into an extension's root. <c>.cs</c> stays for a script
+        /// folder not yet migrated to <c>src\</c> (that happens on its next load).</summary>
         private static readonly string[] GeneratedExtensions =
             { ".cs", ".json", ".html", ".htm", ".css", ".js", ".mjs", ".svg", ".md", ".txt" };
 
@@ -62,7 +62,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// new id falls through to the authoring root.
         ///
         /// It used to be "the authoring root, always". That is right for a new extension and wrong for
-        /// every edit of one that came from somewhere else — a team's shared script folder added as a
+        /// every edit of one that came from somewhere else — a team's shared extensions folder added as a
         /// source, most of all. Fixing a colleague's script wrote a SECOND folder with the same id into
         /// the user's own root: both load, both register the same command names, and which of them wins
         /// depends on the order the roots happen to have been added. Meanwhile the broken original sat
@@ -113,7 +113,7 @@ namespace AnalyseTool.Core.Common.Extensions
 
         /// <summary>
         /// A registered DEV source a save may be aimed at, or null. Empty means whichever root the user
-        /// picked in Settings for generated scripts — the AI saving a command has no opinion on where
+        /// picked for saved commands — the AI saving a command has no opinion on where
         /// the user keeps their work.
         ///
         /// Managed roots are excluded, which they were not before: an explicit targetRoot could still
@@ -137,16 +137,37 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>
         /// Whether a folder holds only what these commands write, and may therefore be overwritten by
         /// them. Judged by what is IN it rather than by a marker file: a marker can be copied into a
-        /// folder that was never generated, while "everything here is a flat text file of a kind we
-        /// write" cannot be true of a DLL extension or of a build output.
+        /// folder that was never generated, while "everything here is a file of a kind we write, in a
+        /// place we write it" cannot be true of a project someone builds or of foreign build output.
+        ///
+        /// That is: flat text files in the root, sources in <c>src\</c>, and the host's own build in
+        /// year folders (<c>2025\&lt;id&gt;.dll</c> + <c>.pdb</c>). Anything else — a project file, a
+        /// DLL in the root, another subfolder — means hands off.
         /// </summary>
         public static bool IsGeneratedFolder(string directory)
         {
             if (!Directory.Exists(directory)) return true;    // nothing to protect yet
-            if (Directory.GetDirectories(directory).Length > 0) return false;
 
-            return Directory.GetFiles(directory)
+            bool rootIsOurs = Directory.GetFiles(directory)
                 .All(path => GeneratedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()));
+            if (!rootIsOurs) return false;
+
+            foreach (string sub in Directory.GetDirectories(directory))
+            {
+                string name = Path.GetFileName(sub);
+                bool ours = string.Equals(name, HostBuild.SourceFolder, StringComparison.OrdinalIgnoreCase)
+                    ? OnlyFiles(sub, ".cs")
+                    : YearFolder.IsMatch(name) && OnlyFiles(sub, ".dll", ".pdb");
+                if (!ours) return false;
+            }
+            return true;
         }
+
+        private static readonly Regex YearFolder = new(@"^\d{4}$", RegexOptions.Compiled);
+
+        private static bool OnlyFiles(string directory, params string[] extensions) =>
+            Directory.GetDirectories(directory).Length == 0
+            && Directory.GetFiles(directory)
+                .All(path => extensions.Contains(Path.GetExtension(path).ToLowerInvariant()));
     }
 }

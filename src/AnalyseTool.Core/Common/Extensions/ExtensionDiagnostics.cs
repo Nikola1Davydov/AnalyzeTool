@@ -3,9 +3,9 @@ using System.Collections.Concurrent;
 namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
-    /// Per-extension load diagnostics (currently Roslyn compile errors for script extensions),
+    /// Per-extension load diagnostics (compile errors of host-built sources, DLL load failures),
     /// populated by <see cref="ExtensionLoader"/> on each load and read by the Settings listing so a
-    /// broken script shows its error instead of silently vanishing. Keyed by extension id.
+    /// broken extension shows its error instead of silently vanishing. Keyed by extension id.
     /// </summary>
     internal static class ExtensionDiagnostics
     {
