@@ -19,7 +19,6 @@ const emit = defineEmits<{
   (e: "refreshAll"): void;
   (e: "removeSelected"): void;
   (e: "removeAll"): void;
-  (e: "openSettings"): void;
 }>();
 
 function onChartActionChange(value: string | null | undefined) {
@@ -68,9 +67,6 @@ function onChartActionChange(value: string | null | undefined) {
       @click="emit('removeAll')"
     >
       <i class="pi pi-trash" />
-    </button>
-    <button type="button" class="toolbar-btn" title="AI settings" @click="emit('openSettings')">
-      <i class="pi pi-cog" />
     </button>
   </div>
 </template>

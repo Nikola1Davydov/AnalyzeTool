@@ -47,19 +47,3 @@ export interface SetDataToParameters {
   items: ParameterData[];
   mode: (typeof SetDataToParametersModes)[keyof typeof SetDataToParametersModes];
 }
-
-export interface AnalyzeParameterWithAi {
-  items: ParameterData[];
-  prompt: string;
-  model: string;
-}
-
-/** Wire shape of one AI-proposed edit (OllamaEditParameters → AiParameterEdit). camelCase since the
- *  command declares an output schema and the host spells these names out to match it. */
-export interface ParameterEdit {
-  elementId: number;
-  parameter: string;
-  oldValue: string;
-  newValue: string;
-  reason: string;
-}

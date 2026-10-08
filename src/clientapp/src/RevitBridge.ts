@@ -14,23 +14,6 @@ export const Commands = {
   CheckUpdate: "CheckUpdate",
   GetDocumentData: "GetDocumentData",
   SetDataToParameters: "SetDataToParameters",
-  OllamaAnalyse: "OllamaAnalyse",
-  OllamaEditParameters: "OllamaEditParameters",
-  OllamaSuggestName: "OllamaSuggestName",
-  OllamaSuggestNames: "OllamaSuggestNames",
-  OllamaSuggestTemplate: "OllamaSuggestTemplate",
-  OllamaGetModels: "OllamaGetModels",
-  AiGetProviders: "AiGetProviders",
-  AiSaveProvider: "AiSaveProvider",
-  AiDeleteProvider: "AiDeleteProvider",
-  AiGetModels: "AiGetModels",
-  PlaceFamilyInstance: "PlaceFamilyInstance",
-  PurgeFamilyTypes: "PurgeFamilyTypes",
-  PurgeFamilies: "PurgeFamilies",
-  GetLibraryFamilies: "GetLibraryFamilies",
-  GetLibraryPreview: "GetLibraryPreview",
-  LoadLibraryFamilies: "LoadLibraryFamilies",
-  PickFolder: "PickFolder",
 } as const;
 
 export const enum MessageType {

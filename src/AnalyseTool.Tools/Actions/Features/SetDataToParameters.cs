@@ -1,6 +1,5 @@
 ﻿using AnalyseTool.Sdk;
 using AnalyseTool.Tools.Shared;
-using AnalyseTool.Tools.Ai;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;

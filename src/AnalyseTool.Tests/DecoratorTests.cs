@@ -1,13 +1,10 @@
 using AnalyseTool.Core.Common.Dispatch;
 using AnalyseTool.Core.Common.Utils;
 using AnalyseTool.Sdk;
-using AnalyseTool.Tools.Ai;
-using Microsoft.Extensions.AI;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using System.Runtime.CompilerServices;
 
 namespace AnalyseTool.Tests;
 
@@ -170,90 +167,6 @@ public class CommandPipelineTests
         private readonly List<ProgressInfo> _list;
         public ListProgress(List<ProgressInfo> list) => _list = list;
         public void Report(ProgressInfo value) => _list.Add(value);
-    }
-}
-
-/// <summary>The AI client decorators, against a fake IChatClient — no network.</summary>
-public class ChatClientDecoratorTests
-{
-    /// <summary>Streams "Hello world" in two parts, or never answers when <c>hang</c> is set.</summary>
-    private sealed class FakeChatClient : IChatClient
-    {
-        private readonly bool _hang;
-        public FakeChatClient(bool hang = false) => _hang = hang;
-
-        public async Task<ChatResponse> GetResponseAsync(
-            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
-        {
-            if (_hang) await Task.Delay(Timeout.Infinite, cancellationToken);
-            return new ChatResponse(new ChatMessage(ChatRole.Assistant, "Hello world"));
-        }
-
-        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-            IEnumerable<ChatMessage> messages, ChatOptions? options = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            if (_hang) await Task.Delay(Timeout.Infinite, cancellationToken);
-            yield return new ChatResponseUpdate(ChatRole.Assistant, "Hello ");
-            yield return new ChatResponseUpdate(ChatRole.Assistant, "world");
-        }
-
-        public object? GetService(Type serviceType, object? serviceKey = null) => null;
-        public void Dispose() { }
-    }
-
-    private static readonly List<ChatMessage> Prompt = new() { new ChatMessage(ChatRole.User, "hi") };
-
-    private static async Task<string?> Drain(IChatClient client, CancellationToken ct = default)
-    {
-        string text = string.Empty;
-        await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(Prompt, null, ct))
-            text += update.Text;
-        return text;
-    }
-
-    [Test]
-    public async Task A_streamed_answer_passes_through_and_is_logged_once_with_its_length()
-    {
-        CapturingSink sink = new();
-        IChatClient client = new SerilogChatClient(
-            new TimeoutChatClient(new FakeChatClient(), TimeSpan.FromSeconds(30)), "Ollama", "llama3", sink.CreateLogger());
-
-        string? text = await Drain(client);
-
-        await Assert.That(text).IsEqualTo("Hello world");
-        string line = sink.At(LogEventLevel.Information).Single();
-        await Assert.That(line).Contains("AI call ok");
-        await Assert.That(line).Contains("11");
-    }
-
-    [Test]
-    public async Task An_endpoint_that_never_answers_is_logged_as_a_timeout()
-    {
-        CapturingSink sink = new();
-        IChatClient client = new SerilogChatClient(
-            new TimeoutChatClient(new FakeChatClient(hang: true), TimeSpan.FromMilliseconds(50)), "Ollama", "llama3", sink.CreateLogger());
-
-        using CancellationTokenSource caller = new();
-        await Assert.That(() => Drain(client, caller.Token)).Throws<OperationCanceledException>();
-
-        // The commands tell a timeout from a cancel by whose token fired — the caller's must not have.
-        await Assert.That(caller.IsCancellationRequested).IsFalse();
-        await Assert.That(sink.At(LogEventLevel.Warning).Single()).Contains("timed out");
-    }
-
-    [Test]
-    public async Task A_caller_who_cancels_is_not_logged_as_a_timeout()
-    {
-        CapturingSink sink = new();
-        IChatClient client = new SerilogChatClient(
-            new TimeoutChatClient(new FakeChatClient(hang: true), TimeSpan.FromSeconds(30)), "Ollama", "llama3", sink.CreateLogger());
-
-        using CancellationTokenSource caller = new(TimeSpan.FromMilliseconds(50));
-        await Assert.That(() => Drain(client, caller.Token)).Throws<OperationCanceledException>();
-
-        await Assert.That(sink.At(LogEventLevel.Warning).Count).IsEqualTo(0);
-        await Assert.That(sink.At(LogEventLevel.Information).Single()).Contains("cancelled by the caller");
     }
 }
 

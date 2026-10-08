@@ -4,8 +4,6 @@ import { storeToRefs } from "pinia";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useElementsStore } from "@/stores/useElementsStore";
 import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
-import { useAiSettingsStore } from "@/stores/useAiSettingsStore";
-import { useNotificationStore } from "@/stores/useNotificationStore";
 import type { ElementItem } from "@/stores/types";
 import { useBulkGenerator } from "./composables/useBulkGenerator";
 import { useCardCreator } from "./composables/useCardCreator";
@@ -19,7 +17,6 @@ const InfiniteCanvas = defineAsyncComponent(() => import("./components/InfiniteC
 const CanvasCard = defineAsyncComponent(() => import("./components/CanvasCard.vue") as any);
 const ValueChart = defineAsyncComponent(() => import("./components/BarChart.vue") as any);
 const BodyTable = defineAsyncComponent(() => import("./components/DataTable.vue") as any);
-const SettingsView = defineAsyncComponent(() => import("./components/SettingsView.vue") as any);
 const ToolbarControls = defineAsyncComponent(
   () => import("./components/ToolbarControls.vue") as any,
 );
@@ -55,8 +52,6 @@ type CanvasSelectionRect = {
 const categoriesStore = useCategoriesStore();
 const elementsStore = useElementsStore();
 const documentDataStore = useDocumentDataStore();
-const aiSettingsStore = useAiSettingsStore();
-const notificationStore = useNotificationStore();
 const { sortedCategories } = storeToRefs(categoriesStore);
 const { items } = storeToRefs(elementsStore);
 const { documentId, documentName } = storeToRefs(documentDataStore);
@@ -65,7 +60,6 @@ const cards = ref<CanvasCardConfig[]>([]);
 const selectedCardIds = ref<number[]>([]);
 const nextCardId = ref(1);
 const showCreatePanel = ref(false);
-const showAiSettings = ref(false);
 const refreshingAll = ref(false);
 const categorySnapshots = ref<Record<string, ElementItem[]>>({});
 const chartActionOptions = [
@@ -348,31 +342,6 @@ function onWindowKeyDown(e: KeyboardEvent) {
   removeSelectedCards();
 }
 
-function requestOllamaModels() {
-  aiSettingsStore.loadModels();
-}
-
-function checkAiAvailabilityOnCanvasEnter() {
-  if (aiSettingsStore.modelSource !== "local") return;
-
-  requestOllamaModels();
-
-  const stop = watch(
-    () => aiSettingsStore.modelsLoading,
-    (isLoading) => {
-      if (isLoading) return;
-      stop();
-
-      if (aiSettingsStore.availableModels.length === 0) {
-        notificationStore.warn(
-          "Ollama is unavailable or no models are installed. AI features are disabled.",
-        );
-      }
-    },
-    { immediate: true },
-  );
-}
-
 onMounted(() => {
   restoreCanvasState();
   window.addEventListener("keydown", onWindowKeyDown);
@@ -381,7 +350,6 @@ onMounted(() => {
     console.error("Failed to load categories", err);
   });
 
-  checkAiAvailabilityOnCanvasEnter();
   warmCardsCategories();
 });
 
@@ -461,7 +429,6 @@ watch(projectScope, (nextScope, prevScope) => {
           @refreshAll="refreshAllCards"
           @removeSelected="removeSelectedCards"
           @removeAll="removeAllCards"
-          @openSettings="showAiSettings = true"
         />
 
         <CreateCardPanel
@@ -501,7 +468,6 @@ watch(projectScope, (nextScope, prevScope) => {
     @startGeneration="generateCardsFromDrawer"
   />
 
-  <SettingsView v-model:visible="showAiSettings" />
 </template>
 
 <style scoped>

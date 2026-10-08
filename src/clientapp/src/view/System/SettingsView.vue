@@ -17,7 +17,6 @@ import ToggleSwitch from "primevue/toggleswitch";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
-import AiModelPicker from "@/components/AiModelPicker.vue";
 
 const notifications = useNotificationStore();
 
@@ -34,7 +33,8 @@ interface EnvironmentData {
   hostRevit: string;
   hostSdkVersion: string;
   pluginVersion: string;
-  extensionsRoot: string;
+  /** The user's own extensions folder (created on first open). */
+  devRoot: string;
 }
 const env = ref<EnvironmentData | null>(null);
 
@@ -76,7 +76,7 @@ async function openChangelog() {
 
 function openFolder(path: string | undefined) {
   if (!path) return;
-  invoke("OpenFolder", { path }).catch((e) => console.error(e));
+  invoke("OpenFolder", { path }).catch((e) => notifications.error(errorText(e)));
 }
 
 // --- C# code execution: gates the ad-hoc ExecuteRevitCode command (the AI scratchpad). -----------
@@ -253,31 +253,15 @@ onMounted(() => {
          the like, which bring their own model and call our commands from outside). So: two blocks, each
          saying which one it is about, and each switch sitting with the assistant it applies to. -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <h2 class="text-base font-bold mb-1">Artificial intelligence</h2>
+      <h2 class="text-base font-bold mb-1">AI assistant</h2>
       <p class="text-xs text-surface-500 mb-4">
-        There are two, and they are not the same thing. The <b>built-in assistant</b> works inside
-        AnalyseTool's windows on the model you pick below. An <b>external assistant</b> is an AI you
-        already use elsewhere, connected to Revit through AnalyseTool — it brings its own model.
+        AnalyseTool has no AI of its own. You connect the one you already use — Claude, Cursor or any
+        other client that speaks the Model Context Protocol — and it works with Revit through
+        AnalyseTool, on its own model.
       </p>
 
-      <!-- Built-in -->
-      <div class="rounded-lg border border-surface-200 p-3">
-        <div class="flex items-center gap-2 mb-1">
-          <i class="pi pi-sparkles text-primary-500" />
-          <span class="font-semibold text-sm">Built-in assistant</span>
-          <Tag value="inside AnalyseTool" severity="secondary" />
-        </div>
-        <p class="text-xs text-surface-600 mb-3">
-          The AI buttons in the parameter windows: analyse a table, propose parameter edits, suggest
-          family and type names. It sees only what the window hands it and never touches the model on
-          its own — you review and apply. Runs on the model below: a local Ollama model, or a cloud
-          provider you add. Shared across all AnalyseTool windows.
-        </p>
-        <AiModelPicker manage />
-      </div>
-
       <!-- External -->
-      <div class="rounded-lg border border-surface-200 p-3 mt-4">
+      <div class="rounded-lg border border-surface-200 p-3">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="flex items-center gap-2 mb-1">
@@ -293,9 +277,7 @@ onMounted(() => {
             <p class="text-xs text-surface-600">
               Claude Desktop, Cursor or any other client that speaks the Model Context Protocol. It
               works the other way round: it <b>calls AnalyseTool's commands</b> — built-in and from
-              your extensions — to read and change the model, in your name, without a window. The
-              model picked above does not apply; the client uses its own. Both switches in this block
-              concern this assistant only.
+              your extensions — to read and change the model, in your name, without a window.
             </p>
           </div>
           <ToggleSwitch
@@ -355,9 +337,8 @@ onMounted(() => {
           </div>
         </Panel>
 
-        <!-- The one genuinely dangerous switch in the plugin. It sits INSIDE the external block
-             because that is the only assistant it applies to — the built-in one never runs code —
-             and it gets its own frame so it can never be skimmed past as another preference. -->
+        <!-- The one genuinely dangerous switch in the plugin. It gets its own frame so it can never
+             be skimmed past as another preference. -->
         <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -433,9 +414,9 @@ onMounted(() => {
           size="small"
           text
           severity="secondary"
-          :disabled="!env?.extensionsRoot"
-          v-tooltip.top="env?.extensionsRoot"
-          @click="openFolder(env?.extensionsRoot)"
+          :disabled="!env?.devRoot"
+          v-tooltip.top="env?.devRoot"
+          @click="openFolder(env?.devRoot)"
         />
         <a
           :href="ISSUES_URL"
@@ -457,8 +438,7 @@ onMounted(() => {
       <div class="flex items-start justify-between mb-3 gap-3">
         <p class="text-xs text-surface-500">
           Everything callable from a web extension via <code>AT.invoke(name, payload)</code>. The
-          <b>MCP</b> tag marks the ones an AI client can see. To RUN one, use the
-          <b>Scripts</b> button on the ribbon.
+          <b>MCP</b> tag marks the ones an AI client can see.
         </p>
         <InputText v-model="commandSearch" placeholder="Search…" class="w-56 shrink-0" size="small" />
       </div>

@@ -26,12 +26,10 @@
     <!-- App (host UI) -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.110" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
-    <PackageVersion Include="OllamaSharp" Version="5.4.25" />
     <PackageVersion Include="System.Drawing.Common" Version="8.0.0" />
     <!-- RevitAPI 2027 (net10.0) is compiled against System.Drawing.Common 10.x — an 8.0 reference
          there fails with CS1705. Compile-only either way (ExcludeAssets=runtime at the use sites). -->
     <PackageVersion Update="System.Drawing.Common" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0-windows'" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <!-- Out-of-process MCP server -->
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
