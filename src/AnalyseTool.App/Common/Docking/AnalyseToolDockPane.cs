@@ -82,7 +82,7 @@ namespace AnalyseTool.App.Common.Docking
                 // until the dispatcher exists (via a one-shot Idling that yields a live UIApplication).
                 await DockPaneHost.EnsureReadyAsync();
 
-                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, PathProvider.ProfilePath);
+                CoreWebView2Environment env = await WebView2Runtime.CreateEnvironmentAsync();
                 await _webView.EnsureCoreWebView2Async(env);
 
 
