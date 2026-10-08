@@ -43,7 +43,6 @@
          management (src/Directory.Packages.props) refuses floating versions otherwise. -->
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" VersionOverride="$(RevitVersion).*" />
     <PackageReference Include="Nice3point.TUnit.Revit" VersionOverride="$(RevitVersion).*" />
-    <PackageReference Include="TUnit" />
   </ItemGroup>
 
   <ItemGroup>
