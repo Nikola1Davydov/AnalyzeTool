@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-09-02
+updated: 2026-10-08
 ---
 
 # Индекс
@@ -21,7 +21,7 @@ updated: 2026-09-02
 
 | Страница | Что это |
 | --- | --- |
-| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 94 issue, 48 открытых, самый плотный источник здесь |
+| [`sources/github-issues.md`](sources/github-issues.md) | бэклог идей — 118 issue, 69 открытых, самый плотный источник здесь |
 | [`sources/pipeline-design-doc.md`](sources/pipeline-design-doc.md) | дизайн конвейеров с ветки — единственный источник с замерами в живом Revit |
 | [`sources/karpathy-llm-wiki-pattern.md`](sources/karpathy-llm-wiki-pattern.md) | паттерн, на котором построена вики, и как мы его адаптировали |
 | [`sources/analysetool-repo-docs.md`](sources/analysetool-repo-docs.md) | обзор документации репозитория и AI-значимых проектов |
@@ -66,7 +66,8 @@ updated: 2026-09-02
 | [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
 | [`analyses/licensing-and-monetization.md`](analyses/licensing-and-monetization.md) | как продавать модуль при открытом коде: что необратимо, что решить сейчас |
-| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 54 открытых issue по группам |
+| [`analyses/backlog-map.md`](analyses/backlog-map.md) | все 69 открытых issue по группам |
+| [`analyses/architecture-review-2026-09.md`](analyses/architecture-review-2026-09.md) | ревью #141: отмена, которая врёт, единая модель ошибок, C#-тип как источник правды для MCP и Vue |
 | [`analyses/audit-2026-09-02.md`](analyses/audit-2026-09-02.md) | сверка issue и вики с кодом: семь выводов, что закрыть, что сузить, что править |
 
 ## Известные дыры

@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-09-02
+updated: 2026-10-08
 status: current
 sources: [../sources/analysetool-repo-docs.md]
 ---
@@ -73,6 +73,12 @@ writer не знает (`entryAssembly`, `icon`, вторая кнопка), п�
 
 `id` не редактирует никто: writer выставляет его сам, форма его только показывает.
 
+Каждая из этих записей **перезаписывает** файл без следа предыдущей версии — как и `.cs`, `.html`
+и `.js`, которые кладут `SaveAsCommand` и `SaveExtensionUi` рядом. Локальная история снимков с
+восстановлением, без git, предложена в [#163](https://github.com/Nikola1Davydov/AnalyzeTool/issues/163);
+почему она хранится вне папки расширения (иначе `IsGeneratedFolder` и сканер каталога сочтут папку
+чужой) и чем это касается агента — [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md).
+
 ## Шаблон: всегда страница плюс C#
 
 Форма New (`src/clientapp/src/view/System/CreateExtensionForm.vue`) шлёт `kind: "Combo"`
@@ -88,3 +94,4 @@ writer не знает (`entryAssembly`, `icon`, вторая кнопка), п�
 - [`../concepts/contract-evolution.md`](../concepts/contract-evolution.md) — поле `schema` и правила миграции
 - [`../concepts/extension-distribution.md`](../concepts/extension-distribution.md) — `updateFeed` и каталог
 - [`analysetool-mcp-server.md`](analysetool-mcp-server.md)
+- [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) — перезапись без истории и #163

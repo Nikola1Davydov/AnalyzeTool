@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-09-02
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -157,6 +157,10 @@ OneDrive. Ничего не ломается; общая папка команд
   сознательно пока не SQLite), конвенции проекта с различением `inferred` и
   `userConfirmed`, и явный отказ хранить историю разговора.
 
+- **[#136](https://github.com/Nikola1Davydov/AnalyzeTool/issues/136)** — подложки (2026-09-21):
+  DWG/PDF агент видит как `id` + `name` или не видит вовсе; предложены `GetUnderlays` со сводкой по
+  слоям, `GetCadLayers`, `GetCadGeometry`. Разбор — [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md).
+
 ## Дефект, которого не было в списке: агент слеп
 
 Заведён [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129). **Закрыт 2026-09-01 без починки:** `GetFamilyPreview` исчез
@@ -255,6 +259,25 @@ expected "object"» на `tools[20].outputSchema.type`), сервер не ст�
 [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97) вместе с
 [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98) это ровно та обстановка,
 которая его порождает.
+
+## Официальный сервер Autodesk — сосед, а не замена (пока)
+
+[#137](https://github.com/Nikola1Davydov/AnalyzeTool/issues/137) (2026-09-21): Autodesk выпустил
+**Revit Public MCP Server** — Tech Preview, только Revit 2027, stdio, ставится отдельным аддоном по
+подписке. Issue — план разведки, а не решение: снять его `tools/list` со схемами, сопоставить с
+нашим каталогом, проверить расширяемость («AnalyseTool как расширение официального сервера» вместо
+своего транспорта), уживаются ли два сервера в одном Revit, и что взять из их подхода к записи.
+
+> [!warning] не проверено
+> Возможности сервера Autodesk (поиск элементов, чтение параметров, массовая правка, снимки видов;
+> по другим источникам — только чтение) взяты из анонсов, перечисленных в #137, и в живом Revit не
+> проверялись.
+
+Что уже можно сказать со стороны этой вики: у нас Revit 2025/2026/2027, у них только 2027; и
+наша поверхность держится не на числе инструментов, а на контракте — описаниях, схемах,
+подсказках в ошибках, job handles ([`../concepts/command-schema-contract.md`](../concepts/command-schema-contract.md),
+[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md)) и расширениях,
+которые становятся инструментами. Сравнивать надо по этим осям.
 
 ## Порядок, который отсюда следует
 

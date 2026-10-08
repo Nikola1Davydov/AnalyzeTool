@@ -1,13 +1,13 @@
 ---
 type: analysis
-updated: 2026-09-01
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
 
 # Карта открытого бэклога
 
-48 открытых issue (снимок 2026-09-01, плюс #133 (план встроенного агента, 2026-09-02), минус #107 (закрыт 2026-09-02 вечером как отслуживший трекер), минус #113 (отгружен целиком в тот же вечер), минус #99/#108/#109/#110 (кластер долгих вызовов, тот же вечер), минус #101 и #102 (закрыты 2026-09-02 вечером), минус #100 и #128 (закрыты 2026-09-02), минус семь закрытых 2026-09-02 по [сверке](audit-2026-09-02.md), минус #97 и #98 — починены и подтверждены вживую в тот же день, минус [#127](https://github.com/Nikola1Davydov/AnalyzeTool/issues/127) и [#129](https://github.com/Nikola1Davydov/AnalyzeTool/issues/129), закрытые в тот же день после снимка), сгруппированных по тому, о чём они на самом деле, а не по меткам.
+69 открытых issue (снимок 2026-10-08: 47 открытых, переживших 2026-09-02, плюс 22 из 24 заведённых после — #134 и #138 уже закрыты), сгруппированных по тому, о чём они на самом деле, а не по меткам.
 AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
@@ -15,7 +15,7 @@ AI-кластеры развёрнуты в других страницах ви
 
 | Кластер | Issue | Где |
 | --- | --- | --- |
-| Дефекты и протокол MCP | 83–85, 99, 101–113 (97, 98, 100, 128 закрыты 2026-09-02; 129 — команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
+| Дефекты и протокол MCP | 83–85, 103–106, 112 (97–102, 107–111, 113, 128 закрыты 2026-09-02; 129 — команды больше нет) | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) |
 | Агент и где он крутится | 80, 115–118 | [`agent-hosting.md`](agent-hosting.md), [`../concepts/proactivity-budget.md`](../concepts/proactivity-budget.md) |
 | Безопасность и одобрение | 88, 106, 123, 126 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 | Лента, карточки, порог | 79, 80, 116, 118, 122, 126 | [`../concepts/inbox-and-cards.md`](../concepts/inbox-and-cards.md) |
@@ -23,6 +23,10 @@ AI-кластеры развёрнуты в других страницах ви
 | Хранилище под всем этим | 80, 85, 124, 125 | [`../entities/shadow-index.md`](../entities/shadow-index.md) |
 | Экономика контекста | 83, 84, 113, 123 | [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md) |
 | Модуль проверки | 119–126 | [`checking-module.md`](checking-module.md) |
+| Ревью архитектуры: Sdk 1.3, отмена, ошибки, контракт C# ↔ TS | 141–158 | [`architecture-review-2026-09.md`](architecture-review-2026-09.md) |
+| Понимание модели агентом: подложки DWG/PDF | 136 | [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md) |
+| Официальный MCP-сервер Autodesk | 137 | [`mcp-surface-state.md`](mcp-surface-state.md) |
+| История версий своих расширений | 163 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 
 ## Модуль проверки
 
@@ -94,6 +98,32 @@ Revit, только долгоживущий и по расписанию), не
 [`../entities/project-folder.md`](../entities/project-folder.md) (бэкенды и форматы папки),
 [`checking-module.md`](checking-module.md) (движок без Revit API, CDE как порт).
 
+## Ревью архитектуры (2026-09-23)
+
+[#141](https://github.com/Nikola1Davydov/AnalyzeTool/issues/141) — оглавление, шестнадцать
+sub-issue, все открыты. Разобрано в [`architecture-review-2026-09.md`](architecture-review-2026-09.md);
+здесь — состав по группам.
+
+- **Баги и риски:** [#142](https://github.com/Nikola1Davydov/AnalyzeTool/issues/142) отмена не доходит
+  до потока Revit · [#143](https://github.com/Nikola1Davydov/AnalyzeTool/issues/143) нет документа →
+  `NullReferenceException` · [#144](https://github.com/Nikola1Davydov/AnalyzeTool/issues/144)
+  эксклюзивные `Destructive`.
+- **Sdk 1.3:** [#145](https://github.com/Nikola1Davydov/AnalyzeTool/issues/145) `RevitTask<TRequest, TResult>` ·
+  [#146](https://github.com/Nikola1Davydov/AnalyzeTool/issues/146) единая модель ошибок ·
+  [#147](https://github.com/Nikola1Davydov/AnalyzeTool/issues/147) `ctx.Progress` ·
+  [#151](https://github.com/Nikola1Davydov/AnalyzeTool/issues/151) `PublicApiAnalyzers`.
+- **Архитектура C#:** [#148](https://github.com/Nikola1Davydov/AnalyzeTool/issues/148) статическое
+  состояние · [#149](https://github.com/Nikola1Davydov/AnalyzeTool/issues/149) один сериализатор ·
+  [#150](https://github.com/Nikola1Davydov/AnalyzeTool/issues/150) Roslyn-анализатор ·
+  [#152](https://github.com/Nikola1Davydov/AnalyzeTool/issues/152) god-классы ·
+  [#153](https://github.com/Nikola1Davydov/AnalyzeTool/issues/153) behaviors — **в коде уже есть**
+  (цепочка декораторов, e5d9fe5, 2026-09-25), issue открыт ·
+  [#154](https://github.com/Nikola1Davydov/AnalyzeTool/issues/154) `Directory.Build.props`.
+- **Фронт:** [#155](https://github.com/Nikola1Davydov/AnalyzeTool/issues/155) TypeScript и CI ·
+  [#156](https://github.com/Nikola1Davydov/AnalyzeTool/issues/156) мёртвые команды Family Manager ·
+  [#157](https://github.com/Nikola1Davydov/AnalyzeTool/issues/157) генерация TS-контракта ·
+  [#158](https://github.com/Nikola1Davydov/AnalyzeTool/issues/158) структура clientapp.
+
 ## AI-фичи, не покрытые выше
 
 - **[#56](https://github.com/Nikola1Davydov/AnalyzeTool/issues/56)** — AI-слой и RAG по
@@ -134,6 +164,13 @@ Revit, только долгоживущий и по расписанию), не
   [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) отмечает, что MCP
   Apps теперь формальное расширение, где UI-шаблоны объявляются заранее — это заметно
   другая модель угроз, чем генерация HTML в момент вызова.
+- **[#136](https://github.com/Nikola1Davydov/AnalyzeTool/issues/136)** — агент понимает DWG/PDF-подложки
+  одним вызовом: `GetUnderlays` со сводкой по слоям, `GetCadLayers`, `GetCadGeometry`. Сейчас
+  платформа знает о подложках только «есть/нет» —
+  [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md).
+- **[#137](https://github.com/Nikola1Davydov/AnalyzeTool/issues/137)** — разведка официального Revit
+  Public MCP Server (Autodesk, Tech Preview, только 2027): сопоставить каталоги, проверить
+  расширяемость и соседство двух серверов — [`mcp-surface-state.md`](mcp-surface-state.md).
 - **[#79](https://github.com/Nikola1Davydov/AnalyzeTool/issues/79)** — детекция коллизий
   с полуавтоматическим разрешением.
 - **[#45](https://github.com/Nikola1Davydov/AnalyzeTool/issues/45)** — подсказка-призрак
@@ -143,6 +180,10 @@ Revit, только долгоживущий и по расписанию), не
   детерминированные рецепты, гейт в `CommandQueue`; **после фундамента** — сильный агент с циклом уже
   есть (внешний MCP-клиент), это продуктовая вещь, не способность. Разбор —
   [`built-in-agent-plan.md`](built-in-agent-plan.md).
+- **[#161](https://github.com/Nikola1Davydov/AnalyzeTool/issues/161)** — конвейер и `CommandQueue` без UI:
+  точка входа без WebView2/WPF, чтобы пакетный прогон (`AnalyseTool.Batch`: журналы Revit, APS
+  Design Automation) построить потом **расширением**, а не в Core; кандидат в платное —
+  [`licensing-and-monetization.md`](licensing-and-monetization.md).
 - **[#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90)–[#92](https://github.com/Nikola1Davydov/AnalyzeTool/issues/92)**
   — конвейеры. [#90](https://github.com/Nikola1Davydov/AnalyzeTool/issues/90) даёт MCP
   то, чего у него нет: способ заморозить сработавшую цепочку и повторить её без LLM.
@@ -179,7 +220,10 @@ Revit, только долгоживущий и по расписанию), не
 [#81](https://github.com/Nikola1Davydov/AnalyzeTool/issues/81) публикация SDK ·
 [#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87) цепочка поставки ·
 [#93](https://github.com/Nikola1Davydov/AnalyzeTool/issues/93) путь публикации ·
-[#95](https://github.com/Nikola1Davydov/AnalyzeTool/issues/95) заморозка контракта лаунчера.
+[#95](https://github.com/Nikola1Davydov/AnalyzeTool/issues/95) заморозка контракта лаунчера ·
+[#163](https://github.com/Nikola1Davydov/AnalyzeTool/issues/163) история версий своих кнопок —
+локальные снимки и восстановление без git (2026-10-08; разбор —
+[`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md)).
 
 [#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87) стоит прочитать даже с
 AI-стороны: там прямо сказано, что collectible ALC — механизм выгрузки и идентичности
@@ -210,4 +254,4 @@ AI-стороны: там прямо сказано, что collectible ALC — 
 
 ## Связанное
 
-- [`../sources/github-issues.md`](../sources/github-issues.md) · [`mcp-surface-state.md`](mcp-surface-state.md) · [`agent-hosting.md`](agent-hosting.md)
+- [`../sources/github-issues.md`](../sources/github-issues.md) · [`mcp-surface-state.md`](mcp-surface-state.md) · [`agent-hosting.md`](agent-hosting.md) · [`architecture-review-2026-09.md`](architecture-review-2026-09.md)

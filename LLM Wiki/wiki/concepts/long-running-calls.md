@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-09-02
+updated: 2026-10-08
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -59,6 +59,11 @@ sources: [../sources/github-issues.md]
 - **Отмена.** Тип запроса `cancel` с id вызова на отдельном соединении; бридж держит
   `CancellationTokenSource` на вызов в полёте. `notifications/cancelled` от клиента доходит до
   токена команды в Revit — останавливается работа, а не только ожидание.
+  **Оговорка от 2026-09-23** ([#142](https://github.com/Nikola1Davydov/AnalyzeTool/issues/142)): токен
+  доходит до *команды*, но не до `RevitTaskHub` — `EnqueueAsync` его не принимает. Работа, которую
+  команда уже поставила на поток Revit, пока тот занят диалогом или режимом редактирования,
+  выполнится позже, после ответа «cancelled», и может записать в модель. Разбор —
+  [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md).
 - **Job вместо Tasks.** Каждый invoke в бридже — запись с исходом (результат, ошибка, отмена),
   хранится час, до 200 штук, независимо от того, жив ли вызывающий. Exe через 40 с
   (`--handle-after`) перестаёт ждать и отдаёт `{ status: "running", jobId }` — не ошибка; свои
@@ -149,3 +154,4 @@ Tasks, запись job ложится на них тонким адаптеро
 
 - [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) · [`write-safety-and-approval.md`](write-safety-and-approval.md)
 - [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md) — глаголы провода и два собственных инструмента exe
+- [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md) — #142: отмена, не дошедшая до потока Revit

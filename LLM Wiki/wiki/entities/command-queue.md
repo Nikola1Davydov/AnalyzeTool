@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-09-02
+updated: 2026-10-08
 status: current
 sources: [../sources/analysetool-repo-docs.md]
 ---
@@ -54,25 +54,46 @@ sources: [../sources/analysetool-repo-docs.md]
 транспорты с аутентификацией. Свойства `init` подобраны так, что добавление не ломает
 существующих вызывающих.
 
-## Что делает `ExecuteAsync`
+## Что делает `ExecuteAsync` — цепочка декораторов
 
-Пять шагов, весь метод — 45 строк:
+С 2026-09-25 (коммит e5d9fe5) `CommandQueue.ExecuteAsync` — одна строка: запрос уходит в цепочку
+`ICommandExecutor`, собранную в конструкторе очереди
+(`src/AnalyseTool.Core/Common/Dispatch/CommandPipeline.cs`):
 
-1. **Гейт**, если он есть. Резолвится `CommandRegistration`, и гейт видит метаданные —
-   имя, `ReadOnly`, `Destructive`. Отказ — `UnauthorizedAccessException` с текстом
-   «команда недоступна через такой-то источник». Тонкость, записанная в комментарии:
-   неизвестное имя гейт не трогает, оно проваливается к диспетчеру, который откажет по
-   имени. Всё, что **может** исполниться, сначала резолвит регистрацию — значит ни одна
-   команда не доходит до `DispatchAsync`, минуя гейт своего транспорта.
-2. **Решение, отслеживать ли** — по списку `Untracked`.
-3. **Лог** — `Log.Debug("Command {Command} invoked via {Source}")`, только для
-   отслеживаемых.
-4. **Регистрация в `_running`** и событие `RunningChanged`.
-5. **Диспатч**, и в `finally` — снятие с учёта и событие.
+```
+Logging → Gating → Tracking → Dispatching
+```
 
-## `Untracked` и почему это про читаемость лога
+Каждая ступень держит ровно одну заботу; ступень, которой нужно поменять запрос (трекер
+подставляет свой токен и sink прогресса), передаёт копию через `with` — запись, построенную
+транспортом, никто не мутирует.
 
-В списке ровно одно имя: `GetQueueStatus`. Причина в комментарии двойная — опрос статуса
+1. **`LoggingExecutor`** — одна строка лога на **исход**: finished с длительностью, cancelled,
+   refused, failed с полным исключением, типом и сообщением корневой причины и сокращённым
+   payload. До этой ступени очередь писала только «invoked» на Debug, а команда, упавшая из окна
+   WebView, не оставляла в логе ничего: транспорт отдаёт странице `ex.Message` и выбрасывает
+   остальное. Теперь те же строки получает каждый транспорт, ничего не логируя сам; бридж MCP
+   перестал логировать сбои очереди второй раз.
+2. **`GatingExecutor`** — гейт транспорта, если он есть. Резолвится `CommandRegistration`, и
+   гейт видит метаданные — имя, `ReadOnly`, `Destructive`. Отказ — `UnauthorizedAccessException`.
+   Тонкость из комментария: неизвестное имя гейт не трогает, оно проваливается к диспетчеру,
+   который откажет по имени. Всё, что **может** исполниться, сначала резолвит регистрацию —
+   значит ни одна команда не доходит до диспетчера, минуя гейт своего транспорта.
+3. **`TrackingExecutor`** — реестр исполняющихся команд и событие `RunningChanged`,
+   отмена на прогон, которую может нажать **человек** (`TryCancel(runId)` — кнопка окна
+   активности, [#134](https://github.com/Nikola1Davydov/AnalyzeTool/issues/134)), и мультикаст
+   прогресса слушателям очереди (`ProgressReported`) — синхронно, на потоке отчёта.
+4. **`DispatchingExecutor`** — `CommandDispatcher.DispatchAsync`.
+
+Новая сквозная забота (кэш, политика по источнику, планирование) — ещё один декоратор в
+конструкторе очереди; транспорты и другие ступени не меняются. Это ровно то, что
+[#153](https://github.com/Nikola1Davydov/AnalyzeTool/issues/153) предлагал «когда понадобится»
+— issue при этом открыт, см. [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md).
+
+## Тихие команды и почему это про читаемость лога
+
+Список `Quiet` в `CommandPipeline` (до 2026-09-25 — `CommandQueue.Untracked`): такие команды не
+попадают ни в реестр исполняющихся, ни в лог. В списке ровно одно имя: `GetQueueStatus`. Причина в комментарии двойная — опрос статуса
 не должен делать инструмент «занятым» и не должен переоткрывать событие, на которое сам
 же отвечает.
 
@@ -197,15 +218,24 @@ while (_queue.TryDequeue(out Action<UIApplication>? item)) { item(app); ... }
 по 40, — поэтому прогон
 останавливается на границе следующего шага, а не мгновенно.
 
+Ревью архитектуры 2026-09-23 уточнило картину и завело issue —
+[#142](https://github.com/Nikola1Davydov/AnalyzeTool/issues/142): не дошедшей может оказаться и
+работа, которая **ещё не начиналась**. Поставленная, пока Revit не простаивает (диалог, режим
+редактирования), она выполнится позже — уже после того, как вызывающий получил «Cancelled», и
+включая запись в модель. План — токен в `RunInRevitAsync` (аддитивно в Sdk) и пропуск отменённых
+элементов в `Execute`. Разбор — [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md).
+
 ## Чего здесь ещё нет
 
 Всё это — работа, у которой уже есть правильное место, и ни одна не сделана:
 
 - планирование и приоритеты (`Priority` зарезервирован комментарием);
 - ограничение частоты ([#112](https://github.com/Nikola1Davydov/AnalyzeTool/issues/112)) —
-  и `Untracked` уже показывает, как исключить `GetQueueStatus` из троттлинга;
+  и `CommandPipeline.IsQuiet` уже показывает, как исключить `GetQueueStatus` из троттлинга;
 - проверка лицензии ([#120](https://github.com/Nikola1Davydov/AnalyzeTool/issues/120)) —
   сознательно **не** в `Gate`, потому что гейт ставит транспорт;
+- эксклюзивное исполнение `Destructive`-команд — reader/writer lock, чтобы запись не шла по данным,
+  прочитанным до чужой записи ([#144](https://github.com/Nikola1Davydov/AnalyzeTool/issues/144));
 - ранний ответ при `RevitAvailability.IsRevitBusy`, чтобы заблокированный Revit отвечал
   сразу, а не съедал таймаут клиента
   ([#88](https://github.com/Nikola1Davydov/AnalyzeTool/issues/88), остаток).
@@ -216,3 +246,4 @@ while (_queue.TryDequeue(out Action<UIApplication>? item)) { item(app); ... }
 - [`../concepts/long-running-calls.md`](../concepts/long-running-calls.md) — `Progress` и `CancellationToken`, которые здесь уже есть
 - [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) · [`../concepts/inbox-and-cards.md`](../concepts/inbox-and-cards.md) — что должно вырасти из `Gate`
 - [`analysetool-mcp-server.md`](analysetool-mcp-server.md)
+- [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md) — ревью 2026-09-23: отмена, ошибки, типизированный контракт

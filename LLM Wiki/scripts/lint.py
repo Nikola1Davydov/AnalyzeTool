@@ -127,6 +127,12 @@ def check_code_paths(pages):
                 continue
             if t.startswith("../") or t.endswith("/") or "→" in t or "->" in t or " " in t:
                 continue
+            # Голое расширение («файлы `.cs`») — вид файла, а не путь.
+            if re.fullmatch(r"\.[A-Za-z0-9]+", t):
+                continue
+            # Выходы сборки (obj/, bin/) в git не лежат по определению — цитата о них не путь в репозитории.
+            if re.search(r"(^|/)(obj|bin)(/|$)", t):
+                continue
             if re.search(CODE_EXT, t) or re.match(CODE_DIR, t):
                 if t.endswith(".md") and not re.match(CODE_DIR, t):
                     continue          # внутренние ссылки вики проверяет check_links
@@ -136,6 +142,10 @@ def check_code_paths(pages):
         bare = t.split(":")[0]
         if bare in ELSEWHERE:
             elsewhere.append((t, ELSEWHERE[bare]))
+        elif any(bare.startswith(sib + "/") and not os.path.isdir(os.path.join(os.path.dirname(REPO), sib))
+                 for sib in SIBLINGS):
+            # Соседний репозиторий не склонирован рядом — проверить нечем; это не битая цитата.
+            elsewhere.append((t, "соседний репозиторий не склонирован рядом"))
         elif resolve(bare):
             ok.append((t, sorted(where)))
         else:

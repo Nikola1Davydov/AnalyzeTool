@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-09-02
+updated: 2026-10-08
 status: current
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -157,6 +157,24 @@ Manager, с 2026-09-01 расширение) возвращала
 > опубликованный контракт расходится с настоящим, становится файлом, который выглядит
 > правильно и делает другое.
 
+## Куда это движется: из правила — в тип
+
+Ревью архитектуры 2026-09-23 ([`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md))
+предлагает перестать *проверять* контракт и начать его *выводить*. Сейчас команда описана трижды —
+`InputType`/`OutputType` в атрибуте, `ctx.Payload.As<T>()` в теле, возврат `object?` — и сверяют их
+`Check-Schemas.ps1` на регексах и `SchemaContractTests`. План:
+
+- `RevitTask<TRequest, TResult>` в Sdk 1.3 ([#145](https://github.com/Nikola1Davydov/AnalyzeTool/issues/145)) —
+  диспетчер выводит оба типа из generic-аргументов, атрибут становится необязательным;
+- правила этой страницы — Roslyn-анализатором в пакете Sdk
+  ([#150](https://github.com/Nikola1Davydov/AnalyzeTool/issues/150)): ошибка в IDE, а не в CI, и у
+  **авторов расширений** тоже — сейчас у них этих проверок нет вовсе;
+- один сериализатор для провода и схемы ([#149](https://github.com/Nikola1Davydov/AnalyzeTool/issues/149)) —
+  корень #98: провод пишет Newtonsoft, схему строит System.Text.Json, который `[JsonProperty]` не
+  видит. До перехода — правило: `[JsonProperty]` с именем, отличным от camelCase свойства, запрещён;
+- та же схема генерирует TS-контракт фронта ([#157](https://github.com/Nikola1Davydov/AnalyzeTool/issues/157)) —
+  тогда описание, которое читает агент, и типы, которые проверяет Vue, — одно и то же.
+
 ## Проверить локально
 
 ```bash
@@ -168,3 +186,4 @@ powershell -File src/build/Check-Schemas.ps1
 - [`agent-legibility.md`](agent-legibility.md) — вторая половина: что несут ответы обратно
 - [`architecture-overview.md`](architecture-overview.md) · [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md)
 - [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md)
+- [`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md) — типизированные команды, анализатор, TS-контракт
