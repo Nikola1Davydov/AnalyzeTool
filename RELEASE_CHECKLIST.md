@@ -44,7 +44,7 @@ A reusable checklist to run before publishing a new AnalyseTool version.
 
 ### Live in Revit (can't be verified from the repo)
 
-- [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (AnalyseTool, Settings, Extensions,
+- [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (AnalyseTool, Settings, Extensions, New,
       plus the buttons of installed extensions).
 - [ ] A command saved over MCP (`SaveAsCommand`) gets its ribbon button and runs; the folder holds
       `src\` and `<year>\<id>.dll`.

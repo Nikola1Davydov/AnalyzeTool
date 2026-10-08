@@ -1614,3 +1614,10 @@ CHANGELOG поправлен. Проверено на Linux поддельным
 
 `scripts/lint.py`: `log.md` больше не проверяется на пути (журнал — история, его не правят), файлы
 профиля (`codeexec.json`, `extensions.json`, …) добавлены в `RUNTIME`. Линт чист.
+
+## 2026-10-08 — New вернулась на ленту
+
+Владелец: кнопка New — «хорошая вещь», её убирать не надо; убрать нужно вторую дверь к той же форме
+внутри окна Extensions. Лента теперь AnalyseTool · Settings · Extensions · New; окно New
+(`#/system/new-extension`) восстановлено, кнопка «New extension» и выдвижная панель
+CreateExtensionTemplateDrawer из окна Extensions удалены. `entities/ribbon-host.md` поправлен.

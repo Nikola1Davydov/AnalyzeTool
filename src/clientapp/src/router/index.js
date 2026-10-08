@@ -31,6 +31,12 @@ const routes = [
     component: () => import("@/view/System/ExtensionsView.vue"),
     meta: { layout: "bare" },
   },
+  {
+    // The "New" ribbon button: a window that is nothing but the create-extension form.
+    path: "/system/new-extension",
+    component: () => import("@/view/System/NewExtensionView.vue"),
+    meta: { layout: "bare" },
+  },
 ];
 
 const router = createRouter({

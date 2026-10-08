@@ -16,7 +16,7 @@ using AdWin = Autodesk.Windows;
 namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
-    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Extensions) use the
+    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Extensions / New) use the
     /// official Revit API (stable). Per-extension buttons use the unofficial AdWindows API so they
     /// can be added, removed and updated live (Reload) without restarting Revit. Invoked from the
     /// Launcher's OnStartup via reflection, so all logic lives in the isolated AnalyseTool assembly.
@@ -26,6 +26,7 @@ namespace AnalyseTool.App.Common.Extensions
         private const string MainCommandClass = "AnalyseTool.Launcher.RevitCommands.AnalyseToolCommand";
         private const string SettingsCommandClass = "AnalyseTool.Launcher.RevitCommands.SettingsCommand";
         private const string ExtensionsCommandClass = "AnalyseTool.Launcher.RevitCommands.ExtensionsCommand";
+        private const string NewExtensionCommandClass = "AnalyseTool.Launcher.RevitCommands.NewExtensionCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
 
@@ -51,7 +52,7 @@ namespace AnalyseTool.App.Common.Extensions
         // Open windows, so a second click focuses the existing one instead of stacking duplicates:
         // one window per extension button.
         //
-        // The plugin's own pages (Settings, Extensions), one window each.
+        // The plugin's own pages (Settings, Extensions, New extension), one window each.
         private static readonly Dictionary<string, SystemWindow> _systemWindows =
             new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Window> _extWindows =
@@ -75,19 +76,22 @@ namespace AnalyseTool.App.Common.Extensions
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // Two small buttons beside it: the plugin's preferences and the extension manager. Reload,
-            // "New extension" and "Report a bug" live inside those windows — each was a second door to
-            // something one click away, and seven buttons read as a toolbox nobody asked for.
+            // Three small buttons beside it: the plugin's preferences, the extension manager and "New" —
+            // making a button is the plugin's point, so it gets a door of its own. Reload and "Report a
+            // bug" live inside the windows: second doors to something one click away.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
             PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
                 SettingsCommandClass, "The AI connection (MCP) and everything else about the plugin itself");
             PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
-                ExtensionsCommandClass, "Install, create, update and manage extensions");
+                ExtensionsCommandClass, "Install, update and manage extensions");
+            PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
+                NewExtensionCommandClass, "Create a new extension: a button, a page, C# commands");
 
-            IList<RibbonItem> manageStack = managePanel.AddStackedItems(settingsData, extensionsData);
+            IList<RibbonItem> manageStack = managePanel.AddStackedItems(settingsData, extensionsData, newExtensionData);
             SetStackedImage(manageStack, 0, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
             SetStackedImage(manageStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(manageStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -472,6 +476,12 @@ namespace AnalyseTool.App.Common.Extensions
         /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
         public static void OpenExtensions(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "extensions", "#/system/extensions", "AnalyseTool — Extensions", 1000, 680);
+
+        /// <summary>Ribbon "New" button — a small window with nothing but the create-extension form.
+        /// Its own window, not the manager with a drawer over it: pressing "New" means "I want to make
+        /// one", and a list of everything else is noise behind that.</summary>
+        public static void OpenNewExtension(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "new-extension", "#/system/new-extension", "AnalyseTool — New extension", 720, 840);
 
         /// <summary>Opens (or focuses) one of the plugin's own pages.</summary>
         private static void OpenSystemPage(UIApplication uiApp, string key, string route, string title,

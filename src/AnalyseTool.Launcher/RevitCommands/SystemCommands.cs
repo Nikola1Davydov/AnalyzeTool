@@ -20,4 +20,12 @@ namespace AnalyseTool.Launcher.RevitCommands
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
             => App.InvokeRibbon("OpenExtensions", commandData.Application);
     }
+
+    /// <summary>Ribbon "New" button — a small window with the create-extension form.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class NewExtensionCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenNewExtension", commandData.Application);
+    }
 }

@@ -20,11 +20,6 @@ import TabPanel from "primevue/tabpanel";
 import { invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 
-// Lazily loaded: the drawer carries the full extension scaffold (csproj, plugin.json and index.html
-// templates) and is opened rarely, so it gets its own chunk instead of riding in the entry bundle.
-const CreateExtensionTemplateDrawer = defineAsyncComponent(
-  () => import("@/view/System/CreateExtensionTemplateDrawer.vue"),
-);
 const EditExtensionDrawer = defineAsyncComponent(
   () => import("@/view/System/EditExtensionDrawer.vue"),
 );
@@ -172,11 +167,6 @@ const loading = ref(true);
 
 const paths = ref<PathRow[]>([]);
 const pathsBusy = ref(false);
-const templateDrawerVisible = ref(false);
-
-function openTemplateDrawer() {
-  templateDrawerVisible.value = true;
-}
 
 // ---- Edit: the manifest, in a form. The rows could open the folder and delete it, but not change the
 // one thing people change most — what the button says and where it sits.
@@ -589,12 +579,6 @@ onMounted(() => {
           severity="secondary"
           @click="pickPackageAndAskConsent"
         />
-        <Button
-          label="New extension"
-          icon="pi pi-plus"
-          severity="contrast"
-          @click="openTemplateDrawer"
-        />
         <Button label="Reload" icon="pi pi-refresh" :loading="loading" @click="reload" />
       </div>
     </div>
@@ -916,7 +900,7 @@ onMounted(() => {
                     </button>
                   </template>
                   <template v-else>
-                    None yet — press <b>New extension</b>, or drop a folder into the dev root.
+                    None yet — press <b>New</b> on the ribbon, or drop a folder into the dev root.
                   </template>
                 </div>
               </template>
@@ -1244,7 +1228,6 @@ onMounted(() => {
       </template>
     </Dialog>
 
-    <CreateExtensionTemplateDrawer v-model:visible="templateDrawerVisible" @created="reload" />
 
     <EditExtensionDrawer
       v-model:visible="editDrawerVisible"

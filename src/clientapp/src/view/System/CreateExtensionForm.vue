@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * The create-extension form, shown in a drawer inside the extension manager
- * (CreateExtensionTemplateDrawer).
+ * The create-extension form — the whole of the "New" ribbon button's window (NewExtensionView).
  *
  * It asks for what the manifest can hold and a person can know BEFORE the extension exists: the
  * identity, who made it, and the ribbon button that opens it. It shows no file previews — plugin.json

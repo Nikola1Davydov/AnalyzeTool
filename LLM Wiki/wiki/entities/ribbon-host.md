@@ -7,7 +7,7 @@ sources: [../sources/analysetool-repo-docs.md]
 
 # RibbonHost — лента AnalyseTool
 
-Лента плагина в Revit: одна большая кнопка, две маленькие (Settings, Extensions) и кнопки
+Лента плагина в Revit: одна большая кнопка, три маленькие (Settings, Extensions, New) и кнопки
 расширений, собранные из манифестов. Код — `src/AnalyseTool.App/Common/Extensions/RibbonHost.cs`;
 Launcher зовёт `Build` через рефлексию по имени типа, поэтому переименование класса требует
 правки строк в `Launcher/App.cs` (см. `CLAUDE.md` репозитория).
@@ -19,22 +19,24 @@ Launcher зовёт `Build` через рефлексию по имени тип
 | Панель | Что в ней |
 | --- | --- |
 | Parameter | одна большая кнопка — сам инструмент (`AnalyseToolMain`) |
-| Manage | одна колонка из двух через `AddStackedItems`: **Settings · Extensions** |
+| Manage | одна колонка из трёх через `AddStackedItems`: **Settings · Extensions · New** |
 
 До 2026-10-08 блок Manage был из шести кнопок: слева Scripts · Settings · Report a bug, справа
-Reload · Extensions · New. Reload, New и Report a bug дублировали то, что уже есть в окнах
-Extensions и Settings, а Scripts ушёл вместе со скрипт-расширениями (см. ниже). Ушли и
+Reload · Extensions · New. Reload и Report a bug дублировали то, что уже есть в окнах
+Extensions и Settings, а Scripts ушёл вместе со скрипт-расширениями (см. ниже). New в тот же
+день сначала убрали, потом вернули по слову владельца: создание кнопки — суть плагина, ей нужна
+своя дверь; убрана вместо неё вторая дверь — кнопка «New extension» с выдвижной панелью внутри
+окна Extensions. Ушли и
 переключатели видимости кнопок (`GetHostButtons` / `SetHostButtonVisible`): у них не было
 никакого UI, а пункт «спрятать Scripts» в Settings, на который ссылался код, так и не появился.
 
-## Два системных окна
+## Три системных окна
 
-Settings и Extensions — один класс `SystemWindow`
-(`src/AnalyseTool.App/Common/Extensions/SystemWindow.cs`) и два маршрута clientapp:
-`#/system/settings`, `#/system/extensions`. Отличаются маршрутом, заголовком и размером,
-больше ничем; одно окно на ключ, второй клик фокусирует открытое. Отдельное окно New
-(`#/system/new-extension`) убрано 2026-10-08: та же форма есть выдвижной панелью внутри
-Extensions.
+Settings, Extensions и New — один класс `SystemWindow`
+(`src/AnalyseTool.App/Common/Extensions/SystemWindow.cs`) и три маршрута clientapp:
+`#/system/settings`, `#/system/extensions`, `#/system/new-extension`. Отличаются маршрутом,
+заголовком и размером, больше ничем; одно окно на ключ, второй клик фокусирует открытое.
+Форма создания (`CreateExtensionForm.vue`) живёт только в окне New.
 
 Единственная док-панель (`DockPaneHost`) показывает только `dockable`-страницы расширений; без
 них — экран «Nothing docked» (`#/dock`). Revit разрешает регистрировать панели только на старте,

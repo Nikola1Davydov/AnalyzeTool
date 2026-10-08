@@ -66,7 +66,8 @@ Open the **AnalyseTool** tab:
 
 - **AnalyseTool** — the main window: parameters, analytics and bulk editing.
 - **Settings** — the AI connection (MCP) and the plugin itself.
-- **Extensions** — install, create, update and reload extensions.
+- **Extensions** — install, update and reload extensions.
+- **New** — create an extension: a ribbon button with a page and a C# command.
 - Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and the commands your AI saved for you.
 
 ## 🧱 Family Manager
@@ -149,7 +150,7 @@ flowchart TB
     AT --> R[Revit]
 ```
 
-Prefer clicking to typing? **Extensions → New extension** scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
+Prefer clicking to typing? **New** on the ribbon scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
 
 <p align="center"><img src="img/new-extension.png" width="460" alt="Create an extension from a template" /></p>
 
