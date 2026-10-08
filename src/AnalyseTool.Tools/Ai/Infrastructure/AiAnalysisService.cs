@@ -12,9 +12,6 @@ namespace AnalyseTool.Tools.Ai
     internal class AiAnalysisService
     {
         private readonly IChatClient _chat;
-        private readonly string _providerName;
-        private readonly string _model;
-        private readonly int _timeoutSeconds;
 
         /// <summary>Back-compat: bare model name = the built-in local Ollama.</summary>
         public AiAnalysisService(string model) : this(null, model) { }
@@ -23,10 +20,7 @@ namespace AnalyseTool.Tools.Ai
         /// resolved through <see cref="AiProviderRegistry"/> (OpenAI-compatible endpoints included).</summary>
         public AiAnalysisService(string? providerId, string model)
         {
-            (_chat, AiProvider provider) = AiClientFactory.Create(providerId, model);
-            _providerName = provider.DisplayName;
-            _model = model;
-            _timeoutSeconds = provider.TimeoutSeconds;
+            (_chat, _) = AiClientFactory.Create(providerId, model);
         }
 
         public async Task<string> AnalyzeAsync(
@@ -284,28 +278,25 @@ namespace AnalyseTool.Tools.Ai
         private const int DeltaFlushChars = 80;
         private const int DeltaFlushMilliseconds = 150;
 
-        /// <param name="ct">The CALLER's cancellation, linked with this provider's deadline below. It was
-        /// ignored until now: the service made its own token, so a caller that gave up kept the model
-        /// running and paid for the whole answer it had stopped waiting for.</param>
+        /// <param name="ct">The CALLER's cancellation; the client's <see cref="TimeoutChatClient"/> links it
+        /// with this provider's deadline. It must reach the HTTP call: a caller that gave up would otherwise
+        /// keep the model running and pay for the whole answer it had stopped waiting for.</param>
         /// <param name="onDelta">Receives generated text as it arrives, throttled. Null means the caller is
         /// not watching, and then nothing is buffered for it.</param>
         private async Task<string> BuildAnswer(
             List<ChatMessage> chatHistory, ChatOptions chatOptions = default,
             CancellationToken ct = default, Action<string>? onDelta = null)
         {
-            // Linked, not replaced: the caller pressing Cancel must stop the HTTP call, AND an endpoint
-            // that never answers must still hit the deadline. Which of the two fired is told apart by the
-            // command, which owns the caller's token and can ask whether it was the one cancelled.
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_timeoutSeconds));
-
+            // Deadline and logging live in the client's decorators (AiClientFactory): TimeoutChatClient
+            // and SerilogChatClient. What stays here is the streaming itself and the translation of a
+            // 401 into the one exception the commands turn into an actionable message.
             StringBuilder stringBuilder = new StringBuilder();
             StringBuilder pending = new StringBuilder();
             System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
             long lastFlush = 0;
             try
             {
-                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, cts.Token))
+                await foreach (ChatResponseUpdate item in _chat.GetStreamingResponseAsync(chatHistory, chatOptions, ct))
                 {
                     if (string.IsNullOrEmpty(item.Text)) continue;
                     stringBuilder.Append(item.Text);
@@ -327,30 +318,10 @@ namespace AnalyseTool.Tools.Ai
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                Serilog.Log.Warning("AI call unauthorized ({Provider}/{Model})", _providerName, _model);
                 throw new UnauthorizedAccessException(
                     "The AI endpoint rejected the request (401). Check the provider's API key in Settings " +
                     "(for Ollama cloud models: run 'ollama login').");
             }
-            catch (OperationCanceledException)
-            {
-                // Two different events reach here now, and calling both a timeout would make the log lie
-                // about a user who simply changed their mind.
-                if (ct.IsCancellationRequested)
-                    Serilog.Log.Information("AI call cancelled by the caller ({Provider}/{Model})",
-                        _providerName, _model);
-                else
-                    Serilog.Log.Warning("AI call timed out after {Timeout}s ({Provider}/{Model})",
-                        _timeoutSeconds, _providerName, _model);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "AI call failed ({Provider}/{Model})", _providerName, _model);
-                throw;
-            }
-            Serilog.Log.Information("AI call ok: {Provider}/{Model}, {Elapsed} ms, {Chars} chars",
-                _providerName, _model, watch.ElapsedMilliseconds, stringBuilder.Length);
             return stringBuilder.ToString();
         }
 
