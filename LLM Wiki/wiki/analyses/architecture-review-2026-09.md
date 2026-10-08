@@ -93,8 +93,11 @@ Sdk) и пропуск отменённых элементов в `Execute`.
 TypeScript не проверяется вовсе (нет `typescript`/`vue-tsc`, есть только `src/clientapp/jsconfig.json`),
 `.ts` не линтуются, CI фронт не собирает. Реестр `Commands` в `src/clientapp/src/RevitBridge.ts`
 шесть имён из 24 держит за командами Family Manager, ушедшими из платформы 2026-09-01, — и никто не
-заметил: ровно то, что происходит с рукописным дублем. God-компоненты (`ExtensionsView.vue` —
-1255 строк) — [#158](https://github.com/Nikola1Davydov/AnalyzeTool/issues/158).
+заметил: ровно то, что происходит с рукописным дублем. God-компоненты (ExtensionsView.vue —
+1255 строк) — [#158](https://github.com/Nikola1Davydov/AnalyzeTool/issues/158). *2026-10-08: ExtensionsView
+разобран — состояние и действия в `src/clientapp/src/view/System/extensions/useExtensionManager.ts`
+(provide/inject, один экземпляр на окно), секции и диалоги отдельными компонентами рядом; сам
+`ExtensionsView.vue` — 85 строк. ConnectParametersView удалён целиком, `DataTable.vue` остаётся.*
 
 ## Остальное — по необходимости
 

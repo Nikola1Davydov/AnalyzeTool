@@ -1636,3 +1636,10 @@ CreateExtensionTemplateDrawer из окна Extensions удалены. `entities
 проблеме или обновлении. Удаление сохранённой команды предупреждает, что её исходники в `src\` уйдут
 вместе с папкой (`GetInstalledExtensions` отдаёт `hostBuilt`). `concepts/extension-distribution.md`
 поправлен.
+
+## 2026-10-08 — ExtensionsView разобран на части (#158, частично)
+
+Чистый рефакторинг без изменения поведения: `view/System/extensions/` — `useExtensionManager.ts`
+(состояние и действия, provide/inject), `types.ts`, по компоненту на секцию (Installed, Your own,
+Available, Folders), ячейки (`ExtensionCell`, `ExtensionStatus`) и диалоги. `ExtensionsView.vue` —
+1133 → 85 строк. Проверено скриншотами с поддельным мостом: до и после совпадают побайтно.
