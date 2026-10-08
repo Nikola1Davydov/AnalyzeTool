@@ -7,7 +7,7 @@ sources: [../sources/analysetool-repo-docs.md]
 
 # RibbonHost — лента AnalyseTool
 
-Лента плагина в Revit: одна большая кнопка, три маленькие (Settings, Extensions, New) и кнопки
+Лента плагина в Revit: одна большая кнопка, четыре маленькие (Settings, Report a bug, Extensions, New) и кнопки
 расширений, собранные из манифестов. Код — `src/AnalyseTool.App/Common/Extensions/RibbonHost.cs`;
 Launcher зовёт `Build` через рефлексию по имени типа, поэтому переименование класса требует
 правки строк в `Launcher/App.cs` (см. `CLAUDE.md` репозитория).
@@ -19,12 +19,13 @@ Launcher зовёт `Build` через рефлексию по имени тип
 | Панель | Что в ней |
 | --- | --- |
 | Parameter | одна большая кнопка — сам инструмент (`AnalyseToolMain`) |
-| Manage | одна колонка из трёх через `AddStackedItems`: **Settings · Extensions · New** |
+| Manage | две колонки по две через `AddStackedItems`: **Settings · Report a bug** (сам плагин) и **Extensions · New** (расширения) |
 
 До 2026-10-08 блок Manage был из шести кнопок: слева Scripts · Settings · Report a bug, справа
-Reload · Extensions · New. Reload и Report a bug дублировали то, что уже есть в окнах
-Extensions и Settings, а Scripts ушёл вместе со скрипт-расширениями (см. ниже). New в тот же
-день сначала убрали, потом вернули по слову владельца: создание кнопки — суть плагина, ей нужна
+Reload · Extensions · New. Reload дублировал кнопку в окне Extensions, а Scripts ушёл вместе со
+скрипт-расширениями (см. ниже). New и Report a bug в тот же день сначала убрали, потом вернули по
+слову владельца; Report a bug обрабатывается в Launcher и открывает GitHub, даже если сам плагин не
+загрузился. Про New владелец сказал: создание кнопки — суть плагина, ей нужна
 своя дверь; убрана вместо неё вторая дверь — кнопка «New extension» с выдвижной панелью внутри
 окна Extensions. Ушли и
 переключатели видимости кнопок (`GetHostButtons` / `SetHostButtonVisible`): у них не было

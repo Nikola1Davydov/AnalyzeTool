@@ -66,6 +66,7 @@ Open the **AnalyseTool** tab:
 
 - **AnalyseTool** — the main window: parameters, analytics and bulk editing.
 - **Settings** — the AI connection (MCP) and the plugin itself.
+- **Report a bug** — opens the GitHub issues page (works even if the plugin failed to load).
 - **Extensions** — install, update and reload extensions.
 - **New** — create an extension: a ribbon button with a page and a C# command.
 - Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and the commands your AI saved for you.

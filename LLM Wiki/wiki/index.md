@@ -37,7 +37,7 @@ updated: 2026-10-08
 | [`entities/project-folder.md`](entities/project-folder.md) | папка как интерфейс, шина сообщений и хранилище свода |
 | [`entities/general-folder.md`](entities/general-folder.md) | ярус бюро: общие источники без своей вики, и почему так |
 | [`entities/ollama.md`](entities/ollama.md) | локальный вывод — снят 2026-10-08 вместе со всем встроенным ИИ; история |
-| [`entities/ribbon-host.md`](entities/ribbon-host.md) | лента: AnalyseTool, Settings, Extensions, New; стопки — дело панели |
+| [`entities/ribbon-host.md`](entities/ribbon-host.md) | лента: AnalyseTool, Settings · Report a bug, Extensions · New; стопки — дело панели |
 | [`entities/extension-manifest.md`](entities/extension-manifest.md) | справочник `plugin.json`: схема 2, кнопки, кто и как его пишет |
 
 ## Концепции

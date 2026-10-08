@@ -1621,3 +1621,9 @@ CHANGELOG поправлен. Проверено на Linux поддельным
 внутри окна Extensions. Лента теперь AnalyseTool · Settings · Extensions · New; окно New
 (`#/system/new-extension`) восстановлено, кнопка «New extension» и выдвижная панель
 CreateExtensionTemplateDrawer из окна Extensions удалены. `entities/ribbon-host.md` поправлен.
+
+## 2026-10-08 — Report a bug вернулась на ленту
+
+По слову владельца. Лента: AnalyseTool · (Settings · Report a bug) · (Extensions · New) — две колонки
+по две. Кнопка обрабатывается в Launcher, поэтому открывает GitHub и при незагрузившемся плагине.
+`entities/ribbon-host.md` поправлен.
