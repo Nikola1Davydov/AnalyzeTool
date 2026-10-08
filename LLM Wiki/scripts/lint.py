@@ -30,7 +30,8 @@ CODE_DIR = r"^(src|docs|\.github|samples|img|libs|AnalyseTool\.[A-Za-z]+)/"
 SKIP = {"path/File.cs", "kebab-case.md", "wiki/Home.md", "wiki/Writing-extensions-with-AI.md"}
 
 # Файлы, создаваемые в рантайме (в профиле пользователя), а не лежащие в репозитории.
-RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json"}
+RUNTIME = {"ai-providers.json", "mcp.json", "index.db", "registry.json", "codeexec.json",
+           "extensions.json", "extensions-state.json", "command-buttons.json", "ribbon-state.json"}
 
 # Существуют, но не в текущей ветке. Значение — где искать; это не ошибка.
 ELSEWHERE = {"docs/pipeline-design.md": "ветка claude/pipelines-plan-f8jrgf"}
@@ -117,6 +118,10 @@ def resolve(bare):
 def check_code_paths(pages):
     seen = {}
     for rel, p in pages:
+        # log.md only grows: its entries describe the repository AS IT WAS that day, and a path
+        # that was removed since is history, not a stale claim — and must not be edited away.
+        if rel == "wiki/log.md":
+            continue
         for m in re.finditer(r"`([^`\n]+)`", read(p)):
             t = m.group(1).strip()
             if t in SKIP or t in RUNTIME or "<" in t or ">" in t:

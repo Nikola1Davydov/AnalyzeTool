@@ -99,7 +99,7 @@ TypeScript не проверяется вовсе (нет `typescript`/`vue-tsc`
 ## Остальное — по необходимости
 
 [#148](https://github.com/Nikola1Davydov/AnalyzeTool/issues/148) убрать статическое состояние
-(`CoreServices`, `AiProviderRegistry`, `RevitTaskHub.Current`) и `ActivatorUtilities` в диспетчере;
+(`CoreServices`, `RevitTaskHub.Current`; третий из списка, AiProviderRegistry, удалён 2026-10-08 вместе со встроенным ИИ) и `ActivatorUtilities` в диспетчере;
 [#152](https://github.com/Nikola1Davydov/AnalyzeTool/issues/152) разбить god-классы (`RibbonHost` —
 1027 строк, `McpBridgeServer` — 660, `Mcp/Program.cs` — 589; при переносе `RibbonHost` — FQN-строки
 лаунчера); [#154](https://github.com/Nikola1Davydov/AnalyzeTool/issues/154) `Directory.Build.props`.

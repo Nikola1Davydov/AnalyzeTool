@@ -82,7 +82,8 @@ writer не знает (`entryAssembly`, `icon`, вторая кнопка), п�
 ## Шаблон: всегда страница плюс C#
 
 Форма New (`src/clientapp/src/view/System/CreateExtensionForm.vue`) шлёт `kind: "Combo"`
-константой — `plugin.json` + `index.html` + csproj + `Hello.cs`, лишнее автор удаляет.
+константой — `plugin.json` + `index.html` + csproj + Hello.cs (строковый литерал в
+`CreateExtensionTemplate.cs`), лишнее автор удаляет.
 `CreateExtensionTemplate` (`src/AnalyseTool.Core/Features/Extensions/CreateExtensionTemplate.cs`)
 по-прежнему принимает `UiOnly`, `Csharp` и `Combo` для тех, кто зовёт её сам. Из
 `src/AnalyseTool.Core/Features/Extensions/Templates/` рядом кладутся `readme.md.txt` и

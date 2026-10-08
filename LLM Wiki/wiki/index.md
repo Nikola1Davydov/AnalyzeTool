@@ -36,8 +36,8 @@ updated: 2026-10-08
 | [`entities/shadow-index.md`](entities/shadow-index.md) | непостроенный компонент, на который опираются пять планов |
 | [`entities/project-folder.md`](entities/project-folder.md) | папка как интерфейс, шина сообщений и хранилище свода |
 | [`entities/general-folder.md`](entities/general-folder.md) | ярус бюро: общие источники без своей вики, и почему так |
-| [`entities/ollama.md`](entities/ollama.md) | локальный вывод и почему это не просто дешёвый тариф |
-| [`entities/ribbon-host.md`](entities/ribbon-host.md) | лента: панель Manage, три системных окна, стопки — дело панели |
+| [`entities/ollama.md`](entities/ollama.md) | локальный вывод — снят 2026-10-08 вместе со всем встроенным ИИ; история |
+| [`entities/ribbon-host.md`](entities/ribbon-host.md) | лента: AnalyseTool, Settings, Extensions; стопки — дело панели |
 | [`entities/extension-manifest.md`](entities/extension-manifest.md) | справочник `plugin.json`: схема 2, кнопки, кто и как его пишет |
 
 ## Концепции
@@ -61,7 +61,7 @@ updated: 2026-10-08
 | --- | --- |
 | [`analyses/mcp-surface-state.md`](analyses/mcp-surface-state.md) | что нашёл полевой тест 1.5 и в каком порядке чинить |
 | [`analyses/agent-hosting.md`](analyses/agent-hosting.md) | где крутится цикл агента, у кого инициатива, кто платит |
-| [`analyses/built-in-agent-plan.md`](analyses/built-in-agent-plan.md) | решение 2026-09-02: цикл с инструментами в Core, чат, эскалация = облачный провайдер по ключу (#133) |
+| [`analyses/built-in-agent-plan.md`](analyses/built-in-agent-plan.md) | план 2026-09-02 (#133), отменён 2026-10-08 вместе со встроенным ИИ |
 | [`analyses/roadmap.md`](analyses/roadmap.md) | куда двигаться дальше: три слоя, что припарковать, структура трекера |
 | [`analyses/platform-as-runtime.md`](analyses/platform-as-runtime.md) | «всё — расширение»: где аналогия с NuGet точна, где ломается |
 | [`analyses/checking-module.md`](analyses/checking-module.md) | модуль проверки: объём, авторство от данных, граница платного |
