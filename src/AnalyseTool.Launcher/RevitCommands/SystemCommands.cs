@@ -21,6 +21,22 @@ namespace AnalyseTool.Launcher.RevitCommands
             => App.InvokeRibbon("OpenExtensions", commandData.Application);
     }
 
+    /// <summary>Ribbon "About" button — versions, what's new, links.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class AboutCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("OpenAbout", commandData.Application);
+    }
+
+    /// <summary>Ribbon "Reload" button — reloads extensions without restarting Revit.</summary>
+    [Transaction(TransactionMode.Manual)]
+    internal sealed class ReloadCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => App.InvokeRibbon("Reload", commandData.Application);
+    }
+
     /// <summary>Ribbon "New" button — a small window with the create-extension form.</summary>
     [Transaction(TransactionMode.Manual)]
     internal sealed class NewExtensionCommand : IExternalCommand

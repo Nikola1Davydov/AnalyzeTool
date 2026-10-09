@@ -20,7 +20,7 @@ namespace AnalyseTool.Core.Features.Extensions
         public const string CommandName = "ReloadExtensions";
 
         // No CodeExecutionSettings check in the body, unlike the authoring commands it sits beside. The
-        // gate is the MCP bridge's alone, because Settings' own Reload button invokes this command and
+        // gate is the MCP bridge's alone, because the Extensions window invokes this command (after a folder change) and
         // must keep working with the toggle off. The description says "hidden from the AI" rather than
         // "requires", which is what is actually true.
 

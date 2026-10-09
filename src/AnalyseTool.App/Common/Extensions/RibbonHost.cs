@@ -16,7 +16,7 @@ using AdWin = Autodesk.Windows;
 namespace AnalyseTool.App.Common.Extensions
 {
     /// <summary>
-    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Report a bug / Extensions / New) use the
+    /// Builds the Revit ribbon for AnalyseTool. Static buttons (main / Settings / Report a bug / About / Reload / Extensions / New) use the
     /// official Revit API (stable). Per-extension buttons use the unofficial AdWindows API so they
     /// can be added, removed and updated live (Reload) without restarting Revit. Invoked from the
     /// Launcher's OnStartup via reflection, so all logic lives in the isolated AnalyseTool assembly.
@@ -28,6 +28,8 @@ namespace AnalyseTool.App.Common.Extensions
         private const string ExtensionsCommandClass = "AnalyseTool.Launcher.RevitCommands.ExtensionsCommand";
         private const string NewExtensionCommandClass = "AnalyseTool.Launcher.RevitCommands.NewExtensionCommand";
         private const string BugsCommandClass = "AnalyseTool.Launcher.RevitCommands.BugsCommand";
+        private const string ReloadCommandClass = "AnalyseTool.Launcher.RevitCommands.ReloadCommand";
+        private const string AboutCommandClass = "AnalyseTool.Launcher.RevitCommands.AboutCommand";
         private const string DefaultTab = "AnalyseTool";
         private const string ExtensionsPanelTitle = "Extensions";
 
@@ -53,7 +55,7 @@ namespace AnalyseTool.App.Common.Extensions
         // Open windows, so a second click focuses the existing one instead of stacking duplicates:
         // one window per extension button.
         //
-        // The plugin's own pages (Settings, Extensions, New extension), one window each.
+        // The plugin's own pages (Settings, About, Extensions, New extension), one window each.
         private static readonly Dictionary<string, SystemWindow> _systemWindows =
             new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Window> _extWindows =
@@ -77,14 +79,17 @@ namespace AnalyseTool.App.Common.Extensions
             // route — features and extensions appear in the dock without a Revit restart.
             DockPaneHost.Register(app);
 
-            // Four small buttons beside it, two columns by job: the plugin itself (preferences, feedback)
-            // and extensions (manage, create). "New" has a door of its own because making a button is the
-            // plugin's point; "Report a bug" stays on the ribbon because it is handled in the Launcher and
-            // still works when the plugin itself failed to load. Reload lives in the Extensions window.
+            // Small buttons beside it, two columns by job: the plugin itself (preferences, feedback, about) and
+            // extensions (reload, manage, create). "New" has a door of its own because making a button is
+            // the plugin's point; Reload is pressed after every edit of an extension, so it sits one click
+            // away rather than inside the Extensions window; "Report a bug" stays on the ribbon because it
+            // is handled in the Launcher and still works when the plugin itself failed to load.
             RibbonPanel managePanel = GetOrCreatePanel(app, DefaultTab, "Manage");
 
+            PushButtonData reloadData = MakeButtonData("AnalyseToolReload", "Reload", launcherPath,
+                ReloadCommandClass, "Reload extensions (DLLs + buttons) without restarting Revit");
             PushButtonData settingsData = MakeButtonData("AnalyseToolSettings", "Settings", launcherPath,
-                SettingsCommandClass, "The AI connection (MCP) and everything else about the plugin itself");
+                SettingsCommandClass, "The AI connection (MCP) and the plugin's own switches");
             PushButtonData extensionsData = MakeButtonData("AnalyseToolExtensions", "Extensions", launcherPath,
                 ExtensionsCommandClass, "Install, update and manage extensions");
             PushButtonData newExtensionData = MakeButtonData("AnalyseToolNewExtension", "New", launcherPath,
@@ -92,14 +97,18 @@ namespace AnalyseTool.App.Common.Extensions
 
             PushButtonData bugsData = MakeButtonData("AnalyseToolBugs", "Report a bug", launcherPath,
                 BugsCommandClass, "Report a bug or request a feature on GitHub");
+            PushButtonData aboutData = MakeButtonData("AnalyseToolAbout", "About", launcherPath,
+                AboutCommandClass, "Versions, what's new and where the code lives");
 
-            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(settingsData, bugsData);
+            IList<RibbonItem> pluginStack = managePanel.AddStackedItems(settingsData, bugsData, aboutData);
             SetStackedImage(pluginStack, 0, BuildGlyphIcon("\uE713", 16)); // Settings (U+E713)
             SetStackedImage(pluginStack, 1, BuildGlyphIcon("\uEBE8", 16)); // Report a bug (U+EBE8)
+            SetStackedImage(pluginStack, 2, BuildGlyphIcon("\uE946", 16)); // About — Info (U+E946)
 
-            IList<RibbonItem> extensionStack = managePanel.AddStackedItems(extensionsData, newExtensionData);
-            SetStackedImage(extensionStack, 0, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
-            SetStackedImage(extensionStack, 1, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
+            IList<RibbonItem> extensionStack = managePanel.AddStackedItems(reloadData, extensionsData, newExtensionData);
+            SetStackedImage(extensionStack, 0, BuildGlyphIcon("\uE72C", 16)); // Reload (U+E72C)
+            SetStackedImage(extensionStack, 1, BuildGlyphIcon("\uEA86", 16)); // Extensions — Puzzle (U+EA86)
+            SetStackedImage(extensionStack, 2, BuildGlyphIcon("\uECC8", 16)); // New — AddTo (U+ECC8)
 
             // Dynamic extension buttons via AdWindows.
             RefreshExtensionButtons(revitVersion);
@@ -477,6 +486,15 @@ namespace AnalyseTool.App.Common.Extensions
             }
         }
 
+        /// <summary>Ribbon "Reload" button — reloads extension DLLs; the ExtensionsReloaded handlers
+        /// refresh the ribbon buttons and any open Extensions window.</summary>
+        public static void Reload(UIApplication uiApp)
+        {
+            AnalyseToolBootstrap.Initialize(uiApp);
+            CoreServices.ReloadExtensions();
+            TaskDialog.Show("AnalyseTool — Reload", "Extensions reloaded.");
+        }
+
         /// <summary>Ribbon "Settings" button — the plugin's own preferences (MCP, about).</summary>
         public static void OpenSettings(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "settings", "#/system/settings", "AnalyseTool — Settings", 880, 720);
@@ -484,6 +502,10 @@ namespace AnalyseTool.App.Common.Extensions
         /// <summary>Ribbon "Extensions" button — the extension manager (installed, catalog, dev folders).</summary>
         public static void OpenExtensions(UIApplication uiApp) =>
             OpenSystemPage(uiApp, "extensions", "#/system/extensions", "AnalyseTool — Extensions", 1000, 680);
+
+        /// <summary>Ribbon "About" button — versions, what's new, links.</summary>
+        public static void OpenAbout(UIApplication uiApp) =>
+            OpenSystemPage(uiApp, "about", "#/system/about", "AnalyseTool — About", 760, 760);
 
         /// <summary>Ribbon "New" button — a small window with nothing but the create-extension form.
         /// Its own window, not the manager with a drawer over it: pressing "New" means "I want to make

@@ -26,7 +26,7 @@ status: draft
 | `ONBOARDING.md` | гайд автора расширений. Он же README пакета SDK на NuGet, он же зеркалится в GitHub Wiki |
 | `src/LLM.md` | инструкции «вставь в ИИ» для написания расширений. Вшит ресурсом в `AnalyseTool.Core` и отдаётся дословно командой `CreateExtensionTemplate` (в папку нового расширения) и `GetAuthoringGuide` (`src/AnalyseTool.Core/Features/Extensions/GetAuthoringGuide.cs`, агенту через MCP). Рядом, в `src/AnalyseTool.Core/Features/Extensions/Templates/`, — csproj и `.gitignore`, а теперь и `readme.md.txt` с `workflow.yml.txt` |
 | `docs/extension-platform-design.md` | дизайн платформы расширений |
-| `CHANGELOG.md` | едет рядом с DLL плагина; окно Settings его показывает |
+| `CHANGELOG.md` | едет рядом с DLL плагина; окно About его показывает |
 
 **GitHub Wiki уже существует и генерируется, а не пишется руками.**
 `.github/workflows/wiki-sync.yml` копирует `ONBOARDING.md` в `wiki/Home.md`, а

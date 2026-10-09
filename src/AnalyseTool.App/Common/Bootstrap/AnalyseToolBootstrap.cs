@@ -62,6 +62,9 @@ namespace AnalyseTool.App.Common.Bootstrap
             CoreServices.Initialize(queue, loader, revitVersion);
             CoreServices.ExtensionsReloaded += () =>
                 RibbonEventHub.Run(app => RibbonHost.RefreshExtensionButtons(app.Application.VersionNumber));
+            // An open Extensions window re-lists itself: a Reload from the ribbon happens behind its back.
+            CoreServices.ExtensionsReloaded += () =>
+                Common.Transport.WebView2Transport.BroadcastEvent("ExtensionsReloaded");
 
             // The ribbon was built at Revit startup, before this first load — which may have built an
             // extension from its sources for this Revit year, so its command buttons can appear now.

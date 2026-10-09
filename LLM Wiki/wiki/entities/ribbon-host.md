@@ -7,7 +7,7 @@ sources: [../sources/analysetool-repo-docs.md]
 
 # RibbonHost — лента AnalyseTool
 
-Лента плагина в Revit: одна большая кнопка, четыре маленькие (Settings, Report a bug, Extensions, New) и кнопки
+Лента плагина в Revit: одна большая кнопка, шесть маленьких (Settings, Report a bug, About, Reload, Extensions, New) и кнопки
 расширений, собранные из манифестов. Код — `src/AnalyseTool.App/Common/Extensions/RibbonHost.cs`;
 Launcher зовёт `Build` через рефлексию по имени типа, поэтому переименование класса требует
 правки строк в `Launcher/App.cs` (см. `CLAUDE.md` репозитория).
@@ -19,7 +19,7 @@ Launcher зовёт `Build` через рефлексию по имени тип
 | Панель | Что в ней |
 | --- | --- |
 | Parameter | одна большая кнопка — сам инструмент (`AnalyseToolMain`) |
-| Manage | две колонки по две через `AddStackedItems`: **Settings · Report a bug** (сам плагин) и **Extensions · New** (расширения) |
+| Manage | две колонки через `AddStackedItems`: **Settings · Report a bug · About** (сам плагин) и **Reload · Extensions · New** (расширения) |
 
 До 2026-10-08 блок Manage был из шести кнопок: слева Scripts · Settings · Report a bug, справа
 Reload · Extensions · New. Reload дублировал кнопку в окне Extensions, а Scripts ушёл вместе со

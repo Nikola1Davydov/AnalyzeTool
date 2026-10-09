@@ -95,7 +95,7 @@ const {
       </template>
     </DataTable>
     <p class="text-xs text-surface-500 mt-3">
-      Own or company repositories for <b>Available</b> go in
+      Own or company repositories for <b>Packages</b> go in
       <span class="font-mono break-all">{{ userCatalogPath }}</span> — same shape as the shipped
       list (<span class="font-mono">id, name, description, source, website</span>); an entry with
       an existing id replaces the shipped one.

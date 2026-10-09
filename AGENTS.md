@@ -84,4 +84,4 @@ the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not 
 
 - `ONBOARDING.md` — extension author guide (mirrored to the GitHub wiki), also the NuGet README of the Sdk package.
 - `src/LLM.md` — paste-into-AI extension authoring instructions; `CreateExtensionTemplate.cs` embeds a generated copy — keep §4 (project setup) consistent in BOTH places.
-- `CHANGELOG.md` — ships next to the plugin DLL (Settings window displays it).
+- `CHANGELOG.md` — ships next to the plugin DLL (the About window displays it).

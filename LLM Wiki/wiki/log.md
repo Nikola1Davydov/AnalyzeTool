@@ -1643,3 +1643,16 @@ CreateExtensionTemplateDrawer из окна Extensions удалены. `entities
 (состояние и действия, provide/inject), `types.ts`, по компоненту на секцию (Installed, Your own,
 Available, Folders), ячейки (`ExtensionCell`, `ExtensionStatus`) и диалоги. `ExtensionsView.vue` —
 1133 → 85 строк. Проверено скриншотами с поддельным мостом: до и после совпадают побайтно.
+
+## 2026-10-09 — Reload вернулась на ленту
+
+По слову владельца: Reload нужна после каждой правки расширения, ей место на ленте, а не в окне
+Extensions. Колонка расширений — Reload · Extensions · New; кнопка Reload из окна убрана, окно
+слушает событие `ExtensionsReloaded` и само обновляет списки. `entities/ribbon-host.md` поправлен.
+
+## 2026-10-09 — About на ленте; Installed и Available — один список
+
+По слову владельца. Кнопка About в колонке плагина (Settings · Report a bug · About) открывает окно
+`#/system/about`: версии, обновление, changelog, ссылки — блок About и диалог What's new ушли из
+Settings. В окне Extensions Installed и Available слиты в раздел Packages: установленные сверху,
+предложения каталога ниже с кнопкой Install; раздел стоит над Your own.

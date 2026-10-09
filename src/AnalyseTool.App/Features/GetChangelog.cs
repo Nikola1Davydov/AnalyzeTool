@@ -6,7 +6,7 @@ namespace AnalyseTool.App.Features
 {
     /// <summary>
     /// Read-only: the plugin's CHANGELOG.md, shipped next to the plugin DLL by the build/installer.
-    /// Backs the Settings window's "What's new" dialog. Returns { markdown, error }.
+    /// Backs the About window's "What's new" section. Returns { markdown, error }.
     /// </summary>
     [RevitCommand(
         Description = "Returns the plugin's changelog as markdown ({ markdown, error }). " +

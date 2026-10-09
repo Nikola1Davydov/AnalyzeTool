@@ -424,7 +424,7 @@ page sees only `window.AT`.
 - The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
   single-year extension works without year folders. UI is version-independent and always lives
   in the root.
-- Changed code/manifest → **Reload** in the Extensions window. No restart.
+- Changed code/manifest → **Reload** on the ribbon. No restart.
 - A brand-new ribbon button needs a **Revit restart** the first time.
 
 ### 7.0 Migrating an extension from the OLD layout
@@ -494,7 +494,7 @@ git push --tags`, and `"updateFeed": "github:you/your-repo"` in plugin.json give
 notifications for free:
 
 Once it is published, the repository itself is the install source: users reach it through Extensions
-→ Available (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
+→ Packages (the shipped list, or their own `%LOCALAPPDATA%\AnalyseTool\catalog.json`), or by pasting the
 repository into Install → "From a repository". Both routes download the zip from your release.
 
 ```yaml
@@ -682,4 +682,4 @@ model) in the payload or from your own settings file, and run the call **outside
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
       for commands that take arguments; `OutputType` for what they return (SDK 1.2+).
 - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
-- [ ] Tell the user the deploy path and that they click **Reload** in the Extensions window (or restart for a new button).
+- [ ] Tell the user the deploy path and that they click **Reload** on the ribbon (or restart for a new button).

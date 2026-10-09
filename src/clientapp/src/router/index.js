@@ -32,6 +32,12 @@ const routes = [
     meta: { layout: "bare" },
   },
   {
+    // The "About" ribbon button: versions, what's new, links. Same page as the sidebar's /about.
+    path: "/system/about",
+    component: () => import("@/view/AboutView.vue"),
+    meta: { layout: "bare" },
+  },
+  {
     // The "New" ribbon button: a window that is nothing but the create-extension form.
     path: "/system/new-extension",
     component: () => import("@/view/System/NewExtensionView.vue"),

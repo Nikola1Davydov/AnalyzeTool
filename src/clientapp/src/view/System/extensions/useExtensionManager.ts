@@ -194,8 +194,8 @@ export function createExtensionManager() {
   // for the entries that publish releases. The list is the one shipped with the plugin plus the
   // user's own catalog.json; installs always download from the publisher, never from us.
   const catalog = ref<CatalogRow[]>([]);
-  // What the "Available" block offers: entries not installed and not present as a dev copy. An
-  // installed one is already a row above, with its own update and uninstall.
+  // The catalog rows of the Packages list: entries not installed and not present as a dev copy. An
+  // installed one is already listed as a package, with its own update and uninstall.
   const availableCatalog = computed(() => catalog.value.filter((row) => !row.installed));
   const userCatalogPath = ref("");
   const catalogLoading = ref(false);

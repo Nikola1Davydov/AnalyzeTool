@@ -154,7 +154,7 @@ shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted (`acme.sample`). Becomes the command prefix and the folder name. |
 | `version` | ✔ | SemVer string. Shown in the Extensions window and appended to the window title (`Name - 1.0.0`). This is the single source of truth for the extension's version — the packaging pipeline reads it. |
-| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in Settings → About. |
+| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in the About window (ribbon → About). |
 | `description` | — | One line, shown in the extension listing. |
 | `publisher` | — | You or your company. Shown next to the extension name. |
 | `website` / `supportUrl` | — | Links shown in the listing. Recommended when publishing. |
@@ -668,7 +668,7 @@ release.**
    this — there is nothing to copy.
 3. **Load it:**
    - First time / new button: **restart Revit** (the static ribbon hook runs at startup).
-   - Already-known extension, changed code/manifest: press **Reload** in the Extensions window.
+   - Already-known extension, changed code/manifest: press **Reload** on the ribbon.
      No restart needed.
 
 **Reload** does a true live reload: it re-reads the manifests, unloads the old collectible
@@ -676,14 +676,14 @@ release.**
 so the file on disk is never locked — you can overwrite the DLL while Revit is running, then
 Reload.
 
-The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Installed**
-packages and **Your own** folders separately, each row showing the version, a **Status** that only
+The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Packages**
+(installed ones first, then catalog entries you do not have yet with an **Install** button, §10)
+and **Your own** folders separately, each row showing the version, a **Status** that only
 speaks up about a problem (not built, failed to compile, no build for this Revit year) or an update,
 an enable/disable switch, edit, **Open folder** and delete. Installed packages with an `updateFeed`
-are checked for updates when the window opens. **Install** takes a `.zip` or a repository,
-**Reload** applies changes, **Available** lists catalog entries you do not have yet (§10), and the
+are checked for updates when the window opens. **Install** takes a `.zip` or a repository, and the
 collapsed **Folders scanned** panel holds the extension paths. New extensions are made with **New**
-on the ribbon.
+on the ribbon, changes are applied with **Reload** beside it.
 
 Every row also has **Edit** (the pencil): the ribbon button's name, tooltip, tab, panel, shape and
 dock setting, plus description, publisher, links and update feed — written back into `plugin.json`
@@ -858,7 +858,7 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
 
 
-**Getting listed.** The **Available** block of the Extensions window is the "where do extensions come
+**Getting listed.** The catalog rows of the Extensions window's **Packages** list is the "where do extensions come
 from" list: repositories not installed yet, with their links, each with an **Install** button that downloads the package from the
 publisher's own release. Two ways onto it:
 

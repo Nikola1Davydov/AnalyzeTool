@@ -33,7 +33,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 ### Troubleshooting
 - **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
-- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** (Extensions → Reload).
+- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** on the ribbon.
 - **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
 - **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
 - **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
@@ -65,9 +65,11 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 Open the **AnalyseTool** tab:
 
 - **AnalyseTool** — the main window: parameters, analytics and bulk editing.
-- **Settings** — the AI connection (MCP) and the plugin itself.
+- **Settings** — the AI connection (MCP) and the plugin's own switches.
 - **Report a bug** — opens the GitHub issues page (works even if the plugin failed to load).
-- **Extensions** — install, update and reload extensions.
+- **About** — versions, what's new and links to the source.
+- **Reload** — reload extensions (DLLs + buttons) without restarting Revit.
+- **Extensions** — install, update and manage extensions.
 - **New** — create an extension: a ribbon button with a page and a C# command.
 - Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and the commands your AI saved for you.
 
