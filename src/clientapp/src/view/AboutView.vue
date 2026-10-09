@@ -50,7 +50,15 @@ function openFolder(path: string | undefined) {
 }
 
 // --- What's new: CHANGELOG.md ships next to the plugin DLL, rendered as markdown. -----------------
-const changelogHtml = ref<string | null>(null);
+// One fold per release, split on the "## [1.5.2] / 2026-09-14" headings: the whole file as one page
+// was a wall nobody scrolls. The newest release is open; the rest show only version, date and size.
+interface Release {
+  version: string;
+  date: string | null;
+  count: number; // top-level bullets — how big the release was, before opening it
+  html: string;
+}
+const releases = ref<Release[] | null>(null);
 const changelogError = ref<string | null>(null);
 
 async function loadChangelog() {
@@ -58,7 +66,21 @@ async function loadChangelog() {
     const res = await invoke<{ markdown: string | null; error: string | null }>("GetChangelog");
     if (res?.markdown) {
       const { marked } = await import("marked"); // lazy — its own chunk
-      changelogHtml.value = await marked.parse(res.markdown);
+      const parts = res.markdown.split(/^## /m).slice(1); // [0] is the "# Changelog" title
+      releases.value = await Promise.all(
+        parts.map(async (part) => {
+          const newline = part.indexOf("\n");
+          const heading = (newline < 0 ? part : part.slice(0, newline)).trim();
+          const body = newline < 0 ? "" : part.slice(newline + 1);
+          const [version, date] = heading.split("/").map((s) => s.trim().replace(/^\[|\]$/g, ""));
+          return {
+            version: version || heading,
+            date: date || null,
+            count: (body.match(/^- /gm) ?? []).length,
+            html: await marked.parse(body),
+          };
+        }),
+      );
     } else {
       changelogError.value = res?.error ?? "Changelog not available.";
     }
@@ -70,7 +92,7 @@ async function loadChangelog() {
 // Fetched on the first expand, not on open — nobody reads it while it is folded.
 const changelogCollapsed = ref(true);
 watch(changelogCollapsed, (collapsed) => {
-  if (!collapsed && !changelogHtml.value && !changelogError.value) loadChangelog();
+  if (!collapsed && !releases.value && !changelogError.value) loadChangelog();
 });
 
 onMounted(loadEnvironment);
@@ -159,15 +181,46 @@ onMounted(loadEnvironment);
         <span class="text-base font-bold">What's new</span>
       </template>
       <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
-      <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
+      <div v-else-if="!releases" class="text-surface-500 text-sm p-4 text-center">
         <i class="pi pi-spin pi-spinner mr-2" />Loading…
       </div>
-      <div v-else class="changelog-body" v-html="changelogHtml" />
+      <div v-else class="flex flex-col gap-2">
+        <details
+          v-for="(release, i) in releases"
+          :key="release.version"
+          :open="i === 0"
+          class="release rounded-lg border border-surface-200"
+        >
+          <summary class="cursor-pointer select-none px-3 py-2 flex items-center gap-2 text-sm">
+            <i class="release-chevron pi pi-chevron-right text-xs text-surface-400" />
+            <span class="font-semibold">{{ release.version }}</span>
+            <span v-if="release.date" class="text-surface-500">{{ release.date }}</span>
+            <span class="ml-auto text-xs text-surface-400">
+              {{ release.count }} {{ release.count === 1 ? "change" : "changes" }}
+            </span>
+          </summary>
+          <div class="changelog-body px-3 pb-2" v-html="release.html" />
+        </details>
+      </div>
     </Panel>
   </div>
 </template>
 
 <style scoped>
+/* A release fold: our own chevron instead of the browser's triangle, turned when open. */
+.release > summary {
+  list-style: none;
+}
+.release > summary::-webkit-details-marker {
+  display: none;
+}
+.release-chevron {
+  transition: transform 0.15s;
+}
+.release[open] .release-chevron {
+  transform: rotate(90deg);
+}
+
 /* Minimal markdown styling for the changelog (marked outputs plain h2/ul/li/p). */
 .changelog-body :deep(h2) {
   font-size: 1rem;
