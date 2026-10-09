@@ -82,7 +82,7 @@ onMounted(() => {
     </p>
 
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+      <div class="grid grid-cols-3 gap-3 text-sm">
         <div>
           <div class="text-surface-500 text-xs">Plugin version</div>
           <div class="flex items-center gap-2 flex-wrap">
