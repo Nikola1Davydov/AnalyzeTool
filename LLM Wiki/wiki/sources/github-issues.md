@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-10-08
+updated: 2026-10-09
 status: current
 ---
 
@@ -12,11 +12,13 @@ issue — не тикеты, а разобранные дизайн-заметк
 
 **Где:** [issues репозитория Nikola1Davydov/AnalyzeTool](https://github.com/Nikola1Davydov/AnalyzeTool/issues)
 **Снимки:**
-[`../../raw/github-issues-2026-10-08.md`](../../raw/github-issues-2026-10-08.md) — 118 issue, тела (актуальный) ·
+[`../../raw/github-issues-2026-10-09.md`](../../raw/github-issues-2026-10-09.md) — 120 issue, тела (актуальный) ·
+[`../../raw/github-issues-2026-10-08.md`](../../raw/github-issues-2026-10-08.md) — 118 issue ·
 [`../../raw/github-issues-2026-09-02.md`](../../raw/github-issues-2026-09-02.md) — 94 issue ·
 [`../../raw/github-issues-2026-09-01.md`](../../raw/github-issues-2026-09-01.md) — 91 issue ·
 [`../../raw/github-issues-2026-08-31.md`](../../raw/github-issues-2026-08-31.md) — 88 issue ·
-[`../../raw/github-issue-comments-2026-10-08.md`](../../raw/github-issue-comments-2026-10-08.md) — 101 комментарий на 54 issue (актуальный) ·
+[`../../raw/github-issue-comments-2026-10-09.md`](../../raw/github-issue-comments-2026-10-09.md) — 102 комментария на 55 issue (актуальный) ·
+[`../../raw/github-issue-comments-2026-10-08.md`](../../raw/github-issue-comments-2026-10-08.md) — 101 на 54 ·
 [`../../raw/github-issue-comments-2026-09-02.md`](../../raw/github-issue-comments-2026-09-02.md) — 86 на 44 ·
 [`../../raw/github-issue-comments-2026-09-01.md`](../../raw/github-issue-comments-2026-09-01.md) — 49 на 25 ·
 [`../../raw/github-issue-comments-2026-08-31.md`](../../raw/github-issue-comments-2026-08-31.md) — 46
@@ -89,6 +91,23 @@ Platform Services) — issue, заведённые уже ПОСЛЕ съёмк�
 Комментарии: 101 против 86. Тринадцать новых от 2026-09-02 — статусные записи той же сессии, их
 суть уже вплетена (журнал за 2026-09-02); новое по существу — только комментарии к #141 (разбор
 фронта F1–F6), они в разборе ревью, и ответ автору #138.
+
+**Снимок 2026-10-09:** 120 issue, **71 открытый**. Против 2026-10-08 — два новых, закрытий нет:
+
+- [#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164) — упрощение плагина: встроенный ИИ
+  убран, одна форма команды (DLL, собранная хостом), лента сжата. Сделанное отгружено 2026-10-08 и вики
+  уже знала его из сессии ([`../entities/ollama.md`](../entities/ollama.md), [`../entities/ribbon-host.md`](../entities/ribbon-host.md)). Единственный комментарий —
+  поправка: кнопка **New** вернулась на ленту. С тех пор лента сменилась ещё раз (2026-10-09: Settings ·
+  Report a bug · About и Reload · Extensions · New) — комментарий это не отражает.
+- [#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) — один путь к постоянной кнопке: проект
+  и `dotnet build`, `HostBuild` убрать, .NET SDK ставить вместе с плагином →
+  [`../analyses/mcp-surface-state.md`](../analyses/mcp-surface-state.md) (цикл авторства),
+  [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) (что снимать для #163).
+
+Не из снимка, из рабочей сессии 2026-10-09: главное окно переделано под общие параметры и отчёт А4 — это
+первая отгруженная часть [#121](https://github.com/Nikola1Davydov/AnalyzeTool/issues/121) и
+[#122](https://github.com/Nikola1Davydov/AnalyzeTool/issues/122), в трекере не отмечена
+([`../analyses/checking-module.md`](../analyses/checking-module.md)).
 
 Цифры ниже относятся к снимку от 2026-08-31: 63 открытых, 25 закрытых. Метки бедные — `enhancement` 40, `bug` 11, `help wanted` 1 —
 поэтому метки как ось бесполезны. Полезная ось — кластер, и их шесть:

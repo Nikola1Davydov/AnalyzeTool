@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-10-08
+updated: 2026-10-09
 status: draft
 sources: [../sources/analysetool-repo-docs.md]
 ---
@@ -37,8 +37,8 @@ ProjectReference плюс одна строка `InternalsVisibleTo`, без и�
 | Проект | Роль |
 | --- | --- |
 | `AnalyseTool.Sdk` | публичный контракт: `IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`, `IProgressAware` — пять файлов, это вся поверхность |
-| `AnalyseTool.Core` | платформа: `CommandQueue`, `CommandDispatcher`, загрузчик расширений, Roslyn (`ExecuteRevitCode`; сохранённые по MCP команды собираются хостом в DLL — `HostBuild`), `CoreServices`. Headless |
-| `AnalyseTool.Tools` | встроенные команды вертикальными слайсами: `Actions/ Ai/ Elements/` (слайса `Families/` нет с 2026-09-01: Family Manager — расширение, 63a1992) |
+| `AnalyseTool.Core` | платформа: `CommandQueue`, `CommandDispatcher`, загрузчик расширений, Roslyn (`ExecuteRevitCode`; сохранённые по MCP команды собираются хостом в DLL — `HostBuild`; [#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) предлагает его убрать в пользу проекта и `dotnet build`), `CoreServices`. Headless |
+| `AnalyseTool.Tools` | встроенные команды вертикальными слайсами: `Actions/ Elements/ SharedParameters/` (слайса `Families/` нет с 2026-09-01 — Family Manager стал расширением, 63a1992; `Ai/` убран 2026-10-08; `SharedParameters/` — редактор файла общих параметров, привязки и данные отчёта, 2026-10-09) |
 | `AnalyseTool.Mcp.Bridge` | TCP-транспорт внутри Revit |
 | `AnalyseTool.Mcp` | внешний stdio-exe с MCP |
 

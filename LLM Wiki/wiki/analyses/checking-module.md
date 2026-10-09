@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-10-08
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -286,6 +286,21 @@ MCP получает гейтинг даром: модуль не лицензи
 | [#124](https://github.com/Nikola1Davydov/AnalyzeTool/issues/124) | папка проекта как интерфейс; идентичность источников по хешу            |
 | [#125](https://github.com/Nikola1Davydov/AnalyzeTool/issues/125) | headless-доступ: сервис над папкой, Teams как адаптер                   |
 | [#126](https://github.com/Nikola1Davydov/AnalyzeTool/issues/126) | обратная петля: комментарий → карточка → применение → правило           |
+
+**Что из этого уже в коде (2026-10-09, не из трекера — из рабочей сессии).** Главное окно плагина
+переделано под две вещи из этого списка, без свода правил и без лицензирования:
+
+- *Половина [#121](https://github.com/Nikola1Davydov/AnalyzeTool/issues/121).* Файл общих параметров и
+  параметры проекта рядом, сопоставление **по GUID** (имя только для параметров проекта, у которых GUID
+  нет), привязка к категориям из окна. Декларации «что обязано быть заполнено» пока нет — значит и
+  проверки отсутствия против неё нет.
+- *Ядро [#122](https://github.com/Nikola1Davydov/AnalyzeTool/issues/122).* Отчёт на листах А4 из блоков,
+  которые **считает Revit** (`GetParameterReport`), а не страница; печать прямо из WebView2; разделы
+  включаются по одному, у каждого диаграмма и/или таблица. Наборы параметров отчёта сохраняются — на
+  проект или на все проекты.
+
+Обе команды-источника видны агенту — [`../entities/analysetool-mcp-server.md`](../entities/analysetool-mcp-server.md).
+Код: `src/AnalyseTool.Tools/SharedParameters/`, `src/clientapp/src/view/Report/`.
 
 Фазы самого [#119](https://github.com/Nikola1Davydov/AnalyzeTool/issues/119): артефакт и
 ручное авторство с движком → импорт из документа с цитатами → ревью диффа при

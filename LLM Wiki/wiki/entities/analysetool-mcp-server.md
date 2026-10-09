@@ -1,6 +1,6 @@
 ---
 type: entity
-updated: 2026-10-08
+updated: 2026-10-09
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
@@ -32,6 +32,22 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `GetCategoryParameters` · `GetTypeParameters` · `GetViewsAndSheets` · `GetWorksets` ·
 `GetLinksInRevit` · `GetCadImports` · `GetWarningsInRevit`
 
+### Общие параметры (слайс `Tools/SharedParameters`, 2026-10-09)
+
+`GetSharedParameterFile` · `GetProjectParameters` · `GetBindingOptions` · `GetParameterReport` ·
+`SaveSharedParameterFile` · `BindSharedParameters`
+
+Файл общих параметров читается и пишется **как текст**, мимо `DefinitionFile` Revit — тот умеет
+только добавлять, а редактор ещё и переименовывает, перекладывает и удаляет
+(`src/AnalyseTool.Tools/SharedParameters/Infrastructure/SharedParameterFile.cs`). Две записи из шести
+помечены `Destructive`: `SaveSharedParameterFile` пишет файл, общий для проектов и часто для всего
+бюро (отказывает, если файл изменился после чтения, оставляет `.bak`), `BindSharedParameters` меняет
+модель. `GetParameterReport` — заполненность по категориям и уровням и частые значения, посчитанные в
+Revit: то, что раньше страница выводила сама из полной выгрузки элементов
+(`GetDataByCategoryName`). Это первая отгруженная половина
+[#121](https://github.com/Nikola1Davydov/AnalyzeTool/issues/121)/[#122](https://github.com/Nikola1Davydov/AnalyzeTool/issues/122) —
+см. [`../analyses/checking-module.md`](../analyses/checking-module.md).
+
 ### Семейства — группы больше нет
 
 2026-09-01 (63a1992) слайс `Tools/Families` удалён из платформы целиком: Family Manager
@@ -39,8 +55,8 @@ MCP-сервер, позволяющий внешнему агенту упра�
 `RenameFamily*`, `LoadLibraryFamilies`, `PlaceFamilyInstance`, `DeleteFamilyElements`,
 `PurgeFamilies`, `PurgeFamilyTypes`, `SetInstancesWorkset`) переехали с ним — в списке
 инструментов они появляются только с установленным расширением, под его префиксом.
-Зарегистрированных команд в платформе сегодня 64 (`[RevitCommand]` по `src`, сверка 2026-09-02),
-из них 39 помечены `HiddenFromMcp` и агенту не видны — см. «Чего агент не видит» ниже.
+Зарегистрированных команд в платформе сегодня 59 (`[RevitCommand]` по `src`, сверка 2026-10-09; было 64 на 2026-09-02),
+из них 28 помечены `HiddenFromMcp` и агенту не видны — см. «Чего агент не видит» ниже.
 `GetWorksets` и `GetTypeParameters` остались: они не про семейства и переехали в `Elements`.
 
 Следствие для вики: всё, что выше и ниже сказано о размещении семейств и о `Destructive`
@@ -95,18 +111,19 @@ MCP-сервер, позволяющий внешнему агенту упра�
 написанный код вступает в силу. Выключенный инструмент отвечает `NotAvailable` с подсказкой
 попросить человека, а не «неизвестная команда».
 
-Скрытые 39 (сверка 2026-09-02 по `HiddenFromMcp = true`):
+Скрытые 28 из 59 (сверка 2026-10-09 по `HiddenFromMcp = true` в `src`; 2026-09-02 было 39 из 64 —
+ушли слайс `Tools/Ai` и кнопки хоста, пришли общие параметры):
 
 | Группа | Команды |
 | --- | --- |
-| AI-провайдеры и Ollama (`Tools/Ai`) | `AiGetProviders`, `AiSaveProvider`, `AiDeleteProvider`, `AiGetModels`, `OllamaAnalyse`, `OllamaEditParameters`, `OllamaGetModels`, `OllamaSuggestName`, `OllamaSuggestNames`, `OllamaSuggestTemplate` |
-| Управление расширениями (`Core/Features/Extensions`) | пути `GetExtensionPaths`, `AddExtensionPath`, `RemoveExtensionPath`, `SetAuthoringRoot`; обновления `CheckExtensionUpdates`, `UpdateExtension`; каталог `GetExtensionCatalog`; установка `InstallExtensionFromFile`, `InstallExtensionFromSource`; удаление `RemoveExtension`, `RemoveDevExtension`; `SetExtensionEnabled`; форма Edit `GetExtensionManifest`, `EditExtensionManifest`; `CreateExtensionTemplate`, `OpenFolder`, `SetCommandButton`, `GetCommands` |
+| Управление расширениями (`Core/Features/Extensions`) | пути `GetExtensionPaths`, `AddExtensionPath`, `RemoveExtensionPath`, `SetAuthoringRoot`; обновления `CheckExtensionUpdates`, `UpdateExtension`; каталог `GetExtensionCatalog`; установка `InstallExtensionFromFile`, `InstallExtensionFromSource`; удаление `RemoveExtension`, `RemoveDevExtension`; `SetExtensionEnabled`; форма Edit `GetExtensionManifest`, `EditExtensionManifest`; `CreateExtensionTemplate`, `OpenFolder`, `GetCommands` |
 | Исполнение кода (`Core/Features/Scripting`) | `GetCodeExecutionStatus`, `SetCodeExecution` — ИИ не может выдать себе право |
 | Сам MCP (`Mcp.Bridge/Features`) | `GetMcpStatus`, `SetMcpServer` |
-| Диалоги и кнопки хоста (`App/Features`) | `BrowseForFile`, `BrowseForFolder`, `PickFolder`, `GetChangelog`, `GetHostButtons`, `SetHostButtonVisible` |
+| Диалоги хоста (`App/Features`) | `BrowseForFile`, `BrowseForFolder`, `GetChangelog` |
 | Тяжёлый UI-ответ (`Tools/Elements`) | `GetDataByCategoryName` — все параметры каждого элемента; агенту вместо неё `GetElements` / `GetCategoryParameters` |
+| Своё хранилище окна (`Tools/SharedParameters`) | `SetSharedParameterFile` (меняет настройку Revit — «открыть файл»), `GetParameterSets` / `SaveParameterSets` (наборы параметров отчёта в `%LOCALAPPDATA%`) |
 
-Видимых остаётся 25, при выключенном переключателе C# — 19. `CheckUpdate`
+Видимых остаётся 31, при выключенном переключателе C# — 25. `CheckUpdate`
 (`src/AnalyseTool.App/Features/CheckUpdate.cs`: App, `ReadOnly`, не скрыт) по коду должен быть
 среди них, но в каталоге, снятом с живой сессии выше, его нет — **проверить вживую**, попадает
 ли он в `tools/list`.

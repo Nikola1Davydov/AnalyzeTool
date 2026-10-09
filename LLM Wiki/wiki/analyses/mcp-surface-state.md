@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-10-08
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -98,6 +98,19 @@ ExecuteRevitCode failed — …` с payload. [#97](https://github.com/Nikola1Dav
 `notifications/tools/list_changed`;
 [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) предполагает, что
 подсказки `ttlMs` / `cacheScope` из `2026-07-28` могут выйти ещё дешевле.
+
+**Цикл авторства меняет форму.** [#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164)
+(отгружено 2026-10-08) оставил одну форму команды — DLL: `SaveAsCommand` пишет исходник в `<id>\src\`,
+и хост сам собирает его Roslyn'ом в `<id>\<год>\<id>.dll` (`HostBuild`), .NET SDK не нужен.
+[#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) (открыт, решение владельца) считает
+`HostBuild` третьим путём и оставляет **строго два**: Roslyn — только `ExecuteRevitCode`, ничего не
+сохраняется; постоянная кнопка — только C#-проект и `dotnet build`. Для агента это новый шаг:
+`ExecuteRevitCode` → `SaveAsCommand` (создаёт проект, проверяет компиляцию в памяти) → **`BuildExtension`**
+(`dotnet build` отдельным процессом, долгая команда с прогрессом и отменой, как
+[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) / [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)) → кнопка.
+Цена — .NET SDK на машине пользователя: его ставит bundle-установщик от Microsoft, запасной путь —
+портативный SDK в `%LOCALAPPDATA%\AnalyseTool\dotnet\`. Открыто: нужна ли `BuildExtension` агентам с
+терминалом (Claude Code соберёт проект сам) или только клиентам без него.
 
 **[#101](https://github.com/Nikola1Davydov/AnalyzeTool/issues/101) — `using` в форме
 голого тела — закрыт 2026-09-02.** Тело вклеивалось в метод, поэтому `using Autodesk.Revit.DB;`

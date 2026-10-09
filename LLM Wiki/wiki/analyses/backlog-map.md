@@ -1,14 +1,15 @@
 ---
 type: analysis
-updated: 2026-10-08
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
 
 # Карта открытого бэклога
 
-69 открытых issue (снимок 2026-10-08: 47 открытых, переживших 2026-09-02, плюс 22 из 24 заведённых после — #134 и #138 уже закрыты), сгруппированных по тому, о чём они на самом деле, а не по меткам.
-AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
+71 открытый issue (снимок 2026-10-09: 69 из снимка 2026-10-08 плюс #164 и #165, закрытий за сутки нет), сгруппированных по тому, о чём они на самом деле, а не по меткам.
+Вердикты по каждому — что закрыть, что уже сделано, что делать дальше — в
+[`backlog-review-2026-10-09.md`](backlog-review-2026-10-09.md). AI-кластеры развёрнуты в других страницах вики; остальные нанесены здесь, чтобы ничего
 не потерялось молча.
 
 ## Развёрнуто в этой вики
@@ -27,6 +28,7 @@ AI-кластеры развёрнуты в других страницах ви
 | Понимание модели агентом: подложки DWG/PDF | 136 | [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md) |
 | Официальный MCP-сервер Autodesk | 137 | [`mcp-surface-state.md`](mcp-surface-state.md) |
 | История версий своих расширений | 163 | [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
+| Форма сохранённой команды и путь сборки кнопок | 164, 165 | [`mcp-surface-state.md`](mcp-surface-state.md), [`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md) |
 
 ## Модуль проверки
 
@@ -56,10 +58,13 @@ issue. Ниже — состав.
 - **[#121](https://github.com/Nikola1Davydov/AnalyzeTool/issues/121)** — шаблон
   параметров как *декларативная половина свода*, а не второй артефакт. Отсутствие
   проверяемо только против декларации. Общие параметры опознаются по GUID, никогда по
-  имени.
+  имени. *Половина отгружена 2026-10-09: файл общих параметров и проект рядом, сопоставление по
+  GUID, привязка из окна; декларации «обязано быть заполнено» ещё нет.*
 - **[#122](https://github.com/Nikola1Davydov/AnalyzeTool/issues/122)** — отчёт как
   документ: канва А4, блоки — **запросы, а не картинки**, печать прямо из WebView2.
-  Дашборд для себя, а в стройке отдают документы.
+  Дашборд для себя, а в стройке отдают документы. *Ядро отгружено 2026-10-09 в главном окне: листы А4,
+  блоки считает Revit (`GetParameterReport`), печать из WebView2 — без свода правил
+  ([`checking-module.md`](checking-module.md)).*
 - **[#123](https://github.com/Nikola1Davydov/AnalyzeTool/issues/123)** — MCP-поверхность
   модуля проверки и мост обратно к агенту.
 - **[#124](https://github.com/Nikola1Davydov/AnalyzeTool/issues/124)** — папка проекта
@@ -179,7 +184,9 @@ sub-issue, все открыты. Разобрано в [`architecture-review-20
   инструментами только для моделей, которые их поддерживают (облачных), локальная модель — чат и
   детерминированные рецепты, гейт в `CommandQueue`; **после фундамента** — сильный агент с циклом уже
   есть (внешний MCP-клиент), это продуктовая вещь, не способность. Разбор —
-  [`built-in-agent-plan.md`](built-in-agent-plan.md).
+  [`built-in-agent-plan.md`](built-in-agent-plan.md). **Фундамент снят 2026-10-08**: встроенного ИИ в
+  плагине больше нет, и [#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164) прямо просит
+  закрыть или пересмотреть #133 — а возможно, и [#56](https://github.com/Nikola1Davydov/AnalyzeTool/issues/56).
 - **[#161](https://github.com/Nikola1Davydov/AnalyzeTool/issues/161)** — конвейер и `CommandQueue` без UI:
   точка входа без WebView2/WPF, чтобы пакетный прогон (`AnalyseTool.Batch`: журналы Revit, APS
   Design Automation) построить потом **расширением**, а не в Core; кандидат в платное —
@@ -223,7 +230,15 @@ sub-issue, все открыты. Разобрано в [`architecture-review-20
 [#95](https://github.com/Nikola1Davydov/AnalyzeTool/issues/95) заморозка контракта лаунчера ·
 [#163](https://github.com/Nikola1Davydov/AnalyzeTool/issues/163) история версий своих кнопок —
 локальные снимки и восстановление без git (2026-10-08; разбор —
-[`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md)).
+[`../concepts/write-safety-and-approval.md`](../concepts/write-safety-and-approval.md)) ·
+[#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164) упрощение плагина — без встроенного ИИ,
+одна форма команды (DLL); отгружено 2026-10-08. Пункты по окну Extensions из «Дальше» **в коде уже
+сделаны** (метки Script нет, подсказки и предупреждение при удалении различают сохранённую команду —
+`src/clientapp/src/view/System/extensions/`), чек-лист в issue не отмечен; открыта по-настоящему только
+живая проверка в Revit ·
+[#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) один путь к постоянной кнопке — проект
+и `dotnet build`, `HostBuild` убрать, .NET SDK ставить вместе с плагином
+([`mcp-surface-state.md`](mcp-surface-state.md)).
 
 [#87](https://github.com/Nikola1Davydov/AnalyzeTool/issues/87) стоит прочитать даже с
 AI-стороны: там прямо сказано, что collectible ALC — механизм выгрузки и идентичности
@@ -254,4 +269,4 @@ AI-стороны: там прямо сказано, что collectible ALC — 
 
 ## Связанное
 
-- [`../sources/github-issues.md`](../sources/github-issues.md) · [`mcp-surface-state.md`](mcp-surface-state.md) · [`agent-hosting.md`](agent-hosting.md) · [`architecture-review-2026-09.md`](architecture-review-2026-09.md)
+- [`backlog-review-2026-10-09.md`](backlog-review-2026-10-09.md) · [`../sources/github-issues.md`](../sources/github-issues.md) · [`mcp-surface-state.md`](mcp-surface-state.md) · [`agent-hosting.md`](agent-hosting.md) · [`architecture-review-2026-09.md`](architecture-review-2026-09.md)

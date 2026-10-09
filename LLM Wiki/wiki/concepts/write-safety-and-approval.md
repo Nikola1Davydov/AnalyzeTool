@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-10-08
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -111,6 +111,12 @@ sources: [../sources/github-issues.md]
 давать ли агенту `RestoreExtensionVersion` через MCP (`Destructive`) и возвращать ли
 `previousVersion` из `SaveAsCommand`, чтобы агент сам откатывал то, что сломал. Рядом —
 [`../entities/extension-manifest.md`](../entities/extension-manifest.md) (кто пишет манифест).
+
+Что снимать, меняется вместе с формой сохранённой команды. После
+[#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164) (2026-10-08, отгружено) это
+исходники в `<id>\src\` плюс DLL, собранная хостом, — снимку достаточно `src\`, DLL пересобирается.
+[#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) (открыт) хочет вместо этого обычный
+C#-проект: тогда снимок — `.cs` и `plugin.json`, без `bin/` и `obj/`. Оба issue прямо ссылаются на #163.
 
 ## Во время: модальные окна замораживают всю платформу
 
