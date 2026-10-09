@@ -8,13 +8,15 @@
  */
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import MultiSelect from "primevue/multiselect";
+import Menu from "primevue/menu";
 import InputNumber from "primevue/inputnumber";
 import ToggleSwitch from "primevue/toggleswitch";
 import { invoke } from "@/RevitBridge";
 import { useSharedParametersStore } from "@/stores/useSharedParametersStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import ReportBlock from "./ReportBlock.vue";
+import ParameterPickerDialog from "./ParameterPickerDialog.vue";
+import { refKey, useParameterSetsStore } from "@/stores/useParameterSetsStore";
 import {
   buildBlocks,
   defaultSettings,
@@ -58,25 +60,103 @@ watch(
 );
 const sectionKinds = Object.keys(SECTION_LABELS) as SectionKind[];
 
-// ---- Which parameters: the bound ones of the project; the table's selection preselects them --------
-const refKey = (r: ParameterRef) => (r.guid ? `g:${r.guid.toLowerCase()}` : `n:${r.name}`);
-const options = computed(() =>
-  project.value
-    .filter((p) => p.bound)
-    .map((p) => {
-      const parameterRef: ParameterRef = { guid: p.guid, name: p.name };
-      return { key: refKey(parameterRef), label: p.name, ref: parameterRef };
-    }),
-);
-const chosen = ref<string[]>([]);
-let takenSelection = "";
+// ---- Which parameters, in report order. Comes from the picker, a saved set, or the table's selection.
+const sets = useParameterSetsStore();
+const chosen = ref<ParameterRef[]>([]);
+const activeSetId = ref<string | null>(null);
+const pickerVisible = ref(false);
 
+// What the report can count: parameters the project has bound. A set made in another project may
+// name ones this project lacks — they stay in the list, greyed, and are skipped.
+const bound = computed(() => new Set(project.value.filter((p) => p.bound).map((p) => refKey({ guid: p.guid, name: p.name }))));
+const reportable = computed(() => chosen.value.filter((r) => bound.value.has(refKey(r))));
+const missingCount = computed(() => chosen.value.length - reportable.value.length);
+
+const activeSet = computed(() => sets.sets.find((s) => s.id === activeSetId.value) ?? null);
+const sameList = (a: ParameterRef[], b: ParameterRef[]) => a.map(refKey).join("|") === b.map(refKey).join("|");
+const setModified = computed(() => !!activeSet.value && !sameList(activeSet.value.parameters, chosen.value));
+
+function applySet(id: string | null) {
+  activeSetId.value = id;
+  const set = sets.sets.find((s) => s.id === id);
+  if (set) chosen.value = set.parameters.map((p) => ({ ...p }));
+}
+
+function removeChosen(index: number) {
+  chosen.value = chosen.value.filter((_, i) => i !== index);
+}
+
+let takenSelection = "";
 function takeSelectionFromTable() {
-  const keys = reportSelection.value.map(refKey);
-  const signature = keys.join("|");
-  if (keys.length && signature !== takenSelection) chosen.value = keys;
+  const signature = reportSelection.value.map(refKey).join("|");
+  if (reportSelection.value.length && signature !== takenSelection) {
+    chosen.value = reportSelection.value.map((r) => ({ ...r }));
+    activeSetId.value = null; // a fresh pick from the table, not the set that was open
+  }
   takenSelection = signature;
 }
+
+// The last selection and set come back when the window reopens (a convenience; sets are the durable form).
+const SELECTION_KEY = "at.report.selection";
+try {
+  const saved = JSON.parse(localStorage.getItem(SELECTION_KEY) ?? "null");
+  if (Array.isArray(saved?.chosen)) chosen.value = saved.chosen;
+  if (typeof saved?.activeSetId === "string") activeSetId.value = saved.activeSetId;
+} catch {
+  /* no storage: start empty */
+}
+watch([chosen, activeSetId], () => {
+  try {
+    localStorage.setItem(SELECTION_KEY, JSON.stringify({ chosen: chosen.value, activeSetId: activeSetId.value }));
+  } catch {
+    /* storage unavailable */
+  }
+});
+
+// ---- Saving sets: a small name dialog for "save as" and "rename" -----------------------------------
+const nameDialog = ref<{ mode: "new" | "rename"; name: string } | null>(null);
+const nameError = computed(() => {
+  const d = nameDialog.value;
+  if (!d || !d.name.trim()) return "";
+  return sets.nameTaken(d.name, d.mode === "rename" ? activeSetId.value ?? undefined : undefined) ? "A set with this name exists." : "";
+});
+
+function askName(mode: "new" | "rename") {
+  nameDialog.value = { mode, name: mode === "rename" ? activeSet.value?.name ?? "" : "" };
+}
+
+async function confirmName() {
+  const d = nameDialog.value;
+  if (!d || !d.name.trim() || nameError.value) return;
+  if (d.mode === "new") {
+    const created = await sets.create(d.name, chosen.value);
+    if (created) {
+      activeSetId.value = created.id;
+      notifications.success(`Saved set "${created.name}".`);
+    }
+  } else if (activeSetId.value) {
+    await sets.update(activeSetId.value, { name: d.name.trim() });
+  }
+  nameDialog.value = null;
+}
+
+async function saveChanges() {
+  if (activeSet.value && (await sets.update(activeSet.value.id, { parameters: chosen.value })))
+    notifications.success(`Updated set "${activeSet.value.name}".`);
+}
+
+async function deleteSet() {
+  const set = activeSet.value;
+  if (!set || !window.confirm(`Delete the set "${set.name}"? The report keeps its current parameters.`)) return;
+  if (await sets.remove(set.id)) activeSetId.value = null;
+}
+
+const setMenu = ref<InstanceType<typeof Menu> | null>(null);
+const setMenuItems = computed(() => [
+  { label: "Save as new set…", icon: "pi pi-plus", disabled: !chosen.value.length, command: () => askName("new") },
+  { label: "Rename…", icon: "pi pi-pencil", disabled: !activeSet.value, command: () => askName("rename") },
+  { label: "Delete set", icon: "pi pi-trash", disabled: !activeSet.value, command: deleteSet },
+]);
 
 // ---- Data -----------------------------------------------------------------------------------------
 const data = ref<ReportData | null>(null);
@@ -84,9 +164,7 @@ const loading = ref(false);
 let requestSeq = 0;
 
 async function loadReport() {
-  const refs = chosen.value
-    .map((k) => options.value.find((o) => o.key === k)?.ref)
-    .filter((r): r is ParameterRef => !!r);
+  const refs = reportable.value;
   if (!refs.length) {
     data.value = null;
     return;
@@ -107,7 +185,8 @@ async function loadReport() {
 }
 
 let reloadTimer: number | undefined;
-watch([chosen, () => settings.value.topValues], () => {
+// Re-counted when what can be counted changes — not when a greyed, unbound entry comes or goes.
+watch([() => reportable.value.map(refKey).join("|"), () => settings.value.topValues], () => {
   clearTimeout(reloadTimer);
   reloadTimer = window.setTimeout(loadReport, 300);
 });
@@ -141,6 +220,7 @@ let observer: ResizeObserver | undefined;
 
 onMounted(() => {
   if (!project.value.length) store.load();
+  if (!sets.loaded) sets.load();
   takeSelectionFromTable();
   observer = new ResizeObserver(([entry]) => (previewWidth.value = entry.contentRect.width));
   if (preview.value) observer.observe(preview.value);
@@ -162,21 +242,66 @@ function print() {
         <InputText v-model="settings.title" size="small" />
       </div>
 
-      <div class="flex flex-col gap-1">
+      <div class="flex flex-col gap-2">
         <span class="font-semibold">Parameters</span>
-        <MultiSelect
-          v-model="chosen"
-          :options="options"
-          optionLabel="label"
-          optionValue="key"
-          filter
-          display="chip"
-          placeholder="Pick parameters"
-          :maxSelectedLabels="6"
-          size="small"
-          class="w-full"
-        />
-        <small class="text-surface-500">Parameters bound in the project. Selecting rows in the table picks them too.</small>
+
+        <!-- Saved sets -->
+        <div class="flex items-center gap-1">
+          <Select
+            :modelValue="activeSetId"
+            :options="sets.sorted"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="No saved set"
+            emptyMessage="No saved sets yet"
+            size="small"
+            class="grow min-w-0"
+            @update:modelValue="applySet"
+          />
+          <Button
+            icon="pi pi-ellipsis-v"
+            size="small"
+            text
+            severity="secondary"
+            aria-haspopup="true"
+            v-tooltip.top="'Save, rename, delete sets'"
+            @click="setMenu?.toggle($event)"
+          />
+          <Menu ref="setMenu" :model="setMenuItems" popup />
+        </div>
+        <div v-if="setModified || (!activeSet && chosen.length)" class="flex items-center gap-2 text-xs">
+          <template v-if="setModified">
+            <span class="text-amber-700 grow">Changed since saved</span>
+            <Button label="Save" size="small" text :loading="sets.busy" @click="saveChanges" />
+            <Button label="Revert" size="small" text severity="secondary" @click="applySet(activeSetId)" />
+          </template>
+          <template v-else>
+            <span class="text-surface-500 grow">Not saved as a set</span>
+            <Button label="Save as set…" size="small" text @click="askName('new')" />
+          </template>
+        </div>
+
+        <!-- The chosen ones, in report order -->
+        <div class="rounded-lg border border-surface-200 max-h-56 overflow-y-auto">
+          <div
+            v-for="(r, i) in chosen"
+            :key="refKey(r)"
+            class="group flex items-center gap-2 pl-2 pr-1 py-1 border-b border-surface-100 last:border-b-0"
+            :class="{ 'text-surface-400': !bound.has(refKey(r)) }"
+            v-tooltip.right="bound.has(refKey(r)) ? undefined : 'Not bound in this project — skipped'"
+          >
+            <span class="w-4 text-right text-xs text-surface-400">{{ i + 1 }}</span>
+            <span class="grow truncate">{{ r.name }}</span>
+            <Button icon="pi pi-times" size="small" text severity="secondary" class="opacity-0 group-hover:opacity-100" @click="removeChosen(i)" />
+          </div>
+          <div v-if="!chosen.length" class="p-3 text-xs text-surface-500">
+            None yet — choose them, open a saved set, or select rows in the Shared parameters table.
+          </div>
+        </div>
+        <small v-if="missingCount" class="text-surface-500">
+          {{ missingCount }} not bound in this project — skipped.
+        </small>
+        <Button label="Choose parameters…" icon="pi pi-list-check" size="small" severity="secondary" @click="pickerVisible = true" />
       </div>
 
       <div class="flex flex-col gap-3">
@@ -225,8 +350,8 @@ function print() {
     </div>
     <main ref="preview" class="report-preview grow overflow-auto p-6 relative">
 
-      <div v-if="!chosen.length" class="no-print text-surface-500 text-center mt-24">
-        Pick parameters on the left — or select rows in the Shared parameters table.
+      <div v-if="!reportable.length" class="no-print text-surface-500 text-center mt-24">
+        {{ chosen.length ? "None of the chosen parameters is bound in this project." : "Choose parameters on the left — or select rows in the Shared parameters table." }}
       </div>
       <div v-else-if="loading && !data" class="no-print text-surface-500 text-center mt-24">
         <i class="pi pi-spin pi-spinner mr-2" />Counting…
@@ -274,6 +399,30 @@ function print() {
       </div>
     </main>
     </section>
+
+    <ParameterPickerDialog
+      v-model:visible="pickerVisible"
+      :modelValue="chosen"
+      @apply="(refs) => (chosen = refs)"
+    />
+
+    <Dialog
+      :visible="!!nameDialog"
+      modal
+      :header="nameDialog?.mode === 'rename' ? 'Rename set' : 'Save as new set'"
+      :style="{ width: 'min(24rem, 95vw)' }"
+      @update:visible="!$event && (nameDialog = null)"
+    >
+      <div v-if="nameDialog" class="flex flex-col gap-1 text-sm">
+        <InputText v-model="nameDialog.name" placeholder="e.g. Fire safety" autofocus :invalid="!!nameError" @keydown.enter="confirmName" />
+        <small v-if="nameError" class="text-red-600">{{ nameError }}</small>
+        <small v-else-if="nameDialog.mode === 'new'" class="text-surface-500">{{ chosen.length }} parameters, in this order.</small>
+      </div>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text @click="nameDialog = null" />
+        <Button label="Save" icon="pi pi-check" :disabled="!nameDialog?.name.trim() || !!nameError" :loading="sets.busy" @click="confirmName" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
