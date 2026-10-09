@@ -74,6 +74,16 @@ namespace AnalyseTool.Tools.SharedParameters
         [JsonProperty("updated")]
         [Description("When the set was last saved (UTC, ISO 8601).")]
         public string Updated { get; init; } = string.Empty;
+
+        /// <summary>The Revit project the set belongs to (the document's CreationGUID, which survives a
+        /// rename or a move), or null for a set offered in every project.</summary>
+        [JsonProperty("projectId", NullValueHandling = NullValueHandling.Ignore)]
+        [Description("CreationGUID of the Revit project the set belongs to; absent = available in all projects.")]
+        public string? ProjectId { get; init; }
+
+        [JsonProperty("projectName", NullValueHandling = NullValueHandling.Ignore)]
+        [Description("Title of that project when the set was saved — for display only.")]
+        public string? ProjectName { get; init; }
     }
 
     public sealed record ParameterRefDto

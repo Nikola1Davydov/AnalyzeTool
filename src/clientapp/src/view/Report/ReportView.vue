@@ -9,6 +9,7 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Menu from "primevue/menu";
+import RadioButton from "primevue/radiobutton";
 import InputNumber from "primevue/inputnumber";
 import ToggleSwitch from "primevue/toggleswitch";
 import { invoke } from "@/RevitBridge";
@@ -17,6 +18,7 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 import ReportBlock from "./ReportBlock.vue";
 import ParameterPickerDialog from "./ParameterPickerDialog.vue";
 import { refKey, useParameterSetsStore } from "@/stores/useParameterSetsStore";
+import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import {
   buildBlocks,
   defaultSettings,
@@ -25,6 +27,7 @@ import {
   PX_PER_MM,
   SECTION_LABELS,
   type ReportData,
+  type Block,
   type ReportSettings,
   type SectionKind,
 } from "./report";
@@ -62,6 +65,10 @@ const sectionKinds = Object.keys(SECTION_LABELS) as SectionKind[];
 
 // ---- Which parameters, in report order. Comes from the picker, a saved set, or the table's selection.
 const sets = useParameterSetsStore();
+const documentStore = useDocumentDataStore();
+// The open Revit project, by CreationGUID: a set can belong to it, and the remembered selection is its own.
+const projectId = computed(() => documentStore.documentId || undefined);
+const projectName = computed(() => documentStore.documentName);
 const chosen = ref<ParameterRef[]>([]);
 const activeSetId = ref<string | null>(null);
 const pickerVisible = ref(false);
@@ -72,7 +79,15 @@ const bound = computed(() => new Set(project.value.filter((p) => p.bound).map((p
 const reportable = computed(() => chosen.value.filter((r) => bound.value.has(refKey(r))));
 const missingCount = computed(() => chosen.value.length - reportable.value.length);
 
-const activeSet = computed(() => sets.sets.find((s) => s.id === activeSetId.value) ?? null);
+// The sets this project offers — its own and the ones for every project — grouped for the dropdown.
+const visibleSets = computed(() => sets.forProject(projectId.value));
+const setGroups = computed(() =>
+  [
+    { label: projectName.value ? `This project — ${projectName.value}` : "This project", items: visibleSets.value.filter((s) => s.projectId) },
+    { label: "All projects", items: visibleSets.value.filter((s) => !s.projectId) },
+  ].filter((g) => g.items.length),
+);
+const activeSet = computed(() => visibleSets.value.find((s) => s.id === activeSetId.value) ?? null);
 const sameList = (a: ParameterRef[], b: ParameterRef[]) => a.map(refKey).join("|") === b.map(refKey).join("|");
 const setModified = computed(() => !!activeSet.value && !sameList(activeSet.value.parameters, chosen.value));
 
@@ -96,40 +111,60 @@ function takeSelectionFromTable() {
   takenSelection = signature;
 }
 
-// The last selection and set come back when the window reopens (a convenience; sets are the durable form).
-const SELECTION_KEY = "at.report.selection";
-try {
-  const saved = JSON.parse(localStorage.getItem(SELECTION_KEY) ?? "null");
-  if (Array.isArray(saved?.chosen)) chosen.value = saved.chosen;
-  if (typeof saved?.activeSetId === "string") activeSetId.value = saved.activeSetId;
-} catch {
-  /* no storage: start empty */
-}
-watch([chosen, activeSetId], () => {
+// The last selection and set come back when the window reopens — per project, so opening another model
+// does not start from the previous one's parameters (a convenience; sets are the durable form).
+const selectionKey = (id: string | undefined) => `at.report.selection:${id ?? "none"}`;
+let restoring = false;
+function restoreSelection(id: string | undefined) {
+  restoring = true;
+  chosen.value = [];
+  activeSetId.value = null;
   try {
-    localStorage.setItem(SELECTION_KEY, JSON.stringify({ chosen: chosen.value, activeSetId: activeSetId.value }));
+    const saved = JSON.parse(localStorage.getItem(selectionKey(id)) ?? "null");
+    if (Array.isArray(saved?.chosen)) chosen.value = saved.chosen;
+    if (typeof saved?.activeSetId === "string") activeSetId.value = saved.activeSetId;
+  } catch {
+    /* no storage: start empty */
+  }
+  restoring = false;
+}
+watch(projectId, restoreSelection, { immediate: true });
+watch([chosen, activeSetId], () => {
+  if (restoring) return;
+  try {
+    localStorage.setItem(selectionKey(projectId.value), JSON.stringify({ chosen: chosen.value, activeSetId: activeSetId.value }));
   } catch {
     /* storage unavailable */
   }
 });
 
 // ---- Saving sets: a small name dialog for "save as" and "rename" -----------------------------------
-const nameDialog = ref<{ mode: "new" | "rename"; name: string } | null>(null);
+const nameDialog = ref<{ mode: "new" | "rename"; name: string; thisProjectOnly: boolean } | null>(null);
 const nameError = computed(() => {
   const d = nameDialog.value;
   if (!d || !d.name.trim()) return "";
-  return sets.nameTaken(d.name, d.mode === "rename" ? activeSetId.value ?? undefined : undefined) ? "A set with this name exists." : "";
+  return sets.nameTaken(d.name, projectId.value, d.mode === "rename" ? activeSetId.value ?? undefined : undefined)
+    ? "A set with this name exists."
+    : "";
 });
 
 function askName(mode: "new" | "rename") {
-  nameDialog.value = { mode, name: mode === "rename" ? activeSet.value?.name ?? "" : "" };
+  nameDialog.value = {
+    mode,
+    name: mode === "rename" ? activeSet.value?.name ?? "" : "",
+    // Most sets are about one building; a set for every project is the deliberate choice.
+    thisProjectOnly: !!projectId.value,
+  };
 }
+
+const scopeOf = (thisProjectOnly: boolean) =>
+  thisProjectOnly && projectId.value ? { projectId: projectId.value, projectName: projectName.value } : { projectId: undefined, projectName: undefined };
 
 async function confirmName() {
   const d = nameDialog.value;
   if (!d || !d.name.trim() || nameError.value) return;
   if (d.mode === "new") {
-    const created = await sets.create(d.name, chosen.value);
+    const created = await sets.create(d.name, chosen.value, scopeOf(d.thisProjectOnly));
     if (created) {
       activeSetId.value = created.id;
       notifications.success(`Saved set "${created.name}".`);
@@ -145,6 +180,15 @@ async function saveChanges() {
     notifications.success(`Updated set "${activeSet.value.name}".`);
 }
 
+/** Moves the open set between "this project" and "all projects". */
+async function toggleScope() {
+  const set = activeSet.value;
+  if (!set) return;
+  const toThisProject = !set.projectId;
+  if (await sets.update(set.id, scopeOf(toThisProject)))
+    notifications.success(toThisProject ? `"${set.name}" is now only in this project.` : `"${set.name}" is now in all projects.`);
+}
+
 async function deleteSet() {
   const set = activeSet.value;
   if (!set || !window.confirm(`Delete the set "${set.name}"? The report keeps its current parameters.`)) return;
@@ -155,6 +199,9 @@ const setMenu = ref<InstanceType<typeof Menu> | null>(null);
 const setMenuItems = computed(() => [
   { label: "Save as new set…", icon: "pi pi-plus", disabled: !chosen.value.length, command: () => askName("new") },
   { label: "Rename…", icon: "pi pi-pencil", disabled: !activeSet.value, command: () => askName("rename") },
+  activeSet.value?.projectId
+    ? { label: "Make available in all projects", icon: "pi pi-globe", command: toggleScope }
+    : { label: "Keep only in this project", icon: "pi pi-building", disabled: !activeSet.value || !projectId.value, command: toggleScope },
   { label: "Delete set", icon: "pi pi-trash", disabled: !activeSet.value, command: deleteSet },
 ]);
 
@@ -195,14 +242,17 @@ watch([() => reportable.value.map(refKey).join("|"), () => settings.value.topVal
 const blocks = computed(() => buildBlocks(data.value, settings.value));
 const date = new Date().toLocaleDateString();
 const measureBox = ref<HTMLElement | null>(null);
-const pages = ref<number[][]>([]);
+// The laid-out pages hold the blocks themselves, not indices into `blocks`: between a change of the
+// list and the next layout (a tick later) old indices would point past a shorter list and break the render.
+const pages = ref<Block[][]>([]);
 
 async function layout() {
   await nextTick();
   const box = measureBox.value;
   if (!box) return;
   const heights = Array.from(box.children).map((el) => (el as HTMLElement).offsetHeight);
-  pages.value = paginate(blocks.value, heights);
+  const current = blocks.value;
+  pages.value = paginate(current, heights).map((page) => page.map((i) => current[i]));
 }
 watch(blocks, layout, { deep: false });
 watch(() => settings.value.title, layout);
@@ -225,7 +275,12 @@ onMounted(() => {
   observer = new ResizeObserver(([entry]) => (previewWidth.value = entry.contentRect.width));
   if (preview.value) observer.observe(preview.value);
 });
-onActivated(takeSelectionFromTable); // the main window keeps pages alive: coming back from the table
+// The main window keeps pages alive. Coming back, the user may have switched to another model in Revit
+// meanwhile: which project is open decides the sets offered and the selection remembered.
+onActivated(async () => {
+  await documentStore.loadDocumentData();
+  takeSelectionFromTable();
+});
 onBeforeUnmount(() => observer?.disconnect());
 
 function print() {
@@ -249,7 +304,9 @@ function print() {
         <div class="flex items-center gap-1">
           <Select
             :modelValue="activeSetId"
-            :options="sets.sorted"
+            :options="setGroups"
+            optionGroupLabel="label"
+            optionGroupChildren="items"
             optionLabel="name"
             optionValue="id"
             placeholder="No saved set"
@@ -268,6 +325,10 @@ function print() {
             @click="setMenu?.toggle($event)"
           />
           <Menu ref="setMenu" :model="setMenuItems" popup />
+        </div>
+        <div v-if="activeSet" class="text-xs text-surface-500 -mt-1">
+          <i class="pi text-[0.65rem] mr-1" :class="activeSet.projectId ? 'pi-building' : 'pi-globe'" />
+          {{ activeSet.projectId ? "Only in this project" : "In all projects" }}
         </div>
         <div v-if="setModified || (!activeSet && chosen.length)" class="flex items-center gap-2 text-xs">
           <template v-if="setModified">
@@ -369,9 +430,9 @@ function print() {
           </div>
           <div class="sheet-body">
             <ReportBlock
-              v-for="bi in page"
-              :key="blocks[bi].key"
-              :block="blocks[bi]"
+              v-for="block in page"
+              :key="block.key"
+              :block="block"
               :title="settings.title"
               :documentTitle="data?.documentTitle ?? ''"
               :date="date"
@@ -417,6 +478,15 @@ function print() {
         <InputText v-model="nameDialog.name" placeholder="e.g. Fire safety" autofocus :invalid="!!nameError" @keydown.enter="confirmName" />
         <small v-if="nameError" class="text-red-600">{{ nameError }}</small>
         <small v-else-if="nameDialog.mode === 'new'" class="text-surface-500">{{ chosen.length }} parameters, in this order.</small>
+        <div v-if="nameDialog.mode === 'new'" class="flex flex-col gap-2 mt-3">
+          <label class="flex items-center gap-2" :class="{ 'opacity-50': !projectId }">
+            <RadioButton v-model="nameDialog.thisProjectOnly" :value="true" :disabled="!projectId" />
+            Only this project<span v-if="projectName" class="text-surface-500 truncate">— {{ projectName }}</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <RadioButton v-model="nameDialog.thisProjectOnly" :value="false" />All projects
+          </label>
+        </div>
       </div>
       <template #footer>
         <Button label="Cancel" severity="secondary" text @click="nameDialog = null" />

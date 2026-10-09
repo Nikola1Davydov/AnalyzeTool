@@ -51,6 +51,22 @@ public class ParameterSetStoreTests
     }
 
     [Test]
+    public async Task A_project_set_keeps_its_project_and_a_global_one_has_none()
+    {
+        ParameterSetStore store = new(_path);
+        store.Save([
+            new ParameterSetDto { Name = "Snowdon only", ProjectId = "c0ffee00-0000-4000-8000-000000000001", ProjectName = "Snowdon Towers" },
+            new ParameterSetDto { Name = "Everywhere" },
+        ]);
+
+        List<ParameterSetDto> back = store.Load().Sets;
+        await Assert.That(back[0].ProjectId).IsEqualTo("c0ffee00-0000-4000-8000-000000000001");
+        await Assert.That(back[0].ProjectName).IsEqualTo("Snowdon Towers");
+        await Assert.That(back[1].ProjectId).IsNull();
+        await Assert.That(File.ReadAllText(_path)).DoesNotContain("\"projectId\": null");
+    }
+
+    [Test]
     public async Task A_second_save_keeps_the_previous_file_as_bak()
     {
         ParameterSetStore store = new(_path);

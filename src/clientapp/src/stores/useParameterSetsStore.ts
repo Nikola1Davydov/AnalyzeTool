@@ -14,6 +14,15 @@ export interface ParameterSet {
   name: string;
   parameters: ParameterRef[];
   updated: string;
+  /** The Revit project (document CreationGUID) the set belongs to; absent = offered in every project. */
+  projectId?: string;
+  projectName?: string;
+}
+
+/** Where a new set lives: one project, or all of them. */
+export interface SetScope {
+  projectId?: string;
+  projectName?: string;
 }
 
 interface SetsResult {
@@ -72,14 +81,14 @@ export const useParameterSetsStore = defineStore("parameterSets", () => {
   const now = () => new Date().toISOString();
 
   /** Saves a new set and returns it (with the id the host gave it). */
-  async function create(name: string, parameters: ParameterRef[]): Promise<ParameterSet | null> {
+  async function create(name: string, parameters: ParameterRef[], scope: SetScope = {}): Promise<ParameterSet | null> {
     // The new one is the set whose id the list did not have before.
     const before = new Set(sets.value.map((s) => s.id));
-    const saved = await persist([...sets.value, { id: "", name: name.trim(), parameters, updated: now() }]);
+    const saved = await persist([...sets.value, { id: "", name: name.trim(), parameters, updated: now(), ...scope }]);
     return saved?.find((s) => !before.has(s.id)) ?? null;
   }
 
-  async function update(id: string, changes: Partial<Pick<ParameterSet, "name" | "parameters">>) {
+  async function update(id: string, changes: Partial<Pick<ParameterSet, "name" | "parameters" | "projectId" | "projectName">>) {
     return !!(await persist(sets.value.map((s) => (s.id === id ? { ...s, ...changes, updated: now() } : s))));
   }
 
@@ -87,10 +96,16 @@ export const useParameterSetsStore = defineStore("parameterSets", () => {
     return !!(await persist(sets.value.filter((s) => s.id !== id)));
   }
 
-  function nameTaken(name: string, exceptId?: string) {
-    const n = name.trim().toLowerCase();
-    return sets.value.some((s) => s.id !== exceptId && s.name.trim().toLowerCase() === n);
+  /** The sets offered in a project: its own, and the ones for every project. */
+  function forProject(projectId: string | undefined) {
+    return sorted.value.filter((s) => !s.projectId || s.projectId === projectId);
   }
 
-  return { sets, sorted, loaded, busy, loadError, load, create, update, remove, nameTaken };
+  /** Names are unique among the sets one project sees — two projects may each have a "Handover". */
+  function nameTaken(name: string, projectId: string | undefined, exceptId?: string) {
+    const n = name.trim().toLowerCase();
+    return forProject(projectId).some((s) => s.id !== exceptId && s.name.trim().toLowerCase() === n);
+  }
+
+  return { sets, sorted, loaded, busy, loadError, load, create, update, remove, forProject, nameTaken };
 });
