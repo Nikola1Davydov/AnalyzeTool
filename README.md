@@ -64,7 +64,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 Open the **AnalyseTool** tab:
 
-- **AnalyseTool** — the main window: parameters, analytics and bulk editing.
+- **AnalyseTool** — the main window: the shared parameters of your file and project in one table (create, edit, add to the project), and a printable A4 report of how well the chosen ones are filled.
 - **Settings** — the AI connection (MCP) and the plugin's own switches.
 - **Report a bug** — opens the GitHub issues page (works even if the plugin failed to load).
 - **About** — versions, what's new and links to the source.

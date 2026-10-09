@@ -127,7 +127,7 @@ onUnmounted(() => {
   <Transition name="busybar">
     <div
       v-if="visible"
-      class="fixed bottom-0 inset-x-0 z-50 flex items-center gap-2 px-3 py-1.5 text-xs border-t shadow-lg"
+      class="no-print fixed bottom-0 inset-x-0 z-50 flex items-center gap-2 px-3 py-1.5 text-xs border-t shadow-lg"
       :class="
         stalled || status?.waitingForUser
           ? 'bg-amber-50 border-amber-300 text-amber-800'

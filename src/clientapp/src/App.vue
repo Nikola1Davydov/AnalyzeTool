@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, provide, watch, computed } from "vue";
+import { onMounted, watch, computed } from "vue";
 import { useRoute } from "vue-router";
 import { useToast } from "primevue/usetoast";
 import { useUpdateStore } from "@/stores/useUpdateStore";
@@ -7,16 +7,14 @@ import { useDocumentDataStore } from "@/stores/useDocumentDataStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 
 import HeaderLayout from "@/layout/HeaderLayout.vue";
-import Sidebar from "@/layout/Sidebar.vue";
 import FooterLayout from "./layout/FooterLayout.vue";
 import RevitBusyBar from "@/components/RevitBusyBar.vue";
 
 const toast = useToast();
 const notificationStore = useNotificationStore();
 const updateStore = useUpdateStore();
-const sidebarVisible = ref(false);
 
-// System pages (/system/*) render without the app chrome (header/sidebar/footer).
+// System pages (/system/*) render without the app chrome (header/footer).
 const route = useRoute();
 const isBare = computed(() => route.meta.layout === "bare");
 
@@ -29,24 +27,11 @@ watch(
   },
 );
 
-const openSidebar = () => {
-  sidebarVisible.value = true;
-};
-const closeSidebar = () => {
-  sidebarVisible.value = false;
-};
-
 // Each store now requests its own data via AT.invoke and resolves the result directly,
 // so there is no central message listener routing responses by command name anymore.
 onMounted(() => {
   updateStore.loadUpdateData();
   useDocumentDataStore().loadDocumentData();
-});
-
-provide("sidebarVisible", sidebarVisible);
-provide("sidebarActions", {
-  closeSidebar,
-  openSidebar,
 });
 </script>
 
@@ -64,9 +49,6 @@ provide("sidebarActions", {
   <div v-else class="layout-wrapper">
     <div>
       <HeaderLayout />
-      <div class="layout-sidebar">
-        <Sidebar />
-      </div>
       <div class="layout-main-container">
         <router-view v-slot="{ Component }">
           <KeepAlive>
