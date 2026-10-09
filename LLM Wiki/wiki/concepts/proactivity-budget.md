@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-08-31
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -9,6 +9,13 @@ sources: [../sources/github-issues.md]
 
 Агент, который сам замечает и сам приходит, тратит три дефицитных ресурса, и бэклог
 обращается с каждым как с жёстким ограничением, а не как с настройкой.
+
+> **После 2026-10-08.** Встроенного агента в плагине больше нет ([#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164)):
+> ИИ — внешний MCP-клиент. [#117](https://github.com/Nikola1Davydov/AnalyzeTool/issues/117) (локальная модель) и
+> [#118](https://github.com/Nikola1Davydov/AnalyzeTool/issues/118) (делегация sidecar) закрыты 2026-10-09 как неактуальные.
+> Бюджет внимания ([#116](https://github.com/Nikola1Davydov/AnalyzeTool/issues/116)) остаётся в силе — теперь как правило
+> для окна активности и уведомлений MCP; бюджеты потока Revit и денег ниже — запись рассуждения о снятом агенте
+> ([`../analyses/backlog-review-2026-10-09.md`](../analyses/backlog-review-2026-10-09.md)).
 
 ## Внимание — на него у агента нет права
 
