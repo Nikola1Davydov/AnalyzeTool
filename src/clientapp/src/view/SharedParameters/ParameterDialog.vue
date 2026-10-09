@@ -9,7 +9,7 @@ import ToggleSwitch from "primevue/toggleswitch";
 import { useSharedParametersStore } from "@/stores/useSharedParametersStore";
 import { DATA_TYPES, type SharedParameter } from "./types";
 
-const props = defineProps<{ parameter: SharedParameter | null }>();
+const props = defineProps<{ parameter: SharedParameter | null; groupId?: number }>();
 const visible = defineModel<boolean>("visible", { required: true });
 
 const store = useSharedParametersStore();
@@ -24,7 +24,7 @@ function blank(): SharedParameter {
     name: "",
     dataType: "TEXT",
     dataCategory: "",
-    groupId: store.groups[0]?.id ?? 0,
+    groupId: props.groupId ?? store.groups[0]?.id ?? 0,
     visible: true,
     description: "",
     userModifiable: true,

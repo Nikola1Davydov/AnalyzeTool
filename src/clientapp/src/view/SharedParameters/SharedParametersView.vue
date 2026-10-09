@@ -1,104 +1,75 @@
 <script setup lang="ts">
 /**
- * The main window's first page: every shared parameter — of the file Revit uses and of the open
- * project — in one table. Edit the file (parameters, groups), add parameters to the project, and pick
- * the ones the A4 report evaluates.
+ * The main window's first page, in two halves: the shared parameter FILE on the left — organised in
+ * its groups, by dragging — and the PROJECT on the right — what is bound, by category. Dragging from
+ * the file into the project adds parameters to it. One selection spans both: it feeds the report and
+ * the actions in the bar above.
  */
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useSharedParametersStore } from "@/stores/useSharedParametersStore";
+import { useNotificationStore } from "@/stores/useNotificationStore";
+import FilePane from "./FilePane.vue";
+import ProjectPane from "./ProjectPane.vue";
 import ParameterDialog from "./ParameterDialog.vue";
-import GroupsDialog from "./GroupsDialog.vue";
 import BindDialog from "./BindDialog.vue";
-import { dataTypeLabel, type ParameterRow, type SharedParameter } from "./types";
+import QuickBindDialog from "./QuickBindDialog.vue";
+import type { ParameterRow, SharedParameter } from "./types";
 
 const store = useSharedParametersStore();
-const { file, rows, groups, dirty, loading, saving, selection, selectedRows, reportSelection } = storeToRefs(store);
+const { file, rows, dirty, loading, saving, selection, selectedRows, reportSelection, bindBlocker } = storeToRefs(store);
+const notifications = useNotificationStore();
 const router = useRouter();
 
-// ---- Filters: text, group, and where the parameter lives ---------------------------------------
-type Scope = "all" | "file" | "project" | "notInProject";
-const search = ref("");
-const groupFilter = ref<number | null>(null);
-const scope = ref<Scope>("all");
-const scopeOptions = [
-  { label: "All", value: "all" },
-  { label: "In file", value: "file" },
-  { label: "In project", value: "project" },
-  { label: "Not in project", value: "notInProject" },
-];
-
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  return rows.value.filter((r) => {
-    if (q && !`${r.name} ${r.description} ${r.groupName} ${r.guid ?? ""}`.toLowerCase().includes(q)) return false;
-    if (groupFilter.value !== null && r.file?.groupId !== groupFilter.value) return false;
-    if (scope.value === "file" && !r.file) return false;
-    if (scope.value === "project" && !r.project) return false;
-    if (scope.value === "notInProject" && (!r.file || r.project?.bound)) return false;
-    return true;
-  });
-});
-
-// DataTable selection works on row objects; the store keeps keys, so the selection survives reloads.
-const selectedObjects = computed<ParameterRow[]>({
-  get: () => selectedRows.value,
-  set: (value) => (selection.value = value.map((r) => r.key)),
-});
-
-// ---- Actions -------------------------------------------------------------------------------------
+// ---- Edit a parameter (or create one, optionally in a given group) -------------------------------
 const editVisible = ref(false);
 const editTarget = ref<SharedParameter | null>(null);
-const groupsVisible = ref(false);
+const editGroupId = ref<number | undefined>(undefined);
+function edit(parameter: SharedParameter | null, groupId?: number) {
+  editTarget.value = parameter;
+  editGroupId.value = groupId;
+  editVisible.value = true;
+}
+
+// ---- Add to project: the full dialog, or the quick one after a drop on a category -----------------
 const bindVisible = ref(false);
+const bindRows = ref<ParameterRow[]>([]);
+const quickVisible = ref(false);
+const quickGuids = ref<string[]>([]);
+const quickCategory = ref("");
 
-function newParameter() {
-  editTarget.value = null;
-  editVisible.value = true;
-}
-function editParameter(row: ParameterRow) {
-  if (!row.file) return;
-  editTarget.value = row.file;
-  editVisible.value = true;
+const rowsFor = (guids: string[]) => {
+  const wanted = new Set(guids.map((g) => g.toLowerCase()));
+  return rows.value.filter((r) => r.file && r.guid && wanted.has(r.guid));
+};
+
+/** The full dialog needs the file saved too; offer to do it rather than refuse. */
+async function openBind(guids: string[]) {
+  if (bindBlocker.value) {
+    if (!dirty.value) return notifications.warn(bindBlocker.value);
+    if (!window.confirm("Revit adds parameters from the file on disk. Save the file now?") || !(await store.save())) return;
+  }
+  bindRows.value = rowsFor(guids);
+  if (bindRows.value.length) bindVisible.value = true;
 }
 
+function quickBind(guids: string[], categoryName: string) {
+  quickGuids.value = guids;
+  quickCategory.value = categoryName;
+  quickVisible.value = true;
+}
+
+// ---- The selection bar ---------------------------------------------------------------------------
 const selectedInFile = computed(() => selectedRows.value.filter((r) => r.file));
 
-function deleteSelected(rowsToDelete: ParameterRow[]) {
-  const inFile = rowsToDelete.filter((r) => r.file);
+function deleteSelected() {
+  const inFile = selectedInFile.value;
   if (!inFile.length) return;
   const inProject = inFile.filter((r) => r.project);
   const names = inFile.length === 1 ? `"${inFile[0].name}"` : `${inFile.length} parameters`;
-  const note = inProject.length
-    ? `\n\n${inProject.length} of them stay in the project — this only removes them from the file.`
-    : "";
-  if (!window.confirm(`Delete ${names} from the shared parameter file?${note}`)) return;
-  store.deleteParameters(inFile.map((r) => r.guid!));
-}
-
-// Binding reads the file from disk, so unsaved edits would not be there yet.
-const bindBlocker = computed(() => {
-  if (!selectedInFile.value.length) return "Select parameters of the file";
-  if (!file.value?.isRevitCurrent) return "Only parameters of Revit's current shared parameter file can be added";
-  if (dirty.value) return "Save the file first";
-  return null;
-});
-
-function openReport() {
-  router.push("/report");
-}
-
-function bindingLabel(row: ParameterRow): string {
-  const p = row.project;
-  if (!p) return "";
-  if (!p.bound) return "Families only";
-  const n = p.categories.length;
-  return `${p.isInstance ? "Instance" : "Type"} · ${n} ${n === 1 ? "category" : "categories"}`;
-}
-
-function onRowDblClick(e: { data: ParameterRow }) {
-  editParameter(e.data);
+  const note = inProject.length ? `\n\n${inProject.length} of them stay in the project — this only removes them from the file.` : "";
+  if (window.confirm(`Delete ${names} from the shared parameter file?${note}`)) store.deleteParameters(inFile.map((r) => r.guid!));
 }
 
 async function reload() {
@@ -113,9 +84,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4 flex flex-col gap-3">
+  <div class="p-4 flex flex-col gap-3 h-[calc(100vh-7.5rem)]">
     <!-- The file: which one, and the save state -->
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-3 flex flex-wrap items-center gap-3">
+    <section class="shrink-0 rounded-xl border border-surface-200 bg-surface-0 p-3 flex flex-wrap items-center gap-3">
       <i class="pi pi-file text-surface-500" />
       <div class="min-w-0 grow">
         <template v-if="file?.path">
@@ -123,6 +94,7 @@ onMounted(() => {
             {{ fileName }}
             <Tag v-if="!file.exists" value="missing" severity="danger" class="ml-1" />
             <Tag v-else-if="!file.isRevitCurrent" value="not Revit's current file" severity="warn" class="ml-1" />
+            <Tag v-if="dirty" value="unsaved changes" severity="warn" class="ml-1" />
           </div>
           <div class="text-xs text-surface-500 truncate">{{ file.path }}</div>
         </template>
@@ -131,15 +103,7 @@ onMounted(() => {
       <div class="flex flex-wrap gap-2">
         <Button label="Open…" icon="pi pi-folder-open" size="small" severity="secondary" @click="store.openFile(false)" />
         <Button label="New file…" icon="pi pi-file-plus" size="small" severity="secondary" @click="store.openFile(true)" />
-        <Button
-          icon="pi pi-refresh"
-          size="small"
-          severity="secondary"
-          text
-          :loading="loading"
-          v-tooltip.bottom="'Reload the file and the project'"
-          @click="reload"
-        />
+        <Button icon="pi pi-refresh" size="small" severity="secondary" text :loading="loading" v-tooltip.bottom="'Reload the file and the project'" @click="reload" />
         <template v-if="dirty">
           <Button label="Discard" size="small" severity="secondary" text @click="store.discard()" />
           <Button label="Save" icon="pi pi-save" size="small" :loading="saving" @click="store.save()" />
@@ -147,43 +111,19 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Filters and actions -->
-    <div class="flex flex-wrap items-center gap-2">
-      <IconField class="grow max-w-xs">
-        <InputIcon class="pi pi-search" />
-        <InputText v-model="search" placeholder="Search name, description, GUID…" size="small" class="w-full" />
-      </IconField>
-      <Select
-        v-model="groupFilter"
-        :options="groups"
-        placeholder="All groups"
-        showClear
-        optionLabel="name"
-        optionValue="id"
-        size="small"
-        class="w-44"
-      />
-      <SelectButton v-model="scope" :options="scopeOptions" optionLabel="label" optionValue="value" size="small" :allowEmpty="false" />
-
-      <div class="grow" />
-
-      <Button label="Parameter" icon="pi pi-plus" size="small" :disabled="!file?.path" @click="newParameter" />
-      <Button label="Groups" icon="pi pi-folder" size="small" severity="secondary" :disabled="!file?.path" @click="groupsVisible = true" />
-    </div>
-
-    <!-- Selection bar: always there, so ticking the first row does not push the table under the cursor -->
+    <!-- Selection bar: always there, so ticking the first row does not move anything under the cursor -->
     <div
-      class="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5 text-sm min-h-11"
+      class="shrink-0 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5 text-sm min-h-11"
       :class="selection.length ? 'bg-primary-50 border-primary-200' : 'bg-surface-0 border-surface-200'"
     >
       <span v-if="!selection.length" class="text-surface-500">
-        Select parameters to add them to the project or to put them in the report.
+        Drag parameters between groups to organise the file, and into the project to add them. Tick them for the report.
       </span>
       <span v-else class="font-medium">{{ selection.length }} selected</span>
       <div class="grow" />
       <template v-if="selection.length">
-        <span v-tooltip.top="bindBlocker">
-          <Button label="Add to project" icon="pi pi-sign-in" size="small" :disabled="!!bindBlocker" @click="bindVisible = true" />
+        <span v-tooltip.top="selectedInFile.length ? undefined : 'Select parameters of the file'">
+          <Button label="Add to project" icon="pi pi-sign-in" size="small" :disabled="!selectedInFile.length" @click="openBind(selectedInFile.map((r) => r.guid!))" />
         </span>
         <span v-tooltip.top="reportSelection.length ? undefined : 'Select parameters that are bound in the project'">
           <Button
@@ -192,83 +132,22 @@ onMounted(() => {
             size="small"
             severity="secondary"
             :disabled="!reportSelection.length"
-            @click="openReport"
+            @click="router.push('/report')"
           />
         </span>
-        <Button
-          icon="pi pi-trash"
-          size="small"
-          severity="danger"
-          text
-          :disabled="!selectedInFile.length"
-          v-tooltip.top="'Delete from the file'"
-          @click="deleteSelected(selectedRows)"
-        />
+        <Button icon="pi pi-trash" size="small" severity="danger" text :disabled="!selectedInFile.length" v-tooltip.top="'Delete from the file'" @click="deleteSelected" />
         <Button icon="pi pi-times" size="small" text severity="secondary" v-tooltip.top="'Clear selection'" @click="selection = []" />
       </template>
     </div>
 
-    <DataTable
-      v-model:selection="selectedObjects"
-      :value="filtered"
-      dataKey="key"
-      :loading="loading"
-      size="small"
-      scrollable
-      scrollHeight="flex"
-      class="text-sm"
-      style="height: calc(100vh - 16rem)"
-      @row-dblclick="onRowDblClick"
-    >
-      <Column selectionMode="multiple" headerStyle="width: 2.5rem" />
-      <Column header="Name" sortable sortField="name">
-        <template #body="{ data: row }">
-          <div class="font-medium" :class="{ 'text-surface-500': !row.file }">{{ row.name }}</div>
-          <div v-if="row.description" class="text-xs text-surface-500 line-clamp-1">{{ row.description }}</div>
-        </template>
-      </Column>
-      <Column header="Type" sortable sortField="dataType" class="w-32">
-        <template #body="{ data: row }">{{ row.file ? dataTypeLabel(row.dataType) : row.dataType }}</template>
-      </Column>
-      <Column header="Group" field="groupName" sortable class="w-40" />
-      <Column header="In file" class="w-24">
-        <template #body="{ data: row }">
-          <i v-if="row.file" class="pi pi-check text-green-600" />
-          <span v-else class="text-xs text-surface-500" v-tooltip.top="row.guid ? 'Shared, but from another file' : 'Project parameter — no file has it'">
-            {{ row.guid ? "other file" : "project param" }}
-          </span>
-        </template>
-      </Column>
-      <Column header="In project" class="w-44">
-        <template #body="{ data: row }">
-          <span
-            v-if="row.project"
-            class="text-xs"
-            :class="row.project.bound ? 'text-surface-800' : 'text-surface-500'"
-            v-tooltip.top="row.project.categories.join(', ') || undefined"
-          >
-            {{ bindingLabel(row) }}
-          </span>
-          <span v-else class="text-xs text-surface-400">—</span>
-        </template>
-      </Column>
-      <Column class="w-20">
-        <template #body="{ data: row }">
-          <div v-if="row.file" class="flex">
-            <Button icon="pi pi-pencil" size="small" text severity="secondary" v-tooltip.left="'Edit'" @click="editParameter(row)" />
-            <Button icon="pi pi-trash" size="small" text severity="danger" v-tooltip.left="'Delete from the file'" @click="deleteSelected([row])" />
-          </div>
-        </template>
-      </Column>
-      <template #empty>
-        <div class="text-surface-500 p-4">
-          {{ file?.path ? "No parameters match." : "No shared parameter file." }}
-        </div>
-      </template>
-    </DataTable>
+    <!-- The two halves -->
+    <div class="grow min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
+      <FilePane @edit="edit" />
+      <ProjectPane @quick-bind="quickBind" @bind="openBind" />
+    </div>
 
-    <ParameterDialog v-model:visible="editVisible" :parameter="editTarget" />
-    <GroupsDialog v-model:visible="groupsVisible" />
-    <BindDialog v-model:visible="bindVisible" :rows="selectedInFile" />
+    <ParameterDialog v-model:visible="editVisible" :parameter="editTarget" :groupId="editGroupId" />
+    <BindDialog v-model:visible="bindVisible" :rows="bindRows" />
+    <QuickBindDialog v-model:visible="quickVisible" :guids="quickGuids" :categoryName="quickCategory" />
   </div>
 </template>

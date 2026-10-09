@@ -6,7 +6,6 @@
 import { computed, ref, watch } from "vue";
 import Listbox from "primevue/listbox";
 import RadioButton from "primevue/radiobutton";
-import { invoke } from "@/RevitBridge";
 import { useSharedParametersStore } from "@/stores/useSharedParametersStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { errorText, type BindingOptions, type ParameterRow } from "./types";
@@ -31,12 +30,8 @@ watch(visible, async (open) => {
   const bound = props.rows.map((r) => r.project).filter((p) => p?.bound);
   if (bound.length) isInstance.value = bound[0]!.isInstance;
   if (!options.value) {
-    try {
-      options.value = await invoke<BindingOptions>("GetBindingOptions");
-      groupTypeId.value = options.value.defaultGroup;
-    } catch (e) {
-      notifications.error(errorText(e));
-    }
+    options.value = await store.loadBindingOptions();
+    if (options.value) groupTypeId.value = options.value.defaultGroup;
   }
   const already = new Set(bound.flatMap((p) => p!.categories));
   categoryIds.value = (options.value?.categories ?? []).filter((c) => already.has(c.name)).map((c) => c.id);

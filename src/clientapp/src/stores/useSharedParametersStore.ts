@@ -12,6 +12,7 @@ import { invoke } from "@/RevitBridge";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import {
   errorText,
+  type BindingOptions,
   type BindResult,
   type ParameterRef,
   type ParameterRow,
@@ -184,6 +185,19 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
     dirty.value = true;
   }
 
+  /** Moves parameters to another group — what dragging them onto a group does. */
+  function moveParameters(guids: string[], groupId: number) {
+    const move = new Set(guids.map((g) => g.toLowerCase()));
+    let moved = 0;
+    for (const p of parameters.value)
+      if (move.has(p.guid.toLowerCase()) && p.groupId !== groupId) {
+        p.groupId = groupId;
+        moved++;
+      }
+    if (moved) dirty.value = true;
+    return moved;
+  }
+
   function addGroup(name: string): SharedParameterGroup {
     const id = Math.max(0, ...groups.value.map((g) => g.id)) + 1;
     const group = { id, name: name.trim() };
@@ -206,6 +220,26 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
   }
 
   // ---- Project --------------------------------------------------------------------------------
+
+  // What a parameter can be bound to — read once per window; categories do not change under us.
+  const bindingOptions = ref<BindingOptions | null>(null);
+  async function loadBindingOptions(): Promise<BindingOptions | null> {
+    if (bindingOptions.value) return bindingOptions.value;
+    try {
+      bindingOptions.value = await invoke<BindingOptions>("GetBindingOptions");
+    } catch (e) {
+      notifications.error(errorText(e));
+    }
+    return bindingOptions.value;
+  }
+
+  /** Binding reads the file from disk, so it needs the file Revit uses, saved. Null = good to go. */
+  const bindBlocker = computed(() => {
+    if (!file.value?.path) return "No shared parameter file.";
+    if (!file.value.isRevitCurrent) return "Only parameters of Revit's current shared parameter file can be added.";
+    if (dirty.value) return "Save the file first — Revit adds parameters from the file on disk.";
+    return null;
+  });
 
   async function bind(guids: string[], categoryIds: number[], isInstance: boolean, groupTypeId: string) {
     const res = await invoke<BindResult>("BindSharedParameters", { guids, categoryIds, isInstance, groupTypeId });
@@ -233,9 +267,13 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
     confirmDiscard,
     upsertParameter,
     deleteParameters,
+    moveParameters,
     addGroup,
     renameGroup,
     deleteGroup,
     bind,
+    bindingOptions,
+    loadBindingOptions,
+    bindBlocker,
   };
 });
