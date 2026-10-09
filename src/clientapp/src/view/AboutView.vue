@@ -6,7 +6,7 @@
  * the bottom block of Settings, where it was found only by scrolling past switches; Settings is now
  * only what you change.
  */
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { invoke } from "@/RevitBridge";
 import { useUpdateStore } from "@/stores/useUpdateStore";
@@ -67,10 +67,13 @@ async function loadChangelog() {
   }
 }
 
-onMounted(() => {
-  loadEnvironment();
-  loadChangelog();
+// Fetched on the first expand, not on open — nobody reads it while it is folded.
+const changelogCollapsed = ref(true);
+watch(changelogCollapsed, (collapsed) => {
+  if (!collapsed && !changelogHtml.value && !changelogError.value) loadChangelog();
 });
+
+onMounted(loadEnvironment);
 </script>
 
 <template>
@@ -150,14 +153,17 @@ onMounted(() => {
       </p>
     </section>
 
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <h2 class="text-base font-bold mb-3">What's new</h2>
+    <!-- Collapsed: the changelog is long, and most visits to About are for the version. -->
+    <Panel toggleable v-model:collapsed="changelogCollapsed" class="mb-4">
+      <template #header>
+        <span class="text-base font-bold">What's new</span>
+      </template>
       <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
       <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
         <i class="pi pi-spin pi-spinner mr-2" />Loading…
       </div>
       <div v-else class="changelog-body" v-html="changelogHtml" />
-    </section>
+    </Panel>
   </div>
 </template>
 
