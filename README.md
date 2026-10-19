@@ -42,7 +42,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 ### Compatibility
 - Revit 2025–2027 on Windows.
-- Requires the **Microsoft Edge WebView2 Runtime** (present on most up-to-date Windows; the plugin prompts with a download link if it's missing).
+- Requires the **Microsoft Edge WebView2 Runtime**
 ---
 
 ## Two ways to use it
