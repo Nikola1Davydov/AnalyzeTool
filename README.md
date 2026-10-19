@@ -129,9 +129,9 @@ flowchart TB
     AT --> R[Revit]
 ```
 
-Prefer clicking to typing? **New** on the ribbon scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
+Prefer clicking to typing? **New** on the ribbon scaffolds an extension — a `plugin.json`, a page, a starter C# command and an `LLM.md` — and its button appears on the ribbon right away:
 
-<p align="center"><img src="img/new-extension.png" width="460" alt="Create an extension from a template" /></p>
+<p align="center"><img src="img/new-button.svg" width="860" alt="Click New, type a name — the id and tooltip follow — click Create, and the extension's button appears on the ribbon" /></p>
 
 ## Extension quick start (SDK)
 
