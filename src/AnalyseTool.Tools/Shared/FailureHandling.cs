@@ -24,15 +24,31 @@ namespace AnalyseTool.Tools.Shared
     /// away the only evidence that anything went sideways. Callers surface <see cref="Warnings"/> in
     /// their result, so 500 resolved warnings leave 500 traces instead of none.
     ///
-    /// Errors are left untouched, so a genuinely invalid edit still rolls the transaction back.
+    /// Errors roll the transaction back — here, without a dialog: returning Continue with an error left
+    /// unresolved hands it to Revit's own failure UI, the very modal this class exists to prevent. Their
+    /// text is kept in <see cref="Errors"/>, and callers check <c>Commit()</c>'s status through
+    /// <see cref="RollbackReason"/> instead of assuming the commit landed.
     /// </summary>
     internal sealed class CollectingFailuresPreprocessor : IFailuresPreprocessor
     {
         private readonly List<TransactionWarning> _warnings = new();
+        private readonly List<string> _errors = new();
 
         /// <summary>Warnings resolved so far. Revit may call the preprocessor several times for one
         /// transaction, so this accumulates across calls rather than being replaced.</summary>
         public IReadOnlyList<TransactionWarning> Warnings => _warnings;
+
+        /// <summary>Descriptions of the errors that rolled the transaction back.</summary>
+        public IReadOnlyList<string> Errors => _errors;
+
+        /// <summary>Null when <paramref name="status"/> is Committed; otherwise the sentence a result's
+        /// error field carries.</summary>
+        public string? RollbackReason(TransactionStatus status) =>
+            status == TransactionStatus.Committed
+                ? null
+                : _errors.Count == 0
+                    ? $"Revit did not commit the transaction ({status}); nothing was changed."
+                    : "Revit rolled the transaction back; nothing was changed. " + string.Join(" ", _errors.Distinct());
 
         public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
         {
@@ -47,16 +63,22 @@ namespace AnalyseTool.Tools.Shared
                 Log.Debug("Resolved failures in transaction '{Transaction}': {Count} message(s)",
                     failuresAccessor.GetTransactionName(), messages.Count);
 
+            bool hasErrors = false;
             foreach (FailureMessageAccessor failure in messages)
             {
-                // Errors are deliberately not recorded here: they are not resolved, they roll the
-                // transaction back, and the caller learns about them through the thrown exception.
-                if (failure.GetSeverity() != FailureSeverity.Warning) continue;
+                if (failure.GetSeverity() == FailureSeverity.Warning)
+                {
+                    _warnings.Add(new TransactionWarning(
+                        failure.GetDescriptionText(),
+                        failure.GetFailingElementIds().Select(id => id.Value).ToList()));
+                    continue;
+                }
 
-                _warnings.Add(new TransactionWarning(
-                    failure.GetDescriptionText(),
-                    failure.GetFailingElementIds().Select(id => id.Value).ToList()));
+                hasErrors = true;
+                _errors.Add(failure.GetDescriptionText());
             }
+
+            if (hasErrors) return FailureProcessingResult.ProceedWithRollBack;
 
             failuresAccessor.DeleteAllWarnings();
             return FailureProcessingResult.Continue;

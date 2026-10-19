@@ -115,7 +115,7 @@ namespace AnalyseTool.Tools.SharedParameters
 
             using Transaction transaction = new(doc, "Add shared parameters");
             transaction.Start();
-            CollectingFailuresPreprocessor.Apply(transaction);
+            CollectingFailuresPreprocessor failures = CollectingFailuresPreprocessor.Apply(transaction);
 
             foreach (Guid guid in guids)
             {
@@ -151,8 +151,20 @@ namespace AnalyseTool.Tools.SharedParameters
                 }
             }
 
-            if (result.Added.Count + result.Updated.Count > 0) transaction.Commit();
-            else transaction.RollBack();
+            if (result.Added.Count + result.Updated.Count == 0)
+            {
+                transaction.RollBack();
+                return result;
+            }
+
+            string? rolledBack = failures.RollbackReason(transaction.Commit());
+            if (rolledBack is not null)
+            {
+                foreach (string name in result.Added.Concat(result.Updated))
+                    result.Problems.Add(new BindProblemDto { Name = name, Reason = rolledBack });
+                result.Added.Clear();
+                result.Updated.Clear();
+            }
             return result;
         }
 

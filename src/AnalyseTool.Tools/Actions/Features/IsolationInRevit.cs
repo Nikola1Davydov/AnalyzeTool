@@ -40,8 +40,10 @@ namespace AnalyseTool.Tools.Actions
                     view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
 
                 view.IsolateElementsTemporary(elementsIds);
-                transaction.Commit();
-                return new IsolationResult(true, elementsIds.Count, null, failures.Warnings);
+                string? rolledBack = failures.RollbackReason(transaction.Commit());
+                return rolledBack is null
+                    ? new IsolationResult(true, elementsIds.Count, null, failures.Warnings)
+                    : new IsolationResult(false, 0, rolledBack, failures.Warnings);
             });
         }
 
