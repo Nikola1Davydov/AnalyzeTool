@@ -8,7 +8,10 @@ namespace AnalyseTool.Tests;
 /// from src\ and registered, a broken one reported without stopping the others, and a reload that drops
 /// what is gone. Until the IRevitTaskHub seam and the loader's root parameter, none of this could run
 /// outside Revit.
+/// Not in parallel with each other: a reload clears the process-wide ExtensionDiagnostics, so one test's
+/// reload could wipe the error another had just asserted on (in Revit reloads are serialized).
 /// </summary>
+[NotInParallel(nameof(ExtensionDiagnostics))]
 public class ExtensionLoaderTests
 {
     private const string Year = "2025";
