@@ -19,6 +19,10 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RootNamespace>AnalyseTool.TsGen</RootNamespace>
+    <!-- The IDE's fast up-to-date check looks only at this project's inputs: with the C# unchanged it
+         never calls MSBuild, so a deleted or hand-edited commands.ts stayed that way. Always build —
+         the compile is incremental, and the generator rewrites the file only when it differs. -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
 
   <ItemGroup>
