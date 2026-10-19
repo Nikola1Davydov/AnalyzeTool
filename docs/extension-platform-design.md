@@ -130,7 +130,7 @@ trap on the way to publishing:
    whatever is missing (csproj, `.gitignore`, `release.yml`, README), runs the
    same git steps as project mode, registers the new folder as a dev root and
    removes the old dev-zone copy. The extension keeps working throughout.
-   Lifecycle: saved command for myself → (one click) → git project → (push + tag) →
+   Lifecycle: an extension for myself → (one click) → git project → (push + tag) →
    published package; every step is a valid place to stop.
 
 ## Registry (the curation point, later iteration — tracked as #76)

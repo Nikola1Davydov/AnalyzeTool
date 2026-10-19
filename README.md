@@ -194,7 +194,7 @@ from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP �
 ```
 src/
   AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
-  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), Roslyn (ExecuteRevitCode, saved commands)
+  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), Roslyn (ExecuteRevitCode, host-built extensions)
   AnalyseTool.Tools/      built-in feature commands (Get/Families/Ai/Actions) — references ONLY the Sdk
   AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
   AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)

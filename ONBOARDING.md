@@ -794,28 +794,26 @@ Notes:
   both schemas automatically. A command that declares neither type is callable but opaque: free-form
   arguments, free-form answer, and nothing that can be chained or validated.
 
-### 9.1 The other direction — letting the AI write the command
+### 9.1 The other direction — letting the AI build with you
 
-Everything above is an agent *calling* your commands. It can also write them, without you copying
-files around: it reads the authoring guide over MCP (`GetAuthoringGuide` serves the same
+Everything above is an agent *calling* your commands. It can also help build them: it reads the
+authoring guide over MCP (`GetAuthoringGuide` serves the same
 [`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md) this repo ships),
-saves a C# command, and — when the command needs a form —
-saves the HTML/CSS/JS page and the ribbon button that opens it. The plugin compiles a saved command
-into the extension's DLL itself — with the Roslyn compiler it ships, against the Revit API that is
-already loaded — so nobody needs the .NET SDK or a build step. The source stays in the extension's
-`src\` folder: if it does not compile the agent reads the error back and tries again, and it can read
-its own earlier source to refine rather than replace it. Open the same folder in another Revit
-version, or edit a file in `src\` by hand, and the plugin builds it again on the next load.
+tries C# against the open model with `ExecuteRevitCode`, and saves an HTML/CSS/JS page — with the
+ribbon button that opens it — for an extension's commands. There is no MCP command that saves C#:
+code worth keeping goes into a C# project (§4), or, without a .NET SDK, into an extension's `src\`
+folder, which the plugin compiles on load with the Roslyn it ships. Open the same folder in another
+Revit version, or edit a file in `src\` by hand, and the plugin builds it again on the next load.
 
 Two things worth knowing before you use it:
 
-- **It is off unless a person turns it on.** Writing and running C# is behind the code-execution
+- **It is off unless a person turns it on.** Running C# and saving pages is behind the code-execution
   switch in Settings, which is deliberately not something an agent can flip for itself — the command
   that sets it is hidden from MCP entirely.
-- **Where the command lands is your choice.** Extensions → *Folders scanned* names the dev folder new commands are
-  saved into, and refining a command that already exists writes it back to the folder it lives in — so a
-  shared team folder registered as a source root keeps working, and a fix does not silently land in
-  a different copy.
+- **Where a page lands is your choice.** Extensions → *Folders scanned* names the dev folder new pages
+  are saved into, and a page for an extension that already exists is written to the folder it lives
+  in — so a shared team folder registered as a source root keeps working, and a fix does not silently
+  land in a different copy.
 
 The mechanics — every command in the loop, the manifest it writes, the recovery paths — are in
 [`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md), which is written to

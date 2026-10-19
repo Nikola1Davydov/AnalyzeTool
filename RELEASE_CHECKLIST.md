@@ -46,8 +46,8 @@ A reusable checklist to run before publishing a new AnalyseTool version.
 
 - [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (AnalyseTool, Settings, Report a bug, About, Reload, Extensions, New,
       plus the buttons of installed extensions).
-- [ ] A command saved over MCP (`SaveAsCommand`) gets its ribbon button and runs; the folder holds
-      `src\` and `<year>\<id>.dll`.
+- [ ] A host-built extension (sources in `src\`, no `.csproj`) is compiled on load, gets its ribbon
+      button and runs; the folder then holds `<year>\<id>.dll`.
 - [ ] Smoke-test the features that changed this release (open windows, run the new/changed commands on a
       **copy** of a real project — especially any model-write action: delete / purge / load / rename).
 - [ ] Long operations show progress and don't freeze Revit; closing a window mid-operation doesn't crash.
