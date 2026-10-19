@@ -18,6 +18,7 @@ sealed partial class Build
     //   4. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
     //   5. the extension template the plugin generates actually builds, and Core's embedded
     //      template resources are really in the assembly (Build.Ci.Template.cs)
+    //   6. the Vue frontend type-checks (vue-tsc) — against src/generated/commands.ts among others
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath SdkNupkgDirectory => CiArtifactsDirectory / "sdk-nupkg";
@@ -55,6 +56,23 @@ sealed partial class Build
             ProcessTasks
                 .StartProcess("pwsh", $"-NoProfile -ExecutionPolicy Bypass -File {script}", RootDirectory)
                 .AssertZeroExitCode();
+        });
+
+    AbsolutePath ClientAppDirectory => RootDirectory / "src" / "clientapp";
+
+    /// <summary>
+    /// Type-checks the Vue frontend (<c>npm run type-check</c> = vue-tsc). Vite strips types without
+    /// checking them, so without this a call that disagrees with the generated command contract
+    /// (src/generated/commands.ts) builds fine and fails only at run time in Revit. Installs the npm
+    /// packages first when they are missing (a fresh CI checkout); a dev's own node_modules is left alone.
+    /// </summary>
+    Target TypeCheckClientApp => _ => _
+        .Executes(() =>
+        {
+            // cmd /c: npm is a .cmd shim on Windows, which a direct process start does not resolve.
+            if (!File.Exists(ClientAppDirectory / "node_modules" / ".bin" / "vue-tsc.cmd"))
+                ProcessTasks.StartProcess("cmd", "/c npm ci", ClientAppDirectory).AssertZeroExitCode();
+            ProcessTasks.StartProcess("cmd", "/c npm run type-check", ClientAppDirectory).AssertZeroExitCode();
         });
 
     /// <summary>
@@ -158,6 +176,6 @@ sealed partial class Build
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
+        .DependsOn(CompileCi, TypeCheckClientApp, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

@@ -52,6 +52,8 @@ const notifications = useNotificationStore();
 const loading = ref(false);
 const saving = ref(false);
 const data = ref<ManifestData | null>(null);
+// For the template: vue-tsc loses the v-else-if="data" narrowing deep in it.
+const editable = computed(() => data.value?.editable ?? false);
 
 const form = ref({
   description: "",
@@ -64,7 +66,7 @@ const form = ref({
   tab: "",
   panel: "",
   kind: "push" as ManifestButton["kind"],
-  order: 0,
+  order: "0", // InputText edits a string; save() turns it back into a number
   dockable: false,
 });
 
@@ -96,7 +98,7 @@ async function load() {
       tab: m.button?.tab ?? "",
       panel: m.button?.panel ?? "",
       kind: m.button?.kind ?? "push",
-      order: m.button?.order ?? 0,
+      order: String(m.button?.order ?? 0),
       dockable: m.button?.dockable ?? false,
     };
   } catch (e) {
@@ -203,7 +205,7 @@ watch(
       </div>
 
       <div
-        v-if="!data.editable"
+        v-if="!editable"
         class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
       >
         This is an installed package. Its manifest belongs to the publisher, and the next update
@@ -216,20 +218,20 @@ watch(
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           <div class="flex flex-col gap-1 sm:col-span-2">
             <label class="text-xs text-surface-500">Name</label>
-            <InputText v-model="form.name" size="small" :disabled="!data.editable" />
+            <InputText v-model="form.name" size="small" :disabled="!editable" />
             <small class="text-surface-500">Also the extension's display name and window title.</small>
           </div>
           <div class="flex flex-col gap-1 sm:col-span-2">
             <label class="text-xs text-surface-500">Tooltip</label>
-            <InputText v-model="form.tooltip" size="small" :disabled="!data.editable" />
+            <InputText v-model="form.tooltip" size="small" :disabled="!editable" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs text-surface-500">Tab</label>
-            <InputText v-model="form.tab" size="small" placeholder="AnalyseTool" :disabled="!data.editable" />
+            <InputText v-model="form.tab" size="small" placeholder="AnalyseTool" :disabled="!editable" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs text-surface-500">Panel</label>
-            <InputText v-model="form.panel" size="small" placeholder="Extensions" :disabled="!data.editable" />
+            <InputText v-model="form.panel" size="small" placeholder="Extensions" :disabled="!editable" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs text-surface-500">Shape</label>
@@ -240,7 +242,7 @@ watch(
               optionValue="value"
               :allowEmpty="false"
               size="small"
-              :disabled="!data.editable"
+              :disabled="!editable"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -251,7 +253,7 @@ watch(
               type="number"
               min="0"
               class="w-24"
-              :disabled="!data.editable"
+              :disabled="!editable"
             />
             <small class="text-surface-500">Lower comes first. 0 = no preference, after the numbered ones.</small>
           </div>
@@ -261,7 +263,7 @@ watch(
             <div class="text-sm">Open in the dock pane</div>
             <div class="text-xs text-surface-500">Instead of a window of its own.</div>
           </div>
-          <ToggleSwitch v-model="form.dockable" :disabled="!data.editable" />
+          <ToggleSwitch v-model="form.dockable" :disabled="!editable" />
         </div>
       </div>
 
@@ -278,23 +280,23 @@ watch(
       <div class="grid grid-cols-1 gap-3">
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Description</label>
-          <InputText v-model="form.description" size="small" placeholder="What it does, in one line" :disabled="!data.editable" />
+          <InputText v-model="form.description" size="small" placeholder="What it does, in one line" :disabled="!editable" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Publisher</label>
-          <InputText v-model="form.publisher" size="small" :disabled="!data.editable" />
+          <InputText v-model="form.publisher" size="small" :disabled="!editable" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-surface-500">Website</label>
-          <InputText v-model="form.website" size="small" placeholder="https://…" :disabled="!data.editable" />
+          <InputText v-model="form.website" size="small" placeholder="https://…" :disabled="!editable" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-surface-500">Support link</label>
-          <InputText v-model="form.supportUrl" size="small" placeholder="https://…" :disabled="!data.editable" />
+          <InputText v-model="form.supportUrl" size="small" placeholder="https://…" :disabled="!editable" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-surface-500">Update feed</label>
-          <InputText v-model="form.updateFeed" size="small" placeholder="github:owner/repo" :disabled="!data.editable" />
+          <InputText v-model="form.updateFeed" size="small" placeholder="github:owner/repo" :disabled="!editable" />
         </div>
       </div>
 
@@ -306,7 +308,7 @@ watch(
       </div>
 
       <p class="text-xs text-surface-500 break-all">
-        {{ data.directory }}\plugin.json — other fields in the file are left as they are.
+        {{ data?.directory }}\plugin.json — other fields in the file are left as they are.
       </p>
 
       <div class="flex gap-2 justify-end">

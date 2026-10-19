@@ -11,7 +11,7 @@ sealed partial class Build
     ///     Compile all solution configurations.
     /// </summary>
     Target BuildClientApp => _ => _
-        .DependsOn(Clean)
+        .DependsOn(Clean, TypeCheckClientApp)
         .Executes(() =>
         {
             foreach (string configuration in GlobBuildConfigurations())
