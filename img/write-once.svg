@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" role="img" aria-labelledby="t d">
   <title id="t">Write a command once, call it from everywhere</title>
-  <desc id="d">A ribbon button, a window or dock pane via AT.invoke, and an AI agent over MCP all call the same IRevitTask command through one command queue.</desc>
+  <desc id="d">A ribbon button, a window or page via AT.invoke, and an AI agent over MCP all call the same IRevitTask command through one command queue.</desc>
   <style>
     .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; }
     .hot { fill: #ddf4ff; stroke: #54aeff; }
@@ -34,7 +34,7 @@
   <text class="sub" x="40" y="65">a click runs the command</text>
 
   <rect class="box" x="20" y="97" width="280" height="56" rx="10"/>
-  <text class="title" x="40" y="121">Window · dock pane · your page</text>
+  <text class="title" x="40" y="121">Window · your page</text>
   <text class="code" x="40" y="140">AT.invoke("acme.walls.Count")</text>
 
   <rect class="box" x="20" y="172" width="280" height="56" rx="10"/>
