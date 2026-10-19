@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" role="img" aria-labelledby="t d">
+  <title id="t">How an AI call reaches Revit</title>
+  <desc id="d">A request travels from the AI client over stdio to AnalyseTool.Mcp.exe, over a token-checked localhost TCP connection to the bridge inside Revit, through the command queue to the Revit thread, and the answer travels back.</desc>
+  <style>
+    .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; }
+    .hot { fill: #ddf4ff; stroke: #54aeff; }
+    .title { font: 600 15px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+    .sub { font: 12px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #59636e; }
+    .wire { font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #59636e; }
+    .line { stroke: #8c959f; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .req { fill: #0969da; }
+    .res { fill: #1a7f37; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #161b22; stroke: #3d444d; }
+      .hot { fill: #0c2d4d; stroke: #1f6feb; }
+      .title { fill: #f0f6fc; }
+      .sub, .wire { fill: #9198a1; }
+      .line { stroke: #656c76; }
+      .req { fill: #4493f8; }
+      .res { fill: #3fb950; }
+    }
+    @media (prefers-reduced-motion: reduce) { .moving { display: none; } }
+  </style>
+
+  <!-- the wire, under the boxes: a packet "inside" a box is being handled there -->
+  <path class="line" d="M160,115 H740"/>
+  <circle class="req moving" r="7">
+    <animateMotion dur="6s" repeatCount="indefinite" path="M85,115 H815" keyPoints="0;1;1" keyTimes="0;0.45;1" calcMode="linear"/>
+    <animate attributeName="opacity" dur="6s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;0.45;0.46;1"/>
+  </circle>
+  <circle class="res moving" r="7">
+    <animateMotion dur="6s" repeatCount="indefinite" path="M815,115 H85" keyPoints="0;0;1;1" keyTimes="0;0.5;0.95;1" calcMode="linear"/>
+    <animate attributeName="opacity" dur="6s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.5;0.51;0.95;1"/>
+  </circle>
+
+  <g>
+    <rect class="box" x="10" y="70" width="150" height="90" rx="10"/>
+    <text class="title" x="85" y="108" text-anchor="middle">AI client</text>
+    <text class="sub" x="85" y="128" text-anchor="middle">Claude · Cursor · …</text>
+
+    <rect class="box" x="192" y="70" width="150" height="90" rx="10"/>
+    <text class="title" x="267" y="108" text-anchor="middle">AnalyseTool.Mcp</text>
+    <text class="sub" x="267" y="128" text-anchor="middle">tools · jobs · progress</text>
+
+    <rect class="box hot" x="375" y="70" width="150" height="90" rx="10"/>
+    <text class="title" x="450" y="108" text-anchor="middle">MCP bridge</text>
+    <text class="sub" x="450" y="128" text-anchor="middle">token · schema check</text>
+
+    <rect class="box hot" x="557" y="70" width="150" height="90" rx="10"/>
+    <text class="title" x="632" y="108" text-anchor="middle">Command queue</text>
+    <text class="sub" x="632" y="128" text-anchor="middle">gate · log · track</text>
+
+    <rect class="box" x="740" y="70" width="150" height="90" rx="10"/>
+    <text class="title" x="815" y="108" text-anchor="middle">Revit model</text>
+    <text class="sub" x="815" y="128" text-anchor="middle">RunInRevitAsync</text>
+  </g>
+
+  <text class="wire" x="176" y="58" text-anchor="middle">stdio</text>
+  <text class="wire" x="358" y="58" text-anchor="middle">TCP 127.0.0.1</text>
+  <text class="wire" x="541" y="58" text-anchor="middle">one queue</text>
+  <text class="wire" x="723" y="58" text-anchor="middle">Revit thread</text>
+
+  <text class="sub" x="450" y="200" text-anchor="middle">Inside Revit: everything right of the exe. A call that runs longer than a minute comes back as a job (GetJobResult).</text>
+  <circle class="req" cx="352" cy="228" r="5"/><text class="sub" x="362" y="232">request</text>
+  <circle class="res" cx="452" cy="228" r="5"/><text class="sub" x="462" y="232">answer</text>
+</svg>
