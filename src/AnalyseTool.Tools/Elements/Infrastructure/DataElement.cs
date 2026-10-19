@@ -29,7 +29,8 @@ namespace AnalyseTool.Tools.Elements
             Name = Element.Name;
             Id = Element.Id.Value;
             Level = Element.Document.GetElement(Element.LevelId)?.Name ?? string.Empty;
-            IsElementType = Element.GetTypeId() == ElementId.InvalidElementId;
+            // Not GetTypeId() == invalid: levels and grids have no type and are still instances.
+            IsElementType = Element is ElementType;
             ElementTypeId = Element.GetTypeId().Value;
             Parameters = GetParameters(Element.Parameters).ToList();
         }

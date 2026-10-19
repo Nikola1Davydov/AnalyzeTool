@@ -5,6 +5,7 @@
 - ✋ **Closing a window cancels the commands it started**, so a long one no longer keeps Revit busy for a window that is gone.
 - 🔌 **Saving Settings no longer interrupts a running agent command.** The MCP bridge restarts only when it is switched on or off or its port changes.
 - 🧾 **`GetJobResult` never reports a finished call without its result, and a reused call id is refused** instead of replacing a running call that could then no longer be cancelled.
+- 🏷️ **Rooms and other type-less elements are no longer reported as types**, and their parameters no longer show as type parameters in `GetCategoryParameters`.
 - ✂️ **`SaveAsCommand` and `GetScriptSource` are removed.** An agent no longer saves C# commands over MCP; commands saved earlier keep loading, because AnalyseTool still builds an extension's `src\` folder on load.
 - 🔒 **An extension's icon is read only from its own folder.** A `plugin.json` icon path that pointed elsewhere (`..\`, an absolute path) is ignored.
 - 🔢 **Element-id parameters accept ids above 2,147,483,647**, and integer values are read the same way in every Windows language.

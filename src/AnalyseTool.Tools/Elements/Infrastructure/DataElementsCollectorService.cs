@@ -288,7 +288,8 @@ namespace AnalyseTool.Tools.Elements
             if (sample == null) return new List<CategoryParameterInfo>();
 
             Dictionary<string, CategoryParameterInfo> map = new(StringComparer.OrdinalIgnoreCase);
-            bool sampleIsType = sample.GetTypeId() == ElementId.InvalidElementId;
+            // By what the sample IS: a level or a grid has no type either, and is not one.
+            bool sampleIsType = sample is ElementType;
             AddParameterInfos(sample.Parameters, sampleIsType, map);
 
             // When the sample is an instance, also surface its type's parameters.
