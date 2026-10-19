@@ -14,11 +14,9 @@ namespace AnalyseTool.Core.Features.Extensions
                       "src folder is compiled again here. Cost: unloads every extension and recompiles " +
                       "the ones whose sources changed. Hidden from the AI while C# execution is off in " +
                       "AnalyseTool Settings.")]
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class ReloadExtensionsCommand : IRevitTask
     {
-        /// <summary>Wire name, referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = "ReloadExtensions";
-
         // No CodeExecutionSettings check in the body, unlike the authoring commands it sits beside. The
         // gate is the MCP bridge's alone, because the Extensions window invokes this command (after a folder change) and
         // must keep working with the toggle off. The description says "hidden from the AI" rather than

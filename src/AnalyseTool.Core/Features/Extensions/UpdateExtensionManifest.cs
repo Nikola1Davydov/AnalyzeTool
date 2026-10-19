@@ -26,11 +26,9 @@ namespace AnalyseTool.Core.Features.Extensions
         Destructive = true,
         InputType = typeof(UpdateExtensionManifest.Request),
         OutputType = typeof(UpdateManifestResult))]
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class UpdateExtensionManifest : IRevitTask
     {
-        /// <summary>Wire name, referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = nameof(UpdateExtensionManifest);
-
         public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
             if (!CodeExecutionSettings.Enabled)

@@ -28,11 +28,9 @@ namespace AnalyseTool.Core.Features.Scripting
                       "compiles on every call, which makes this the slowest command here.",
         InputType = typeof(Request),
         Destructive = true)] // arbitrary code: assume it can modify the model
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class ExecuteRevitCode : IRevitTask, IProgressAware
     {
-        /// <summary>Wire/command name — referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = nameof(ExecuteRevitCode);
-
         /// <summary>The caller's progress sink, handed on to the compiled task below. The dispatcher
         /// injects it into THIS command; the snippet's own class is created here, out of the
         /// dispatcher's sight, so without the hand-over a script's Progress was always null — and the

@@ -32,11 +32,9 @@ namespace AnalyseTool.Core.Features.Extensions
         Destructive = true,
         InputType = typeof(SaveExtensionUi.Request),
         OutputType = typeof(SaveUiResult))]
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class SaveExtensionUi : IRevitTask
     {
-        /// <summary>Wire name, referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = nameof(SaveExtensionUi);
-
         /// <summary>What may be written. An allowlist, not a denylist: the extensions folder is loaded
         /// by the host, so the question is not "is this dangerous" but "is this one of the few kinds of
         /// file a hand-written page is made of".</summary>

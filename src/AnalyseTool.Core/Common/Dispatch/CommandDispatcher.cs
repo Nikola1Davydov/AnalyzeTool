@@ -92,21 +92,30 @@ namespace AnalyseTool.Core.Common.Dispatch
             return typeof(IRevitTask).IsAssignableFrom(type);
         }
 
-        private void TryRegister(Type type, string source, string? prefix)
+        /// <summary>The registration a command type produces — name, metadata, schemas. Pure, so the
+        /// Revit-free tests can check what a command will register as.</summary>
+        internal static CommandRegistration Describe(Type type, string source, string? prefix)
         {
             RevitCommandAttribute? attr = type.GetCustomAttribute<RevitCommandAttribute>();
             // No [RevitCommand] at all, or [RevitCommand] without an explicit name -> use the class name.
             string baseName = string.IsNullOrEmpty(attr?.Name) ? type.Name : attr!.Name!;
             string name = string.IsNullOrEmpty(prefix) ? baseName : $"{prefix}.{baseName}";
 
-            CommandRegistration registration = new(
+            return new CommandRegistration(
                 name, type, source,
                 attr?.Description,
                 attr?.ReadOnly ?? false,
                 attr?.Destructive ?? false,
                 BuildSchema(attr?.InputType),
                 ExposeToMcp: !(attr?.HiddenFromMcp ?? false),
-                OutputSchemaJson: BuildSchema(attr?.OutputType));
+                OutputSchemaJson: BuildSchema(attr?.OutputType),
+                IsCodeAuthoringTool: type.IsDefined(typeof(Extensions.Scripting.CodeAuthoringToolAttribute), inherit: false));
+        }
+
+        private void TryRegister(Type type, string source, string? prefix)
+        {
+            CommandRegistration registration = Describe(type, source, prefix);
+            string name = registration.Name;
 
             // TryAdd, not check-then-set: first registration wins, and the winner is decided atomically.
             if (!_commands.TryAdd(name, registration))
@@ -212,5 +221,6 @@ namespace AnalyseTool.Core.Common.Dispatch
         bool Destructive = false,
         string InputSchemaJson = SchemaListing.EmptyObject,
         bool ExposeToMcp = true,
-        string OutputSchemaJson = SchemaListing.EmptyObject);
+        string OutputSchemaJson = SchemaListing.EmptyObject,
+        bool IsCodeAuthoringTool = false);
 }

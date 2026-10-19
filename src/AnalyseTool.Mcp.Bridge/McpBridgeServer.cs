@@ -452,21 +452,15 @@ namespace AnalyseTool.Mcp.Bridge
         /// when off anyway — this keeps them out of reach instead of merely out of sight).</item>
         /// </list>
         /// </summary>
-        private static bool IsAvailableToAi(CommandRegistration command) =>
-            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(command.Name));
-
-        /// <summary>
-        /// The tools behind the Settings toggle. Not only the one that RUNS code: writing an extension's
-        /// files and reloading are the steps that make written code take effect — the toggle is the user
-        /// saying "I am authoring code here with AI", and each of these is part of doing that. The toggle
+        /// <remarks>
+        /// The tools behind the Settings toggle are the ones marked [CodeAuthoringTool] — not only the one
+        /// that RUNS code: writing an extension's files and reloading are the steps that make written code
+        /// take effect, and the toggle is the user saying "I am authoring code here with AI". The toggle
         /// itself stays out of reach: SetCodeExecution is HiddenFromMcp, so only a person at the Settings
         /// page turns this on or off.
-        /// </summary>
-        private static bool IsCodeAuthoringTool(string name) =>
-            string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveExtensionUi.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, UpdateExtensionManifest.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
+        /// </remarks>
+        internal static bool IsAvailableToAi(CommandRegistration command) =>
+            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !command.IsCodeAuthoringTool);
 
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
