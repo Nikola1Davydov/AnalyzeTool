@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 🔒 **An extension's icon is read only from its own folder.** A `plugin.json` icon path that pointed elsewhere (`..\`, an absolute path) is ignored.
 - 🔢 **Element-id parameters accept ids above 2,147,483,647**, and integer values are read the same way in every Windows language.
 - 🧯 **A window that fails to start, or a malformed message from a page, no longer risks crashing Revit.** The error is logged and shown, and the window closes.
 - 🛑 **A write that Revit rolls back is reported as failed.** Setting parameters, isolating and adding shared parameters used to answer `ok` even when Revit rejected the change; now an error rolls the transaction back without a dialog, and the result says what Revit objected to.

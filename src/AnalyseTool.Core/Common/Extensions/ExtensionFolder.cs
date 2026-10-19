@@ -43,16 +43,21 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>The extension directory inside <paramref name="root"/>, or null when the id would
         /// escape it. Defence in depth: the id is already character-checked, and this catches whatever
         /// that check ever fails to.</summary>
-        public static string? ResolveExtensionDirectory(string root, string id)
+        public static string? ResolveExtensionDirectory(string root, string id) => ResolveInside(root, id);
+
+        /// <summary><paramref name="relative"/> combined with <paramref name="root"/>, or null when the
+        /// result would lie outside it — "..\" segments and absolute paths both escape. For any path an
+        /// extension's own files (manifest, icon) name.</summary>
+        public static string? ResolveInside(string root, string relative)
         {
-            string directory = Path.Combine(root, id);
+            string path = Path.Combine(root, relative);
             // Trimmed before the separator is appended: a root that already ends in one — "D:\", which
             // is what GetFullPath returns for a drive — would otherwise be compared against "D:\\", and
             // nothing starts with that. Every save into such a root failed, blaming the id for it.
             string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar);
-            return Path.GetFullPath(directory)
+            return Path.GetFullPath(path)
                 .StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                ? directory
+                ? path
                 : null;
         }
 

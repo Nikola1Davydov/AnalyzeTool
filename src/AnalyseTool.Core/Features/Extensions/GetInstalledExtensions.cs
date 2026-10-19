@@ -97,7 +97,10 @@ namespace AnalyseTool.Core.Features.Extensions
 
             try
             {
-                string path = System.IO.Path.Combine(descriptor.Directory, relative);
+                // The icon path comes from a third-party plugin.json and the listing is an MCP tool:
+                // "..\..\secret" or an absolute path must not turn it into a file reader.
+                string? path = ExtensionFolder.ResolveInside(descriptor.Directory, relative);
+                if (path is null) return null;
                 System.IO.FileInfo file = new(path);
                 if (!file.Exists || file.Length > MaxIconBytes) return null;
                 return "data:image/png;base64," + Convert.ToBase64String(System.IO.File.ReadAllBytes(path));
