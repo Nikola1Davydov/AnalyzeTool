@@ -340,7 +340,7 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
         case McpWire.JobStates.Running:
             return new CallToolResult
             {
-                Content = { new TextContentBlock { Text = $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\",\"seconds\":{seconds}}}\n" +
+                Content = { new TextContentBlock { Text = new JsonObject { ["status"] = "running", ["jobId"] = jobId, ["command"] = command, ["seconds"] = seconds }.ToJsonString() + "\n" +
                     $"'{command}' is still running in Revit ({seconds:0}s so far). Call GetJobResult again later, or CancelJob to stop it." } },
             };
         case McpWire.JobStates.Failed:
@@ -373,8 +373,10 @@ async Task<CallToolResult> AnswerCancelAsync(JsonNode? payload, CancellationToke
     };
 }
 
+// Built as a JsonObject, not interpolated: jobId arrives from the agent, and a quote in it would break
+// the JSON line the agent is told to parse.
 static string RunningHandle(string command, string jobId) =>
-    $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\"}}\n" +
+    new JsonObject { ["status"] = "running", ["jobId"] = jobId, ["command"] = command }.ToJsonString() + "\n" +
     $"'{command}' is still running in Revit and was not waited for any longer. It keeps running; " +
     $"call GetJobResult with jobId \"{jobId}\" to collect its result (kept for one hour), GetQueueStatus to see " +
     "it running, or CancelJob to stop it. Do not start the same command again meanwhile.";
