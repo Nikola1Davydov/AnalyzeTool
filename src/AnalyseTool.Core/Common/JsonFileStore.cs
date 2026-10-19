@@ -82,7 +82,7 @@ namespace AnalyseTool.Core.Common
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
                 File.WriteAllText(temp, JsonConvert.SerializeObject(value, Formatting.Indented));
                 // Same folder, so a rename: the real file is either the old content or the new, never half.
-                File.Move(temp, _path, overwrite: true);
+                ReplaceWithRetry(temp);
                 return true;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -90,6 +90,25 @@ namespace AnalyseTool.Core.Common
                 Log.Warning(ex, "Settings file {Path} could not be written", _path);
                 try { File.Delete(temp); } catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException) { }
                 return false;
+            }
+        }
+
+        /// <summary>The rename, tried a few times. Windows refuses to replace a file that something else
+        /// has open for a moment — an antivirus scanning the file just written, the search indexer — and a
+        /// refusal there lost the whole change; the concurrent-update test caught one in forty.</summary>
+        private void ReplaceWithRetry(string temp)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    File.Move(temp, _path, overwrite: true);
+                    return;
+                }
+                catch (Exception ex) when (attempt < 10 && ex is IOException or UnauthorizedAccessException)
+                {
+                    Thread.Sleep(10 * attempt);
+                }
             }
         }
     }
