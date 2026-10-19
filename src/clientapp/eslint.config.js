@@ -12,7 +12,7 @@ export default defineConfigWithVueTs(
   },
 
   // generated/ is written by TsGen and checked by TsContractTests, not by hand.
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'archive/**', 'src/generated/**']),
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'src/generated/**']),
 
   {
     languageOptions: {

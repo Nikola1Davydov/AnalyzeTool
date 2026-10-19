@@ -8,12 +8,12 @@ import { createWebHashHistory, createRouter } from "vue-router";
 // per-view code and its heavy deps (chart.js, tables, marked) are split out.
 const routes = [
   // The main window: the shared parameter table, and the A4 report of the parameters picked there.
-  // The pages before them (canvas, empty check, value check) are in clientapp/archive/.
+  // The pages before them (canvas, empty check, value check) were removed; git history has them.
   { path: "/", component: () => import("@/view/SharedParameters/SharedParametersView.vue") },
   { path: "/report", component: () => import("@/view/Report/ReportView.vue") },
   { path: "/index.html", redirect: "/" },
   { path: "/about", component: () => import("@/view/AboutView.vue") },
-  // Old addresses of the archived pages land on the table rather than on a blank window.
+  // Old addresses of the removed pages land on the table rather than on a blank window.
   { path: "/parameterCanvasView", redirect: "/" },
   { path: "/parameterFilledEmptyPage", redirect: "/report" },
   { path: "/parametervaluecheck", redirect: "/report" },
