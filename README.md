@@ -8,7 +8,7 @@
 
 **A free Revit plugin for family & parameter workflows — and an open framework for building your own AI-powered Revit tools.**
 
-Use the built-in tools (shared parameters and a printable parameter report) and installable packages such as Family Manager and a dockable placement palette, or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and give the pages it builds a ribbon button.
+Use the built-in tools (shared parameters and a printable parameter report) and installable packages, or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and give the pages it builds a ribbon button.
 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
@@ -29,26 +29,27 @@ Use the built-in tools (shared parameters and a printable parameter report) and 
 4. Start Revit and open the **AnalyseTool** ribbon tab.
 
 ### AI setup
-AnalyseTool has no AI of its own — you connect the one you already use. In **Settings → AI assistant**, turn the MCP server on, open *Connection details* and paste the config snippet into your client (Claude Desktop, Cursor, …). To let the assistant write and save commands, turn on **C# execution** in the same block.
+AnalyseTool has no AI of its own — you connect the one you already use. In **Settings → AI assistant**, turn the MCP server on, open *Connection details* and paste the config snippet into your client (Claude Desktop, Cursor, …). To let the assistant run C# in Revit and save pages for your extensions, turn on **C# execution** in the same block.
 
 ### Troubleshooting
 - **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
 - **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** on the ribbon.
 - **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
 - **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
+- **The AI client lists only `GetJobResult` and `CancelJob`** → it connected before the bridge was up. The bridge starts the first time you open AnalyseTool in a Revit session; open it once, then reconnect the server in your client.
 - **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
 </details>
 
 ### Compatibility
 - Revit 2025–2027 on Windows.
-- Requires the **Microsoft Edge WebView2 Runtime** (present on most up-to-date Windows; the plugin prompts with a download link if it's missing).
+- Requires the **Microsoft Edge WebView2 Runtime**
 ---
 
 ## Two ways to use it
 
 | 🧰 **Use it** | 🛠️ **Build on it** |
 | --- | --- |
-| Shared parameters and the parameter report built in; Family Manager, the Component palette and family libraries as packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
+| Shared parameters and the parameter report built in; more tools as installable packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
@@ -71,39 +72,24 @@ Open the **AnalyseTool** tab:
 - **Reload** — reload extensions (DLLs + buttons) without restarting Revit.
 - **Extensions** — install, update and manage extensions.
 - **New** — create an extension: a ribbon button with a page and a C# command.
-- Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and of the extensions you or your AI added.
+- Buttons of installed packages and of the extensions you or your AI added.
 
-## 🧱 Family Manager
+## 📊 Shared parameters & report
 
-An installable package (Extensions → Packages). Browse, audit and clean up every family in the project — gallery & table views with thumbnails, an interactive 3D preview, family types (including system families), rename, delete, **purge-unused** with a live progress bar, and saved filter rules.
+The main window (**AnalyseTool** on the ribbon):
 
-<p align="center"><img src="img/family-manager.png" width="780" alt="Family Manager" /></p>
-
-Click any family for a detail view: an interactive 3D preview next to its types and parameters.
-
-<p align="center"><img src="img/family-detail.png" width="780" alt="Family detail with 3D preview" /></p>
-
-## 🧲 Component palette & library
-
-A dockable pane (docks next to the Project Browser) for **placing** families: types grouped by family with previews, gallery/table views, search, quick-filter rules and persisted grouping/sorting. Click a type to start Revit's placement.
-
-Switch to **Library** mode to browse your `.rfa` folders: each file shows its embedded thumbnail and the Revit version it was saved in, flags what's already loaded, and loads families into the project in one click (with progress). Files saved in a newer Revit are marked as not loadable.
-
-<p align="center"><img src="img/component-palette.png" width="820" alt="Component palette docked in Revit" /></p>
-
-## 📊 Parameters
-
-- Category-based parameter exploration with filters (Instance/Type, BuiltIn/Shared/Project).
-- Parameter Filled/Empty analytics with chart-driven selection.
-- Parameter Value Check workflow.
-- Infinite Canvas workflow with bulk edits.
-- Select / Isolate actions directly in Revit.
+- **One table** for the parameters of your shared parameter file and of the project.
+- **Edit the file**: create, rename, regroup (drag into another group) and delete parameters. Saves keep a `.bak` and refuse to overwrite a file someone changed meanwhile.
+- **Add to the project**: drop file parameters onto categories to bind them.
+- **Report**: pick parameters — from a grouped picker, saved as named sets — and get A4 pages of filled vs empty, values and per-level counts, each as a chart, a table or both, ready to print.
 
 ## 🤖 AI — the one you already use
 
 - Connect Claude Desktop, Cursor or any other **MCP** client: it reads and changes the model through AnalyseTool's commands — built-in and from your extensions.
-- Ask it to **build a button**: it writes the C#, tries it, and saves it — AnalyseTool compiles it into a ribbon button itself, no Visual Studio or .NET SDK needed.
-- **Nothing runs code until you allow it:** writing and running C# is off until you switch it on in Settings, and the assistant cannot switch it on itself.
+- It can **try C#** against the open model (`ExecuteRevitCode`) and **give your extension a page** with a ribbon button. Code worth keeping goes into an extension — **New** on the ribbon scaffolds one.
+- **Nothing runs code until you allow it:** running C# and saving pages is off until you switch it on in Settings, and the assistant cannot switch it on itself.
+
+<p align="center"><img src="img/mcp-flow.svg" width="860" alt="An AI call travels from the client through AnalyseTool.Mcp and the bridge into Revit's command queue, and the answer comes back" /></p>
 
 ---
 
@@ -116,12 +102,7 @@ AnalyseTool isn't just a set of tools — it's a small framework for authoring R
 
 Write a command once as an `IRevitTask`. The dispatcher is transport-neutral, so the same command is instantly callable from **any WebView UI** — a window, the shared dockable pane, or an extension page, all via `AT.invoke` — and from **AI agents over MCP**. No duplicated logic.
 
-```mermaid
-flowchart TB
-    C["Your command<br/>(IRevitTask)"]
-    C --> UI["WebView UI · AT.invoke<br/>(window · dockable pane · extension page)"]
-    C --> MCP["MCP server<br/>(external AI agents)"]
-```
+<p align="center"><img src="img/write-once.svg" width="860" alt="A ribbon button and an AI agent over MCP both call the same IRevitTask" /></p>
 
 ## Command flow
 
@@ -134,18 +115,13 @@ flowchart LR
 
 ## AI, precisely
 
-The **MCP server** exposes every command (built-in *and* your extensions) to external AI agents like Claude Desktop, so an agent can drive Revit through your commands. AnalyseTool itself runs no model.
+The **MCP server** exposes every command (built-in *and* your extensions) to external AI agents like Claude Desktop, so an agent can drive Revit through your commands. AnalyseTool itself runs no model. The path of one call is in the diagram above: the exe the client launches, a token-checked localhost bridge inside Revit, one command queue, the Revit thread. A call that outlives its wait comes back as a job the agent collects with `GetJobResult`, and progress reaches the client as it happens.
 
-```mermaid
-flowchart LR
-    AI["AI agent<br/>(Claude Desktop, …)"] --> M[MCP server] --> T[AnalyseTool] --> R[Revit]
-```
-
-An agent can also **write** the commands. It reads the authoring guide, saves a C# command — plus a web page for it when it needs a form — and AnalyseTool compiles it into the extension's DLL itself. It gets the compiler error back when it fails, and fixes it. So a command a colleague sent you that doesn't work in your project is something you can hand to your AI to repair. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
+An agent can also **build with you**. It reads the authoring guide (`GetAuthoringGuide`), tries C# against the open model with `ExecuteRevitCode` — compiler errors come back to it, not to you — and saves a web page with a ribbon button for an extension's commands. Code worth keeping goes into the extension itself: a project (**New** scaffolds one), or C# sources in its `src\` folder, which AnalyseTool compiles on load. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
 
 ## Extensions — plug in a DLL, don't fork the host
 
-You don't modify AnalyseTool — you drop an extension next to it. It gets its own ribbon button and can open a window **or reuse the shared dockable pane** (`"dockable": true`). C# command DLLs and web UI pages are supported, and everything reloads live. A command an AI saves is a DLL too — the plugin compiles it from the sources it keeps beside it.
+You don't modify AnalyseTool — you drop an extension next to it. It gets its own ribbon button and can open a window **or reuse the shared dockable pane** (`"dockable": true`). C# command DLLs and web UI pages are supported, and everything reloads live. An extension without a project — C# sources in its `src\` folder — is compiled by the plugin itself on load, no .NET SDK needed.
 
 ```mermaid
 flowchart TB
@@ -153,9 +129,9 @@ flowchart TB
     AT --> R[Revit]
 ```
 
-Prefer clicking to typing? **New** on the ribbon scaffolds a ready-to-build extension (UI-only, C#, or both) with a `plugin.json`, a sample command, and an `LLM.md` — and adds the ribbon button:
+Prefer clicking to typing? **New** on the ribbon scaffolds an extension — a `plugin.json`, a page, a starter C# command and an `LLM.md` — and its button appears on the ribbon right away:
 
-<p align="center"><img src="img/new-extension.png" width="460" alt="Create an extension from a template" /></p>
+<p align="center"><img src="img/new-button.svg" width="860" alt="Click New, type a name — the id and tooltip follow — click Create, and the extension's button appears on the ribbon" /></p>
 
 ## Extension quick start (SDK)
 
@@ -195,7 +171,7 @@ from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP �
 src/
   AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
   AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), Roslyn (ExecuteRevitCode, host-built extensions)
-  AnalyseTool.Tools/      built-in feature commands (Get/Families/Ai/Actions) — references ONLY the Sdk
+  AnalyseTool.Tools/      built-in feature commands in vertical slices (Actions/Elements/SharedParameters) — references ONLY the Sdk
   AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
   AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)
   AnalyseTool.App/        host UI: windows, ribbon, dockable pane, WebView2 transport, bootstrap
