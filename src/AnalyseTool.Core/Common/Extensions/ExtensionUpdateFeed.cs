@@ -79,6 +79,13 @@ namespace AnalyseTool.Core.Common.Extensions
             string owner, string repo, string extensionId, CancellationToken ct)
         {
             string json = await GetStringAsync($"https://api.github.com/repos/{owner}/{repo}/releases/latest", ct);
+            return FromGithubRelease(json, owner, repo, extensionId);
+        }
+
+        /// <summary>Picks the version and the package from a GitHub "latest release" answer. Apart from
+        /// the request so the Revit-free tests can feed it releases with zero, one or several zips.</summary>
+        internal static ExtensionUpdateInfo FromGithubRelease(string json, string owner, string repo, string extensionId)
+        {
             GitHubRelease? release = JsonConvert.DeserializeObject<GitHubRelease>(json);
             if (release is null || string.IsNullOrWhiteSpace(release.TagName))
                 throw new InvalidOperationException($"github:{owner}/{repo} has no published release.");
@@ -113,7 +120,12 @@ namespace AnalyseTool.Core.Common.Extensions
 
         private static async Task<ExtensionUpdateInfo> ResolveJsonFeedAsync(string url, CancellationToken ct)
         {
-            string json = await GetStringAsync(url, ct);
+            return FromJsonFeed(await GetStringAsync(url, ct));
+        }
+
+        /// <summary>Reads a vendor's own <c>{"version", "downloadUrl"}</c> feed.</summary>
+        internal static ExtensionUpdateInfo FromJsonFeed(string json)
+        {
             JsonFeed? feed = JsonConvert.DeserializeObject<JsonFeed>(json);
             if (feed is null || string.IsNullOrWhiteSpace(feed.Version) || string.IsNullOrWhiteSpace(feed.DownloadUrl))
                 throw new InvalidOperationException(

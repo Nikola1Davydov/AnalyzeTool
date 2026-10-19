@@ -11,7 +11,7 @@ namespace AnalyseTool.Tests;
 /// Not in parallel with each other: a reload clears the process-wide ExtensionDiagnostics, so one test's
 /// reload could wipe the error another had just asserted on (in Revit reloads are serialized).
 /// </summary>
-[NotInParallel(nameof(ExtensionDiagnostics))]
+[NotInParallel(TestKeys.ExtensionState)]
 public class ExtensionLoaderTests
 {
     private const string Year = "2025";

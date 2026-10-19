@@ -22,9 +22,13 @@ namespace AnalyseTool.Core.Features.Extensions
         HiddenFromMcp = true)] // local plugin management, not for the AI
     internal sealed class InstallExtensionFromFile : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            Task.FromResult<object?>(Install(ctx.Payload.As<Request>(), CoreServices.RevitVersion));
+
+        /// <summary>The install itself, apart from the Revit context — so the Revit-free tests can run
+        /// it against a temporary profile.</summary>
+        internal static object Install(Request? req, string revitVersion)
         {
-            Request? req = ctx.Payload.As<Request>();
             if (string.IsNullOrWhiteSpace(req?.Path))
                 throw new InvalidOperationException("Package path is required.");
             if (!req.Consent)
@@ -32,7 +36,7 @@ namespace AnalyseTool.Core.Features.Extensions
                     "Installation requires the user to accept the third-party extension disclaimer.");
 
             ExtensionInstallResult result = ExtensionInstaller.InstallPackage(
-                req.Path, req.Overwrite, CoreServices.RevitVersion);
+                req.Path, req.Overwrite, revitVersion);
             ExtensionPackageInfo info = result.Info;
             string id = info.Manifest.Id;
 
@@ -40,13 +44,13 @@ namespace AnalyseTool.Core.Features.Extensions
             {
                 // Structured (not an exception): the UI branches on this to offer the replace flow,
                 // and prose wording can then change without silently breaking that path.
-                return Task.FromResult<object?>(new
+                return new
                 {
                     installed = false,
                     alreadyInstalled = true,
                     id,
                     version = info.Manifest.Version,
-                });
+                };
             }
 
             // The consent record: who published it, what was installed, from which file. Serilog
@@ -59,7 +63,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
             CoreServices.ReloadExtensions();
 
-            return Task.FromResult<object?>(new
+            return new
             {
                 installed = true,
                 id,
@@ -68,7 +72,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 directory = result.Directory,
                 binaryYears = info.BinaryYears,
                 replaced = result.Replaced,
-            });
+            };
         }
 
         internal sealed record Request

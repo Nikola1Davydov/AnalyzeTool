@@ -24,7 +24,14 @@ namespace AnalyseTool.Core.Common
         private readonly string _path;
         private readonly object _gate = new();
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, JsonFileStore<T>> ByPath =
+            new(StringComparer.OrdinalIgnoreCase);
+
         public JsonFileStore(string path) => _path = path;
+
+        /// <summary>The one store for <paramref name="path"/>: callers that resolve the path on every
+        /// access (it follows the profile) still share one lock per file.</summary>
+        public static JsonFileStore<T> For(string path) => ByPath.GetOrAdd(path, p => new JsonFileStore<T>(p));
 
         public string Path => _path;
 

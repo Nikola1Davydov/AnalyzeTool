@@ -42,7 +42,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// (templates are scaffolded here; the legacy per-year layout also lives here).</summary>
         public static string DefaultDevRoot => PathProvider.ExtensionsRoot;
 
-        private static readonly JsonFileStore<Settings> Store = new(Path.Combine(PathProvider.ProfilePath, "extensions.json"));
+        private static JsonFileStore<Settings> Store => JsonFileStore<Settings>.For(Path.Combine(PathProvider.ProfilePath, "extensions.json"));
 
         /// <summary>All roots with zone info: managed default, dev default, then user-added dev roots (deduped).</summary>
         public static IReadOnlyList<ExtensionSourceRoot> AllRoots()

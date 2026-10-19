@@ -8,7 +8,26 @@ namespace AnalyseTool.Core.Common
         // typeof-based (not GetExecutingAssembly) so the value stays pinned to this assembly's folder
         // no matter which assembly of the split platform calls it.
         public static string RootDirectory => Path.GetDirectoryName(typeof(PathProvider).Assembly.Location)!;
-        public static string ProfilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
+        public static string ProfilePath =>
+            _profileOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
+
+        private static volatile string? _profileOverride;
+
+        /// <summary>Points the profile — settings files, extension roots, downloads — at another folder
+        /// until the result is disposed. For the Revit-free tests, which must not read or write the
+        /// user's real %LOCALAPPDATA%; the plugin itself never calls it. Process-wide: tests using it
+        /// run one at a time.</summary>
+        internal static IDisposable UseProfile(string path)
+        {
+            string? previous = _profileOverride;
+            _profileOverride = path;
+            return new Restore(() => _profileOverride = previous);
+        }
+
+        private sealed class Restore(Action undo) : IDisposable
+        {
+            public void Dispose() => undo();
+        }
 
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\extensions — the default DEV extensions root, exactly what
         /// this folder has always been: loose folders authored by the user (agent-saved pages, templates,

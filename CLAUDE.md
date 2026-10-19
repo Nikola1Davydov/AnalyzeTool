@@ -67,6 +67,11 @@ must accept the JSON Newtonsoft writes for it — the class of bug behind #98), 
 button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher, and the
 shared parameter file format (`SharedParameterFile`: columns by header, unknown columns kept, UTF-16, stale-save refusal), and
 the **TS contract** (`TsContractTests`: the committed `commands.ts` equals what TsGen generates now — commit it after changing a command's types).
+Also on tier 1, through two seams: the dispatcher takes an `IRevitTaskHub` (a dispatcher with a `null` hub registers, reloads,
+gates and refuses — it only cannot *run* a command, whose `RevitContext` needs RevitAPIUI), and `PathProvider.UseProfile`
+points the profile at a temp folder. With them: the real MCP bridge over a socket, the extension loader on temp roots (host
+builds, broken extensions, reloads), packages, install/remove/update checks, the update feeds' parsing, and the settings
+stores. Tests that touch the profile override, extension state or diagnostics share `[NotInParallel(TestKeys.ExtensionState)]`.
 
 ```powershell
 dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"

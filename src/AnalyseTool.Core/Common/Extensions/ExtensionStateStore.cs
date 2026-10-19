@@ -17,11 +17,18 @@ namespace AnalyseTool.Core.Common.Extensions
     {
         private static readonly object Gate = new();
         private static HashSet<string>? _disabled; // lazy cache; ids compared case-insensitively
+        private static string? _disabledFrom;     // the file the cache was read from: the profile can move (tests)
 
-        private static readonly JsonFileStore<State> Store = new(Path.Combine(PathProvider.ProfilePath, "extensions-state.json"));
+        private static JsonFileStore<State> Store => JsonFileStore<State>.For(Path.Combine(PathProvider.ProfilePath, "extensions-state.json"));
 
-        public static bool IsEnabled(string extensionId) =>
-            !Disabled().Contains(extensionId);
+        // Under the lock: SetEnabled changes the same set, and a HashSet read during a write can throw.
+        public static bool IsEnabled(string extensionId)
+        {
+            lock (Gate)
+            {
+                return !Disabled().Contains(extensionId);
+            }
+        }
 
         /// <summary>Enables/disables an extension. Takes effect on the next extension reload.</summary>
         public static void SetEnabled(string extensionId, bool enabled)
@@ -40,11 +47,13 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             lock (Gate)
             {
-                if (_disabled is not null) return _disabled;
+                JsonFileStore<State> store = Store;
+                if (_disabled is not null && _disabledFrom == store.Path) return _disabled;
 
                 // Unreadable state = everything enabled (logged by the store); rewritten on the next toggle.
                 _disabled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (string id in Store.Read().Disabled)
+                _disabledFrom = store.Path;
+                foreach (string id in store.Read().Disabled)
                     if (!string.IsNullOrWhiteSpace(id))
                         _disabled.Add(id);
                 return _disabled;

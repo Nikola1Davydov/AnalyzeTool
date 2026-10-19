@@ -9,9 +9,10 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
     /// </summary>
     internal static class CodeExecutionSettings
     {
-        private static readonly JsonFileStore<Settings> Store = new(Path.Combine(PathProvider.ProfilePath, "codeexec.json"));
+        private static JsonFileStore<Settings> Store => JsonFileStore<Settings>.For(Path.Combine(PathProvider.ProfilePath, "codeexec.json"));
         private static readonly object Gate = new();
         private static bool? _enabled;
+        private static string? _enabledFrom; // the file _enabled was read from: the profile can move (tests)
 
         public static bool Enabled
         {
@@ -19,7 +20,12 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
             {
                 lock (Gate)
                 {
-                    _enabled ??= Store.Read().Enabled;
+                    JsonFileStore<Settings> store = Store;
+                    if (_enabled is null || _enabledFrom != store.Path)
+                    {
+                        _enabled = store.Read().Enabled;
+                        _enabledFrom = store.Path;
+                    }
                     return _enabled.Value;
                 }
             }
@@ -29,9 +35,11 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
         {
             lock (Gate)
             {
+                JsonFileStore<Settings> store = Store;
                 _enabled = value;
+                _enabledFrom = store.Path;
                 // Not persisted (logged by the store): the switch still applies for this session.
-                Store.Write(new Settings { Enabled = value });
+                store.Write(new Settings { Enabled = value });
             }
         }
 
