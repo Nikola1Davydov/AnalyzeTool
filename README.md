@@ -8,7 +8,7 @@
 
 **A free Revit plugin for family & parameter workflows — and an open framework for building your own AI-powered Revit tools.**
 
-Use the built-in tools (shared parameters and a printable parameter report) and installable packages such as a dockable placement palette, or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and give the pages it builds a ribbon button.
+Use the built-in tools (shared parameters and a printable parameter report) and installable packages, or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and give the pages it builds a ribbon button.
 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
@@ -49,7 +49,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 | 🧰 **Use it** | 🛠️ **Build on it** |
 | --- | --- |
-| Shared parameters and the parameter report built in; the Component palette and family libraries as packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
+| Shared parameters and the parameter report built in; more tools as installable packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
@@ -72,15 +72,7 @@ Open the **AnalyseTool** tab:
 - **Reload** — reload extensions (DLLs + buttons) without restarting Revit.
 - **Extensions** — install, update and manage extensions.
 - **New** — create an extension: a ribbon button with a page and a C# command.
-- Buttons of installed extensions — e.g. the **Component** palette — and of the extensions you or your AI added.
-
-## 🧲 Component palette & library
-
-An installable package (Extensions → Packages): a dockable pane (docks next to the Project Browser) for **placing** families: types grouped by family with previews, gallery/table views, search, quick-filter rules and persisted grouping/sorting. Click a type to start Revit's placement.
-
-Switch to **Library** mode to browse your `.rfa` folders: each file shows its embedded thumbnail and the Revit version it was saved in, flags what's already loaded, and loads families into the project in one click (with progress). Files saved in a newer Revit are marked as not loadable.
-
-<p align="center"><img src="img/component-palette.png" width="820" alt="Component palette docked in Revit" /></p>
+- Buttons of installed packages and of the extensions you or your AI added.
 
 ## 📊 Shared parameters & report
 
