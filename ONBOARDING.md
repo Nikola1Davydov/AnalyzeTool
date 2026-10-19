@@ -158,7 +158,7 @@ shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 | `description` | — | One line, shown in the extension listing. |
 | `publisher` | — | You or your company. Shown next to the extension name. |
 | `website` / `supportUrl` | — | Links shown in the listing. Recommended when publishing. |
-| `icon` | — | Extension-level PNG (relative path) for the listing; falls back to `ui.button.icon`. |
+| `icon` | — | Extension-level PNG (relative path) for the listing; falls back to `ui.button.icon`. A path that leaves the extension folder (`..\`, an absolute path) is ignored. |
 | `updateFeed` | — | Where the manager checks for newer versions: `github:owner/repo` (latest release, zip asset) or an HTTPS URL returning `{ "version": "...", "downloadUrl": "..." }`. Only meaningful for published extensions — see §10. |
 | `ui` | — | **Omit for a command-only extension.** |
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
@@ -205,7 +205,7 @@ manifests need no change. When both are present, `ui.buttons` wins.
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
 | `ui.button.name` | — | Button label — also used as the extension's display name (Extensions list, window title). |
 | `ui.button.tooltip` | — | Button tooltip. |
-| `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
+| `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`; a path that leaves the folder is ignored). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
 | `ui.button.command` | — | Run this command when the button is clicked, instead of opening `entryHtml`. Use it for a one-shot action that needs no page. |
 
 `ui.tab` / `ui.panel` are honored **live** — change them, hit Reload, and the button moves.
