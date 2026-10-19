@@ -120,9 +120,11 @@ public class McpExeTests
     public async Task A_cancelled_request_cancels_the_call_in_the_bridge(CancellationToken ct)
     {
         await using FakeBridge bridge = NewBridge();
-        TaskCompletionSource<bool> tokenTripped = new();
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> tokenTripped = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bridge.OnInvokeAsync = async (_, _, _, token) =>
         {
+            started.TrySetResult(true);
             try { await Task.Delay(TimeSpan.FromSeconds(30), token); }
             catch (OperationCanceledException) { tokenTripped.TrySetResult(true); }
             return (null, null);
@@ -132,7 +134,9 @@ public class McpExeTests
         await exe.RequestAsync("tools/list");
 
         int id = await exe.BeginRequestAsync("tools/call", new JObject { ["name"] = "GetThings", ["arguments"] = new JObject() });
-        await Task.Delay(500);
+        // Cancel once the command is known to run — a fixed wait raced a slow runner, where the cancel
+        // could arrive before the invoke and trip nothing.
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await exe.NotifyAsync("notifications/cancelled", new JObject { ["requestId"] = id, ["reason"] = "user changed their mind" });
 
         // The cancellation crossed both hops: the exe told the bridge which id to stop, and the
@@ -150,9 +154,12 @@ public class McpExeTests
     public async Task A_slow_call_hands_back_a_job_and_its_result_is_collected_later(CancellationToken ct)
     {
         await using FakeBridge bridge = NewBridge();
+        // The call ends when the test says so, not after a fixed time: it must still be running when
+        // the handle comes back, however slow the runner.
+        TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bridge.OnInvokeAsync = async (_, _, _, token) =>
         {
-            await Task.Delay(TimeSpan.FromSeconds(3), token);
+            await release.Task.WaitAsync(token);
             return (new JObject { ["ok"] = true, ["count"] = 7 }, null);
         };
         // One second of patience instead of sixty: the call outlives it, the exe hands back a handle.
@@ -166,15 +173,22 @@ public class McpExeTests
         await Assert.That(text).Contains("\"status\":\"running\"");
         string jobId = (string)JObject.Parse(text.Split('\n')[0])["jobId"]!;
 
-        // Collected on a later, separate connection — the one that asked is long closed.
+        // Still running until released: asked now, it says so.
+        JObject early = await exe.RequestAsync("tools/call", new JObject { ["name"] = "GetJobResult", ["arguments"] = new JObject { ["jobId"] = jobId } });
+        await Assert.That((string)early["content"]![0]!["text"]!).Contains("\"status\":\"running\"");
+        release.TrySetResult(true);
+
+        // Collected on a later, separate connection — the one that asked is long closed. The fake
+        // records the outcome right after the release, so this waits only for that, with a deadline a
+        // slow runner cannot reach.
         JObject? collected = null;
-        for (int attempt = 0; attempt < 20; attempt++)
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (collected is null && DateTime.UtcNow < deadline)
         {
             JObject answer = await exe.RequestAsync("tools/call", new JObject { ["name"] = "GetJobResult", ["arguments"] = new JObject { ["jobId"] = jobId } });
             string answerText = (string)answer["content"]![0]!["text"]!;
-            if (answerText.Contains("\"count\": 7")) { collected = answer; break; }
-            await Assert.That(answerText).Contains("running");
-            await Task.Delay(500);
+            if (answerText.Contains("\"count\": 7")) collected = answer;
+            else await Task.Delay(50);
         }
         await Assert.That(collected).IsNotNull();
 
