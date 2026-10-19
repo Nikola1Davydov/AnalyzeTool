@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 💾 **A snippet that runs in `ExecuteRevitCode` also compiles once saved with `SaveAsCommand`.** Saving now lifts leading `using` directives and brings in `System.Collections`, as running already did.
 - 🔒 **An extension's icon is read only from its own folder.** A `plugin.json` icon path that pointed elsewhere (`..\`, an absolute path) is ignored.
 - 🔢 **Element-id parameters accept ids above 2,147,483,647**, and integer values are read the same way in every Windows language.
 - 🧯 **A window that fails to start, or a malformed message from a page, no longer risks crashing Revit.** The error is logged and shown, and the window closes.

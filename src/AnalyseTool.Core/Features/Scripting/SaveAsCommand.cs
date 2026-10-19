@@ -229,15 +229,24 @@ namespace AnalyseTool.Core.Features.Scripting
         }
 
 
-        /// <summary>Wraps a bare statement body into a complete, re-editable IRevitTask class file.</summary>
-        private static string BuildCommandClass(string body, string ns, string className,
+        /// <summary>Wraps a bare statement body into a complete, re-editable IRevitTask class file — with
+        /// the same usings and the same lifting of leading directives as RoslynScriptCompiler.WrapBody,
+        /// so a body that runs in ExecuteRevitCode also compiles once saved.</summary>
+        internal static string BuildCommandClass(string body, string ns, string className,
             string? description, bool readOnly, bool destructive)
         {
             string desc = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(
                 string.IsNullOrWhiteSpace(description) ? $"{className} command." : description!, quote: true);
+
+            // `using X;` at the top of a body is a directive (#101); inside the method it would be a using
+            // statement and fail to compile. The saved file is not line-mapped, so the blank lines the
+            // lift leaves behind are dropped.
+            (IReadOnlyList<string> lifted, string rest) = RoslynScriptCompiler.LiftLeadingUsings(body.Replace("\r\n", "\n"));
+            string extraUsings = lifted.Count == 0 ? string.Empty : "\n" + string.Join("\n", lifted);
+            string[] bodyLines = rest.Split('\n').SkipWhile(string.IsNullOrWhiteSpace).ToArray();
+
             // The snippet is pasted inside the RunInRevitAsync lambda, so every line carries that depth.
-            string indentedBody = string.Join("\n",
-                body.Replace("\r\n", "\n").Split('\n').Select(line => "            " + line));
+            string indentedBody = string.Join("\n", bodyLines.Select(line => "            " + line));
 
             // A raw string literal rather than concatenation: this text has to COMPILE — Roslyn builds
             // it at runtime — so a mistake surfaces to the user as a broken generated command. It
@@ -245,13 +254,14 @@ namespace AnalyseTool.Core.Features.Scripting
             // The blank line before the closing delimiter is the generated file's trailing newline.
             return $$"""
             using System;
+            using System.Collections;
             using System.Collections.Generic;
             using System.Linq;
             using System.Threading;
             using System.Threading.Tasks;
             using Autodesk.Revit.DB;
             using Autodesk.Revit.UI;
-            using AnalyseTool.Sdk;
+            using AnalyseTool.Sdk;{{extraUsings}}
 
             namespace {{ns}};
 
