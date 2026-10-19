@@ -156,6 +156,10 @@ internal sealed class RevitBridgeClient
 
     private static string NewId() => Guid.NewGuid().ToString("N");
 
+    /// <summary>Replies carry whole query results, so the exe accepts far more than the bridge does
+    /// for a request.</summary>
+    private const int MaxReplyBytes = 64 * 1024 * 1024;
+
     private async Task<JsonNode?> SendAsync(JsonObject envelope, CancellationToken ct, string? id = null, IProgress<(double, string?)>? progress = null)
     {
         envelope[McpWire.Id] = id ?? NewId();
@@ -185,10 +189,11 @@ internal sealed class RevitBridgeClient
         await stream.WriteAsync(bytes, ct);
         await stream.FlushAsync(ct);
 
-        JsonFrameReader frames = new(stream);
+        JsonFrameReader frames = new(stream, MaxReplyBytes);
         while (true)
         {
-            string frameText = await frames.ReadFrameAsync(ct);
+            string frameText = await frames.ReadFrameAsync(ct)
+                ?? throw new InvalidOperationException("Revit closed the connection without a response.");
             JsonNode? node = JsonNode.Parse(frameText);
 
             // An interim frame: report and keep reading. Never the reply, whatever else it carries.
@@ -226,91 +231,5 @@ internal sealed class RevitBridgeClient
             return new BridgeException(code, message, error[McpWire.ErrorHint]?.GetValue<string>());
         }
         return new BridgeException(McpWire.Codes.CommandFailed, err.ToString());
-    }
-
-    /// <summary>
-    /// Splits a stream into top-level JSON values. Needed since progress frames: two frames can arrive
-    /// in one read, and a reply can span several — "accumulate until the whole buffer parses" handled
-    /// the second case and hung on the first. Nesting depth is tracked across reads (strings and
-    /// escapes honoured), so a frame boundary is found in O(bytes) without parsing anything twice.
-    /// </summary>
-    private sealed class JsonFrameReader
-    {
-        private const int MaxFrameBytes = 64 * 1024 * 1024;
-        private readonly NetworkStream _stream;
-        private readonly MemoryStream _pending = new();
-        private readonly byte[] _buffer = new byte[8192];
-        private int _scanned;   // bytes of _pending already scanned
-        private int _depth;
-        private bool _inString;
-        private bool _escaped;
-
-        public JsonFrameReader(NetworkStream stream) => _stream = stream;
-
-        public async Task<string> ReadFrameAsync(CancellationToken ct)
-        {
-            while (true)
-            {
-                int end = ScanForFrameEnd();
-                if (end > 0)
-                {
-                    string frame = Encoding.UTF8.GetString(_pending.GetBuffer(), 0, end);
-                    // Keep what followed the frame for the next call.
-                    int rest = (int)_pending.Length - end;
-                    byte[] tail = rest > 0 ? _pending.GetBuffer().AsSpan(end, rest).ToArray() : Array.Empty<byte>();
-                    _pending.SetLength(0);
-                    if (tail.Length > 0) _pending.Write(tail);
-                    _scanned = 0;
-                    return frame;
-                }
-
-                int read = await _stream.ReadAsync(_buffer, ct);
-                if (read == 0)
-                {
-                    if (_pending.Length == 0)
-                        throw new InvalidOperationException("Revit closed the connection without a response.");
-                    // EOF mid-frame: return what we have (best effort — the parse will say what is wrong).
-                    string partial = Encoding.UTF8.GetString(_pending.GetBuffer(), 0, (int)_pending.Length);
-                    _pending.SetLength(0);
-                    return partial;
-                }
-                _pending.Write(_buffer, 0, read);
-                if (_pending.Length > MaxFrameBytes)
-                    throw new InvalidOperationException("Response too large from Revit bridge.");
-            }
-        }
-
-        /// <summary>Offset just past the first complete top-level value in the pending bytes, or 0.</summary>
-        private int ScanForFrameEnd()
-        {
-            byte[] bytes = _pending.GetBuffer();
-            int length = (int)_pending.Length;
-            for (; _scanned < length; _scanned++)
-            {
-                char c = (char)bytes[_scanned];
-                if (_inString)
-                {
-                    if (_escaped) _escaped = false;
-                    else if (c == '\\') _escaped = true;
-                    else if (c == '"') _inString = false;
-                    continue;
-                }
-                switch (c)
-                {
-                    case '"': _inString = true; break;
-                    case '{':
-                    case '[': _depth++; break;
-                    case '}':
-                    case ']':
-                        if (--_depth <= 0)
-                        {
-                            _depth = 0;
-                            return ++_scanned;
-                        }
-                        break;
-                }
-            }
-            return 0;
-        }
     }
 }

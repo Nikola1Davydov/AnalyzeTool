@@ -12,32 +12,23 @@ and how to publish so your users get updates.
 
 ## 1. The mental model
 
-There are three kinds of extension, and they play different roles:
+There are two kinds of extension, and they play different roles:
 
 | Kind | What it ships | What it does | Build needed? |
 | --- | --- | --- | --- |
 | **C# extension** | a `.dll` of command classes | **ADDS** commands to the host's shared command dispatcher | yes |
 | **JS / UI extension** | an HTML page (any framework) | **CONSUMES** commands by calling `window.AT.invoke(...)` | no |
-| **Script extension** | a plain `.cs` file | ADDS commands too — compiled at load time by Roslyn | no — see the caveat |
 
-> **The one principle:** C# and script extensions *add* commands to the Core; JS extensions
-> *consume* them.
+> **The one principle:** C# extensions *add* commands to the Core; JS extensions *consume* them.
 
 A single extension folder can be any of these, or a combination. The sample
 (`samples/Acme.Sample`) is C# + UI: a `Hello` command plus an `index.html` page with a button
 that calls it.
 
-**If you are writing an extension for other people, write a C# one.** A script skips the build
-step, but "no build" does not mean "no compiler" — it means the compiler runs on your user's
-machine, at load time, inside Revit, where a syntax error is a red banner rather than something
-you saw and fixed. And because a script has no per-year folders (§2), it cannot declare which
-Revit versions it supports: code that is valid on 2025 and invalid on 2027 stays invisible until
-someone on 2027 opens Revit, and the manager cannot flag it as incompatible either. Everything
-below about packaging and updates assumes per-year DLLs.
-
-Scripts earn their place elsewhere: one-off automation you keep to yourself, and the AI path —
-an agent trying something over MCP, or **Save as command** promoting a snippet that worked into a
-permanent one.
+Every command extension is a DLL. You build yours with `dotnet build` (§4). The one exception to
+"you build it" is a command an AI agent saves over MCP: the plugin compiles that one itself, from
+sources kept in the extension's `src\` folder, so the person working with the agent needs no .NET
+SDK (§9.1). The result is the same kind of extension — a DLL in a year folder.
 
 Every command — built-in or from any C# extension — is reachable through the same channels:
 
@@ -67,7 +58,7 @@ year is a **subfolder** holding that year's binaries:
     plugin.json        (required)
     2025\<YourExt>.dll (C# commands — one folder per Revit year you ship)
     2027\<YourExt>.dll
-    *.cs               (script commands — version-independent, always in the root)
+    src\*.cs           (only in a command saved by an AI agent — the plugin builds it, §9.1)
     index.html         (UI page — version-independent, always in the root)
     icon.png           (ribbon button icon)
     ...any assets...
@@ -84,7 +75,7 @@ which is the point: the folder you develop in is the folder you zip.
 3. Neither → the extension is **listed but not loaded**, flagged in the manager. It never
    disappears silently.
 
-Scripts and `ui/` always come from the root — they are version-independent.
+`ui/` always comes from the root — it is version-independent.
 
 Each extension is isolated: its C# DLL is loaded into its own collectible `AssemblyLoadContext`,
 so two extensions can't collide and a single **Reload** can swap one out.
@@ -124,7 +115,7 @@ extensions\2026\acme.doors\                  2025\Acme.Doors.dll
 Three rules cover every case:
 
 - **DLLs** go into a `<year>\` subfolder — one per Revit version you built for.
-- **Everything else** — `plugin.json`, `*.cs` scripts, `index.html`, `ui/`, `icon.png`, assets —
+- **Everything else** — `plugin.json`, `index.html`, `ui/`, `icon.png`, assets —
   goes in the root, exactly once. These files were duplicated per year before; they are
   version-independent, so keep a single copy.
 - **`plugin.json` needs no edit.** There was never a `targetRevit` field; the year folders are the
@@ -163,11 +154,11 @@ shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 | --- | --- | --- |
 | `id` | ✔ | Unique, lowercase, dotted (`acme.sample`). Becomes the command prefix and the folder name. |
 | `version` | ✔ | SemVer string. Shown in the Extensions window and appended to the window title (`Name - 1.0.0`). This is the single source of truth for the extension's version — the packaging pipeline reads it. |
-| `entryAssembly` | — | DLL file name. **Omit for a UI-only or script extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in Settings → About. |
+| `entryAssembly` | — | DLL file name. **Omit for a UI-only extension.** Resolved in the Revit-year subfolder first (`2025\`), then the folder root — no `targetRevit` field needed, the year folders are the declaration. SDK compatibility is derived automatically from the DLL's `AnalyseTool.Sdk` reference — no `sdkVersion` field either. The current host SDK version is shown in the About window (ribbon → About). |
 | `description` | — | One line, shown in the extension listing. |
 | `publisher` | — | You or your company. Shown next to the extension name. |
 | `website` / `supportUrl` | — | Links shown in the listing. Recommended when publishing. |
-| `icon` | — | Extension-level PNG (relative path) for the listing; falls back to `ui.button.icon`. |
+| `icon` | — | Extension-level PNG (relative path) for the listing; falls back to `ui.button.icon`. A path that leaves the extension folder (`..\`, an absolute path) is ignored. |
 | `updateFeed` | — | Where the manager checks for newer versions: `github:owner/repo` (latest release, zip asset) or an HTTPS URL returning `{ "version": "...", "downloadUrl": "..." }`. Only meaningful for published extensions — see §10. |
 | `ui` | — | **Omit for a command-only extension.** |
 | `ui.entryHtml` | — | Page to open, relative to the folder. Default `index.html`. Sub-paths like `"app/index.html"` work. |
@@ -214,7 +205,7 @@ manifests need no change. When both are present, `ui.buttons` wins.
 | `ui.panel` | — | Ribbon panel within that tab. Default `"Extensions"`. |
 | `ui.button.name` | — | Button label — also used as the extension's display name (Extensions list, window title). |
 | `ui.button.tooltip` | — | Button tooltip. |
-| `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
+| `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`; a path that leaves the folder is ignored). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
 | `ui.button.command` | — | Run this command when the button is clicked, instead of opening `entryHtml`. Use it for a one-shot action that needs no page. |
 
 `ui.tab` / `ui.panel` are honored **live** — change them, hit Reload, and the button moves.
@@ -677,21 +668,22 @@ release.**
    this — there is nothing to copy.
 3. **Load it:**
    - First time / new button: **restart Revit** (the static ribbon hook runs at startup).
-   - Already-known extension, changed code/manifest: press the **Reload** ribbon button (also
-     inside the Extensions window). No restart needed.
+   - Already-known extension, changed code/manifest: press **Reload** on the ribbon.
+     No restart needed.
 
 **Reload** does a true live reload: it re-reads the manifests, unloads the old collectible
 `AssemblyLoadContext`, and loads the new DLL bytes. DLLs are **byte-loaded** (read into memory),
 so the file on disk is never locked — you can overwrite the DLL while Revit is running, then
 Reload.
 
-The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Installed**
-packages and **Your own** folders separately, each row showing the version, whether it has C#
-commands / UI, an enable/disable switch, **Open folder**, and — for installed packages with an
-`updateFeed` — an update badge. There is also **Install from file…** for a `.zip`, a global
-**Reload**, the host **Environment** (Revit / SDK / plugin version), the **Extension paths** it
-scans, the **Commands** catalog (§5.2), and the **MCP server** controls. The **Catalog** tab is the
-other direction — the repositories extensions can be installed *from* (§10).
+The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Packages**
+(installed ones first, then catalog entries you do not have yet with an **Install** button, §10)
+and **Your own** folders separately, each row showing the version, a **Status** that only
+speaks up about a problem (not built, failed to compile, no build for this Revit year) or an update,
+an enable/disable switch, edit, **Open folder** and delete. Installed packages with an `updateFeed`
+are checked for updates when the window opens. **Install** takes a `.zip` or a repository, and the
+collapsed **Folders scanned** panel holds the extension paths. New extensions are made with **New**
+on the ribbon, changes are applied with **Reload** beside it.
 
 Every row also has **Edit** (the pencil): the ribbon button's name, tooltip, tab, panel, shape and
 dock setting, plus description, publisher, links and update feed — written back into `plugin.json`
@@ -718,12 +710,6 @@ Two red tags mean different things, and the difference is the fix:
 - [ ] The DLL sits in `<extension>\<year>\` — one folder per Revit version you support.
 - [ ] Output is just your DLL + `plugin.json` (SDK/Revit refs `Private=false`).
 - [ ] Test: `await window.AT.invoke("<id>.<Command>")` from any extension page or the console.
-
-**Script extension** (personal or AI-authored only — not for distribution, see §1)
-- [ ] `plugin.json` with `id` and **no** `entryAssembly`.
-- [ ] One or more `.cs` files in the folder **root**, each with `IRevitTask` classes.
-- [ ] Reload — Roslyn compiles them at load; errors show as the extension's diagnostics.
-- [ ] Shipping this to someone? Make it a C# project instead.
 
 **UI-only extension**
 - [ ] `plugin.json` with `id`, `ui` (`entryHtml`, `tab`, `panel`, `button`), **no** `entryAssembly`.
@@ -808,25 +794,26 @@ Notes:
   both schemas automatically. A command that declares neither type is callable but opaque: free-form
   arguments, free-form answer, and nothing that can be chained or validated.
 
-### 9.1 The other direction — letting the AI write the command
+### 9.1 The other direction — letting the AI build with you
 
-Everything above is an agent *calling* your commands. It can also write them, without you copying
-files around: it reads the authoring guide over MCP (`GetAuthoringGuide` serves the same
+Everything above is an agent *calling* your commands. It can also help build them: it reads the
+authoring guide over MCP (`GetAuthoringGuide` serves the same
 [`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md) this repo ships),
-saves a C# command, and — when the command needs a form —
-saves the HTML/CSS/JS page and the ribbon button that opens it. If the script does not compile it
-reads the error back and tries again, and it can read its own earlier source to refine rather than
-replace it.
+tries C# against the open model with `ExecuteRevitCode`, and saves an HTML/CSS/JS page — with the
+ribbon button that opens it — for an extension's commands. There is no MCP command that saves C#:
+code worth keeping goes into a C# project (§4), or, without a .NET SDK, into an extension's `src\`
+folder, which the plugin compiles on load with the Roslyn it ships. Open the same folder in another
+Revit version, or edit a file in `src\` by hand, and the plugin builds it again on the next load.
 
 Two things worth knowing before you use it:
 
-- **It is off unless a person turns it on.** Writing and running C# is behind the code-execution
+- **It is off unless a person turns it on.** Running C# and saving pages is behind the code-execution
   switch in Settings, which is deliberately not something an agent can flip for itself — the command
   that sets it is hidden from MCP entirely.
-- **Where the script lands is your choice.** Extensions → *Folders scanned* names the dev folder new scripts are saved
-  into, and refining a script that already exists writes it back to the folder it lives in — so a
-  shared team folder registered as a source root keeps working, and a fix does not silently land in
-  a different copy.
+- **Where a page lands is your choice.** Extensions → *Folders scanned* names the dev folder new pages
+  are saved into, and a page for an extension that already exists is written to the folder it lives
+  in — so a shared team folder registered as a source root keeps working, and a fix does not silently
+  land in a different copy.
 
 The mechanics — every command in the loop, the manifest it writes, the recovery paths — are in
 [`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md), which is written to
@@ -848,7 +835,7 @@ dotnet build -t:PackExtension
 It builds the project for Revit 2025/2026/2027 (narrow it with `-p:AnalyseToolPackYears=2025;2026`),
 lays out per-year DLLs in year subfolders with `plugin.json` / UI / assets at the root, and zips
 it to `artifacts/<id>-<version>.zip` — the format your users install via Extensions →
-**Install from file…**. Script- and UI-only extensions need no build at all: zip the folder.
+**Install → From a file**. UI-only extensions need no build at all: zip the folder.
 
 **`plugin.json` owns the version.** It travels inside the package and is what the installed
 extension reports; a git tag lives only in your repository. Bump `version` there and let the tag
@@ -869,8 +856,8 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
 
 
-**Getting listed.** Extensions → **Find extensions** is the "where do extensions come from" page: a list of
-repositories with their links, each with an **Install** button that downloads the package from the
+**Getting listed.** The catalog rows of the Extensions window's **Packages** list is the "where do extensions come
+from" list: repositories not installed yet, with their links, each with an **Install** button that downloads the package from the
 publisher's own release. Two ways onto it:
 
 - **The shipped list** — `src/AnalyseTool.Core/Features/Extensions/Catalog/catalog.json` in the
@@ -897,7 +884,7 @@ publisher's own release. Two ways onto it:
 
 `source` is the same value as `updateFeed`, and `website` is what a reader clicks — an entry with
 only `website` still earns its place, it just says "download it yourself". Users who have a
-repository that is on no list at all can paste it into **Install from repository…**, which takes a
+repository that is on no list at all can paste it into **Install → From a repository**, which takes a
 GitHub URL, `owner/repo`, `github:owner/repo` or an https feed.
 
 Listing is a directory entry, not an endorsement: the package is always fetched from your release,

@@ -41,6 +41,20 @@ namespace AnalyseTool.App.Common.Extensions
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                await InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Failed to open window {Title}", Title);
+                UserDialogUtils.Error(ex.Message);
+                Close();
+            }
+        }
+
+        private async Task InitializeAsync()
+        {
             CoreWebView2Environment env = await WebView2Runtime.CreateEnvironmentAsync();
             await _webView.EnsureCoreWebView2Async(env);
 

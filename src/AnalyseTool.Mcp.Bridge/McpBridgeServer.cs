@@ -44,7 +44,7 @@ namespace AnalyseTool.Mcp.Bridge
         // its outcome is kept here so a "result" request can collect it later (#99). The same record
         // holds the CancellationTokenSource a "cancel" request trips (#109). Keyed by the caller's
         // request id, which the exe generates per call and can therefore quote back.
-        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Job> _jobs = new();
+        private readonly JobStore _jobs = new(JobRetention, MaxStoredJobs);
         /// <summary>How long a finished outcome stays collectable. Long enough for an agent that lost
         /// its call to come back after the user noticed; short enough that a session's worth of
         /// results does not accumulate in Revit's memory.</summary>
@@ -61,13 +61,33 @@ namespace AnalyseTool.Mcp.Bridge
             CoreServices.ExtensionsReloaded += () => Interlocked.Increment(ref _catalogVersion);
         }
 
-        /// <summary>What the exe compares to learn that its tool list is stale. Reload counter plus the
-        /// C# switch, because the switch hides a whole set of authoring tools without any reload.</summary>
-        private string CatalogStamp =>
-            $"{Interlocked.Read(ref _catalogVersion)}:{(CodeExecutionSettings.Enabled ? 1 : 0)}";
+        /// <summary>One per bridge, which is one per Revit session. Without it a restarted Revit answered
+        /// "0:0" again, and a client that outlived the restart never learned that extensions had changed
+        /// on disk in between.</summary>
+        private readonly string _session = Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        /// <summary>What the exe compares to learn that its tool list is stale: the session, the reload
+        /// counter, and the C# switch, because the switch hides a whole set of authoring tools without
+        /// any reload.</summary>
+        internal string CatalogStamp =>
+            $"{_session}:{Interlocked.Read(ref _catalogVersion)}:{(CodeExecutionSettings.Enabled ? 1 : 0)}";
 
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
+
+        /// <summary>How long a connection may sit without sending its next request. The exe connects per
+        /// call and closes after the reply, so only a stalled or hostile client ever waits this long —
+        /// and every one of them used to be held by Revit forever.</summary>
+        internal TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>Connections served at once; one more is closed on arrival. With the 8 MB request cap
+        /// this bounds what local clients can make Revit hold in memory. Well above what agents use: the
+        /// exe opens one per call in flight, plus a short one now and then for the catalog stamp.</summary>
+        internal int MaxConnections { get; init; } = 32;
+
+        private int _connections;
+
+        internal int OpenConnections => Volatile.Read(ref _connections);
 
         public void Start(int port)
         {
@@ -156,6 +176,14 @@ namespace AnalyseTool.Mcp.Bridge
 
         private async Task HandleClientAsync(TcpClient client, CancellationToken ct)
         {
+            if (Interlocked.Increment(ref _connections) > MaxConnections)
+            {
+                Interlocked.Decrement(ref _connections);
+                Log.Warning("MCP bridge: refused a connection, {Max} are already open", MaxConnections);
+                client.Dispose();
+                return;
+            }
+
             try
             {
                 using (client)
@@ -177,18 +205,27 @@ namespace AnalyseTool.Mcp.Bridge
                         finally { writeLock.Release(); }
                     }
 
+                    // One reader for the connection's whole life: the bytes after one request are the
+                    // start of the next, which a reader per message used to throw away.
+                    JsonFrameReader frames = new(stream, MaxMessageBytes);
                     string? message;
-                    while ((message = await ReadJsonAsync(stream, ct).ConfigureAwait(false)) != null)
+                    while ((message = await ReadMessageAsync(frames, IdleTimeout, ct).ConfigureAwait(false)) != null)
                     {
                         string response = WithCatalog(await HandleMessageAsync(message, ct, WriteAsync).ConfigureAwait(false));
                         await WriteAsync(response).ConfigureAwait(false);
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Never let a connection fault crash Revit on a background thread. A caller that went
-                // away mid-command loses nothing: the job runs on and its outcome is stored (see Job).
+                // away mid-command loses nothing: the job runs on and its outcome is stored (JobStore).
+                // Debug, not higher: a client closing its end is the normal way a connection ends.
+                Log.Debug(ex, "MCP bridge: a connection ended with an error");
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _connections);
             }
         }
 
@@ -242,9 +279,9 @@ namespace AnalyseTool.Mcp.Bridge
                 // reads a record. Both answer in microseconds even while Revit is held, which is the
                 // whole point — they are how a caller reaches a call it can no longer wait on.
                 if (string.Equals(type, McpWire.TypeCancel, StringComparison.OrdinalIgnoreCase))
-                    return Ok(id, new JObject { [McpWire.Cancelled] = CancelJob(id) });
+                    return Ok(id, new JObject { [McpWire.Cancelled] = _jobs.Cancel(id) });
                 if (string.Equals(type, McpWire.TypeResult, StringComparison.OrdinalIgnoreCase))
-                    return Ok(id, req[McpWire.List]?.Value<bool>() == true ? ListJobs() : DescribeJob(id));
+                    return Ok(id, req[McpWire.List]?.Value<bool>() == true ? _jobs.List() : _jobs.Describe(id));
 
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
@@ -326,9 +363,10 @@ namespace AnalyseTool.Mcp.Bridge
         /// </summary>
         private async Task<string> RunJobAsync(string id, string command, JToken payload, CancellationToken ct, Func<string, Task> sendFrame)
         {
-            PruneJobs();
-            Job job = new(id, command, CancellationTokenSource.CreateLinkedTokenSource(ct));
-            _jobs[id] = job;
+            JobStore.Job? job = _jobs.TryStart(id, command, CancellationTokenSource.CreateLinkedTokenSource(ct));
+            if (job is null)
+                return Err(id, McpWire.Codes.InvalidArguments, $"A call with id '{id}' already exists.",
+                    "Nothing was executed. Send each call with a new id.");
 
             // Progress: a frame per report, throttled, on the caller's connection while it lasts. A write
             // to a caller that has gone is swallowed here — the job does not care who is listening.
@@ -365,19 +403,30 @@ namespace AnalyseTool.Mcp.Bridge
                         Gate = registration => Task.FromResult(IsAvailableToAi(registration)),
                     }).ConfigureAwait(false);
                 JToken value = result is null ? JValue.CreateNull() : JToken.FromObject(result);
-                job.Finish(McpWire.JobStates.Done, value, null);
+                _jobs.Finish(job, McpWire.JobStates.Done, value, null);
                 return Ok(id, value);
             }
-            catch (OperationCanceledException)
+            // The gate's refusal surfaces here, inside the job, so the outer UnauthorizedAccessException
+            // handler never sees an invoke's: classified the same way here, or it reads as command_failed.
+            catch (UnauthorizedAccessException ex)
             {
-                job.Finish(McpWire.JobStates.Cancelled, null, ErrorObject(McpWire.Codes.Cancelled, "The call was cancelled before it finished.", null));
+                const string hint = "This command is not exposed to AI callers. The C#-execution tools additionally " +
+                                    "require the toggle in AnalyseTool Settings.";
+                _jobs.Finish(job, McpWire.JobStates.Failed, null, ErrorObject(McpWire.Codes.NotAvailable, ex.Message, hint));
+                return Err(id, McpWire.Codes.NotAvailable, ex.Message, hint);
+            }
+            // Only a cancel of THIS job is a cancellation. A command's own timeout (an HttpClient's, say)
+            // also throws OperationCanceledException, and that is a failure the agent should read as one.
+            catch (OperationCanceledException) when (job.Cancellation.IsCancellationRequested)
+            {
+                _jobs.Finish(job, McpWire.JobStates.Cancelled, null, ErrorObject(McpWire.Codes.Cancelled, "The call was cancelled before it finished.", null));
                 return Err(id, McpWire.Codes.Cancelled, "The call was cancelled before it finished.");
             }
             catch (Exception ex)
             {
                 // The queue's LoggingExecutor has already logged this failure with its chain and payload.
                 string reply = Failed(id, new JObject { [McpWire.Command] = command, [McpWire.Payload] = payload }, ex, log: false);
-                job.Finish(McpWire.JobStates.Failed, null, (JObject?)JObject.Parse(reply)[McpWire.Error]);
+                _jobs.Finish(job, McpWire.JobStates.Failed, null, (JObject?)JObject.Parse(reply)[McpWire.Error]);
                 return reply;
             }
             finally
@@ -390,86 +439,6 @@ namespace AnalyseTool.Mcp.Bridge
         {
             try { await send(json).ConfigureAwait(false); }
             catch { /* the caller is gone; the job runs on */ }
-        }
-
-        private bool CancelJob(string? id)
-        {
-            if (id is null || !_jobs.TryGetValue(id, out Job? job) || job.FinishedUtc is not null) return false;
-            try { job.Cancellation.Cancel(); } catch (ObjectDisposedException) { return false; }
-            return true;
-        }
-
-        private JObject DescribeJob(string? id)
-        {
-            if (id is null || !_jobs.TryGetValue(id, out Job? job))
-                return new JObject { [McpWire.JobStatus] = McpWire.JobStates.Unknown };
-            JObject answer = new()
-            {
-                [McpWire.JobStatus] = job.Status,
-                [McpWire.JobCommand] = job.Command,
-                [McpWire.JobSeconds] = Math.Round(((job.FinishedUtc ?? DateTime.UtcNow) - job.StartedUtc).TotalSeconds, 1),
-            };
-            if (job.Result is not null) answer[McpWire.JobResult] = job.Result;
-            if (job.Error is not null) answer[McpWire.JobError] = job.Error;
-            return answer;
-        }
-
-        /// <summary>The recent calls, newest first, without their results — enough to pick the one whose
-        /// handle was lost and ask for it by id.</summary>
-        private JObject ListJobs()
-        {
-            DateTime now = DateTime.UtcNow;
-            JArray jobs = new(_jobs.Values
-                .OrderByDescending(j => j.StartedUtc)
-                .Take(50)
-                .Select(j => new JObject
-                {
-                    [McpWire.Id] = j.Id,
-                    [McpWire.JobStatus] = j.Status,
-                    [McpWire.JobCommand] = j.Command,
-                    [McpWire.JobSeconds] = Math.Round(((j.FinishedUtc ?? now) - j.StartedUtc).TotalSeconds, 1),
-                }));
-            return new JObject { [McpWire.Jobs] = jobs };
-        }
-
-        /// <summary>Drops finished outcomes past the retention window, and the oldest beyond the cap.</summary>
-        private void PruneJobs()
-        {
-            DateTime cutoff = DateTime.UtcNow - JobRetention;
-            foreach (KeyValuePair<string, Job> entry in _jobs)
-                if (entry.Value.FinishedUtc is { } finished && finished < cutoff)
-                    _jobs.TryRemove(entry.Key, out _);
-            if (_jobs.Count <= MaxStoredJobs) return;
-            foreach (Job stale in _jobs.Values.Where(j => j.FinishedUtc is not null).OrderBy(j => j.FinishedUtc).Take(_jobs.Count - MaxStoredJobs))
-                _jobs.TryRemove(stale.Id, out _);
-        }
-
-        /// <summary>One invoke and what became of it. Finish() is called exactly once, by the runner.</summary>
-        private sealed class Job
-        {
-            public Job(string id, string command, CancellationTokenSource cancellation)
-            {
-                Id = id;
-                Command = command;
-                Cancellation = cancellation;
-            }
-
-            public string Id { get; }
-            public string Command { get; }
-            public CancellationTokenSource Cancellation { get; }
-            public DateTime StartedUtc { get; } = DateTime.UtcNow;
-            public DateTime? FinishedUtc { get; private set; }
-            public string Status { get; private set; } = McpWire.JobStates.Running;
-            public JToken? Result { get; private set; }
-            public JObject? Error { get; private set; }
-
-            public void Finish(string status, JToken? result, JObject? error)
-            {
-                Status = status;
-                Result = result;
-                Error = error;
-                FinishedUtc = DateTime.UtcNow;
-            }
         }
 
         /// <summary>The command-failed reply, and the log line that goes with it.</summary>
@@ -514,30 +483,22 @@ namespace AnalyseTool.Mcp.Bridge
         /// when off anyway — this keeps them out of reach instead of merely out of sight).</item>
         /// </list>
         /// </summary>
-        private static bool IsAvailableToAi(CommandRegistration command) =>
-            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(command.Name));
-
-        /// <summary>
-        /// The tools behind the Settings toggle. Not only the two that RUN code: reading a script's
-        /// source hands the AI code off the user's machine, and reloading is the step that makes written
-        /// code take effect — the toggle is the user saying "I am authoring code here with AI", and each
-        /// of these is part of doing that. The toggle itself stays out of reach: SetCodeExecution is
-        /// HiddenFromMcp, so only a person at the Settings page turns this on or off.
-        /// </summary>
-        private static bool IsCodeAuthoringTool(string name) =>
-            string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, GetScriptSource.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveExtensionUi.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, UpdateExtensionManifest.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
+        /// <remarks>
+        /// The tools behind the Settings toggle are the ones marked [CodeAuthoringTool] — not only the one
+        /// that RUNS code: writing an extension's files and reloading are the steps that make written code
+        /// take effect, and the toggle is the user saying "I am authoring code here with AI". The toggle
+        /// itself stays out of reach: SetCodeExecution is HiddenFromMcp, so only a person at the Settings
+        /// page turns this on or off.
+        /// </remarks>
+        internal static bool IsAvailableToAi(CommandRegistration command) =>
+            command.ExposeToMcp && (CodeExecutionSettings.Enabled || !command.IsCodeAuthoringTool);
 
         private static string Ok(string? id, JToken result) =>
             new JObject { [McpWire.Id] = id, [McpWire.Result] = result }.ToString(Formatting.None);
 
         /// <summary>Adds the catalog stamp to a finished reply. Done once, here, on the way out, so no
         /// branch of HandleMessageAsync can forget it — an error reply carries it too, and a reply to
-        /// SaveAsCommand is precisely the one that must say "the list just changed".</summary>
+        /// ReloadExtensions is precisely the one that must say "the list just changed".</summary>
         private string WithCatalog(string response)
         {
             try
@@ -572,88 +533,21 @@ namespace AnalyseTool.Mcp.Bridge
         /// attack, and reading it costs the Revit process its memory.</summary>
         private const int MaxMessageBytes = 8 * 1024 * 1024;
 
-        /// <summary>
-        /// Reads bytes until the accumulated buffer is one complete JSON value (handles a request that
-        /// spans several TCP reads). Returns null on EOF / connection close.
-        /// </summary>
-        private static async Task<string?> ReadJsonAsync(NetworkStream stream, CancellationToken ct)
+        /// <summary>The next request on a connection, or null when it closed, failed or sent a message
+        /// over the size limit — each of which ends the connection, never Revit.</summary>
+        private static async Task<string?> ReadMessageAsync(JsonFrameReader frames, TimeSpan idleTimeout, CancellationToken ct)
         {
-            using MemoryStream ms = new();
-            byte[] buffer = new byte[8192];
-            JsonBoundaryScanner scanner = new();
-
-            while (true)
+            // The deadline covers waiting for and receiving ONE request; a command's run time is not
+            // counted, it happens between reads.
+            using CancellationTokenSource idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            idle.CancelAfter(idleTimeout);
+            try
             {
-                int read;
-                try
-                {
-                    read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
-                }
-                catch
-                {
-                    return null;
-                }
-
-                if (read == 0) return null; // EOF
-                ms.Write(buffer, 0, read);
-
-                // Structural scan, resuming where the last read stopped: O(total bytes) for the whole
-                // message. The previous version decoded the entire buffer to a string and ran
-                // JToken.Parse in a try/catch after EVERY 8 KB read — quadratic work plus an exception
-                // per read, so a few megabytes of junk from any local process pegged a core and
-                // allocated gigabytes.
-                if (scanner.ConsumedCompleteValue(ms.GetBuffer(), (int)ms.Length))
-                    return Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-
-                if (ms.Length > MaxMessageBytes) return null;
+                return await frames.ReadFrameAsync(idle.Token).ConfigureAwait(false);
             }
-        }
-
-        /// <summary>
-        /// Tracks JSON nesting depth across reads to spot the end of the top-level value. Strings and
-        /// escapes are honoured so braces inside a payload string don't confuse the depth count. This
-        /// answers "is the message complete", not "is it valid" — parsing still decides that.
-        /// </summary>
-        private struct JsonBoundaryScanner
-        {
-            private int _offset;      // bytes already scanned
-            private int _depth;       // open { and [
-            private bool _inString;
-            private bool _escaped;
-
-            public bool ConsumedCompleteValue(byte[] buffer, int length)
+            catch (Exception ex) when (ex is IOException or InvalidDataException or ObjectDisposedException or OperationCanceledException)
             {
-                for (; _offset < length; _offset++)
-                {
-                    char c = (char)buffer[_offset];
-
-                    if (_inString)
-                    {
-                        if (_escaped) _escaped = false;
-                        else if (c == '\\') _escaped = true;
-                        else if (c == '"') _inString = false;
-                        continue;
-                    }
-
-                    switch (c)
-                    {
-                        case '"': _inString = true; break;
-                        case '{':
-                        case '[': _depth++; break;
-                        case '}':
-                        case ']':
-                            if (--_depth <= 0)
-                            {
-                                _offset++;
-                                return true;
-                            }
-                            break;
-                    }
-                }
-
-                // The protocol only ever sends objects, so anything that hasn't closed its outermost
-                // bracket yet is simply an incomplete read — keep waiting for more bytes.
-                return false;
+                return null;
             }
         }
     }

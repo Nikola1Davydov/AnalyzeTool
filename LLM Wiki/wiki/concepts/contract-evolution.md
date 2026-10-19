@@ -1,6 +1,6 @@
 ---
 type: concept
-updated: 2026-09-02
+updated: 2026-10-08
 status: draft
 sources: [../sources/github-issues.md, ../sources/pipeline-design-doc.md]
 ---
@@ -135,6 +135,24 @@ public bool HasUi => Manifest.Ui?.Button is not null;   // только един
 
 Сюда же `ONBOARDING.md` (он же README пакета SDK и зеркало GitHub Wiki) и, при изменении
 SDK, `RELEASE_CHECKLIST.md`.
+
+## Следующий случай применения: Sdk 1.3
+
+Ревью 2026-09-23 ([`../analyses/architecture-review-2026-09.md`](../analyses/architecture-review-2026-09.md))
+собирает Sdk 1.3 из трёх аддитивных изменений, которые выпускаются вместе:
+`RevitTask<TRequest, TResult>` рядом с `IRevitTask` ([#145](https://github.com/Nikola1Davydov/AnalyzeTool/issues/145)),
+`RevitCommandException(message, hint)` как единая форма сбоя ([#146](https://github.com/Nikola1Davydov/AnalyzeTool/issues/146))
+и `IRevitContext.Progress` с `IProgressAware` → `[Obsolete]`, но поддерживаемым хостом до
+следующего мажора ([#147](https://github.com/Nikola1Davydov/AnalyzeTool/issues/147)). Добавлять
+члены в `IRevitContext` безопасно: его реализует только хост. До выпуска —
+`PublicApiAnalyzers` ([#151](https://github.com/Nikola1Davydov/AnalyzeTool/issues/151)), чтобы
+SemVer держала сборка, а не дисциплина.
+
+Урок раздела выше применим буквально: `IProgressAware` знают `CommandDispatcher`,
+`ExecuteRevitCode` (он сам создаёт скомпилированный класс — и однажды уже забыл передать ему
+прогресс), `OllamaAnalyse`, описание в `src/AnalyseTool.Mcp/Program.cs`, а из документов —
+`src/LLM.md` и `ONBOARDING.md` (проверено grep 2026-10-08). Новая форма не закончена, пока каждый
+из них не знает про `ctx.Progress`.
 
 ## Связанное
 

@@ -29,13 +29,18 @@ namespace AnalyseTool.Core.Features.Extensions
         HiddenFromMcp = true)] // local plugin management, not for the AI
     internal sealed class RemoveDevExtension : IRevitTask
     {
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct) =>
+            Task.FromResult<object?>(Remove(ctx.Payload.As<Request>()?.Id, CoreServices.RevitVersion));
+
+        /// <summary>The delete itself, apart from the Revit context — so the Revit-free tests can run
+        /// it against a temporary profile.</summary>
+        internal static object Remove(string? requestedId, string revitVersion)
         {
-            string? id = ctx.Payload.As<Request>()?.Id?.Trim();
+            string? id = requestedId?.Trim();
             if (string.IsNullOrWhiteSpace(id))
                 throw new InvalidOperationException("Extension id is required.");
 
-            IReadOnlyList<ExtensionDescriptor> descriptors = ExtensionCatalog.EnumerateAll(CoreServices.RevitVersion);
+            IReadOnlyList<ExtensionDescriptor> descriptors = ExtensionCatalog.EnumerateAll(revitVersion);
             ExtensionDescriptor? dev = descriptors.FirstOrDefault(d =>
                 d.Zone == ExtensionZone.Dev &&
                 string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
@@ -70,9 +75,6 @@ namespace AnalyseTool.Core.Features.Extensions
             Directory.Move(target, parking);
             TryDelete(parking);
 
-            string scriptCache = PathProvider.ScriptCacheDir(id);
-            if (Directory.Exists(scriptCache)) TryDelete(scriptCache);
-
             // Forget the disabled flag, unless another folder still carries this id — a deliberately
             // disabled twin must stay disabled.
             bool twinRemains = descriptors.Any(d =>
@@ -81,17 +83,10 @@ namespace AnalyseTool.Core.Features.Extensions
             if (!twinRemains)
                 ExtensionStateStore.SetEnabled(id, enabled: true);
 
-            // The user's ribbon preference for this extension's commands outlives the folder otherwise:
-            // a pinned button for a command that no longer exists is pruned from the ribbon but stays in
-            // the store, and would come back if the id were ever reused.
-            foreach (CommandButtonPin pin in CommandButtons.Pinned())
-                if (pin.Command.StartsWith(id + ".", StringComparison.OrdinalIgnoreCase))
-                    CommandButtons.Set(pin.Command, null);
-
             Log.Information("Deleted dev extension {Id} from {Directory}", id, dev.Directory);
             CoreServices.ReloadExtensions();
 
-            return Task.FromResult<object?>(new { removed = true, id, directory = dev.Directory });
+            return new { removed = true, id, directory = dev.Directory };
         }
 
         /// <summary>Defence in depth: the catalog only ever reports folders under a registered root, and

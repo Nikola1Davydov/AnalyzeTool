@@ -144,7 +144,7 @@ builder.Services
             if (binding is { HasOutputSchema: true } && result is not null)
                 callResult.StructuredContent = result.Deserialize<JsonElement>();
 
-            // The reply carried the bridge's stamp; a SaveAsCommand reply is the very one that says
+            // The reply carried the bridge's stamp; a SaveExtensionUi or ReloadExtensions reply says
             // "the list just changed", and the client learns it before its next turn.
             await NotifyIfCatalogChangedAsync(ct);
             return callResult;
@@ -340,7 +340,7 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
         case McpWire.JobStates.Running:
             return new CallToolResult
             {
-                Content = { new TextContentBlock { Text = $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\",\"seconds\":{seconds}}}\n" +
+                Content = { new TextContentBlock { Text = new JsonObject { ["status"] = "running", ["jobId"] = jobId, ["command"] = command, ["seconds"] = seconds }.ToJsonString() + "\n" +
                     $"'{command}' is still running in Revit ({seconds:0}s so far). Call GetJobResult again later, or CancelJob to stop it." } },
             };
         case McpWire.JobStates.Failed:
@@ -353,7 +353,7 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
             return Error(string.IsNullOrWhiteSpace(hint) ? $"[{code}] {message}" : $"[{code}] {message}\nHint: {hint}");
         }
         default:
-            return Error($"[{McpWire.JobStates.Unknown}] No call with jobId \"{jobId}\" — it never ran, or its result is older than the retention window (one hour).");
+            return Error($"[{McpWire.JobStates.Unknown}] No call with jobId \"{jobId}\" — it never ran, or its result is older than the retention window (one hour) or was dropped to keep the stored results small. Run the command again if you still need it.");
     }
 
     static CallToolResult Error(string text) => new() { IsError = true, Content = { new TextContentBlock { Text = text } } };
@@ -373,8 +373,10 @@ async Task<CallToolResult> AnswerCancelAsync(JsonNode? payload, CancellationToke
     };
 }
 
+// Built as a JsonObject, not interpolated: jobId arrives from the agent, and a quote in it would break
+// the JSON line the agent is told to parse.
 static string RunningHandle(string command, string jobId) =>
-    $"{{\"status\":\"running\",\"jobId\":\"{jobId}\",\"command\":\"{command}\"}}\n" +
+    new JsonObject { ["status"] = "running", ["jobId"] = jobId, ["command"] = command }.ToJsonString() + "\n" +
     $"'{command}' is still running in Revit and was not waited for any longer. It keeps running; " +
     $"call GetJobResult with jobId \"{jobId}\" to collect its result (kept for one hour), GetQueueStatus to see " +
     "it running, or CancelJob to stop it. Do not start the same command again meanwhile.";
@@ -432,7 +434,7 @@ static int? ParsePort(string[] args)
     return null;
 }
 
-/// <summary>Reads "--name value" or "--name=value" from the command line.</summary>
+// <summary>Reads "--name value" or "--name=value" from the command line.</summary>
 static string? ParseOption(string[] args, string name)
 {
     string inline = name + "=";
@@ -476,25 +478,25 @@ static JsonElement FreeFormObjectSchema()
         ["additionalProperties"] = true,
     });
 
-/// <summary>
-/// Whether a command's declared result schema can be advertised as a tool's outputSchema.
-///
-/// Two cases are refused, each for its own reason:
-/// <list type="bullet">
-/// <item>a command that declared nothing arrives as the empty object schema
-/// (<c>{"type":"object","properties":{}}</c>) — advertising that would promise structure and describe
-/// none;</item>
-/// <item>the free-form fallback the bridge substitutes for an oversized schema has no properties either,
-/// and promising a shape it does not describe buys nothing.</item>
-/// </list>
-/// An array-rooted schema with items (GetCategoriesInRevit, GetCadImports, GetWarningsInRevit — #111)
-/// is a real promise, but it is advertised WRAPPED: <c>{ type: object, properties: { items: &lt;array&gt; } }</c>,
-/// and the call answers <c>{ items: [...] }</c>. Spec 2026-07-28 (SEP-2106) allows a bare array root
-/// and the SDK follows; Claude Code's client does not — its tools/list validator requires
-/// <c>outputSchema.type == "object"</c> and rejects the whole listing otherwise, so the server never
-/// started for it (2026-09-04). The wrapper is one field of indirection for every client and a working
-/// server for the one that matters most.
-/// </summary>
+// <summary>
+// Whether a command's declared result schema can be advertised as a tool's outputSchema.
+//
+// Two cases are refused, each for its own reason:
+// <list type="bullet">
+// <item>a command that declared nothing arrives as the empty object schema
+// (<c>{"type":"object","properties":{}}</c>) — advertising that would promise structure and describe
+// none;</item>
+// <item>the free-form fallback the bridge substitutes for an oversized schema has no properties either,
+// and promising a shape it does not describe buys nothing.</item>
+// </list>
+// An array-rooted schema with items (GetCategoriesInRevit, GetCadImports, GetWarningsInRevit — #111)
+// is a real promise, but it is advertised WRAPPED: <c>{ type: object, properties: { items: &lt;array&gt; } }</c>,
+// and the call answers <c>{ items: [...] }</c>. Spec 2026-07-28 (SEP-2106) allows a bare array root
+// and the SDK follows; Claude Code's client does not — its tools/list validator requires
+// <c>outputSchema.type == "object"</c> and rejects the whole listing otherwise, so the server never
+// started for it (2026-09-04). The wrapper is one field of indirection for every client and a working
+// server for the one that matters most.
+// </summary>
 static OutputShape OutputShapeOf(JsonNode? schema)
 {
     if (schema is not JsonObject obj) return OutputShape.None;
@@ -504,7 +506,7 @@ static OutputShape OutputShapeOf(JsonNode? schema)
     return obj["properties"] is JsonObject properties && properties.Count > 0 ? OutputShape.Object : OutputShape.None;
 }
 
-/// <summary>The object schema an array-rooted result is advertised under; see <see cref="OutputShapeOf"/>.</summary>
+// <summary>The object schema an array-rooted result is advertised under; see <see cref="OutputShapeOf"/>.</summary>
 static JsonObject WrapArraySchema(JsonNode arraySchema) => new JsonObject
 {
     ["type"] = "object",
@@ -512,12 +514,12 @@ static JsonObject WrapArraySchema(JsonNode arraySchema) => new JsonObject
     ["required"] = new JsonArray(ArrayItemsField),
 };
 
-/// <summary>
-/// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error
-/// is a text block, so the code has to travel inside the text, and a fixed leading token is something a
-/// reader can branch on where a sentence is not. The hint follows only when there is one — a line that
-/// restates the message teaches the reader to skip hints.
-/// </summary>
+// <summary>
+// Renders a failure for the agent. The code goes FIRST, in brackets, on its own line: an MCP tool error
+// is a text block, so the code has to travel inside the text, and a fixed leading token is something a
+// reader can branch on where a sentence is not. The hint follows only when there is one — a line that
+// restates the message teaches the reader to skip hints.
+// </summary>
 static string Describe(Exception ex)
 {
     if (ex is not BridgeException bridge)

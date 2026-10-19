@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "clientapp",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/clientapp", "run", "dev"],
+      "port": 22524
+    }
+  ]
+}

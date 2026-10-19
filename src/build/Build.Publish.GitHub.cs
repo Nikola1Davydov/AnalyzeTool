@@ -12,10 +12,11 @@ using System.Threading.Tasks;
 sealed partial class Build
 {
     /// <summary>
-    ///     Publish a new GitHub release.
+    ///     Publish a new GitHub release. The tests and both source checks are dependencies, not a
+    ///     separate workflow: a tag pushed from a red commit must not publish.
     /// </summary>
     Target PublishGitHub => _ => _
-        .DependsOn(CreateInstaller, CreateBundle)
+        .DependsOn(RunTests, CheckSchemas, CreateInstaller, CreateBundle)
         .Requires(() => ReleaseVersion)
         .OnlyWhenStatic(() => IsServerBuild)
         .Executes(async () =>

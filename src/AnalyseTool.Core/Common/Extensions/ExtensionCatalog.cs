@@ -21,12 +21,10 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>Prebuilt-DLL extension with a build resolved for the running Revit version.</summary>
         public bool HasDll => EntryAssemblyPath is not null;
 
-        /// <summary>Script extension: no entryAssembly, but the folder ships C# source compiled by Roslyn.
-        /// (When entryAssembly IS set, any <c>.cs</c> are treated as build sources and ignored here.)</summary>
-        public bool HasScript => !DeclaresDll && ScriptFiles.Count > 0;
-
-        /// <summary>True if the extension contributes commands loadable by THIS host.</summary>
-        public bool HasCommands => HasDll || HasScript;
+        /// <summary>True if the extension contributes commands loadable by THIS host. Every command
+        /// extension is a DLL — one the author builds, or one the host builds from <c>src\</c>
+        /// (<see cref="HostBuild"/>).</summary>
+        public bool HasCommands => HasDll;
 
         /// <summary>The extension asks for at least one ribbon entry. Reads EffectiveButtons() rather
         /// than the singular Button, so both manifest forms answer the same — a manifest using
@@ -47,13 +45,6 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>False only when a declared entry assembly has no build for the running Revit
         /// version — such extensions are listed (as incompatible) but never loaded.</summary>
         public bool IsCompatibleWithHost => !DeclaresDll || HasDll;
-
-        /// <summary>Top-level <c>.cs</c> files in the extension folder (the Roslyn script sources).
-        /// Scripts are version-independent, so they always live in the folder root.</summary>
-        public IReadOnlyList<string> ScriptFiles =>
-            System.IO.Directory.Exists(Directory)
-                ? System.IO.Directory.GetFiles(Directory, "*.cs")
-                : Array.Empty<string>();
     }
 
     /// <summary>
@@ -61,7 +52,7 @@ namespace AnalyseTool.Core.Common.Extensions
     /// <list type="bullet">
     /// <item>Current: <c>&lt;root&gt;\&lt;id&gt;\plugin.json</c>, with optional per-Revit-year binary subfolders
     /// (<c>&lt;id&gt;\2025\Ext.dll</c>). The entry assembly resolves year-folder-first, then folder root;
-    /// scripts and UI always come from the root.</item>
+    /// UI always comes from the root.</item>
     /// <item>Legacy (deprecated): <c>&lt;root&gt;\&lt;year&gt;\&lt;id&gt;\plugin.json</c> — only the running year's
     /// container is scanned.</item>
     /// </list>
@@ -113,6 +104,15 @@ namespace AnalyseTool.Core.Common.Extensions
             }
 
             return result;
+        }
+
+        /// <summary>The same extension read from disk again — after the loader migrated or built it, the
+        /// manifest and the resolved entry assembly may have changed. Null when it no longer reads.</summary>
+        public static ExtensionDescriptor? Reread(ExtensionDescriptor descriptor, string revitVersion)
+        {
+            List<ExtensionDescriptor> one = new();
+            AddDescriptor(one, descriptor.Directory, descriptor.Zone, descriptor.IsLegacyLayout, revitVersion, strict: false);
+            return one.FirstOrDefault();
         }
 
         private static void AddDescriptor(List<ExtensionDescriptor> result, string dir, ExtensionZone zone,

@@ -18,6 +18,7 @@ sealed partial class Build
     //   4. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
     //   5. the extension template the plugin generates actually builds, and Core's embedded
     //      template resources are really in the assembly (Build.Ci.Template.cs)
+    //   6. the Vue frontend type-checks (vue-tsc) — against src/generated/commands.ts among others
 
     AbsolutePath CiArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath SdkNupkgDirectory => CiArtifactsDirectory / "sdk-nupkg";
@@ -57,13 +58,29 @@ sealed partial class Build
                 .AssertZeroExitCode();
         });
 
+    AbsolutePath ClientAppDirectory => RootDirectory / "src" / "clientapp";
+
     /// <summary>
-    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
-    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
-    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
+    /// Type-checks the Vue frontend (<c>npm run type-check</c> = vue-tsc). Vite strips types without
+    /// checking them, so without this a call that disagrees with the generated command contract
+    /// (src/generated/commands.ts) builds fine and fails only at run time in Revit. Then lints it
+    /// (<c>npm run lint:check</c>, ESLint with typescript-eslint, no --fix). Installs the npm packages
+    /// first when they are missing (a fresh CI checkout); a dev's own node_modules is left alone.
     /// </summary>
+    Target TypeCheckClientApp => _ => _
+        .Executes(() =>
+        {
+            // cmd /c: npm is a .cmd shim on Windows, which a direct process start does not resolve.
+            if (!File.Exists(ClientAppDirectory / "node_modules" / ".bin" / "vue-tsc.cmd"))
+                ProcessTasks.StartProcess("cmd", "/c npm ci", ClientAppDirectory).AssertZeroExitCode();
+            ProcessTasks.StartProcess("cmd", "/c npm run type-check", ClientAppDirectory).AssertZeroExitCode();
+            ProcessTasks.StartProcess("cmd", "/c npm run lint:check", ClientAppDirectory).AssertZeroExitCode();
+        });
+
     /// <summary>Runs the Revit-free tests. Before this target existed, "the two Test targets" checked
-    /// the SDK package and the extension template — not one line of platform code (#128).</summary>
+    /// the SDK package and the extension template — not one line of platform code (#128). Once per TFM:
+    /// R25 is net8, R27 is net10 with its own runtime and Revit API packages, and the MCP exe rolls
+    /// forward to whichever is installed.</summary>
     Target RunTests => _ => _
         .DependsOn(CheckBoundaries)
         .Executes(() =>
@@ -72,10 +89,16 @@ sealed partial class Build
             // and the old VSTest-style positional path is refused by the .NET 10 SDK. Plain invocation
             // rather than DotNetTest(), whose settings model is the VSTest one. No quotes by hand: the
             // argument handler quotes values with spaces itself (a repo path with a space taught us).
-            foreach (AbsolutePath project in TestProjects)
-                DotNet($"test --project {project} -c {"Debug R25"}", workingDirectory: RootDirectory);
+            foreach (string configuration in new[] { "Debug R25", "Debug R27" })
+                foreach (AbsolutePath project in TestProjects)
+                    DotNet($"test --project {project} -c {configuration}", workingDirectory: RootDirectory);
         });
 
+    /// <summary>
+    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
+    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
+    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
+    /// </summary>
     Target CompileCi => _ => _
         .DependsOn(CheckBoundaries, CheckSchemas)
         .Executes(() =>
@@ -158,6 +181,6 @@ sealed partial class Build
 
     /// <summary>Everything CI checks, in one target — runnable locally: <c>src\build.cmd Ci</c>.</summary>
     Target Ci => _ => _
-        .DependsOn(CompileCi, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
+        .DependsOn(CompileCi, TypeCheckClientApp, RunTests, TestSdkPackage, TestExtensionTemplate, CheckCoreResources)
         .Executes(() => Serilog.Log.Information("CI guardrails passed"));
 }

@@ -53,7 +53,10 @@ namespace AnalyseTool.Tools.Actions
                 }
             }
 
-            transaction.Commit();
+            string? rolledBack = failures.RollbackReason(transaction.Commit());
+            if (rolledBack is not null)
+                return new SetDataResult(false, 0, items.Count, rolledBack, failures.Warnings,
+                    problems.Count == 0 ? null : problems);
 
             // Counted and reported rather than silently dropped: an unattended caller has no other way
             // to learn that 40 of its 500 writes never landed.

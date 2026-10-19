@@ -47,7 +47,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 valid = count > 0,
                 reason,
                 extensionCount = count,
-                // Where SaveAsCommand / SaveExtensionUi put what they generate when no root is named.
+                // Where SaveExtensionUi puts what it generates when no root is named.
                 isAuthoringRoot = string.Equals(root.Path, authoringRoot, StringComparison.OrdinalIgnoreCase),
             };
         }
@@ -102,16 +102,16 @@ namespace AnalyseTool.Core.Features.Extensions
     }
 
     /// <summary>
-    /// Chooses which registered folder receives what the authoring commands generate — the scripts an
-    /// AI writes over MCP, and the pages that go with them.
+    /// Chooses which registered folder receives what the authoring commands generate — the commands an
+    /// AI saves over MCP, and the pages that go with them.
     ///
     /// It matters because those commands are called with no folder in mind: an agent asked to "save
     /// this as a command" names an id, not a path. Until now that always meant the built-in dev root,
     /// so a user who keeps their extensions in a synced or version-controlled folder had to move every
-    /// generated script there by hand.
+    /// generated command there by hand.
     /// </summary>
     [RevitCommand(
-        Description = "Chooses which extension folder generated scripts are saved into when no target " +
+        Description = "Chooses which extension folder pages saved by an agent are written to when no target " +
                       "root is named. Must be one of your own dev folders — installed packages are " +
                       "overwritten by updates.",
         InputType = typeof(SetAuthoringRoot.Request),
@@ -132,7 +132,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
         internal sealed record Request
         {
-            [Description("A registered dev source root — generated scripts will be saved there.")]
+            [Description("A registered dev source root — pages saved by an agent will be written there.")]
             public string Path { get; set; } = string.Empty;
         }
     }

@@ -42,7 +42,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// (templates are scaffolded here; the legacy per-year layout also lives here).</summary>
         public static string DefaultDevRoot => PathProvider.ExtensionsRoot;
 
-        private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "extensions.json");
+        private static JsonFileStore<Settings> Store => JsonFileStore<Settings>.For(Path.Combine(PathProvider.ProfilePath, "extensions.json"));
 
         /// <summary>All roots with zone info: managed default, dev default, then user-added dev roots (deduped).</summary>
         public static IReadOnlyList<ExtensionSourceRoot> AllRoots()
@@ -70,18 +70,18 @@ namespace AnalyseTool.Core.Common.Extensions
             Path.Combine(DefaultDevRoot, revitVersion);
 
         /// <summary>
-        /// Where the authoring commands (SaveAsCommand, SaveExtensionUi) save what they generate when
+        /// Where the authoring command (SaveExtensionUi) saves what it generates when
         /// the caller names no root. Defaults to the built-in dev root.
         ///
         /// Falls back to that default whenever the stored choice is no longer a registered DEV root:
-        /// a folder the user has since removed must not keep swallowing generated scripts where
+        /// a folder the user has since removed must not keep swallowing saved extensions where
         /// nothing scans for them.
         /// </summary>
         public static string AuthoringRoot
         {
             get
             {
-                string? stored = Load().AuthoringRoot;
+                string? stored = Store.Read().AuthoringRoot;
                 if (string.IsNullOrWhiteSpace(stored)) return DefaultDevRoot;
 
                 return AllRoots().Any(r => r.Zone == ExtensionZone.Dev &&
@@ -91,7 +91,7 @@ namespace AnalyseTool.Core.Common.Extensions
             }
         }
 
-        /// <summary>Chooses where generated scripts land. Null on success, otherwise why not.
+        /// <summary>Chooses where agent-saved extensions land. Null on success, otherwise why not.
         /// Managed roots are refused: the Extension Manager owns <c>extensions-dist</c>, and the next
         /// install or update there would overwrite whatever was generated into it.</summary>
         public static string? SetAuthoringRoot(string path)
@@ -108,9 +108,7 @@ namespace AnalyseTool.Core.Common.Extensions
                 return "Installed packages are managed by the Extension Manager — an update would " +
                        "overwrite anything generated there. Choose one of your own folders.";
 
-            Settings settings = Load();
-            settings.AuthoringRoot = full;
-            Save(settings);
+            Store.Update(settings => settings.AuthoringRoot = full);
             return null;
         }
 
@@ -122,12 +120,13 @@ namespace AnalyseTool.Core.Common.Extensions
                 || string.Equals(full, DefaultDevRoot, StringComparison.OrdinalIgnoreCase))
                 return full; // built-ins are always implicit
 
-            List<string> roots = LoadUserRoots().ToList();
-            if (!roots.Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
+            // Read-modify-write under the store's lock, on the whole file: it also carries the authoring
+            // root, and two adds at once (Settings page and MCP) must both land.
+            Store.Update(settings =>
             {
-                roots.Add(full);
-                SaveUserRoots(roots);
-            }
+                if (!settings.Paths.Any(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)))
+                    settings.Paths.Add(full);
+            });
             return full;
         }
 
@@ -135,43 +134,11 @@ namespace AnalyseTool.Core.Common.Extensions
         public static void RemoveRoot(string path)
         {
             string full = Path.GetFullPath(path.Trim());
-            List<string> roots = LoadUserRoots()
-                .Where(r => !string.Equals(r, full, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            SaveUserRoots(roots);
+            Store.Update(settings =>
+                settings.Paths.RemoveAll(r => string.Equals(r, full, StringComparison.OrdinalIgnoreCase)));
         }
 
-        private static List<string> LoadUserRoots() => Load().Paths;
-
-        private static void SaveUserRoots(List<string> paths)
-        {
-            // Read-modify-write, not a fresh object: the same file carries the authoring root, and a
-            // from-scratch rewrite would reset it every time a path is added or removed.
-            Settings settings = Load();
-            settings.Paths = paths;
-            Save(settings);
-        }
-
-        private static Settings Load()
-        {
-            try
-            {
-                if (File.Exists(SettingsFile))
-                    return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFile)) ?? new();
-            }
-            catch { /* fall through to defaults */ }
-            return new();
-        }
-
-        private static void Save(Settings settings)
-        {
-            try
-            {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
-                File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(settings, Formatting.Indented));
-            }
-            catch { /* best-effort; non-fatal */ }
-        }
+        private static List<string> LoadUserRoots() => Store.Read().Paths;
 
         private sealed class Settings
         {

@@ -21,11 +21,6 @@
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json" />
         <PackageReference Include="Serilog" />
-        <!-- AI feature: provider-agnostic chat clients + Ollama. -->
-        <PackageReference Include="Microsoft.Extensions.AI" />
-        <PackageReference Include="OllamaSharp" />
-        <!-- DPAPI (Windows) — stored AI-provider API keys are encrypted per Windows user. -->
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" />
         <!-- Element.GetPreviewImage returns a System.Drawing.Bitmap (family previews). Compile-only:
              Revit provides the runtime copy, so we don't ship a duplicate and Bitmap keeps type
              identity with the instance Revit hands us. -->
@@ -38,7 +33,7 @@
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
     </ItemGroup>
 
-    <!-- AiProviderRegistry needs ToolData.PLUGIN_NAME for the profile folder. -->
+    <!-- AssemblyInfo.cs takes the plugin name and version from ToolData. -->
     <Import Project="..\SharedData\SharedData.projitems" Label="Shared" />
 
     <!-- InternalsVisibleTo lives in AssemblyInfo.cs: GenerateAssemblyInfo=False (version attributes

@@ -48,6 +48,7 @@ et8.0-windows — keep McpExe.cs in step when the TFM changes.
          sides so field renames break the build, not the runtime. A linked file, NOT a ProjectReference:
          the bridge is net8/net10-windows and drags Core/Revit deps this exe must never load. -->
     <Compile Include="..\AnalyseTool.Mcp.Bridge\McpWire.cs" Link="McpWire.cs" />
+    <Compile Include="..\AnalyseTool.Mcp.Bridge\JsonFrameReader.cs" Link="JsonFrameReader.cs" />
   </ItemGroup>
 
 </Project>

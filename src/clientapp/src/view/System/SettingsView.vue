@@ -7,76 +7,20 @@
  * you do (install, update, create) or documentation you read. Those moved to the Extensions window,
  * and what is left fits on one screen.
  *
- * Two groups, named after the question a person is actually asking — "what may the AI do",
- * "what is this" — not after the subsystem behind them. Anything only an author
+ * Named after the question a person is actually asking — "what may the AI do" — not after the
+ * subsystem behind it; "what is this" (versions, changelog) is the About window. Anything only an author
  * needs (port, token, client snippet, the command list) is one click down, never on the surface.
  */
 import { ref, computed, onMounted } from "vue";
-import { storeToRefs } from "pinia";
 import ToggleSwitch from "primevue/toggleswitch";
 import { invoke } from "@/RevitBridge";
-import { useUpdateStore } from "@/stores/useUpdateStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
-import AiModelPicker from "@/components/AiModelPicker.vue";
 
 const notifications = useNotificationStore();
-
-/** Where "Report a bug" goes — the same issues page the ribbon button opens. */
-const ISSUES_URL = "https://github.com/Nikola1Davydov/AnalyzeTool/issues";
 
 /** Message from a rejected invoke, ready to show. */
 function errorText(e: unknown): string {
   return String((e as Error)?.message ?? e);
-}
-
-// --- About: the host facts. Same command the extension manager uses; we only read its header. -----
-interface EnvironmentData {
-  hostRevit: string;
-  hostSdkVersion: string;
-  pluginVersion: string;
-  extensionsRoot: string;
-}
-const env = ref<EnvironmentData | null>(null);
-
-async function loadEnvironment() {
-  try {
-    env.value = await invoke<EnvironmentData>("GetInstalledExtensions");
-  } catch (e) {
-    console.error("Failed to load environment info", e);
-  }
-}
-
-// Same update-check the main AnalyseTool window uses (CheckUpdate command), surfaced next to the version.
-const { updateInfo } = storeToRefs(useUpdateStore());
-
-// --- Changelog (CHANGELOG.md ships next to the plugin DLL; rendered as markdown on demand) --------
-const changelogVisible = ref(false);
-const changelogHtml = ref<string | null>(null);
-const changelogError = ref<string | null>(null);
-
-async function openChangelog() {
-  changelogVisible.value = true;
-  if (changelogHtml.value) return; // fetched once per window
-  // Clear the previous failure: the template checks the error branch first, so a single failed
-  // fetch used to keep showing its message for the rest of the window's life — even after a
-  // later open succeeded and the content was sitting right there, unrendered.
-  changelogError.value = null;
-  try {
-    const res = await invoke<{ markdown: string | null; error: string | null }>("GetChangelog");
-    if (res?.markdown) {
-      const { marked } = await import("marked"); // lazy — only when the dialog is opened
-      changelogHtml.value = await marked.parse(res.markdown);
-    } else {
-      changelogError.value = res?.error ?? "Changelog not available.";
-    }
-  } catch (e) {
-    changelogError.value = String((e as Error)?.message ?? e);
-  }
-}
-
-function openFolder(path: string | undefined) {
-  if (!path) return;
-  invoke("OpenFolder", { path }).catch((e) => console.error(e));
 }
 
 // --- C# code execution: gates the ad-hoc ExecuteRevitCode command (the AI scratchpad). -----------
@@ -189,7 +133,7 @@ interface CommandRow {
   readOnly: boolean;
   destructive: boolean;
   exposedToMcp: boolean;
-  inputSchema: any;
+  inputSchema: unknown;
 }
 
 const commands = ref<CommandRow[]>([]);
@@ -207,13 +151,19 @@ const filteredCommands = computed(() => {
 });
 
 /** Summarize a command's JSON-schema payload as "field: type, …" for the table. */
-function payloadSummary(schema: any): string {
-  if (!schema || typeof schema !== "object") return "—";
+type SchemaShape = {
+  properties?: Record<string, { type?: unknown } | undefined>;
+  additionalProperties?: unknown;
+};
+
+function payloadSummary(input: unknown): string {
+  if (!input || typeof input !== "object") return "—";
+  const schema = input as SchemaShape;
   const props = schema.properties;
   if (props && typeof props === "object") {
     const keys = Object.keys(props);
     if (keys.length)
-      return keys.map((k) => (props[k]?.type ? `${k}: ${props[k].type}` : k)).join(", ");
+      return keys.map((k) => (props[k]?.type ? `${k}: ${props[k]!.type}` : k)).join(", ");
   }
   if (schema.additionalProperties) return "(free-form object)";
   return "—";
@@ -229,7 +179,6 @@ async function loadCommands() {
 }
 
 onMounted(() => {
-  loadEnvironment();
   loadCodeExec();
   loadMcp();
   loadCommands();
@@ -242,8 +191,8 @@ onMounted(() => {
   <div class="p-6 max-w-3xl mx-auto">
     <h1 class="text-xl font-bold">Settings</h1>
     <p class="text-sm text-surface-500 mb-6">
-      The plugin itself. Extensions live in their own window — the <b>Extensions</b> button on the
-      ribbon.
+      The plugin itself. Extensions and the version notes live in their own windows — <b>Extensions</b>
+      and <b>About</b> on the ribbon.
     </p>
 
     <!-- 1. AI ---------------------------------------------------------------------------------
@@ -253,31 +202,15 @@ onMounted(() => {
          the like, which bring their own model and call our commands from outside). So: two blocks, each
          saying which one it is about, and each switch sitting with the assistant it applies to. -->
     <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <h2 class="text-base font-bold mb-1">Artificial intelligence</h2>
+      <h2 class="text-base font-bold mb-1">AI assistant</h2>
       <p class="text-xs text-surface-500 mb-4">
-        There are two, and they are not the same thing. The <b>built-in assistant</b> works inside
-        AnalyseTool's windows on the model you pick below. An <b>external assistant</b> is an AI you
-        already use elsewhere, connected to Revit through AnalyseTool — it brings its own model.
+        AnalyseTool has no AI of its own. You connect the one you already use — Claude, Cursor or any
+        other client that speaks the Model Context Protocol — and it works with Revit through
+        AnalyseTool, on its own model.
       </p>
 
-      <!-- Built-in -->
-      <div class="rounded-lg border border-surface-200 p-3">
-        <div class="flex items-center gap-2 mb-1">
-          <i class="pi pi-sparkles text-primary-500" />
-          <span class="font-semibold text-sm">Built-in assistant</span>
-          <Tag value="inside AnalyseTool" severity="secondary" />
-        </div>
-        <p class="text-xs text-surface-600 mb-3">
-          The AI buttons in the parameter windows: analyse a table, propose parameter edits, suggest
-          family and type names. It sees only what the window hands it and never touches the model on
-          its own — you review and apply. Runs on the model below: a local Ollama model, or a cloud
-          provider you add. Shared across all AnalyseTool windows.
-        </p>
-        <AiModelPicker manage />
-      </div>
-
       <!-- External -->
-      <div class="rounded-lg border border-surface-200 p-3 mt-4">
+      <div class="rounded-lg border border-surface-200 p-3">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="flex items-center gap-2 mb-1">
@@ -293,9 +226,7 @@ onMounted(() => {
             <p class="text-xs text-surface-600">
               Claude Desktop, Cursor or any other client that speaks the Model Context Protocol. It
               works the other way round: it <b>calls AnalyseTool's commands</b> — built-in and from
-              your extensions — to read and change the model, in your name, without a window. The
-              model picked above does not apply; the client uses its own. Both switches in this block
-              concern this assistant only.
+              your extensions — to read and change the model, in your name, without a window.
             </p>
           </div>
           <ToggleSwitch
@@ -355,9 +286,8 @@ onMounted(() => {
           </div>
         </Panel>
 
-        <!-- The one genuinely dangerous switch in the plugin. It sits INSIDE the external block
-             because that is the only assistant it applies to — the built-in one never runs code —
-             and it gets its own frame so it can never be skimmed past as another preference. -->
+        <!-- The one genuinely dangerous switch in the plugin. It gets its own frame so it can never
+             be skimmed past as another preference. -->
         <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -387,68 +317,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- 2. About ------------------------------------------------------------------------------->
-    <section class="rounded-xl border border-surface-200 bg-surface-0 p-4 mb-4">
-      <h2 class="text-base font-bold mb-3">About</h2>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-        <div>
-          <div class="text-surface-500 text-xs">Revit</div>
-          <div>{{ env?.hostRevit ?? "—" }}</div>
-        </div>
-        <div>
-          <div class="text-surface-500 text-xs">SDK version</div>
-          <div>{{ env?.hostSdkVersion ?? "—" }}</div>
-        </div>
-        <div>
-          <div class="text-surface-500 text-xs">Plugin version</div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <span>{{ env?.pluginVersion ?? "—" }}</span>
-            <template v-if="updateInfo?.isUpdateAvailable">
-              <span
-                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
-                :style="{ background: 'var(--p-primary-color)' }"
-              >
-                <i class="pi pi-arrow-up text-[10px]" />
-                v{{ updateInfo.latestVersion }}
-              </span>
-              <a
-                v-if="updateInfo.releaseUrl"
-                :href="updateInfo.releaseUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-primary-600 underline font-semibold text-xs"
-              >
-                Download
-              </a>
-            </template>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3 mt-4">
-        <Button label="What's new" icon="pi pi-book" size="small" text @click="openChangelog" />
-        <Button
-          label="Extensions folder"
-          icon="pi pi-folder-open"
-          size="small"
-          text
-          severity="secondary"
-          :disabled="!env?.extensionsRoot"
-          v-tooltip.top="env?.extensionsRoot"
-          @click="openFolder(env?.extensionsRoot)"
-        />
-        <a
-          :href="ISSUES_URL"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-sm text-primary-600 underline inline-flex items-center gap-1"
-        >
-          <i class="pi pi-github text-xs" />Report a bug
-        </a>
-      </div>
-    </section>
-
-    <!-- 3. For developers: the full command reference. Kept, but one click down — it answers a
+    <!-- 2. For developers: the full command reference. Kept, but one click down — it answers a
          question ("what can I call from AT.invoke") that no one asks while changing a setting. -->
     <Panel toggleable collapsed class="mb-6">
       <template #header>
@@ -457,8 +326,7 @@ onMounted(() => {
       <div class="flex items-start justify-between mb-3 gap-3">
         <p class="text-xs text-surface-500">
           Everything callable from a web extension via <code>AT.invoke(name, payload)</code>. The
-          <b>MCP</b> tag marks the ones an AI client can see. To RUN one, use the
-          <b>Scripts</b> button on the ribbon.
+          <b>MCP</b> tag marks the ones an AI client can see.
         </p>
         <InputText v-model="commandSearch" placeholder="Search…" class="w-56 shrink-0" size="small" />
       </div>
@@ -499,21 +367,6 @@ onMounted(() => {
         </template>
       </DataTable>
     </Panel>
-
-    <!-- Changelog (CHANGELOG.md shipped with the plugin, rendered as markdown) -->
-    <Dialog
-      v-model:visible="changelogVisible"
-      modal
-      dismissableMask
-      header="What's new"
-      :style="{ width: 'min(44rem, 95vw)' }"
-    >
-      <div v-if="changelogError" class="text-sm text-red-600">{{ changelogError }}</div>
-      <div v-else-if="!changelogHtml" class="text-surface-500 text-sm p-4 text-center">
-        <i class="pi pi-spin pi-spinner mr-2" />Loading…
-      </div>
-      <div v-else class="changelog-body max-h-[65vh] overflow-y-auto pr-2" v-html="changelogHtml" />
-    </Dialog>
   </div>
 </template>
 
@@ -525,43 +378,5 @@ onMounted(() => {
 }
 .settings-subpanel :deep(.p-panel-content) {
   padding: 0.75rem;
-}
-
-/* Minimal markdown styling for the changelog dialog (marked outputs plain h2/ul/li/p). */
-.changelog-body :deep(h2) {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 1rem 0 0.5rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--p-surface-200);
-}
-.changelog-body :deep(h2:first-child) {
-  margin-top: 0;
-}
-.changelog-body :deep(h1) {
-  display: none; /* the dialog header already says what this is */
-}
-.changelog-body :deep(ul) {
-  list-style: disc;
-  padding-left: 1.25rem;
-  margin: 0.25rem 0 0.75rem;
-}
-.changelog-body :deep(ul ul) {
-  list-style: circle;
-  margin: 0.125rem 0;
-}
-.changelog-body :deep(li) {
-  font-size: 0.875rem;
-  margin: 0.125rem 0;
-}
-.changelog-body :deep(p) {
-  font-size: 0.875rem;
-  margin: 0.375rem 0;
-}
-.changelog-body :deep(code) {
-  background: var(--p-surface-100);
-  border-radius: 0.25rem;
-  padding: 0 0.25rem;
-  font-size: 0.8em;
 }
 </style>

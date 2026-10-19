@@ -26,14 +26,27 @@ namespace AnalyseTool.App
                 if (!WebView2Runtime.EnsureOrWarn())
                     return Result.Succeeded;
 
+                // A second click brings the open window forward. It used to build a new window and
+                // transport first, never show them, and leave the transport attached for good.
+                if (_openedWindow != null)
+                {
+                    Bring(_openedWindow);
+                    return Result.Succeeded;
+                }
+
                 MainWindow window = new MainWindow();
-                window.Closed += WindowClosed;
 
                 // All commands (built-in + extensions) are dispatched via Sdk.IRevitTask.
                 WebView2Transport transport = new WebView2Transport(window.webView, CoreServices.Queue);
                 transport.Attach();
+                window.Closed += (_, _) =>
+                {
+                    transport.Detach();
+                    _openedWindow = null;
+                };
 
-                Show(window);
+                _openedWindow = window;
+                window.Show();
             }
             catch (Exception ex)
             {
@@ -42,29 +55,13 @@ namespace AnalyseTool.App
             return Result.Succeeded;
         }
 
-        private void WindowClosed(object? sender, EventArgs e)
+        private static void Bring(Window window)
         {
-            _openedWindow = null;
+            window.Activate();
+            window.WindowState = WindowState.Normal;
+            CenterWindow(window);
         }
-        private void Show(Window window)
-        {
-            WindowInteropHelper helper = new WindowInteropHelper(window);
-            helper.Owner = Context.UiApplication.MainWindowHandle;
-
-            if (_openedWindow != null)
-            {
-                _openedWindow.Activate();
-                _openedWindow.WindowState = WindowState.Normal;
-
-                CenterWindow(_openedWindow);
-            }
-            else
-            {
-                _openedWindow = window;
-                window.Show();
-            }
-        }
-        private void CenterWindow(Window window)
+        private static void CenterWindow(Window window)
         {
             if (window.Owner != null)
             {

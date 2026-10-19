@@ -22,7 +22,6 @@ Microsoft.Extensions.AI                          MIT
 Microsoft.Extensions.Hosting                     MIT
 Microsoft.AspNetCore.Components.WebView.Wpf      MIT
 System.Drawing.Common                            MIT
-System.Security.Cryptography.ProtectedData       MIT
   Copyright (c) .NET Foundation and Contributors
   https://github.com/dotnet
 
@@ -30,10 +29,6 @@ Microsoft.Web.WebView2                           Microsoft WebView2 SDK license
   Copyright (c) Microsoft Corporation
   Redistributable per the package license:
   https://www.nuget.org/packages/Microsoft.Web.WebView2/ (License)
-
-OllamaSharp                                      MIT
-  Copyright (c) Andreas Wäscher
-  https://github.com/awaescher/OllamaSharp
 
 ModelContextProtocol (C# SDK)                    MIT
   Copyright (c) Model Context Protocol contributors

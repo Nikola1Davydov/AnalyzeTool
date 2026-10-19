@@ -13,12 +13,13 @@ WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools comman
 | Project | References | Role |
 | --- | --- | --- |
 | `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. |
-| `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn scripting, `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
-| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Ai/`, `Elements/` (Family Manager left the platform for an extension on 2026-09-01) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
+| `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn (`ExecuteRevitCode` + `HostBuild`: an extension with sources in `<ext>\src\` and no `.csproj` is compiled on load into `<ext>\<year>\<id>.dll`; saving C# over MCP — `SaveAsCommand` — was removed on 2026-10-19), `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
+| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Elements/`, `SharedParameters/` (the shared parameter file editor, project bindings and the report data, 2026-10-09; Family Manager left the platform for an extension on 2026-09-01; the built-in AI slice `Ai/` was removed on 2026-10-08 — AI works through MCP only) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
 | `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
 | `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
 | `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
-| `AnalyseTool.Launcher` | App (+ Mcp build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
+| `AnalyseTool.Launcher` | App (+ Mcp, TsGen build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
+| `AnalyseTool.TsGen` | Core, Tools, Mcp.Bridge, Sdk | Build-time exe, ships nothing: writes `clientapp/src/generated/commands.ts` (TS interfaces of every declared `InputType`/`OutputType` + a typed `commands.X(...)` wrapper over `invoke`) by reflection, mirroring Newtonsoft's wire names and null handling. Runs after its own Debug build (so a Debug Launcher build keeps the file current), never on CI. |
 
 Hard rules:
 - **Never** add a ProjectReference that violates the table — `src/build/Check-Boundaries.ps1` fails CI.
@@ -63,7 +64,14 @@ level, four walls), never the commands — plus `RoslynScriptCompiler` against t
 (the test engine has no `RevitAPIUI`, so "UIApplication not referenced" is the one error every
 compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
 must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
-button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher.
+button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher, and the
+shared parameter file format (`SharedParameterFile`: columns by header, unknown columns kept, UTF-16, stale-save refusal), and
+the **TS contract** (`TsContractTests`: the committed `commands.ts` equals what TsGen generates now — commit it after changing a command's types).
+Also on tier 1, through two seams: the dispatcher takes an `IRevitTaskHub` (a dispatcher with a `null` hub registers, reloads,
+gates and refuses — it only cannot *run* a command, whose `RevitContext` needs RevitAPIUI), and `PathProvider.UseProfile`
+points the profile at a temp folder. With them: the real MCP bridge over a socket, the extension loader on temp roots (host
+builds, broken extensions, reloads), packages, install/remove/update checks, the update feeds' parsing, and the settings
+stores. Tests that touch the profile override, extension state or diagnostics share `[NotInParallel(TestKeys.ExtensionState)]`.
 
 ```powershell
 dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
@@ -86,12 +94,13 @@ the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not 
 
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
 2. `Check-Schemas.ps1` — command schema contract: every command carries a `Description`, a command that reads `ctx.Payload` declares `InputType` and every property of that type carries `[Description]`, and every `AnalyseTool.Tools` command declares `OutputType`. Core commands are exempt from the output rule (extension management / scripting — they never appear in a pipeline). A source scan, so it runs before any build.
-3. Build chain for R25 (net8) and R27 (net10).
+3. Build chain for R25, R26 (net8) and R27 (net10); the Revit-free tests run on R25 and R27.
 4. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
 5. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\Acme.Sample\` (manifest + UI in the root, assembly in `<year>\`) — a live smoke test of the real ALC loading path, in the layout authors are told to use.
+6. `TypeCheckClientApp` — `npm run type-check` (vue-tsc, `src/clientapp/tsconfig.json`) over the Vue frontend, so a call that disagrees with the generated `commands.ts` fails CI instead of Revit; then `npm run lint:check` (ESLint with typescript-eslint, no `--fix`). Also a dependency of `BuildClientApp`. TypeScript stays on 6.x: vue-tsc needs the JS compiler API, which the native 7.x lacks.
 
 ## Docs to keep in sync
 
 - `ONBOARDING.md` — extension author guide (mirrored to the GitHub wiki), also the NuGet README of the Sdk package.
 - `src/LLM.md` — paste-into-AI extension authoring instructions. Also the guide `CreateExtensionTemplate` drops into a new extension folder: it is embedded into `AnalyseTool.Core` as a resource (`AnalyseTool.Core.csproj`) and served verbatim, so there is no second copy to keep in step. The csproj/.gitignore templates live next to it in `src/AnalyseTool.Core/Features/Extensions/Templates/`; the Hello.cs starter is a string literal in `CreateExtensionTemplate.cs` (its filename as a resource triggers MSBuild's culture inference — see the `WithCulture` note in `AnalyseTool.Core.csproj`).
-- `CHANGELOG.md` — ships next to the plugin DLL (Settings window displays it).
+- `CHANGELOG.md` — ships next to the plugin DLL (the About window displays it).

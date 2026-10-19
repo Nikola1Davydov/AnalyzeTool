@@ -9,3 +9,20 @@ body {
   background: var(--p-surface-50, #f8fafc);
   color: var(--p-surface-900, #0f172a);
 }
+
+/* Printing is the report's: only its A4 sheets go to paper, at their true size. */
+@page {
+  size: A4;
+  margin: 0;
+}
+@media print {
+  html,
+  body {
+    background: white;
+  }
+  .no-print,
+  .layout-footer,
+  .p-toast {
+    display: none !important;
+  }
+}

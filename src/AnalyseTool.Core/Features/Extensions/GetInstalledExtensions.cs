@@ -39,9 +39,12 @@ namespace AnalyseTool.Core.Features.Extensions
                     enabled = ExtensionStateStore.IsEnabled(d.Manifest.Id),
                     hasCommands = d.HasCommands,
                     hasUi = d.HasUi,
-                    // "dll" = prebuilt assembly (declared, even if no build for this year),
-                    // "script" = Roslyn-compiled .cs, "js" = UI-only.
-                    kind = d.DeclaresDll ? "dll" : d.HasScript ? "script" : "js",
+                    // "dll" = commands in an assembly (declared, even if no build for this year —
+                    // the author's own build or one the host compiles from src\), "js" = UI-only.
+                    kind = d.DeclaresDll ? "dll" : "js",
+                    // Built by AnalyseTool from <ext>\src\ (a command saved over MCP): its sources live in
+                    // THIS folder, so deleting the folder deletes them — the UI has to say so.
+                    hostBuilt = HostBuild.IsHostBuilt(d.Directory),
                     // False = declared DLL has no build for the running Revit year (never loaded).
                     compatible = d.IsCompatibleWithHost,
                     zone = d.Zone == ExtensionZone.Dev ? "dev" : "managed",
@@ -94,7 +97,10 @@ namespace AnalyseTool.Core.Features.Extensions
 
             try
             {
-                string path = System.IO.Path.Combine(descriptor.Directory, relative);
+                // The icon path comes from a third-party plugin.json and the listing is an MCP tool:
+                // "..\..\secret" or an absolute path must not turn it into a file reader.
+                string? path = ExtensionFolder.ResolveInside(descriptor.Directory, relative);
+                if (path is null) return null;
                 System.IO.FileInfo file = new(path);
                 if (!file.Exists || file.Length > MaxIconBytes) return null;
                 return "data:image/png;base64," + Convert.ToBase64String(System.IO.File.ReadAllBytes(path));

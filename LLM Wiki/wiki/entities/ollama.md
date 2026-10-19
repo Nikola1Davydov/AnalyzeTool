@@ -1,21 +1,27 @@
 ---
 type: entity
-updated: 2026-08-31
+updated: 2026-10-08
 status: draft
 sources: [../sources/analysetool-repo-docs.md, ../sources/github-issues.md]
 ---
 
 # Ollama
 
+> **Снято 2026-10-08.** Встроенного ИИ в плагине больше нет: слайс `Ai/` в `AnalyseTool.Tools`
+> удалён целиком вместе с OllamaSharp, реестром провайдеров и командами `Ollama*` / `Ai*`.
+> ИИ — только внешний клиент по MCP. Решение владельца: локальная модель была сырой и мешала,
+> а плагин сосредоточен на MCP и создании кнопок сильным ИИ. Ниже — как было, для истории;
+> пути в тексте больше не существуют.
+
 Провайдер AI по умолчанию для *другого* направления AI в этом репозитории — когда
 плагин зовёт модель, а не агент зовёт плагин.
 
-Зарегистрирован в `src/AnalyseTool.Tools/Ai/Infrastructure/AiProviderRegistry.cs` с id
+Был зарегистрирован в src/AnalyseTool.Tools/Ai/Infrastructure/AiProviderRegistry.cs с id
 `ollama`, отображаемым именем «Ollama (local)» и базовым адресом
 `http://localhost:11434`.
 
 Провайдеры OpenAI-совместимые: `BaseUrl` — корень, запросы чата идут на
-`BaseUrl/chat/completions` через `OpenAiCompatibleChatClient.cs`. Пользовательские
+`BaseUrl/chat/completions` через OpenAiCompatibleChatClient.cs. Пользовательские
 провайдеры (OpenRouter, LM Studio, …) добавляются в рантайме и получают
 сгенерированный id.
 

@@ -1,6 +1,6 @@
 ---
 type: source
-updated: 2026-09-02
+updated: 2026-10-08
 status: draft
 ---
 
@@ -26,7 +26,7 @@ status: draft
 | `ONBOARDING.md` | гайд автора расширений. Он же README пакета SDK на NuGet, он же зеркалится в GitHub Wiki |
 | `src/LLM.md` | инструкции «вставь в ИИ» для написания расширений. Вшит ресурсом в `AnalyseTool.Core` и отдаётся дословно командой `CreateExtensionTemplate` (в папку нового расширения) и `GetAuthoringGuide` (`src/AnalyseTool.Core/Features/Extensions/GetAuthoringGuide.cs`, агенту через MCP). Рядом, в `src/AnalyseTool.Core/Features/Extensions/Templates/`, — csproj и `.gitignore`, а теперь и `readme.md.txt` с `workflow.yml.txt` |
 | `docs/extension-platform-design.md` | дизайн платформы расширений |
-| `CHANGELOG.md` | едет рядом с DLL плагина; окно Settings его показывает |
+| `CHANGELOG.md` | едет рядом с DLL плагина; окно About его показывает |
 
 **GitHub Wiki уже существует и генерируется, а не пишется руками.**
 `.github/workflows/wiki-sync.yml` копирует `ONBOARDING.md` в `wiki/Home.md`, а
@@ -45,9 +45,9 @@ status: draft
 `McpServerController.cs`, `McpWire.cs`, `PayloadValidator.cs`, `NearestName.cs`,
 плюс команды `Features/GetMcpStatus.cs` и `Features/SetMcpServer.cs`.
 
-Слайс `Ai/` в `AnalyseTool.Tools` — это *другое* направление, плагин как AI-клиент:
-`AiProviderRegistry.cs`, `AiClientFactory.cs`, `AiAnalysisService.cs`,
-`OpenAiCompatibleChatClient.cs` и команды `OllamaAnalyse`, `OllamaEditParameters`,
+Слайс `Ai/` в `AnalyseTool.Tools` был *другим* направлением, плагин как AI-клиент (удалён
+2026-10-08, ИИ теперь только по MCP): AiProviderRegistry.cs, AiClientFactory.cs,
+AiAnalysisService.cs, OpenAiCompatibleChatClient.cs и команды `OllamaAnalyse`, `OllamaEditParameters`,
 `OllamaGetModels`, `OllamaSuggestName`, `OllamaSuggestNames`, `OllamaSuggestTemplate`,
 `AiProviderCommands`.
 

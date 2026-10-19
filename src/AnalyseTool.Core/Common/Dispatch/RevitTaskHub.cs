@@ -6,10 +6,9 @@ namespace AnalyseTool.Core.Common.Dispatch
     /// <summary>
     /// Central marshaller onto the Revit thread. One long-lived <see cref="ExternalEvent"/> is
     /// created once (in a valid API context, from Bootstrap); callers enqueue synchronous work from
-    /// any thread and await the result. Replaces the single-slot ExternalEventHub for the new
-    /// dispatch path.
+    /// any thread and await the result.
     /// </summary>
-    internal sealed class RevitTaskHub : IExternalEventHandler
+    internal sealed class RevitTaskHub : IExternalEventHandler, IRevitTaskHub
     {
         private readonly ConcurrentQueue<Action<UIApplication>> _queue = new();
         private ExternalEvent? _event;

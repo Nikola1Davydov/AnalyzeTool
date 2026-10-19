@@ -6,7 +6,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
 {
     /// <summary>
     /// Core-side service registry, populated once by the host bootstrap. Platform commands
-    /// (GetCommands, ReloadExtensionsCommand, SaveAsCommand, …) reach the dispatcher and the
+    /// (GetCommands, ReloadExtensionsCommand, SaveExtensionUi, …) reach the dispatcher and the
     /// extension loader through this class, so Core never references the host assembly.
     /// </summary>
     internal static class CoreServices
@@ -28,16 +28,6 @@ namespace AnalyseTool.Core.Common.Bootstrap
         /// has no knowledge of the ribbon.</summary>
         public static event Action? ExtensionsReloaded;
 
-        /// <summary>Raised when what the ribbon SHOWS changed while the commands behind it did not —
-        /// the user pinning a command in the launcher, or taking a button away. Deliberately not
-        /// <see cref="ExtensionsReloaded"/>: redrawing one button must not unload and rebuild every
-        /// collectible load context, which is what a reload does.</summary>
-        public static event Action? RibbonButtonsChanged;
-
-        /// <summary>Announces a ribbon-only change. Safe before Initialize — with no host subscribed
-        /// there is no ribbon to refresh, and the state itself is already on disk.</summary>
-        public static void RaiseRibbonButtonsChanged() => RibbonButtonsChanged?.Invoke();
-
         public static void Initialize(CommandQueue queue, ExtensionLoader loader, string revitVersion)
         {
             Queue = queue;
@@ -47,7 +37,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
         }
 
         /// <summary>Serializes reloads. Every reload path funnels through this class — the ribbon button,
-        /// install/update/remove, enable/disable, SaveAsCommand — but they arrive on different threads
+        /// install/update/remove, enable/disable, SaveExtensionUi — but they arrive on different threads
         /// (UI thread, MCP thread pool). Two interleaved reloads used to drop load contexts from the
         /// loader's list without unloading them (a permanent leak) and register the same names twice.</summary>
         private static readonly object ReloadGate = new();
@@ -58,17 +48,23 @@ namespace AnalyseTool.Core.Common.Bootstrap
         {
             if (!IsInitialized) return;
 
-            lock (ReloadGate)
+            try
             {
-                Log.Information("Reloading extensions");
-                Loader.UnloadAll();
-                Loader.LoadAll();
-                Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+                lock (ReloadGate)
+                {
+                    Log.Information("Reloading extensions");
+                    Loader.Reload();
+                    Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+                }
             }
-
-            // Outside the lock: subscribers touch the ribbon (and hop to the Revit UI thread to do it),
-            // so holding the gate across them invites a deadlock for no benefit.
-            ExtensionsReloaded?.Invoke();
+            finally
+            {
+                // Raised even when loading threw: the old commands are unloaded by then, and a ribbon
+                // and a tool list that were never told would keep offering them.
+                // Outside the lock: subscribers touch the ribbon (and hop to the Revit UI thread to do it),
+                // so holding the gate across them invites a deadlock for no benefit.
+                ExtensionsReloaded?.Invoke();
+            }
         }
     }
 }

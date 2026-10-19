@@ -17,11 +17,18 @@ namespace AnalyseTool.Core.Common.Extensions
     {
         private static readonly object Gate = new();
         private static HashSet<string>? _disabled; // lazy cache; ids compared case-insensitively
+        private static string? _disabledFrom;     // the file the cache was read from: the profile can move (tests)
 
-        private static string StateFile => Path.Combine(PathProvider.ProfilePath, "extensions-state.json");
+        private static JsonFileStore<State> Store => JsonFileStore<State>.For(Path.Combine(PathProvider.ProfilePath, "extensions-state.json"));
 
-        public static bool IsEnabled(string extensionId) =>
-            !Disabled().Contains(extensionId);
+        // Under the lock: SetEnabled changes the same set, and a HashSet read during a write can throw.
+        public static bool IsEnabled(string extensionId)
+        {
+            lock (Gate)
+            {
+                return !Disabled().Contains(extensionId);
+            }
+        }
 
         /// <summary>Enables/disables an extension. Takes effect on the next extension reload.</summary>
         public static void SetEnabled(string extensionId, bool enabled)
@@ -40,35 +47,22 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             lock (Gate)
             {
-                if (_disabled is not null) return _disabled;
+                JsonFileStore<State> store = Store;
+                if (_disabled is not null && _disabledFrom == store.Path) return _disabled;
 
+                // Unreadable state = everything enabled (logged by the store); rewritten on the next toggle.
                 _disabled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                try
-                {
-                    if (File.Exists(StateFile))
-                    {
-                        State? state = JsonConvert.DeserializeObject<State>(File.ReadAllText(StateFile));
-                        foreach (string id in state?.Disabled ?? new())
-                            if (!string.IsNullOrWhiteSpace(id))
-                                _disabled.Add(id);
-                    }
-                }
-                catch { /* unreadable state = everything enabled; the file is rewritten on next toggle */ }
+                _disabledFrom = store.Path;
+                foreach (string id in store.Read().Disabled)
+                    if (!string.IsNullOrWhiteSpace(id))
+                        _disabled.Add(id);
                 return _disabled;
             }
         }
 
-        private static void Save(HashSet<string> disabled)
-        {
-            try
-            {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
-                File.WriteAllText(StateFile, JsonConvert.SerializeObject(
-                    new State { Disabled = disabled.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList() },
-                    Formatting.Indented));
-            }
-            catch { /* best-effort; the in-memory set still applies for this session */ }
-        }
+        // Best-effort: if the write fails (logged), the in-memory set still applies for this session.
+        private static void Save(HashSet<string> disabled) =>
+            Store.Write(new State { Disabled = disabled.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList() });
 
         private sealed class State
         {

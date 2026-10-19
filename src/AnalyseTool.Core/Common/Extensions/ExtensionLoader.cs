@@ -4,15 +4,14 @@ using AnalyseTool.Sdk;
 using Serilog;
 using System.IO;
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>
     /// Loads the C# command half of user-authored extensions discovered by <see cref="ExtensionCatalog"/>.
     /// Extensions without an entryAssembly (JS-only) are skipped here — their UI is handled by the
-    /// ribbon/window layer. One bad extension is logged and skipped; the rest still load.
+    /// ribbon/window layer. Extensions the host builds from source are compiled first
+    /// (<see cref="HostBuild"/>). One bad extension is logged and skipped; the rest still load.
     /// </summary>
     internal sealed class ExtensionLoader
     {
@@ -20,120 +19,177 @@ namespace AnalyseTool.Core.Common.Extensions
         private readonly string _revitVersion;   // Revit version year, e.g. "2025"
         private readonly Version _hostSdkVersion; // the AnalyseTool.Sdk AssemblyVersion this host provides
         private readonly List<ExtensionLoadContext> _contexts = new();
+        private readonly Func<IReadOnlyList<ExtensionSourceRoot>> _roots;
 
-        public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion)
+        /// <param name="roots">Where extensions are looked for; the user's registered sources unless a
+        /// test points the loader at a folder of its own.</param>
+        public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion, Func<IReadOnlyList<ExtensionSourceRoot>>? roots = null)
         {
             _dispatcher = dispatcher;
             _revitVersion = revitVersion;
             _hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
+            _roots = roots ?? ExtensionSources.AllRoots;
         }
 
-        /// <summary>Drops loaded extension commands and unloads their (collectible) contexts so a
-        /// subsequent <see cref="LoadAll"/> picks up changed DLLs without restarting Revit.</summary>
-        public void UnloadAll()
+        /// <summary>
+        /// Loads every extension into new contexts, then makes their commands the live set in one step,
+        /// then unloads the previous contexts. Changed DLLs and sources take effect without restarting
+        /// Revit, and at no point is the registry empty: it used to be cleared first and refilled while
+        /// sources compiled, and every call meanwhile was refused. The first load at bootstrap is the
+        /// same operation with nothing to unload. Callers serialize (CoreServices' reload gate).
+        /// </summary>
+        public void Reload()
         {
-            _dispatcher.ClearExtensions();
-            ExtensionDiagnostics.ClearAll();
-            foreach (ExtensionLoadContext context in _contexts)
-            {
-                try { context.Unload(); }
-                catch { /* references may still be alive; GC collects later */ }
-            }
+            List<ExtensionLoadContext> previous = _contexts.ToList();
             _contexts.Clear();
+            ExtensionDiagnostics.ClearAll();
+
+            ExtensionRegistrations next = _dispatcher.NewExtensionSet();
+            try
+            {
+                LoadAll(next);
+            }
+            finally
+            {
+                // Published even when scanning threw midway: what did load is better than what was
+                // there, whose contexts are about to go.
+                _dispatcher.ReplaceExtensions(next);
+
+                // A command still running in an old context keeps it alive until it returns; the
+                // collectible context goes once nothing references it.
+                foreach (ExtensionLoadContext context in previous)
+                {
+                    try { context.Unload(); }
+                    catch (InvalidOperationException) { /* already unloading */ }
+                }
+            }
         }
 
-        public void LoadAll()
+        private void LoadAll(ExtensionRegistrations into)
         {
-            foreach (ExtensionDescriptor descriptor in ExtensionCatalog.Scan(_revitVersion))
+            foreach (ExtensionDescriptor scanned in _roots().SelectMany(r => ExtensionCatalog.ScanRoot(r, _revitVersion, strict: true)).ToList())
             {
-                // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
-                if (!ExtensionStateStore.IsEnabled(descriptor.Manifest.Id)) continue;
-
-                // Declared a DLL but ships no build for this Revit year: listed as incompatible,
-                // never loaded — surface WHY in diagnostics instead of failing on a missing file.
-                if (descriptor.DeclaresDll && !descriptor.HasDll)
-                {
-                    string error = $"No build for Revit {_revitVersion}: '{descriptor.Manifest.EntryAssembly}' " +
-                        $"not found in '{_revitVersion}\\' or the extension root.";
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
-                    Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
-                    continue;
-                }
-
-                if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
-
-                ExtensionDiagnostics.Clear(descriptor.Manifest.Id);
+                // The WHOLE of one extension's load is guarded, preparation included: a locked year
+                // folder or an unreadable src\ used to throw out of PrepareHostBuild, abort the loop
+                // and leave every extension after it unloaded.
                 try
                 {
-                    if (descriptor.HasDll)
-                        LoadDllCommands(descriptor);
-                    else
-                        LoadScriptCommands(descriptor);
+                    LoadOne(scanned, into);
                 }
                 catch (Exception ex)
                 {
                     // No dialog from Core: the error is logged and lands in ExtensionDiagnostics,
                     // which the Settings extension listing surfaces to the user.
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, ex.Message);
-                    Log.Error(ex, "Failed to load extension {Id}", descriptor.Manifest.Id);
+                    ExtensionDiagnostics.SetError(scanned.Manifest.Id, ex.Message);
+                    Log.Error(ex, "Failed to load extension {Id}", scanned.Manifest.Id);
                 }
             }
         }
 
-        /// <summary>Compiles a script extension's C# source with Roslyn (cached by source hash) and
-        /// registers the resulting commands — same downstream as a prebuilt DLL.</summary>
-        private void LoadScriptCommands(ExtensionDescriptor descriptor)
+        private void LoadOne(ExtensionDescriptor scanned, ExtensionRegistrations into)
         {
-            string id = descriptor.Manifest.Id;
-            string[] files = descriptor.ScriptFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray();
+            // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
+            if (!ExtensionStateStore.IsEnabled(scanned.Manifest.Id)) return;
 
-            string cacheDir = PathProvider.ScriptCacheDir(id);
-            Directory.CreateDirectory(cacheDir);
-            string cachedDll = Path.Combine(cacheDir, ScriptCacheKey(files) + ".dll");
+            ExtensionDiagnostics.Clear(scanned.Manifest.Id);
 
-            if (!File.Exists(cachedDll))
+            // Sources the host compiles are brought up to date first — which may migrate an old
+            // script folder and changes what the descriptor resolves to, so it is read again.
+            string? buildError = PrepareHostBuild(scanned, out ExtensionDescriptor descriptor);
+
+            // Nothing to load and a reason why (a script folder that could not be migrated, sources
+            // that never compiled): say so rather than skipping the extension in silence.
+            if (buildError is not null && !descriptor.HasDll)
             {
-                ScriptCompileResult result = RoslynScriptCompiler.CompileFiles(files, id);
-                if (!result.Success)
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id, buildError);
+                Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, buildError);
+                return;
+            }
+
+            // Declared a DLL but ships no build for this Revit year: listed as incompatible,
+            // never loaded — surface WHY in diagnostics instead of failing on a missing file.
+            if (descriptor.DeclaresDll && !descriptor.HasDll)
+            {
+                string error = $"No build for Revit {_revitVersion}: " +
+                    $"'{descriptor.Manifest.EntryAssembly}' not found in '{_revitVersion}\\' or the extension root.";
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
+                Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
+                return;
+            }
+
+            if (!descriptor.HasCommands) return; // JS-only extension, nothing to load here
+
+            LoadDllCommands(descriptor, into);
+
+            // The edit did not compile, but an earlier build did and is loaded: the commands keep
+            // working, and the error says why the change has not taken effect.
+            if (buildError is not null)
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id,
+                    "The sources did not compile; the previous build is still in use." +
+                    Environment.NewLine + buildError);
+        }
+
+        /// <summary>
+        /// Migrates a script folder of the old format, and compiles a host-built extension whose build
+        /// for this Revit year is missing or older than its sources (<see cref="HostBuild"/>). Returns
+        /// the compiler's errors, or null; <paramref name="current"/> is the descriptor as it reads now.
+        /// </summary>
+        private string? PrepareHostBuild(ExtensionDescriptor scanned, out ExtensionDescriptor current)
+        {
+            current = scanned;
+            string id = scanned.Manifest.Id;
+            string directory = scanned.Directory;
+            bool changed = false;
+
+            if (scanned.IsLegacyLayout && HostBuild.IsScriptFolder(directory, scanned.Manifest))
+                return "Script extensions are no longer compiled from the old extensions\\<year>\\<id> layout. " +
+                       $"Move the folder to extensions\\{id} and reload: it is then built as a DLL.";
+
+            if (!scanned.IsLegacyLayout && HostBuild.IsScriptFolder(directory, scanned.Manifest))
+            {
+                string? migrationError = HostBuild.MigrateScriptFolder(directory, id);
+                if (migrationError is not null) return migrationError;
+                Log.Information("Extension {Id}: script sources moved to {Folder}\\ — it is built as a DLL from now on",
+                    id, HostBuild.SourceFolder);
+                changed = true;
+            }
+
+            string? error = null;
+            if (HostBuild.IsHostBuilt(directory))
+            {
+                ExtensionDescriptor manifestNow = changed ? ExtensionCatalog.Reread(scanned, _revitVersion) ?? scanned : scanned;
+                string? entryAssembly = manifestNow.Manifest.EntryAssembly;
+                if (string.IsNullOrWhiteSpace(entryAssembly))
                 {
-                    string error = string.Join(Environment.NewLine, result.Errors);
-                    ExtensionDiagnostics.SetError(id, error);
-                    Log.Warning("Script extension {Id} failed to compile: {Errors}", id, error);
-                    return;
+                    // Sources in src\ but no entryAssembly — put there by hand. Without it the build
+                    // below would never be found, so the manifest is completed first.
+                    entryAssembly = HostBuild.EntryAssemblyFor(id);
+                    string? manifestError = HostBuild.SetEntryAssembly(directory, entryAssembly);
+                    if (manifestError is not null) return manifestError;
+                    changed = true;
                 }
 
-                File.WriteAllBytes(cachedDll, result.Assembly!);
-                if (result.Pdb is not null)
-                    File.WriteAllBytes(Path.ChangeExtension(cachedDll, ".pdb"), result.Pdb);
+                if (HostBuild.NeedsBuild(directory, entryAssembly!, _revitVersion))
+                {
+                    ScriptCompileResult result = HostBuild.Build(directory, entryAssembly!, _revitVersion);
+                    if (result.Success)
+                    {
+                        Log.Information("Extension {Id}: built {Assembly} for Revit {Year}", id, entryAssembly, _revitVersion);
+                        changed = true;
+                    }
+                    else
+                    {
+                        error = string.Join(Environment.NewLine, result.Errors);
+                        Log.Warning("Extension {Id} failed to compile: {Errors}", id, error);
+                    }
+                }
             }
 
-            // Tracked before the load for the same reason as in LoadDllCommands: an untracked
-            // collectible context can never be unloaded.
-            ExtensionLoadContext alc = new ExtensionLoadContext(cachedDll, id);
-            _contexts.Add(alc);
-
-            Assembly assembly = alc.LoadEntry(cachedDll); // byte-load: cache file stays unlocked
-            _dispatcher.RegisterExtension(assembly, id);
-            Log.Information("Loaded script extension {Id}", id);
+            if (changed) current = ExtensionCatalog.Reread(scanned, _revitVersion) ?? scanned;
+            return error;
         }
 
-        /// <summary>Cache key = SHA-256 over the script sources (+ a plugin-version salt so a host upgrade
-        /// invalidates stale compiled bytes). Changed source ⇒ new key ⇒ recompile.</summary>
-        private static string ScriptCacheKey(IEnumerable<string> files)
-        {
-            StringBuilder sb = new();
-            sb.Append(SharedData.ToolData.PLUGIN_VERSION).Append('\n');
-            foreach (string file in files)
-            {
-                sb.Append(Path.GetFileName(file)).Append('\n');
-                sb.Append(File.ReadAllText(file)).Append('\n');
-            }
-
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-            return Convert.ToHexString(hash, 0, 8); // 16 hex chars is plenty for a per-id cache
-        }
-
-        private void LoadDllCommands(ExtensionDescriptor descriptor)
+        private void LoadDllCommands(ExtensionDescriptor descriptor, ExtensionRegistrations into)
         {
             ExtensionManifest manifest = descriptor.Manifest;
 
@@ -182,12 +238,12 @@ namespace AnalyseTool.Core.Common.Extensions
                 return;
             }
 
-            _dispatcher.RegisterExtension(assembly, manifest.Id);
+            _dispatcher.RegisterExtension(assembly, manifest.Id, into);
             Log.Information("Loaded DLL extension {Id} (SDK {Sdk})", manifest.Id, referencedSdk);
         }
 
         /// <summary>Unloads a context we decided not to use and stops tracking it, so the next
-        /// <see cref="UnloadAll"/> doesn't try to unload it a second time.</summary>
+        /// <see cref="Reload"/> doesn't try to unload it a second time.</summary>
         private void UnloadAndForget(ExtensionLoadContext context)
         {
             _contexts.Remove(context);

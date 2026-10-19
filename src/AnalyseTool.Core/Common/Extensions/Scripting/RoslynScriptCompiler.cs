@@ -16,8 +16,9 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
     }
 
     /// <summary>
-    /// Compiles user/AI-authored C# into an in-memory assembly that registers exactly like a prebuilt
-    /// extension DLL (same <see cref="Sdk.IRevitTask"/> contract). References are the host's own loaded
+    /// Compiles user/AI-authored C# into an assembly that registers exactly like a prebuilt extension
+    /// DLL (same <see cref="Sdk.IRevitTask"/> contract) — in memory for ExecuteRevitCode, written to the
+    /// extension folder for a host-built extension (<see cref="HostBuild"/>). References are the host's own loaded
     /// assemblies, so a script sees the identical Revit API, SDK and Newtonsoft the host runs against.
     ///
     /// Two source shapes are accepted (the "hybrid" format):
@@ -30,31 +31,26 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
         private static readonly CSharpParseOptions ParseOptions = new(LanguageVersion.Latest);
         private static IReadOnlyList<MetadataReference>? _references;
 
-        /// <summary>Compiles all of a script extension's source files into one assembly. A single
-        /// body-style file is auto-wrapped; otherwise files are compiled as-is (full classes).</summary>
-        public static ScriptCompileResult CompileFiles(IReadOnlyList<string> filePaths, string assemblyName)
+        /// <summary>Compiles a host-built extension's sources (<c>src\*.cs</c>) into one assembly. A single
+        /// body-style file is auto-wrapped (a script migrated from the old format may be one); otherwise
+        /// the files are compiled as-is.</summary>
+        public static ScriptCompileResult CompileSources(IReadOnlyList<(string Path, string Text)> sources,
+            string assemblyName)
         {
-            List<(string Path, string Text)> sources;
-            try
-            {
-                sources = filePaths.Select(p => (p, File.ReadAllText(p))).ToList();
-            }
-            catch (Exception ex)
-            {
-                return new ScriptCompileResult(null, null, new[] { $"Cannot read script files: {ex.Message}" });
-            }
+            if (sources.Count == 0)
+                return new ScriptCompileResult(null, null, new[] { "There is no source to compile." });
 
             List<SyntaxTree> trees = new();
             if (sources.Count == 1 && !IsFullCommand(sources[0].Text))
-                trees.Add(Parse(WrapBody(sources[0].Text, null), "script.cs"));
+                trees.Add(Parse(WrapBody(sources[0].Text, null), sources[0].Path));
             else
                 trees.AddRange(sources.Select(s => Parse(s.Text, s.Path)));
 
             return Emit(trees, assemblyName);
         }
 
-        /// <summary>Compiles a single in-memory snippet (used by the AI's ephemeral ExecuteRevitCode and by
-        /// SaveAsCommand). Body-style snippets are wrapped with the given command description.</summary>
+        /// <summary>Compiles a single in-memory snippet (the AI's ephemeral ExecuteRevitCode). Body-style
+        /// snippets are wrapped with the given command description.</summary>
         public static ScriptCompileResult CompileSnippet(string source, string assemblyName, string? description)
         {
             SyntaxTree tree = IsFullCommand(source)
@@ -138,10 +134,6 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Encoding is required: emitting a PDB for a source whose tree has no encoding fails (CS8055).
-        /// <summary>True when the source already declares an IRevitTask class (so it should be saved/compiled
-        /// as-is); false for a bare body that needs wrapping. Public for SaveAsCommand.</summary>
-        public static bool LooksLikeFullCommand(string source) => IsFullCommand(source);
-
         private static SyntaxTree Parse(string text, string path) =>
             CSharpSyntaxTree.ParseText(text, ParseOptions, path, Encoding.UTF8);
 

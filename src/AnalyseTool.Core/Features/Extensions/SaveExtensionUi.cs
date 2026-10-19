@@ -12,19 +12,19 @@ namespace AnalyseTool.Core.Features.Extensions
     /// Writes the web half of an extension: an HTML page (plus whatever CSS/JS goes with it) and the
     /// manifest entry that puts it behind a ribbon button.
     ///
-    /// SaveAsCommand covers C# and only C#, so an agent that could generate a whole form had no way to
-    /// save it and had to hand the files to a person to copy. The two together are the point: save the
-    /// backend command with SaveAsCommand, save the form here, and the button opens the form while the
-    /// form calls the command through <c>AT.invoke</c>.
+    /// An agent that could generate a whole form had no way to save it and had to hand the files to a
+    /// person to copy. A page saved under the id of an existing command extension becomes that
+    /// extension's form: the button opens the page, and the page calls the commands through
+    /// <c>AT.invoke</c>; a page under a new id calls the built-in commands.
     ///
     /// Hand-authored pages only. Files are written flat into the extension folder, so a framework build
     /// with an assets/ tree does not belong here — that is a project a person builds and installs.
     /// </summary>
     [RevitCommand(
         Description = "Saves a web UI into an extension folder: an entry HTML page plus any CSS/JS " +
-                      "beside it, and the plugin.json entry that gives it a ribbon button. Use with " +
-                      "SaveAsCommand to build a command WITH a form — save the C# first, the page " +
-                      "second, and the button will open the page while the page calls the command via " +
+                      "beside it, and the plugin.json entry that gives it a ribbon button. Saved under " +
+                      "the id of an existing command extension, it becomes that extension's form: the " +
+                      "button opens the page and the page calls the commands via " +
                       "AT.invoke('<id>.<Command>', payload). Pass overwrite:true to replace an existing " +
                       "page. Files are written flat, so hand-authored HTML/CSS/JS only — not a " +
                       "framework build with an assets folder. Requires C# execution to be enabled in " +
@@ -32,11 +32,9 @@ namespace AnalyseTool.Core.Features.Extensions
         Destructive = true,
         InputType = typeof(SaveExtensionUi.Request),
         OutputType = typeof(SaveUiResult))]
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class SaveExtensionUi : IRevitTask
     {
-        /// <summary>Wire name, referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = nameof(SaveExtensionUi);
-
         /// <summary>What may be written. An allowlist, not a denylist: the extensions folder is loaded
         /// by the host, so the question is not "is this dangerous" but "is this one of the few kinds of
         /// file a hand-written page is made of".</summary>
@@ -75,9 +73,9 @@ namespace AnalyseTool.Core.Features.Extensions
                 return Task.FromResult<object?>(SaveUiResult.Failed(
                     $"None of the files is named '{entryHtml}'. The entry page has to be among them."));
 
-            // Same rule as SaveAsCommand: an id that already exists resolves to its own folder. A page
-            // saved for a command that lives in a shared folder belongs beside that command, not in a
-            // second folder of the same name that shadows it.
+            // An id that already exists resolves to its own folder. A page saved for a command that
+            // lives in a shared folder belongs beside that command, not in a second folder of the same
+            // name that shadows it.
             SaveTarget target = ExtensionFolder.ResolveSaveDirectory(id, req.TargetRoot);
             if (target.Directory is null)
                 return Task.FromResult<object?>(SaveUiResult.Failed(target.Error!));
@@ -109,7 +107,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 written.Add(name);
             }
 
-            // Merged, not rewritten: the C# side may already have put a command and a button here.
+            // Merged, not rewritten: the extension may already have a command and a button here.
             // The writer clears button.command because the folder now has a page — see the rule there.
             ExtensionManifestWriter.Write(directory, id, new ManifestEdit
             {
@@ -151,7 +149,7 @@ namespace AnalyseTool.Core.Features.Extensions
         internal sealed class Request
         {
             [Description("Extension id — the folder name and the command namespace, e.g. \"niko.sheets\". " +
-                         "Use the SAME id as the SaveAsCommand call to give a command its own form.")]
+                         "Use the id of an existing command extension to give its commands a form.")]
             public string? Id { get; set; }
 
             [Description("Ribbon button label. Required when creating; omit to keep an existing one.")]

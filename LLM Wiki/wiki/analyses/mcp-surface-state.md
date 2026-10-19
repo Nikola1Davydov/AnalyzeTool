@@ -1,6 +1,6 @@
 ---
 type: analysis
-updated: 2026-09-02
+updated: 2026-10-09
 status: current
 sources: [../sources/github-issues.md]
 ---
@@ -99,6 +99,19 @@ ExecuteRevitCode failed — …` с payload. [#97](https://github.com/Nikola1Dav
 [#107](https://github.com/Nikola1Davydov/AnalyzeTool/issues/107) предполагает, что
 подсказки `ttlMs` / `cacheScope` из `2026-07-28` могут выйти ещё дешевле.
 
+**Цикл авторства меняет форму.** [#164](https://github.com/Nikola1Davydov/AnalyzeTool/issues/164)
+(отгружено 2026-10-08) оставил одну форму команды — DLL: `SaveAsCommand` пишет исходник в `<id>\src\`,
+и хост сам собирает его Roslyn'ом в `<id>\<год>\<id>.dll` (`HostBuild`), .NET SDK не нужен.
+[#165](https://github.com/Nikola1Davydov/AnalyzeTool/issues/165) (открыт, решение владельца) считает
+`HostBuild` третьим путём и оставляет **строго два**: Roslyn — только `ExecuteRevitCode`, ничего не
+сохраняется; постоянная кнопка — только C#-проект и `dotnet build`. Для агента это новый шаг:
+`ExecuteRevitCode` → `SaveAsCommand` (создаёт проект, проверяет компиляцию в памяти) → **`BuildExtension`**
+(`dotnet build` отдельным процессом, долгая команда с прогрессом и отменой, как
+[#99](https://github.com/Nikola1Davydov/AnalyzeTool/issues/99) / [#108](https://github.com/Nikola1Davydov/AnalyzeTool/issues/108)) → кнопка.
+Цена — .NET SDK на машине пользователя: его ставит bundle-установщик от Microsoft, запасной путь —
+портативный SDK в `%LOCALAPPDATA%\AnalyseTool\dotnet\`. Открыто: нужна ли `BuildExtension` агентам с
+терминалом (Claude Code соберёт проект сам) или только клиентам без него.
+
 **[#101](https://github.com/Nikola1Davydov/AnalyzeTool/issues/101) — `using` в форме
 голого тела — закрыт 2026-09-02.** Тело вклеивалось в метод, поэтому `using Autodesk.Revit.DB;`
 разбирался как *оператор* `using`, и вызывающий получал двадцать ошибок компилятора, ни
@@ -156,6 +169,10 @@ OneDrive. Ничего не ломается; общая папка команд
   на документ: журнал операций в JSONL только на дозапись (сознательно не RAG и
   сознательно пока не SQLite), конвенции проекта с различением `inferred` и
   `userConfirmed`, и явный отказ хранить историю разговора.
+
+- **[#136](https://github.com/Nikola1Davydov/AnalyzeTool/issues/136)** — подложки (2026-09-21):
+  DWG/PDF агент видит как `id` + `name` или не видит вовсе; предложены `GetUnderlays` со сводкой по
+  слоям, `GetCadLayers`, `GetCadGeometry`. Разбор — [`../concepts/agent-legibility.md`](../concepts/agent-legibility.md).
 
 ## Дефект, которого не было в списке: агент слеп
 
@@ -255,6 +272,25 @@ expected "object"» на `tools[20].outputSchema.type`), сервер не ст�
 [#97](https://github.com/Nikola1Davydov/AnalyzeTool/issues/97) вместе с
 [#98](https://github.com/Nikola1Davydov/AnalyzeTool/issues/98) это ровно та обстановка,
 которая его порождает.
+
+## Официальный сервер Autodesk — сосед, а не замена (пока)
+
+[#137](https://github.com/Nikola1Davydov/AnalyzeTool/issues/137) (2026-09-21): Autodesk выпустил
+**Revit Public MCP Server** — Tech Preview, только Revit 2027, stdio, ставится отдельным аддоном по
+подписке. Issue — план разведки, а не решение: снять его `tools/list` со схемами, сопоставить с
+нашим каталогом, проверить расширяемость («AnalyseTool как расширение официального сервера» вместо
+своего транспорта), уживаются ли два сервера в одном Revit, и что взять из их подхода к записи.
+
+> [!warning] не проверено
+> Возможности сервера Autodesk (поиск элементов, чтение параметров, массовая правка, снимки видов;
+> по другим источникам — только чтение) взяты из анонсов, перечисленных в #137, и в живом Revit не
+> проверялись.
+
+Что уже можно сказать со стороны этой вики: у нас Revit 2025/2026/2027, у них только 2027; и
+наша поверхность держится не на числе инструментов, а на контракте — описаниях, схемах,
+подсказках в ошибках, job handles ([`../concepts/command-schema-contract.md`](../concepts/command-schema-contract.md),
+[`../concepts/long-running-calls.md`](../concepts/long-running-calls.md)) и расширениях,
+которые становятся инструментами. Сравнивать надо по этим осям.
 
 ## Порядок, который отсюда следует
 

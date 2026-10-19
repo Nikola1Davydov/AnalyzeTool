@@ -26,6 +26,20 @@ namespace AnalyseTool.App
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Plattformkompatibilität überprüfen", Justification = "<Ausstehend>")]
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                await InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Failed to open the main window");
+                UserDialogUtils.Error(ex.Message);
+                Close();
+            }
+        }
+
+        private async Task InitializeAsync()
+        {
             CoreWebView2Environment env = await WebView2Runtime.CreateEnvironmentAsync();
             await webView.EnsureCoreWebView2Async(env);
 

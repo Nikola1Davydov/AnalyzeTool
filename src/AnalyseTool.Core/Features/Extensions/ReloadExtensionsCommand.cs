@@ -6,28 +6,29 @@ namespace AnalyseTool.Core.Features.Extensions
     /// <summary>Reloads extension command DLLs (collectible ALC) and refreshes the ribbon buttons,
     /// all without restarting Revit.</summary>
     [RevitCommand("ReloadExtensions",
-        Description = "Reloads extension command DLLs and script sources (collectible ALC) and refreshes " +
+        Description = "Reloads extension command DLLs (collectible ALC) and refreshes " +
                       "ribbon buttons, without restarting Revit. This is the 'apply' step of the authoring " +
                       "loop: after changing an extension's files, reload, then call " +
-                      "GetExtensionDiagnostics to see whether it came back. SaveAsCommand reloads by " +
-                      "itself, so this is for changes made another way. Cost: unloads and recompiles " +
-                      "every script extension. Hidden from the AI while C# execution is off in " +
+                      "GetExtensionDiagnostics to see whether it came back. SaveExtensionUi reloads by " +
+                      "itself, so this is for changes made another way — an edited file in an extension's " +
+                      "src folder is compiled again here. Cost: unloads every extension and recompiles " +
+                      "the ones whose sources changed. Hidden from the AI while C# execution is off in " +
                       "AnalyseTool Settings.")]
+    [Common.Extensions.Scripting.CodeAuthoringTool]
     internal sealed class ReloadExtensionsCommand : IRevitTask
     {
-        /// <summary>Wire name, referenced by the MCP bridge to gate this tool's visibility.</summary>
-        public const string CommandName = "ReloadExtensions";
-
         // No CodeExecutionSettings check in the body, unlike the authoring commands it sits beside. The
-        // gate is the MCP bridge's alone, because Settings' own Reload button invokes this command and
+        // gate is the MCP bridge's alone, because the Extensions window invokes this command (after a folder change) and
         // must keep working with the toggle off. The description says "hidden from the AI" rather than
         // "requires", which is what is actually true.
 
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            // Raises ExtensionsReloaded; the host listens and refreshes the ribbon buttons.
-            CoreServices.ReloadExtensions();
-            return Task.FromResult<object?>(null);
+            // Off the caller's thread: from a window that is Revit's UI thread, and a reload may compile
+            // sources with Roslyn. Not cancellable once started — half a reload helps nobody.
+            // Raises ExtensionsReloaded; the host listens and refreshes the ribbon buttons (marshalled).
+            await Task.Run(CoreServices.ReloadExtensions).ConfigureAwait(false);
+            return null;
         }
     }
 }

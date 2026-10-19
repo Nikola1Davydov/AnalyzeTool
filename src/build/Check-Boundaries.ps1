@@ -9,6 +9,7 @@ The contract (see also src/LLM.md):
     Core        -> Sdk                      the platform
     Mcp.Bridge  -> Core + Sdk               transport satellite
     App         -> Core + Tools + Mcp.Bridge + Sdk
+    TsGen       -> Core + Tools + Mcp.Bridge + Sdk   build-time only: writes the TS command contract
     Sdk         -> (nothing)
 
 Also enforced:
@@ -30,6 +31,7 @@ $contract = @{
     'AnalyseTool.Mcp.Bridge' = @('AnalyseTool.Core', 'AnalyseTool.Sdk')
     'AnalyseTool.App'        = @('AnalyseTool.Core', 'AnalyseTool.Mcp.Bridge', 'AnalyseTool.Sdk', 'AnalyseTool.Tools')
     'AnalyseTool.Mcp'        = @()
+    'AnalyseTool.TsGen'      = @('AnalyseTool.Core', 'AnalyseTool.Mcp.Bridge', 'AnalyseTool.Sdk', 'AnalyseTool.Tools')
 }
 
 foreach ($name in $contract.Keys) {

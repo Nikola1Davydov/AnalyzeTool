@@ -6,6 +6,7 @@ name: CI
 #   2. command schema contract (every command describes itself, its input and its output)
 #   3. the full plugin chain compiles for every Revit year (R25/R26 = net8, R27 = net10)
 #   4. the Sdk NUPKG works for an external extension author (pack -> build sample against it)
+#   5. the Vue frontend type-checks (vue-tsc, against the generated command contract)
 
 # Every branch, not just main/dev: the Sdk's build files (Extension.props, Sdk.targets) are consumed
 # by extension repositories that check this repo out by BRANCH, so an unverified push there breaks
@@ -45,6 +46,15 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           # Without this, any .csproj edit means a fully cold restore instead of a near-hit.
           restore-keys: ${{ runner.os }}-nuget-
+
+      # For TypeCheckClientApp (npm ci + vue-tsc). Pinned rather than the image's default Node, which
+      # need not satisfy clientapp's "engines" (Vite 7: ^20.19 || >=22.12).
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/clientapp/package-lock.json
 
       - name: Run CI guardrails (Nuke)
         run: ./src/build.cmd Ci

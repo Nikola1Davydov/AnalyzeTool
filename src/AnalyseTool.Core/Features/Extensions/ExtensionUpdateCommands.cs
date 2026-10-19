@@ -104,23 +104,7 @@ namespace AnalyseTool.Core.Features.Extensions
             ExtensionUpdateInfo latest = await ExtensionUpdateFeed.ResolveAsync(installed.Manifest.UpdateFeed!, id, ct);
             string zipPath = await ExtensionUpdateFeed.DownloadPackageAsync(latest.DownloadUrl, installed.Manifest.Id, ct);
 
-            // The feed must serve the SAME extension it was declared for — checked BEFORE anything
-            // is installed, so a wrong or hijacked feed cannot plant a different package.
-            ExtensionPackageInfo packageInfo = ExtensionPackage.Validate(zipPath);
-            if (!string.Equals(packageInfo.Manifest.Id, id, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    $"The update feed of '{id}' served a package with id '{packageInfo.Manifest.Id}' — " +
-                    "refusing to install it. Check the vendor's feed.");
-
-            // What the feed ADVERTISED (the tag) and what the package CONTAINS (plugin.json) are two
-            // different numbers, and a stale asset on a re-edited release makes them disagree. An
-            // "update" that silently installs an older build is worse than no update at all.
-            if (!CheckExtensionUpdates.IsNewer(packageInfo.Manifest.Version, installed.Manifest.Version))
-                throw new InvalidOperationException(
-                    $"The feed of '{id}' announced {latest.Version}, but the package it served contains " +
-                    $"version {packageInfo.Manifest.Version}, which is not newer than the installed " +
-                    $"{installed.Manifest.Version}. Refusing to downgrade — the release's zip asset and its " +
-                    "tag are out of step.");
+            CheckServedPackage(id, latest.Version, ExtensionPackage.Validate(zipPath), installed.Manifest.Version);
 
             ExtensionInstallResult result = ExtensionInstaller.InstallPackage(
                 zipPath, overwrite: true, CoreServices.RevitVersion);
@@ -137,6 +121,28 @@ namespace AnalyseTool.Core.Features.Extensions
                 from = installed.Manifest.Version,
                 to = result.Info.Manifest.Version,
             };
+        }
+
+        /// <summary>What a downloaded package must be before it replaces the installed one. Separate from
+        /// the download so the Revit-free tests can hold it to that.</summary>
+        internal static void CheckServedPackage(string id, string announcedVersion, ExtensionPackageInfo package, string installedVersion)
+        {
+            // The feed must serve the SAME extension it was declared for — checked BEFORE anything
+            // is installed, so a wrong or hijacked feed cannot plant a different package.
+            if (!string.Equals(package.Manifest.Id, id, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"The update feed of '{id}' served a package with id '{package.Manifest.Id}' — " +
+                    "refusing to install it. Check the vendor's feed.");
+
+            // What the feed ADVERTISED (the tag) and what the package CONTAINS (plugin.json) are two
+            // different numbers, and a stale asset on a re-edited release makes them disagree. An
+            // "update" that silently installs an older build is worse than no update at all.
+            if (!CheckExtensionUpdates.IsNewer(package.Manifest.Version, installedVersion))
+                throw new InvalidOperationException(
+                    $"The feed of '{id}' announced {announcedVersion}, but the package it served contains " +
+                    $"version {package.Manifest.Version}, which is not newer than the installed " +
+                    $"{installedVersion}. Refusing to downgrade — the release's zip asset and its " +
+                    "tag are out of step.");
         }
 
         internal sealed record Request

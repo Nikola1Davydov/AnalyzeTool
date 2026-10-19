@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Writes clientapp/src/generated/commands.ts — the TypeScript side of the command contract: one
+    interface per InputType/OutputType a built-in command declares, and a typed wrapper per command
+    over RevitBridge's invoke(). Reflection only: it loads Core, Tools and Mcp.Bridge the way the tier-1
+    tests do (the Revit API is compile-only, so nothing here may touch a Revit type at run time).
+
+    Runs after its own Debug build, so a Debug build of the Launcher (which references this project for
+    build order) keeps the file current. Not on CI (GitHub sets CI=true): there the committed file is
+    what the tier-1 test (TsContractTests) compares against, and regenerating first would hide drift.
+  -->
+  <Import Project="..\AnalyseTool.Sdk\build\AnalyseTool.Extension.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>AnalyseTool.TsGen</RootNamespace>
+    <!-- The IDE's fast up-to-date check looks only at this project's inputs: with the C# unchanged it
+         never calls MSBuild, so a deleted or hand-edited commands.ts stayed that way. Always build —
+         the compile is incremental, and the generator rewrites the file only when it differs. -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Core\AnalyseTool.Core.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Tools\AnalyseTool.Tools.csproj" />
+    <ProjectReference Include="..\AnalyseTool.Mcp.Bridge\AnalyseTool.Mcp.Bridge.csproj" />
+  </ItemGroup>
+
+  <Target Name="GenerateTsContract" AfterTargets="Build"
+          Condition="$(Configuration.Contains('Debug')) and '$(CI)' != 'true'">
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; &quot;$(MSBuildProjectDirectory)\..\clientapp\src\generated\commands.ts&quot;" />
+  </Target>
+
+</Project>
