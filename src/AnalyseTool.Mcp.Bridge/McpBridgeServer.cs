@@ -44,7 +44,7 @@ namespace AnalyseTool.Mcp.Bridge
         // its outcome is kept here so a "result" request can collect it later (#99). The same record
         // holds the CancellationTokenSource a "cancel" request trips (#109). Keyed by the caller's
         // request id, which the exe generates per call and can therefore quote back.
-        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Job> _jobs = new();
+        private readonly JobStore _jobs = new(JobRetention, MaxStoredJobs);
         /// <summary>How long a finished outcome stays collectable. Long enough for an agent that lost
         /// its call to come back after the user noticed; short enough that a session's worth of
         /// results does not accumulate in Revit's memory.</summary>
@@ -242,9 +242,9 @@ namespace AnalyseTool.Mcp.Bridge
                 // reads a record. Both answer in microseconds even while Revit is held, which is the
                 // whole point — they are how a caller reaches a call it can no longer wait on.
                 if (string.Equals(type, McpWire.TypeCancel, StringComparison.OrdinalIgnoreCase))
-                    return Ok(id, new JObject { [McpWire.Cancelled] = CancelJob(id) });
+                    return Ok(id, new JObject { [McpWire.Cancelled] = _jobs.Cancel(id) });
                 if (string.Equals(type, McpWire.TypeResult, StringComparison.OrdinalIgnoreCase))
-                    return Ok(id, req[McpWire.List]?.Value<bool>() == true ? ListJobs() : DescribeJob(id));
+                    return Ok(id, req[McpWire.List]?.Value<bool>() == true ? _jobs.List() : _jobs.Describe(id));
 
                 string command = (string?)req[McpWire.Command] ?? string.Empty;
                 JToken payload = req[McpWire.Payload] ?? JValue.CreateNull();
@@ -326,9 +326,10 @@ namespace AnalyseTool.Mcp.Bridge
         /// </summary>
         private async Task<string> RunJobAsync(string id, string command, JToken payload, CancellationToken ct, Func<string, Task> sendFrame)
         {
-            PruneJobs();
-            Job job = new(id, command, CancellationTokenSource.CreateLinkedTokenSource(ct));
-            _jobs[id] = job;
+            JobStore.Job? job = _jobs.TryStart(id, command, CancellationTokenSource.CreateLinkedTokenSource(ct));
+            if (job is null)
+                return Err(id, McpWire.Codes.InvalidArguments, $"A call with id '{id}' already exists.",
+                    "Nothing was executed. Send each call with a new id.");
 
             // Progress: a frame per report, throttled, on the caller's connection while it lasts. A write
             // to a caller that has gone is swallowed here — the job does not care who is listening.
@@ -365,19 +366,19 @@ namespace AnalyseTool.Mcp.Bridge
                         Gate = registration => Task.FromResult(IsAvailableToAi(registration)),
                     }).ConfigureAwait(false);
                 JToken value = result is null ? JValue.CreateNull() : JToken.FromObject(result);
-                job.Finish(McpWire.JobStates.Done, value, null);
+                _jobs.Finish(job, McpWire.JobStates.Done, value, null);
                 return Ok(id, value);
             }
             catch (OperationCanceledException)
             {
-                job.Finish(McpWire.JobStates.Cancelled, null, ErrorObject(McpWire.Codes.Cancelled, "The call was cancelled before it finished.", null));
+                _jobs.Finish(job, McpWire.JobStates.Cancelled, null, ErrorObject(McpWire.Codes.Cancelled, "The call was cancelled before it finished.", null));
                 return Err(id, McpWire.Codes.Cancelled, "The call was cancelled before it finished.");
             }
             catch (Exception ex)
             {
                 // The queue's LoggingExecutor has already logged this failure with its chain and payload.
                 string reply = Failed(id, new JObject { [McpWire.Command] = command, [McpWire.Payload] = payload }, ex, log: false);
-                job.Finish(McpWire.JobStates.Failed, null, (JObject?)JObject.Parse(reply)[McpWire.Error]);
+                _jobs.Finish(job, McpWire.JobStates.Failed, null, (JObject?)JObject.Parse(reply)[McpWire.Error]);
                 return reply;
             }
             finally
@@ -390,86 +391,6 @@ namespace AnalyseTool.Mcp.Bridge
         {
             try { await send(json).ConfigureAwait(false); }
             catch { /* the caller is gone; the job runs on */ }
-        }
-
-        private bool CancelJob(string? id)
-        {
-            if (id is null || !_jobs.TryGetValue(id, out Job? job) || job.FinishedUtc is not null) return false;
-            try { job.Cancellation.Cancel(); } catch (ObjectDisposedException) { return false; }
-            return true;
-        }
-
-        private JObject DescribeJob(string? id)
-        {
-            if (id is null || !_jobs.TryGetValue(id, out Job? job))
-                return new JObject { [McpWire.JobStatus] = McpWire.JobStates.Unknown };
-            JObject answer = new()
-            {
-                [McpWire.JobStatus] = job.Status,
-                [McpWire.JobCommand] = job.Command,
-                [McpWire.JobSeconds] = Math.Round(((job.FinishedUtc ?? DateTime.UtcNow) - job.StartedUtc).TotalSeconds, 1),
-            };
-            if (job.Result is not null) answer[McpWire.JobResult] = job.Result;
-            if (job.Error is not null) answer[McpWire.JobError] = job.Error;
-            return answer;
-        }
-
-        /// <summary>The recent calls, newest first, without their results — enough to pick the one whose
-        /// handle was lost and ask for it by id.</summary>
-        private JObject ListJobs()
-        {
-            DateTime now = DateTime.UtcNow;
-            JArray jobs = new(_jobs.Values
-                .OrderByDescending(j => j.StartedUtc)
-                .Take(50)
-                .Select(j => new JObject
-                {
-                    [McpWire.Id] = j.Id,
-                    [McpWire.JobStatus] = j.Status,
-                    [McpWire.JobCommand] = j.Command,
-                    [McpWire.JobSeconds] = Math.Round(((j.FinishedUtc ?? now) - j.StartedUtc).TotalSeconds, 1),
-                }));
-            return new JObject { [McpWire.Jobs] = jobs };
-        }
-
-        /// <summary>Drops finished outcomes past the retention window, and the oldest beyond the cap.</summary>
-        private void PruneJobs()
-        {
-            DateTime cutoff = DateTime.UtcNow - JobRetention;
-            foreach (KeyValuePair<string, Job> entry in _jobs)
-                if (entry.Value.FinishedUtc is { } finished && finished < cutoff)
-                    _jobs.TryRemove(entry.Key, out _);
-            if (_jobs.Count <= MaxStoredJobs) return;
-            foreach (Job stale in _jobs.Values.Where(j => j.FinishedUtc is not null).OrderBy(j => j.FinishedUtc).Take(_jobs.Count - MaxStoredJobs))
-                _jobs.TryRemove(stale.Id, out _);
-        }
-
-        /// <summary>One invoke and what became of it. Finish() is called exactly once, by the runner.</summary>
-        private sealed class Job
-        {
-            public Job(string id, string command, CancellationTokenSource cancellation)
-            {
-                Id = id;
-                Command = command;
-                Cancellation = cancellation;
-            }
-
-            public string Id { get; }
-            public string Command { get; }
-            public CancellationTokenSource Cancellation { get; }
-            public DateTime StartedUtc { get; } = DateTime.UtcNow;
-            public DateTime? FinishedUtc { get; private set; }
-            public string Status { get; private set; } = McpWire.JobStates.Running;
-            public JToken? Result { get; private set; }
-            public JObject? Error { get; private set; }
-
-            public void Finish(string status, JToken? result, JObject? error)
-            {
-                Status = status;
-                Result = result;
-                Error = error;
-                FinishedUtc = DateTime.UtcNow;
-            }
         }
 
         /// <summary>The command-failed reply, and the log line that goes with it.</summary>
