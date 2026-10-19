@@ -36,10 +36,18 @@ namespace AnalyseTool.App.Common.Transport
             _attached[this] = 0;
         }
 
+        /// <summary>Called when the page is gone (window closed, dead WebView rebuilt). Its in-flight
+        /// commands are cancelled: nobody is left to read their answers, and a long one would otherwise
+        /// keep the Revit thread busy for a window that no longer exists.</summary>
         public void Detach()
         {
             _webView.WebMessageReceived -= OnWebMessageReceived;
             _attached.TryRemove(this, out _);
+
+            foreach (CancellationTokenSource pending in _inFlight.Values)
+            {
+                try { pending.Cancel(); } catch (ObjectDisposedException) { /* it just finished */ }
+            }
         }
 
         /// <summary>How many windows/panes are attached right now — the activity indicator shows a
