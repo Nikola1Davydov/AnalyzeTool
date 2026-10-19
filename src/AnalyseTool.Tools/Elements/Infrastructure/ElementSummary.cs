@@ -33,8 +33,8 @@ namespace AnalyseTool.Tools.Elements
         [JsonProperty("isType")]
         public bool IsType { get; init; }
 
-        /// <summary>Owning family, when the element has one — this is the join back to GetFamilies, which
-        /// was impossible before: the two commands described the same families and shared no key.
+        /// <summary>Owning family, when the element has one — the key that joins elements to anything
+        /// else that lists families (the Family Manager package among them).
         /// Null for system elements, whose types belong to a system family with no Family element.</summary>
         [JsonProperty("familyId", NullValueHandling = NullValueHandling.Ignore)]
         public long? FamilyId { get; init; }

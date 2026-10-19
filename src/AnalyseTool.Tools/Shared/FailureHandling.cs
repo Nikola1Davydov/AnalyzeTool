@@ -5,7 +5,7 @@ using Serilog;
 namespace AnalyseTool.Tools.Shared
 {
     /// <summary>One Revit warning that a write transaction resolved on its own. Public because it rides
-    /// in the public result records of the Families slice.</summary>
+    /// in the public result records of the write commands (SetDataResult, IsolationResult).</summary>
     /// <param name="Description">Revit's own description text, as the user would have read it in the dialog.</param>
     /// <param name="ElementIds">The elements Revit blamed; empty when the warning is document-wide.</param>
     public sealed record TransactionWarning(

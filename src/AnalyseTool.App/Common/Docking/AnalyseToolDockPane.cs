@@ -17,7 +17,7 @@ namespace AnalyseTool.App.Common.Docking
     /// and an extension is its own page served over a private virtual host — the same WebView hosts both,
     /// so features AND extensions share the dock without per-extension pane registration.
     ///
-    /// Init is deferred to <see cref="FrameworkElement.Loaded"/> because Revit may re-create this pane on
+    /// Init is deferred to <c>Loaded</c> because Revit may re-create this pane on
     /// startup (restoring a docked layout) BEFORE any ribbon click initialized the host dispatcher. We
     /// await <see cref="DockPaneHost.EnsureReadyAsync"/> before wiring the transport, so it can safely
     /// come up on its own. The <c>window.AT</c> bridge is injected (as for extension windows) so extension

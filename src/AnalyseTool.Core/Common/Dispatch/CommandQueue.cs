@@ -29,6 +29,14 @@ namespace AnalyseTool.Core.Common.Dispatch
         //   - CallerIdentity once remote transports authenticate
     }
 
+    /// <summary>A command currently executing through the queue (for the busy indicator / MCP).
+    /// <see cref="Progress"/> is the LAST report the command made, null until it made one — so an
+    /// indicator that opens late still shows where the command is.</summary>
+    internal sealed record RunningCommand(long Id, string Command, string Source, DateTime StartedUtc)
+    {
+        public ProgressInfo? Progress { get; init; }
+    }
+
     /// <summary>
     /// THE single entry point through which every transport (WebView2 windows, the MCP bridge,
     /// future remote transports) reaches the platform.
@@ -38,14 +46,6 @@ namespace AnalyseTool.Core.Common.Dispatch
     /// scheduling, priorities, consent gates and per-source policy can be added in ONE place
     /// without touching any transport. Adding a transport must require zero changes here.
     /// </summary>
-    /// <summary>A command currently executing through the queue (for the busy indicator / MCP).
-    /// <see cref="Progress"/> is the LAST report the command made, null until it made one — so an
-    /// indicator that opens late still shows where the command is.</summary>
-    internal sealed record RunningCommand(long Id, string Command, string Source, DateTime StartedUtc)
-    {
-        public ProgressInfo? Progress { get; init; }
-    }
-
     internal sealed class CommandQueue
     {
         private readonly CommandDispatcher _dispatcher;
