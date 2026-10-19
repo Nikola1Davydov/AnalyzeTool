@@ -8,7 +8,7 @@
 
 **A free Revit plugin for family & parameter workflows — and an open framework for building your own AI-powered Revit tools.**
 
-Use the built-in tools (Family Manager, a dockable placement palette, parameter analytics), or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and save what it wrote as a ribbon button.
+Use the built-in tools (shared parameters and a printable parameter report) and installable packages such as Family Manager and a dockable placement palette, or build on top: write a command **once** and call it from the UI, from AI agents over MCP, and from your own panels. Connect the AI you already use (Claude, Cursor…) over MCP and let it work in Revit — and give the pages it builds a ribbon button.
 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
@@ -48,7 +48,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 | 🧰 **Use it** | 🛠️ **Build on it** |
 | --- | --- |
-| Family Manager, the Component palette, family libraries, parameter tools. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
+| Shared parameters and the parameter report built in; Family Manager, the Component palette and family libraries as packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
 | Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
@@ -71,11 +71,11 @@ Open the **AnalyseTool** tab:
 - **Reload** — reload extensions (DLLs + buttons) without restarting Revit.
 - **Extensions** — install, update and manage extensions.
 - **New** — create an extension: a ribbon button with a page and a C# command.
-- Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and the commands your AI saved for you.
+- Buttons of installed extensions — e.g. **Family Manager** and the **Component** palette — and of the extensions you or your AI added.
 
 ## 🧱 Family Manager
 
-Browse, audit and clean up every family in the project — gallery & table views with thumbnails, an interactive 3D preview, family types (including system families), rename (with AI suggestions), delete, **purge-unused** with a live progress bar, and saved filter rules.
+An installable package (Extensions → Packages). Browse, audit and clean up every family in the project — gallery & table views with thumbnails, an interactive 3D preview, family types (including system families), rename, delete, **purge-unused** with a live progress bar, and saved filter rules.
 
 <p align="center"><img src="img/family-manager.png" width="780" alt="Family Manager" /></p>
 
@@ -184,7 +184,7 @@ public sealed class CountWalls : IRevitTask
 
 
 Add a `plugin.json`, build with a year config (`Release R25` / `R26` / `R27`), drop the output into
-`%LOCALAPPDATA%\AnalyseTool\extensions\<RevitYear>\`, and hit **Reload**. Your command is now callable
+`%LOCALAPPDATA%\AnalyseTool\extensions\<id>\<RevitYear>\` (with `plugin.json` in `<id>\`), and hit **Reload**. Your command is now callable
 from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP — no host rebuild.
 
 📖 **Full authoring guide:** the [GitHub Wiki](https://github.com/Nikola1Davydov/AnalyzeTool/wiki) (mirrored from [`ONBOARDING.md`](ONBOARDING.md)) — the manifest, the SDK contract, deploy & live reload, MCP, and more. Writing with AI? Paste [`LLM.md`](src/LLM.md) into Claude/ChatGPT and it writes AnalyseTool extensions for you.

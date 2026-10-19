@@ -89,7 +89,7 @@ the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not 
 
 1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
 2. `Check-Schemas.ps1` — command schema contract: every command carries a `Description`, a command that reads `ctx.Payload` declares `InputType` and every property of that type carries `[Description]`, and every `AnalyseTool.Tools` command declares `OutputType`. Core commands are exempt from the output rule (extension management / scripting — they never appear in a pipeline). A source scan, so it runs before any build.
-3. Build chain for R25 (net8) and R27 (net10).
+3. Build chain for R25, R26 (net8) and R27 (net10); the Revit-free tests run on R25 and R27.
 4. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
 5. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\Acme.Sample\` (manifest + UI in the root, assembly in `<year>\`) — a live smoke test of the real ALC loading path, in the layout authors are told to use.
 6. `TypeCheckClientApp` — `npm run type-check` (vue-tsc, `src/clientapp/tsconfig.json`) over the Vue frontend, so a call that disagrees with the generated `commands.ts` fails CI instead of Revit. Also a dependency of `BuildClientApp`. TypeScript stays on 6.x: vue-tsc needs the JS compiler API, which the native 7.x lacks.
