@@ -51,11 +51,5 @@ namespace AnalyseTool.Tools.Elements
             return Id == other.Id;
         }
         public override int GetHashCode() => Id.GetHashCode();
-
-        public void Update()
-        {
-            Parameters.Clear();
-            Parameters.AddRange(GetParameters(Element.Parameters));
-        }
     }
 }

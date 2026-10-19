@@ -7,26 +7,6 @@ namespace AnalyseTool.Tools.Elements
 {
     public class DataElementsCollectorService
     {
-        public IEnumerable<DataElement> GetAllElements(Document doc)
-        {
-            ElementFilter allModelCategoriesFilter = GetElementFilter(doc);
-
-            FilteredElementCollector collectorInstances = new FilteredElementCollector(doc).WherePasses(allModelCategoriesFilter).WhereElementIsNotElementType();
-            FilteredElementCollector collectorTypes = new FilteredElementCollector(doc).WherePasses(allModelCategoriesFilter).WhereElementIsElementType();
-            FilteredElementCollector collector = collectorInstances.UnionWith(collectorTypes);
-
-            IList<Element> elements = collector.ToElements();
-
-
-            List<DataElement> result = new List<DataElement>(elements.Count);
-
-            foreach (Element el in elements)
-            {
-                result.Add(new DataElement(el));
-            }
-
-            return result;
-        }
         public IEnumerable<DataElement> GetAllElementsByCategory(Document doc, string category)
         {
             List<Category> categories = GetModelCategories(doc);
@@ -274,12 +254,6 @@ namespace AnalyseTool.Tools.Elements
 
         /// <summary>Discovery: parameter names available on a category, sampled from a representative
         /// element (instance + its type). Lets AI callers learn which parameterNames to request.</summary>
-        public IEnumerable<CategoryParameterInfo> GetCategoryParameterInfos(Document doc, string category)
-        {
-            Category? match = ResolveCategory(doc, category);
-            return match == null ? new List<CategoryParameterInfo>() : GetCategoryParameterInfos(doc, match);
-        }
-
         private static IEnumerable<CategoryParameterInfo> GetCategoryParameterInfos(Document doc, Category match)
         {
             BuiltInCategory bic = match.BuiltInCategory;
@@ -301,9 +275,6 @@ namespace AnalyseTool.Tools.Elements
 
             return map.Values.OrderBy(p => p.Name).ToList();
         }
-
-        private Category? ResolveCategory(Document doc, string category) =>
-            GetModelCategories(doc).FirstOrDefault(x => x.Name.Equals(category, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>"OST_Walls" for a built-in category, null for anything else — the enum name is the
         /// language-independent id; a value the enum does not define has no name to give.</summary>
@@ -347,17 +318,6 @@ namespace AnalyseTool.Tools.Elements
                     IsType = isType
                 };
             }
-        }
-
-        private ElementFilter GetElementFilter(Document doc)
-        {
-            List<ElementFilter> filters = new List<ElementFilter>();
-
-            foreach (BuiltInCategory item in GetBuildInModelCategories(doc))
-            {
-                filters.Add(new ElementCategoryFilter(item));
-            }
-            return new LogicalOrFilter(filters);
         }
 
         public List<BuiltInCategory> GetBuildInModelCategories(Document doc)
