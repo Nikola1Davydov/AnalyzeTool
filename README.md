@@ -102,7 +102,7 @@ AnalyseTool isn't just a set of tools — it's a small framework for authoring R
 
 Write a command once as an `IRevitTask`. The dispatcher is transport-neutral, so the same command is instantly callable from **any WebView UI** — a window, the shared dockable pane, or an extension page, all via `AT.invoke` — and from **AI agents over MCP**. No duplicated logic.
 
-<p align="center"><img src="img/write-once.svg" width="860" alt="A ribbon button, a page via AT.invoke and an AI agent over MCP all call the same IRevitTask" /></p>
+<p align="center"><img src="img/write-once.svg" width="860" alt="A ribbon button and an AI agent over MCP both call the same IRevitTask" /></p>
 
 ## Command flow
 

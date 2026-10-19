@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" role="img" aria-labelledby="t d">
   <title id="t">Write a command once, call it from everywhere</title>
-  <desc id="d">A ribbon button, a window or page via AT.invoke, and an AI agent over MCP all call the same IRevitTask command through one command queue.</desc>
+  <desc id="d">A ribbon button and an AI agent over MCP both call the same IRevitTask command through one command queue.</desc>
   <style>
     .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; }
     .hot { fill: #ddf4ff; stroke: #54aeff; }
@@ -20,29 +20,23 @@
     @media (prefers-reduced-motion: reduce) { .moving { display: none; } }
   </style>
 
-  <path id="p1" class="line" d="M300,50 C450,50 470,125 610,125"/>
-  <path id="p2" class="line" d="M300,125 H610"/>
-  <path id="p3" class="line" d="M300,200 C450,200 470,125 610,125"/>
+  <path id="p1" class="line" d="M300,80 C450,80 470,130 610,130"/>
+  <path id="p2" class="line" d="M300,180 C450,180 470,130 610,130"/>
 
   <circle class="dot moving" r="6"><animateMotion dur="2.4s" begin="0s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle>
-  <!-- Hidden until their delayed start: before it, an unanimated circle sits at 0,0. -->
-  <circle class="dot moving" r="6" visibility="hidden"><set attributeName="visibility" to="visible" begin="0.8s" fill="freeze"/><animateMotion dur="2.4s" begin="0.8s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
-  <circle class="dot moving" r="6" visibility="hidden"><set attributeName="visibility" to="visible" begin="1.6s" fill="freeze"/><animateMotion dur="2.4s" begin="1.6s" repeatCount="indefinite"><mpath href="#p3"/></animateMotion></circle>
+  <!-- Hidden until its delayed start: before it, an unanimated circle sits at 0,0. -->
+  <circle class="dot moving" r="6" visibility="hidden"><set attributeName="visibility" to="visible" begin="1.2s" fill="freeze"/><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
 
-  <rect class="box" x="20" y="22" width="280" height="56" rx="10"/>
-  <text class="title" x="40" y="46">Ribbon button</text>
-  <text class="sub" x="40" y="65">a click runs the command</text>
+  <rect class="box" x="20" y="52" width="280" height="56" rx="10"/>
+  <text class="title" x="40" y="76">Ribbon button</text>
+  <text class="sub" x="40" y="95">a click runs the command</text>
 
-  <rect class="box" x="20" y="97" width="280" height="56" rx="10"/>
-  <text class="title" x="40" y="121">Window · your page</text>
-  <text class="code" x="40" y="140">AT.invoke("acme.walls.Count")</text>
+  <rect class="box" x="20" y="152" width="280" height="56" rx="10"/>
+  <text class="title" x="40" y="176">AI agent over MCP</text>
+  <text class="sub" x="40" y="195">the command is a tool with its schemas</text>
 
-  <rect class="box" x="20" y="172" width="280" height="56" rx="10"/>
-  <text class="title" x="40" y="196">AI agent over MCP</text>
-  <text class="sub" x="40" y="215">the command is a tool with its schemas</text>
-
-  <rect class="box hot" x="610" y="80" width="270" height="90" rx="10"/>
-  <text class="title" x="745" y="114" text-anchor="middle">Your command</text>
-  <text class="code" x="745" y="136" text-anchor="middle">class Count : IRevitTask</text>
-  <text class="sub" x="745" y="155" text-anchor="middle">one implementation, one queue</text>
+  <rect class="box hot" x="610" y="85" width="270" height="90" rx="10"/>
+  <text class="title" x="745" y="119" text-anchor="middle">Your command</text>
+  <text class="code" x="745" y="141" text-anchor="middle">class Count : IRevitTask</text>
+  <text class="sub" x="745" y="160" text-anchor="middle">one implementation, one queue</text>
 </svg>
