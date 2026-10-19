@@ -61,10 +61,16 @@ namespace AnalyseTool.Mcp.Bridge
             CoreServices.ExtensionsReloaded += () => Interlocked.Increment(ref _catalogVersion);
         }
 
-        /// <summary>What the exe compares to learn that its tool list is stale. Reload counter plus the
-        /// C# switch, because the switch hides a whole set of authoring tools without any reload.</summary>
-        private string CatalogStamp =>
-            $"{Interlocked.Read(ref _catalogVersion)}:{(CodeExecutionSettings.Enabled ? 1 : 0)}";
+        /// <summary>One per bridge, which is one per Revit session. Without it a restarted Revit answered
+        /// "0:0" again, and a client that outlived the restart never learned that extensions had changed
+        /// on disk in between.</summary>
+        private readonly string _session = Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        /// <summary>What the exe compares to learn that its tool list is stale: the session, the reload
+        /// counter, and the C# switch, because the switch hides a whole set of authoring tools without
+        /// any reload.</summary>
+        internal string CatalogStamp =>
+            $"{_session}:{Interlocked.Read(ref _catalogVersion)}:{(CodeExecutionSettings.Enabled ? 1 : 0)}";
 
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
