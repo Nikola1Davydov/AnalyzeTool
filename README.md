@@ -12,13 +12,6 @@ Use the built-in tools (shared parameters and a printable parameter report) and 
 
 <p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
 
-### What's new in 1.6
-- **Sturdier with AI agents**: a write Revit rolls back is reported as failed, commands stay callable while extensions reload, and a stuck client can no longer make Revit hold memory.
-- **Safer extensions**: one broken extension folder no longer stops the others, settings files are written atomically, and an extension's icon is read only from its own folder.
-- **`SaveAsCommand` is gone**: agents try C# with `ExecuteRevitCode`; code worth keeping lives in an extension. Commands saved earlier keep working.
-
-Full list in the [CHANGELOG](CHANGELOG.md).
-
 ---
 ## Quick start
 
