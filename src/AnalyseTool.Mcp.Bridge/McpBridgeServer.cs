@@ -369,7 +369,18 @@ namespace AnalyseTool.Mcp.Bridge
                 _jobs.Finish(job, McpWire.JobStates.Done, value, null);
                 return Ok(id, value);
             }
-            catch (OperationCanceledException)
+            // The gate's refusal surfaces here, inside the job, so the outer UnauthorizedAccessException
+            // handler never sees an invoke's: classified the same way here, or it reads as command_failed.
+            catch (UnauthorizedAccessException ex)
+            {
+                const string hint = "This command is not exposed to AI callers. The C#-execution tools additionally " +
+                                    "require the toggle in AnalyseTool Settings.";
+                _jobs.Finish(job, McpWire.JobStates.Failed, null, ErrorObject(McpWire.Codes.NotAvailable, ex.Message, hint));
+                return Err(id, McpWire.Codes.NotAvailable, ex.Message, hint);
+            }
+            // Only a cancel of THIS job is a cancellation. A command's own timeout (an HttpClient's, say)
+            // also throws OperationCanceledException, and that is a failure the agent should read as one.
+            catch (OperationCanceledException) when (job.Cancellation.IsCancellationRequested)
             {
                 _jobs.Finish(job, McpWire.JobStates.Cancelled, null, ErrorObject(McpWire.Codes.Cancelled, "The call was cancelled before it finished.", null));
                 return Err(id, McpWire.Codes.Cancelled, "The call was cancelled before it finished.");
