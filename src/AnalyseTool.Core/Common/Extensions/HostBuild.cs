@@ -12,9 +12,10 @@ namespace AnalyseTool.Core.Common.Extensions
     /// This is what replaced script extensions. There used to be two kinds of command extension — a
     /// script (loose <c>.cs</c> the host compiled into a cache at every load) and a DLL (a project the
     /// author builds) — and people could not tell them apart, nor why one said "Script" and the other
-    /// "Not built". Now there is one kind: a DLL. Saving a command (<c>SaveAsCommand</c>) compiles it on
-    /// the spot, so the person who saves needs no .NET SDK, no NuGet and no build step; the sources stay
-    /// beside it so an agent can read and fix them.
+    /// "Not built". Now there is one kind: a DLL. A folder with sources in <c>src\</c> and no project is
+    /// compiled by the host on load — commands saved over MCP before SaveAsCommand was removed, and old
+    /// script folders migrated here — so nobody needs a .NET SDK to run them, and a hand edit to a
+    /// source takes effect on Reload.
     ///
     /// A DLL is compiled against ONE Revit year's API (net8 for 2025/2026, net10 for 2027), so a folder
     /// saved under one version is rebuilt from <c>src\</c> the first time another version loads it — and

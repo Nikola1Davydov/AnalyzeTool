@@ -14,8 +14,7 @@ namespace AnalyseTool.Core.Features.Scripting
     /// IRevitTask; it runs through the SAME dispatch context, so RunInRevitAsync / transactions work.
     ///
     /// GATED: refuses to run unless C# execution is explicitly enabled in Settings (off by default), and
-    /// hidden from the MCP tool list while disabled (see <see cref="Common.Transport.McpBridgeServer"/>).
-    /// Promote a working snippet into a permanent command with SaveAsCommand.
+    /// hidden from the MCP tool list while disabled (by the bridge's IsAvailableToAi, in Mcp.Bridge).
     /// </summary>
     [RevitCommand(
         Description = "Compiles and runs a C# snippet inside Revit and returns its result. The snippet is " +

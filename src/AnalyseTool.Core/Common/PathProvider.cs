@@ -11,7 +11,7 @@ namespace AnalyseTool.Core.Common
         public static string ProfilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedData.ToolData.PLUGIN_NAME);
 
         /// <summary>%LOCALAPPDATA%\&lt;plugin&gt;\extensions — the default DEV extensions root, exactly what
-        /// this folder has always been: loose folders authored by the user (saved commands, templates,
+        /// this folder has always been: loose folders authored by the user (agent-saved pages, templates,
         /// work-in-progress). Extensions live directly under it (<c>extensions\&lt;id&gt;</c>) with optional
         /// per-Revit-year binary subfolders (<c>&lt;id&gt;\2025\...</c>); the legacy
         /// <c>extensions\&lt;year&gt;\&lt;id&gt;</c> layout is still scanned. New templates are scaffolded here.</summary>

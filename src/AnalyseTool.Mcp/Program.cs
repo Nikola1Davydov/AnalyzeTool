@@ -144,7 +144,7 @@ builder.Services
             if (binding is { HasOutputSchema: true } && result is not null)
                 callResult.StructuredContent = result.Deserialize<JsonElement>();
 
-            // The reply carried the bridge's stamp; a SaveAsCommand reply is the very one that says
+            // The reply carried the bridge's stamp; a SaveExtensionUi or ReloadExtensions reply says
             // "the list just changed", and the client learns it before its next turn.
             await NotifyIfCatalogChangedAsync(ct);
             return callResult;

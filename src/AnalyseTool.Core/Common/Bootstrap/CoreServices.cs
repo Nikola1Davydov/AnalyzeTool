@@ -6,7 +6,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
 {
     /// <summary>
     /// Core-side service registry, populated once by the host bootstrap. Platform commands
-    /// (GetCommands, ReloadExtensionsCommand, SaveAsCommand, …) reach the dispatcher and the
+    /// (GetCommands, ReloadExtensionsCommand, SaveExtensionUi, …) reach the dispatcher and the
     /// extension loader through this class, so Core never references the host assembly.
     /// </summary>
     internal static class CoreServices
@@ -37,7 +37,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
         }
 
         /// <summary>Serializes reloads. Every reload path funnels through this class — the ribbon button,
-        /// install/update/remove, enable/disable, SaveAsCommand — but they arrive on different threads
+        /// install/update/remove, enable/disable, SaveExtensionUi — but they arrive on different threads
         /// (UI thread, MCP thread pool). Two interleaved reloads used to drop load contexts from the
         /// loader's list without unloading them (a permanent leak) and register the same names twice.</summary>
         private static readonly object ReloadGate = new();

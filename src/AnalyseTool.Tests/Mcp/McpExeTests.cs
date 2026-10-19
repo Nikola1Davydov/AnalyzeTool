@@ -236,7 +236,7 @@ public class McpExeTests
         await exe.InitializeAsync();
         await exe.RequestAsync("tools/list");
 
-        // What SaveAsCommand does on the host: a new command exists and the stamp moved. The reply to
+        // What a reload does on the host: a new command exists and the stamp moved. The reply to
         // the very next call carries the new stamp.
         bridge.Commands.Add(new("acme.x.Ping", "Freshly saved.", FakeBridge.EmptyInput, FakeBridge.ObjectSchema));
         bridge.Stamp = "1:1";

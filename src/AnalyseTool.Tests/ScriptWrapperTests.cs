@@ -3,7 +3,7 @@ using AnalyseTool.Core.Common.Extensions.Scripting;
 namespace AnalyseTool.Tests;
 
 /// <summary>
-/// The bare-body form of ExecuteRevitCode / SaveAsCommand: a snippet spliced into a method. #101 —
+/// The bare-body form of ExecuteRevitCode: a snippet spliced into a method. #101 —
 /// an author's `using Autodesk.Revit.DB;` on line 1 became a using STATEMENT there and produced
 /// twenty errors that never said why. Now leading directives are lifted above the class.
 /// </summary>

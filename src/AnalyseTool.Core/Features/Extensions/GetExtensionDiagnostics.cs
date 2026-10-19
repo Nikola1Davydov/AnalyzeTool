@@ -23,7 +23,7 @@ namespace AnalyseTool.Core.Features.Extensions
         Description = "Reports why extensions are or are not loaded: per extension its kind, zone, " +
                       "enabled/compatible state, the COMPILE ERROR if it has one, and shadowedBy when " +
                       "another folder claimed the same id first so this copy never runs. Use after " +
-                      "SaveAsCommand or ReloadExtensions to find out why a command did not appear, or " +
+                      "SaveExtensionUi or ReloadExtensions to find out why a command did not appear, or " +
                       "why an edit had no effect — sources that failed to compile, a DLL with no build " +
                       "for this Revit year and a duplicate id look the same from outside, and this " +
                       "tells them apart. Read-only and cheap: it reads the extension registry, not the " +

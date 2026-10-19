@@ -495,7 +495,7 @@ export interface ReportValueDto {
 }
 
 export interface SaveExtensionUiRequest {
-  /** Extension id — the folder name and the command namespace, e.g. "niko.sheets". Use the SAME id as the SaveAsCommand call to give a command its own form. */
+  /** Extension id — the folder name and the command namespace, e.g. "niko.sheets". Use the id of an existing command extension to give its commands a form. */
   id?: string | null;
   /** Ribbon button label. Required when creating; omit to keep an existing one. */
   name?: string | null;
@@ -555,7 +555,7 @@ export interface SelectionResult {
 }
 
 export interface SetAuthoringRootRequest {
-  /** A registered dev source root — saved commands will be written there. */
+  /** A registered dev source root — pages saved by an agent will be written there. */
   path: string;
 }
 
@@ -793,7 +793,7 @@ export const commands = {
   /** Lists the recommended extension repositories (shipped catalog plus the user's catalog.json) with their links and whether each one is already installed. */
   GetExtensionCatalog: (options?: InvokeOptions) =>
     invoke<unknown>("GetExtensionCatalog", null, options),
-  /** Reports why extensions are or are not loaded: per extension its kind, zone, enabled/compatible state, the COMPILE ERROR if it has one, and shadowedBy when another folder claimed the same id first so this copy never runs. Use after SaveAsCommand or ReloadExtensions to find out why a command did not appear, or why an edit had no effect — sources that failed to compile, a DLL with no build for this Revit year and a duplicate id look the same from outside, and this tells them apart. Read-only and cheap: it reads the extension registry, not the Revit model. */
+  /** Reports why extensions are or are not loaded: per extension its kind, zone, enabled/compatible state, the COMPILE ERROR if it has one, and shadowedBy when another folder claimed the same id first so this copy never runs. Use after SaveExtensionUi or ReloadExtensions to find out why a command did not appear, or why an edit had no effect — sources that failed to compile, a DLL with no build for this Revit year and a duplicate id look the same from outside, and this tells them apart. Read-only and cheap: it reads the extension registry, not the Revit model. */
   GetExtensionDiagnostics: (options?: InvokeOptions) =>
     invoke<ExtensionDiagnosticsResult>("GetExtensionDiagnostics", null, options),
   /** Reads the editable fields of one extension's plugin.json for the Edit form: vendor metadata and the single ribbon button. Read-only, no Revit access. */
@@ -853,7 +853,7 @@ export const commands = {
   /** Opens a folder in Windows Explorer. */
   OpenFolder: (input: OpenFolderPayload, options?: InvokeOptions) =>
     invoke<unknown>("OpenFolder", input, options),
-  /** Reloads extension command DLLs (collectible ALC) and refreshes ribbon buttons, without restarting Revit. This is the 'apply' step of the authoring loop: after changing an extension's files, reload, then call GetExtensionDiagnostics to see whether it came back. SaveAsCommand reloads by itself, so this is for changes made another way — an edited file in an extension's src folder is compiled again here. Cost: unloads every extension and recompiles the ones whose sources changed. Hidden from the AI while C# execution is off in AnalyseTool Settings. */
+  /** Reloads extension command DLLs (collectible ALC) and refreshes ribbon buttons, without restarting Revit. This is the 'apply' step of the authoring loop: after changing an extension's files, reload, then call GetExtensionDiagnostics to see whether it came back. SaveExtensionUi reloads by itself, so this is for changes made another way — an edited file in an extension's src folder is compiled again here. Cost: unloads every extension and recompiles the ones whose sources changed. Hidden from the AI while C# execution is off in AnalyseTool Settings. */
   ReloadExtensions: (options?: InvokeOptions) =>
     invoke<unknown>("ReloadExtensions", null, options),
   /** Deletes a dev extension's folder and reloads. Dev zone only — installed packages go through RemoveExtension. */
@@ -865,7 +865,7 @@ export const commands = {
   /** Removes a user-added extension source root. */
   RemoveExtensionPath: (input: RemoveExtensionPathRequest, options?: InvokeOptions) =>
     invoke<unknown>("RemoveExtensionPath", input, options),
-  /** Saves a web UI into an extension folder: an entry HTML page plus any CSS/JS beside it, and the plugin.json entry that gives it a ribbon button. Use with SaveAsCommand to build a command WITH a form — save the C# first, the page second, and the button will open the page while the page calls the command via AT.invoke('<id>.<Command>', payload). Pass overwrite:true to replace an existing page. Files are written flat, so hand-authored HTML/CSS/JS only — not a framework build with an assets folder. Requires C# execution to be enabled in AnalyseTool Settings. */
+  /** Saves a web UI into an extension folder: an entry HTML page plus any CSS/JS beside it, and the plugin.json entry that gives it a ribbon button. Saved under the id of an existing command extension, it becomes that extension's form: the button opens the page and the page calls the commands via AT.invoke('<id>.<Command>', payload). Pass overwrite:true to replace an existing page. Files are written flat, so hand-authored HTML/CSS/JS only — not a framework build with an assets folder. Requires C# execution to be enabled in AnalyseTool Settings. */
   SaveExtensionUi: (input: SaveExtensionUiRequest = {}, options?: InvokeOptions) =>
     invoke<SaveUiResult>("SaveExtensionUi", input, options),
   /** Replaces the user's saved report parameter sets with the given list and returns them as stored (new sets get an id). Writes a file in the user's AnalyseTool folder, not the model. */
@@ -877,7 +877,7 @@ export const commands = {
   /** Selects the given elements (by id) in the active document. An empty list clears the selection. Returns { ok, selected, ignoredIds, error } — 'selected' is what Revit ended up holding, 'ignoredIds' the requested ids that do not exist in the document. Changes the UI selection, not the model. Cheap. */
   SelectionInRevit: (input: SelectionInRevitSelectionPayload, options?: InvokeOptions) =>
     invoke<SelectionResult>("SelectionInRevit", input, options),
-  /** Chooses which extension folder saved commands are written to when no target root is named. Must be one of your own dev folders — installed packages are overwritten by updates. */
+  /** Chooses which extension folder pages saved by an agent are written to when no target root is named. Must be one of your own dev folders — installed packages are overwritten by updates. */
   SetAuthoringRoot: (input: SetAuthoringRootRequest, options?: InvokeOptions) =>
     invoke<unknown>("SetAuthoringRoot", input, options),
   /** Enables or disables ad-hoc C# code execution. */

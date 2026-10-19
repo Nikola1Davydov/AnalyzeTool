@@ -7,9 +7,9 @@ namespace AnalyseTool.Core.Common.Extensions
     internal sealed record SaveTarget(string? Directory, string? Error);
 
     /// <summary>
-    /// The folder rules the machine-authoring commands share. They were private to SaveAsCommand while it
-    /// was the only writer; SaveExtensionUi writes into the SAME folders, and two copies of "may I touch
-    /// this directory" is exactly the pair that drifts apart and leaves one of them too permissive.
+    /// The folder rules the machine-authoring commands share (SaveExtensionUi, UpdateExtensionManifest):
+    /// one copy of "may I touch this directory", because two copies are exactly the pair that drifts
+    /// apart and leaves one of them too permissive.
     /// </summary>
     internal static class ExtensionFolder
     {
@@ -118,7 +118,7 @@ namespace AnalyseTool.Core.Common.Extensions
 
         /// <summary>
         /// A registered DEV source a save may be aimed at, or null. Empty means whichever root the user
-        /// picked for saved commands — the AI saving a command has no opinion on where
+        /// picked for agent-saved extensions — the AI saving a page has no opinion on where
         /// the user keeps their work.
         ///
         /// Managed roots are excluded, which they were not before: an explicit targetRoot could still

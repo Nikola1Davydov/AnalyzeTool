@@ -47,7 +47,7 @@ namespace AnalyseTool.Core.Features.Extensions
                 valid = count > 0,
                 reason,
                 extensionCount = count,
-                // Where SaveAsCommand / SaveExtensionUi put what they generate when no root is named.
+                // Where SaveExtensionUi puts what it generates when no root is named.
                 isAuthoringRoot = string.Equals(root.Path, authoringRoot, StringComparison.OrdinalIgnoreCase),
             };
         }
@@ -111,7 +111,7 @@ namespace AnalyseTool.Core.Features.Extensions
     /// generated command there by hand.
     /// </summary>
     [RevitCommand(
-        Description = "Chooses which extension folder saved commands are written to when no target " +
+        Description = "Chooses which extension folder pages saved by an agent are written to when no target " +
                       "root is named. Must be one of your own dev folders — installed packages are " +
                       "overwritten by updates.",
         InputType = typeof(SetAuthoringRoot.Request),
@@ -132,7 +132,7 @@ namespace AnalyseTool.Core.Features.Extensions
 
         internal sealed record Request
         {
-            [Description("A registered dev source root — saved commands will be written there.")]
+            [Description("A registered dev source root — pages saved by an agent will be written there.")]
             public string Path { get; set; } = string.Empty;
         }
     }

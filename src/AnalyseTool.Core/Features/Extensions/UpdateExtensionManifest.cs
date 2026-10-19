@@ -13,10 +13,8 @@ namespace AnalyseTool.Core.Features.Extensions
     /// move it to another tab or panel, or take it off the ribbon entirely.
     ///
     /// The reason this exists is the ribbon, not the manifest. Each extension gets at most ONE button
-    /// (the host keys them by extension id), so a session that saves ten commands as ten extensions puts
-    /// ten buttons on the ribbon — and there is no reason those ten should not have been ONE extension.
-    /// Two commands fix that between them: SaveAsCommand's <c>fileName</c> puts several commands in one
-    /// folder, and this one tidies up what the earlier, one-per-folder saves left behind.
+    /// (the host keys them by extension id), so generated extensions collect one button each; this
+    /// tidies them up without anyone opening plugin.json.
     /// </summary>
     [RevitCommand(
         Description = "Edits a generated extension's plugin.json without touching its code: button name, " +
