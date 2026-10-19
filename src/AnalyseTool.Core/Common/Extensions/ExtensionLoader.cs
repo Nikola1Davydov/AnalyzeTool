@@ -27,21 +27,41 @@ namespace AnalyseTool.Core.Common.Extensions
             _hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
         }
 
-        /// <summary>Drops loaded extension commands and unloads their (collectible) contexts so a
-        /// subsequent <see cref="LoadAll"/> picks up changed DLLs without restarting Revit.</summary>
-        public void UnloadAll()
+        /// <summary>
+        /// Loads every extension into new contexts, then makes their commands the live set in one step,
+        /// then unloads the previous contexts. Changed DLLs and sources take effect without restarting
+        /// Revit, and at no point is the registry empty: it used to be cleared first and refilled while
+        /// sources compiled, and every call meanwhile was refused. The first load at bootstrap is the
+        /// same operation with nothing to unload. Callers serialize (CoreServices' reload gate).
+        /// </summary>
+        public void Reload()
         {
-            _dispatcher.ClearExtensions();
-            ExtensionDiagnostics.ClearAll();
-            foreach (ExtensionLoadContext context in _contexts)
-            {
-                try { context.Unload(); }
-                catch { /* references may still be alive; GC collects later */ }
-            }
+            List<ExtensionLoadContext> previous = _contexts.ToList();
             _contexts.Clear();
+            ExtensionDiagnostics.ClearAll();
+
+            ExtensionRegistrations next = _dispatcher.NewExtensionSet();
+            try
+            {
+                LoadAll(next);
+            }
+            finally
+            {
+                // Published even when scanning threw midway: what did load is better than what was
+                // there, whose contexts are about to go.
+                _dispatcher.ReplaceExtensions(next);
+
+                // A command still running in an old context keeps it alive until it returns; the
+                // collectible context goes once nothing references it.
+                foreach (ExtensionLoadContext context in previous)
+                {
+                    try { context.Unload(); }
+                    catch (InvalidOperationException) { /* already unloading */ }
+                }
+            }
         }
 
-        public void LoadAll()
+        private void LoadAll(ExtensionRegistrations into)
         {
             foreach (ExtensionDescriptor scanned in ExtensionCatalog.Scan(_revitVersion))
             {
@@ -50,7 +70,7 @@ namespace AnalyseTool.Core.Common.Extensions
                 // and leave every extension after it unloaded.
                 try
                 {
-                    LoadOne(scanned);
+                    LoadOne(scanned, into);
                 }
                 catch (Exception ex)
                 {
@@ -62,7 +82,7 @@ namespace AnalyseTool.Core.Common.Extensions
             }
         }
 
-        private void LoadOne(ExtensionDescriptor scanned)
+        private void LoadOne(ExtensionDescriptor scanned, ExtensionRegistrations into)
         {
             // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
             if (!ExtensionStateStore.IsEnabled(scanned.Manifest.Id)) return;
@@ -95,7 +115,7 @@ namespace AnalyseTool.Core.Common.Extensions
 
             if (!descriptor.HasCommands) return; // JS-only extension, nothing to load here
 
-            LoadDllCommands(descriptor);
+            LoadDllCommands(descriptor, into);
 
             // The edit did not compile, but an earlier build did and is loaded: the commands keep
             // working, and the error says why the change has not taken effect.
@@ -165,7 +185,7 @@ namespace AnalyseTool.Core.Common.Extensions
             return error;
         }
 
-        private void LoadDllCommands(ExtensionDescriptor descriptor)
+        private void LoadDllCommands(ExtensionDescriptor descriptor, ExtensionRegistrations into)
         {
             ExtensionManifest manifest = descriptor.Manifest;
 
@@ -214,12 +234,12 @@ namespace AnalyseTool.Core.Common.Extensions
                 return;
             }
 
-            _dispatcher.RegisterExtension(assembly, manifest.Id);
+            _dispatcher.RegisterExtension(assembly, manifest.Id, into);
             Log.Information("Loaded DLL extension {Id} (SDK {Sdk})", manifest.Id, referencedSdk);
         }
 
         /// <summary>Unloads a context we decided not to use and stops tracking it, so the next
-        /// <see cref="UnloadAll"/> doesn't try to unload it a second time.</summary>
+        /// <see cref="Reload"/> doesn't try to unload it a second time.</summary>
         private void UnloadAndForget(ExtensionLoadContext context)
         {
             _contexts.Remove(context);

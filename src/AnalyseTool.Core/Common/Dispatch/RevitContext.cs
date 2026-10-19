@@ -6,9 +6,9 @@ namespace AnalyseTool.Core.Common.Dispatch
 {
     internal sealed class RevitContext : IRevitContext
     {
-        private readonly RevitTaskHub _hub;
+        private readonly IRevitTaskHub _hub;
 
-        public RevitContext(RevitTaskHub hub, JToken? payload)
+        public RevitContext(IRevitTaskHub hub, JToken? payload)
         {
             _hub = hub;
             Payload = new RevitPayload(payload);

@@ -53,8 +53,7 @@ namespace AnalyseTool.Core.Common.Bootstrap
                 lock (ReloadGate)
                 {
                     Log.Information("Reloading extensions");
-                    Loader.UnloadAll();
-                    Loader.LoadAll();
+                    Loader.Reload();
                     Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
                 }
             }

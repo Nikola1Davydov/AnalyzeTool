@@ -5,6 +5,7 @@
 - ✋ **Closing a window cancels the commands it started**, so a long one no longer keeps Revit busy for a window that is gone.
 - 🔌 **Saving Settings no longer interrupts a running agent command.** The MCP bridge restarts only when it is switched on or off or its port changes.
 - 🧾 **`GetJobResult` never reports a finished call without its result, and a reused call id is refused** instead of replacing a running call that could then no longer be cancelled.
+- 🔄 **Commands stay callable while extensions reload.** The new set replaces the old one in a single step instead of the registry emptying while sources compile, and Reload from the Extensions window no longer runs on Revit's UI thread.
 - 🧠 **Results kept for `GetJobResult` are capped at 16 MB in total**, so a long agent session no longer piles large answers up in Revit's memory; the oldest go first.
 - 🧩 **One broken extension folder no longer stops the others from loading.** A locked or unreadable folder is reported for that extension alone.
 - 🧹 **The plugin no longer references the unused Blazor WebView package**, so its assemblies stop shipping with it.

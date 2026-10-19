@@ -51,7 +51,7 @@ namespace AnalyseTool.App.Common.Bootstrap
 
             // Load user-authored C# extensions (building the ones the host compiles from source).
             ExtensionLoader loader = new ExtensionLoader(dispatcher, revitVersion);
-            loader.LoadAll();
+            loader.Reload();
 
             // The queue is the ONLY way transports and UI reach command execution — the dispatcher
             // itself never leaves this method.

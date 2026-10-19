@@ -9,15 +9,18 @@ namespace AnalyseTool.Core.Common.Dispatch
 {
     internal sealed class CommandDispatcher
     {
-        // Concurrent because the registry is READ from every transport thread (a WebView2 window on the
-        // UI thread, an MCP connection on a thread-pool thread) while a reload REWRITES it: extension
-        // install/remove/enable and the ribbon's Reload all rebuild the extension half in place. A plain
-        // Dictionary resizing under a concurrent TryGetValue surfaces as a phantom "command is not
-        // registered" — or worse, a spin inside the bucket walk.
-        private readonly ConcurrentDictionary<string, CommandRegistration> _commands = new(StringComparer.OrdinalIgnoreCase);
-        private readonly RevitTaskHub _hub;
+        // The registry is READ from every transport thread (a WebView2 window on the UI thread, an MCP
+        // connection on a thread-pool thread) while a reload REPLACES its extension half. It is an
+        // immutable snapshot swapped in one assignment: a reader sees the whole old set or the whole new
+        // one. It used to be one dictionary cleared and refilled in place, and every call in between was
+        // answered "command is not registered" while a reload compiled.
+        private readonly Dictionary<string, CommandRegistration> _builtIns = new(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlyDictionary<string, CommandRegistration> _extensions = new Dictionary<string, CommandRegistration>();
+        private volatile IReadOnlyDictionary<string, CommandRegistration> _commands = new Dictionary<string, CommandRegistration>();
+        private readonly object _publishGate = new();
+        private readonly IRevitTaskHub _hub;
 
-        public CommandDispatcher(RevitTaskHub hub) => _hub = hub;
+        public CommandDispatcher(IRevitTaskHub hub) => _hub = hub;
 
         /// <summary>Point-in-time snapshot — callers enumerate it (MCP tools/list, the Settings command
         /// table) while a reload may be replacing the registry underneath them.</summary>
@@ -30,39 +33,70 @@ namespace AnalyseTool.Core.Common.Dispatch
         public CommandRegistration? GetRegistration(string command) =>
             _commands.TryGetValue(command, out CommandRegistration? reg) ? reg : null;
 
-        /// <summary>Removes all extension-provided commands (keeps built-ins) so they can be reloaded.</summary>
-        public void ClearExtensions()
-        {
-            List<string> toRemove = _commands
-                .Where(kv => !string.Equals(kv.Value.Source, "core", StringComparison.Ordinal))
-                .Select(kv => kv.Key)
-                .ToList();
-
-            foreach (string key in toRemove)
-                _commands.TryRemove(key, out _);
-        }
-
         /// <summary>Registers the built-in commands of the given platform assemblies (Core, Tools, App).
         /// All of them share the source "core" — they ship with the plugin, unlike extensions.</summary>
         public void RegisterBuiltIns(params Assembly[] assemblies)
         {
-            foreach (Assembly assembly in assemblies)
-            foreach (Type type in assembly.GetTypes())
+            lock (_publishGate)
             {
-                if (!IsRegistrable(type)) continue;
-                TryRegister(type, source: "core", prefix: null);
+                foreach (Assembly assembly in assemblies)
+                foreach (Type type in assembly.GetTypes())
+                {
+                    if (!IsRegistrable(type)) continue;
+                    TryAdd(_builtIns, Describe(type, source: "core", prefix: null), reserved: null);
+                }
+                Publish();
             }
         }
 
-        public void RegisterExtension(Assembly extensionAssembly, string extensionId)
+        /// <summary>An empty set of extension registrations for a reload to fill before it replaces the
+        /// current one (<see cref="ReplaceExtensions"/>).</summary>
+        public ExtensionRegistrations NewExtensionSet() => new();
+
+        /// <summary>Adds an extension assembly's commands to a set that is not live yet.</summary>
+        public void RegisterExtension(Assembly extensionAssembly, string extensionId, ExtensionRegistrations into)
         {
             foreach (Type type in extensionAssembly.GetTypes())
             {
                 if (!IsRegistrable(type)) continue;
                 // Extension commands are namespaced as "<id>.<name>" to avoid collisions with
                 // core commands and between extensions.
-                TryRegister(type, source: extensionId, prefix: extensionId);
+                TryAdd(into.Items, Describe(type, source: extensionId, prefix: extensionId), reserved: _builtIns);
             }
+        }
+
+        /// <summary>Makes <paramref name="set"/> the extension commands, in one step.</summary>
+        public void ReplaceExtensions(ExtensionRegistrations set)
+        {
+            lock (_publishGate)
+            {
+                _extensions = set.Items;
+                Publish();
+            }
+        }
+
+        private void Publish()
+        {
+            Dictionary<string, CommandRegistration> all = new(_builtIns, StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<string, CommandRegistration> extension in _extensions)
+                all.TryAdd(extension.Key, extension.Value);
+            _commands = all;
+        }
+
+        /// <summary>First registration wins; a later one with the same name is logged and skipped — the
+        /// author notices in the Settings command list / extension diagnostics. No dialog from Core.</summary>
+        private static void TryAdd(Dictionary<string, CommandRegistration> target, CommandRegistration registration,
+            IReadOnlyDictionary<string, CommandRegistration>? reserved)
+        {
+            CommandRegistration? existing = null;
+            if (reserved?.TryGetValue(registration.Name, out existing) != true
+                && !target.TryGetValue(registration.Name, out existing))
+            {
+                target.Add(registration.Name, registration);
+                return;
+            }
+            Log.Error("Command name conflict: {Name} is already registered from {Existing}; " +
+                      "skipping registration from {Source}", registration.Name, existing?.Source ?? "<unknown>", registration.Source);
         }
 
         public Task<object?> DispatchAsync(string command, JToken payload, CancellationToken ct) =>
@@ -110,24 +144,6 @@ namespace AnalyseTool.Core.Common.Dispatch
                 ExposeToMcp: !(attr?.HiddenFromMcp ?? false),
                 OutputSchemaJson: BuildSchema(attr?.OutputType),
                 IsCodeAuthoringTool: type.IsDefined(typeof(Extensions.Scripting.CodeAuthoringToolAttribute), inherit: false));
-        }
-
-        private void TryRegister(Type type, string source, string? prefix)
-        {
-            CommandRegistration registration = Describe(type, source, prefix);
-            string name = registration.Name;
-
-            // TryAdd, not check-then-set: first registration wins, and the winner is decided atomically.
-            if (!_commands.TryAdd(name, registration))
-            {
-                // Log-only (no dialog from Core): a conflict means the later registration is skipped,
-                // which the author notices in the Settings command list / extension diagnostics.
-                string existingSource = _commands.TryGetValue(name, out CommandRegistration? existing)
-                    ? existing.Source
-                    : "<unknown>";
-                Log.Error("Command name conflict: {Name} is already registered from {Existing}; " +
-                          "skipping registration from {Source}", name, existingSource, source);
-            }
         }
 
         /// <summary>
@@ -215,6 +231,12 @@ namespace AnalyseTool.Core.Common.Dispatch
         /// carries the shape instead. This is exactly the behaviour registration used to bake in.</summary>
         public static string Compact(string schemaJson) =>
             schemaJson.Length <= MaxChars ? schemaJson : FreeFormObject;
+    }
+
+    /// <summary>Extension commands being collected by a reload, not yet visible to any caller.</summary>
+    internal sealed class ExtensionRegistrations
+    {
+        internal Dictionary<string, CommandRegistration> Items { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     internal sealed record CommandRegistration(

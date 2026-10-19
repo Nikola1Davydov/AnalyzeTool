@@ -22,11 +22,13 @@ namespace AnalyseTool.Core.Features.Extensions
         // must keep working with the toggle off. The description says "hidden from the AI" rather than
         // "requires", which is what is actually true.
 
-        public Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
+        public async Task<object?> ExecuteAsync(IRevitContext ctx, CancellationToken ct)
         {
-            // Raises ExtensionsReloaded; the host listens and refreshes the ribbon buttons.
-            CoreServices.ReloadExtensions();
-            return Task.FromResult<object?>(null);
+            // Off the caller's thread: from a window that is Revit's UI thread, and a reload may compile
+            // sources with Roslyn. Not cancellable once started — half a reload helps nobody.
+            // Raises ExtensionsReloaded; the host listens and refreshes the ribbon buttons (marshalled).
+            await Task.Run(CoreServices.ReloadExtensions).ConfigureAwait(false);
+            return null;
         }
     }
 }
