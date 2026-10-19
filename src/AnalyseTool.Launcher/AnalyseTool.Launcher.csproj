@@ -35,6 +35,12 @@
       <Private>false</Private>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <!-- Build-order only: its Debug build rewrites clientapp/src/generated/commands.ts (the TS side of
+         the command contract). Nothing of it ships. -->
+    <ProjectReference Include="..\AnalyseTool.TsGen\AnalyseTool.TsGen.csproj">
+      <Private>false</Private>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ProjectReference Include="..\AnalyseTool.App\AnalyseTool.App.csproj" />
   </ItemGroup>
 

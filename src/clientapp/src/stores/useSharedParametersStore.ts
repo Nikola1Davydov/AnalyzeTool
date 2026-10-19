@@ -9,11 +9,11 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@/RevitBridge";
+import { commands } from "@/generated/commands";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import {
   errorText,
   type BindingOptions,
-  type BindResult,
   type ParameterRef,
   type ParameterRow,
   type ProjectParameter,
@@ -97,7 +97,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
 
   async function loadProject() {
     try {
-      const res = await invoke<{ parameters: ProjectParameter[] }>("GetProjectParameters");
+      const res = await commands.GetProjectParameters();
       project.value = res?.parameters ?? [];
     } catch (e) {
       notifications.error(`Could not read the project's parameters: ${errorText(e)}`);
@@ -108,7 +108,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
     loading.value = true;
     try {
       const [data] = await Promise.all([
-        invoke<SharedParameterFileData>("GetSharedParameterFile", {}),
+        commands.GetSharedParameterFile(),
         loadProject(),
       ]);
       applyFile(data);
@@ -135,7 +135,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
       });
       if (!picked?.path) return;
       loading.value = true;
-      applyFile(await invoke<SharedParameterFileData>("SetSharedParameterFile", { path: picked.path, create }));
+      applyFile(await commands.SetSharedParameterFile({ path: picked.path, create }));
     } catch (e) {
       notifications.error(errorText(e));
     } finally {
@@ -148,7 +148,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
     saving.value = true;
     try {
       applyFile(
-        await invoke<SharedParameterFileData>("SaveSharedParameterFile", {
+        await commands.SaveSharedParameterFile({
           path: file.value.path,
           stamp: file.value.exists ? file.value.stamp : null,
           groups: groups.value,
@@ -226,7 +226,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
   async function loadBindingOptions(): Promise<BindingOptions | null> {
     if (bindingOptions.value) return bindingOptions.value;
     try {
-      bindingOptions.value = await invoke<BindingOptions>("GetBindingOptions");
+      bindingOptions.value = await commands.GetBindingOptions();
     } catch (e) {
       notifications.error(errorText(e));
     }
@@ -242,7 +242,7 @@ export const useSharedParametersStore = defineStore("sharedParameters", () => {
   });
 
   async function bind(guids: string[], categoryIds: number[], isInstance: boolean, groupTypeId: string) {
-    const res = await invoke<BindResult>("BindSharedParameters", { guids, categoryIds, isInstance, groupTypeId });
+    const res = await commands.BindSharedParameters({ guids, categoryIds, isInstance, groupTypeId });
     await loadProject();
     return res;
   }

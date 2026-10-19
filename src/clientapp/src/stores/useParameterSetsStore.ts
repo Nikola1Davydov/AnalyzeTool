@@ -5,30 +5,17 @@
  */
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { invoke } from "@/RevitBridge";
+import { commands, type ParameterSetDto } from "@/generated/commands";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { errorText, type ParameterRef } from "@/view/SharedParameters/types";
 
-export interface ParameterSet {
-  id: string;
-  name: string;
-  parameters: ParameterRef[];
-  updated: string;
-  /** The Revit project (document CreationGUID) the set belongs to; absent = offered in every project. */
-  projectId?: string;
-  projectName?: string;
-}
+/** A saved set, as GetParameterSets returns it (generated from ParameterSetDto). */
+export type ParameterSet = ParameterSetDto;
 
 /** Where a new set lives: one project, or all of them. */
 export interface SetScope {
   projectId?: string;
   projectName?: string;
-}
-
-interface SetsResult {
-  path: string;
-  sets: ParameterSet[];
-  error?: string;
 }
 
 /** A parameter's identity across projects: GUID for shared, name for project parameters. */
@@ -49,7 +36,7 @@ export const useParameterSetsStore = defineStore("parameterSets", () => {
 
   async function load() {
     try {
-      const res = await invoke<SetsResult>("GetParameterSets");
+      const res = await commands.GetParameterSets();
       sets.value = res?.sets ?? [];
       loadError.value = res?.error ?? null;
       if (res?.error) notifications.error(`Could not read the saved parameter sets (${res.path}): ${res.error}`);
@@ -67,7 +54,7 @@ export const useParameterSetsStore = defineStore("parameterSets", () => {
     }
     busy.value = true;
     try {
-      const res = await invoke<SetsResult>("SaveParameterSets", { sets: next });
+      const res = await commands.SaveParameterSets({ sets: next });
       sets.value = res?.sets ?? next;
       return sets.value;
     } catch (e) {

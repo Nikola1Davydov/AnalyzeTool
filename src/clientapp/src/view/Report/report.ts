@@ -1,35 +1,18 @@
 // The A4 report as data: what GetParameterReport returns, what the user turned on, and the flat list
 // of blocks that the pages are filled with. Kept free of Vue so the layout rules read in one place.
 
-export interface ReportCount {
-  name: string;
-  total: number;
-  filled: number;
-}
+import type {
+  ParameterReportDto,
+  ParameterReportResult,
+  ReportCountDto,
+  ReportValueDto,
+} from "@/generated/commands";
 
-export interface ReportValue {
-  value: string;
-  count: number;
-}
-
-export interface ParameterReport {
-  name: string;
-  guid?: string;
-  isInstance: boolean;
-  total: number;
-  filled: number;
-  categories: ReportCount[];
-  levels: ReportCount[];
-  values: ReportValue[];
-  otherValuesCount: number;
-  distinctValues: number;
-  error?: string;
-}
-
-export interface ReportData {
-  documentTitle: string;
-  parameters: ParameterReport[];
-}
+// What GetParameterReport returns — generated from the C# records (src/generated/commands.ts).
+export type ReportCount = ReportCountDto;
+export type ReportValue = ReportValueDto;
+export type ParameterReport = ParameterReportDto;
+export type ReportData = ParameterReportResult;
 
 /** The three analyses a parameter can show; each one as a chart, a table, or both. */
 export type SectionKind = "filled" | "values" | "levels";

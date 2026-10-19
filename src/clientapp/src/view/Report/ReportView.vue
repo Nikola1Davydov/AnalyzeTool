@@ -12,7 +12,7 @@ import Menu from "primevue/menu";
 import RadioButton from "primevue/radiobutton";
 import InputNumber from "primevue/inputnumber";
 import ToggleSwitch from "primevue/toggleswitch";
-import { invoke } from "@/RevitBridge";
+import { commands } from "@/generated/commands";
 import { useSharedParametersStore } from "@/stores/useSharedParametersStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import ReportBlock from "./ReportBlock.vue";
@@ -219,7 +219,7 @@ async function loadReport() {
   const seq = ++requestSeq;
   loading.value = true;
   try {
-    const res = await invoke<ReportData>("GetParameterReport", {
+    const res = await commands.GetParameterReport({
       parameters: refs,
       topValues: settings.value.topValues,
     });

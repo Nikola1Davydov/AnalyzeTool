@@ -1,56 +1,22 @@
 // Shapes of the SharedParameters commands (AnalyseTool.Tools/SharedParameters), and the row the
-// table shows: one parameter, wherever it lives — in the file, in the project, or both.
+// table shows: one parameter, wherever it lives — in the file, in the project, or both. The command
+// shapes are generated from the C# records (src/generated/commands.ts, written by AnalyseTool.TsGen);
+// the aliases keep the names the views use.
+import type {
+  BindingOptionsResult,
+  BindResult,
+  ParameterRefDto,
+  ProjectParameterDto,
+  SharedParameterDto,
+  SharedParameterFileData,
+  SharedParameterGroupDto,
+} from "@/generated/commands";
 
-export interface SharedParameterGroup {
-  id: number;
-  name: string;
-}
-
-export interface SharedParameter {
-  guid: string;
-  name: string;
-  dataType: string;
-  dataCategory: string;
-  groupId: number;
-  visible: boolean;
-  description: string;
-  userModifiable: boolean;
-  hideWhenNoValue: boolean;
-}
-
-export interface SharedParameterFileData {
-  path: string | null;
-  exists: boolean;
-  isRevitCurrent: boolean;
-  stamp: string;
-  groups: SharedParameterGroup[];
-  parameters: SharedParameter[];
-  error?: string;
-}
-
-export interface ProjectParameter {
-  id: number;
-  guid?: string;
-  name: string;
-  isShared: boolean;
-  bound: boolean;
-  isInstance: boolean;
-  dataType: string;
-  group: string;
-  categories: string[];
-}
-
-export interface BindingOptions {
-  categories: { id: number; name: string; type: string }[];
-  groups: { typeId: string; label: string }[];
-  defaultGroup: string;
-}
-
-export interface BindResult {
-  added: string[];
-  updated: string[];
-  problems: { name: string; reason: string }[];
-}
+export type { BindResult, SharedParameterFileData };
+export type SharedParameterGroup = SharedParameterGroupDto;
+export type SharedParameter = SharedParameterDto;
+export type ProjectParameter = ProjectParameterDto;
+export type BindingOptions = BindingOptionsResult;
 
 /** One table row: a parameter of the file, of the project, or of both (matched by GUID). */
 export interface ParameterRow {
@@ -65,10 +31,7 @@ export interface ParameterRow {
 }
 
 /** What the report needs to find a parameter in the project: GUID for shared, name for project ones. */
-export interface ParameterRef {
-  guid?: string;
-  name: string;
-}
+export type ParameterRef = ParameterRefDto;
 
 /**
  * The data types a new parameter can have, as the file spells them. Revit writes these names for the

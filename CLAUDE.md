@@ -18,7 +18,8 @@ WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools comman
 | `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
 | `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
 | `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
-| `AnalyseTool.Launcher` | App (+ Mcp build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
+| `AnalyseTool.Launcher` | App (+ Mcp, TsGen build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
+| `AnalyseTool.TsGen` | Core, Tools, Mcp.Bridge, Sdk | Build-time exe, ships nothing: writes `clientapp/src/generated/commands.ts` (TS interfaces of every declared `InputType`/`OutputType` + a typed `commands.X(...)` wrapper over `invoke`) by reflection, mirroring Newtonsoft's wire names and null handling. Runs after its own Debug build (so a Debug Launcher build keeps the file current), never on CI. |
 
 Hard rules:
 - **Never** add a ProjectReference that violates the table — `src/build/Check-Boundaries.ps1` fails CI.
@@ -64,7 +65,8 @@ level, four walls), never the commands — plus `RoslynScriptCompiler` against t
 compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
 must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
 button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher, and the
-shared parameter file format (`SharedParameterFile`: columns by header, unknown columns kept, UTF-16, stale-save refusal).
+shared parameter file format (`SharedParameterFile`: columns by header, unknown columns kept, UTF-16, stale-save refusal), and
+the **TS contract** (`TsContractTests`: the committed `commands.ts` equals what TsGen generates now — commit it after changing a command's types).
 
 ```powershell
 dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
