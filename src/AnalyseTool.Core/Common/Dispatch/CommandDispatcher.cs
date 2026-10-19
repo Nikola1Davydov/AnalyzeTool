@@ -116,9 +116,15 @@ namespace AnalyseTool.Core.Common.Dispatch
             IRevitTask instance = (IRevitTask)Activator.CreateInstance(reg.CommandType)!;
             if (progress is not null && instance is IProgressAware aware) aware.Progress = progress;
 
-            RevitContext context = new RevitContext(_hub, payload);
-            return await instance.ExecuteAsync(context, ct);
+            return await instance.ExecuteAsync(NewContext(payload), ct);
         }
+
+        /// <summary>Kept out of <see cref="DispatchAsync(string, JToken, CancellationToken, IProgress{ProgressInfo}?)"/>:
+        /// RevitContext's signatures name RevitAPIUI types, and compiling it there made every dispatch —
+        /// "not registered" included — need Revit loaded, which put the dispatch path out of the
+        /// Revit-free tests' reach.</summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private IRevitContext NewContext(JToken payload) => new RevitContext(_hub, payload);
 
         private static bool IsRegistrable(Type type)
         {

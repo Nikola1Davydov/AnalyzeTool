@@ -19,12 +19,16 @@ namespace AnalyseTool.Core.Common.Extensions
         private readonly string _revitVersion;   // Revit version year, e.g. "2025"
         private readonly Version _hostSdkVersion; // the AnalyseTool.Sdk AssemblyVersion this host provides
         private readonly List<ExtensionLoadContext> _contexts = new();
+        private readonly Func<IReadOnlyList<ExtensionSourceRoot>> _roots;
 
-        public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion)
+        /// <param name="roots">Where extensions are looked for; the user's registered sources unless a
+        /// test points the loader at a folder of its own.</param>
+        public ExtensionLoader(CommandDispatcher dispatcher, string revitVersion, Func<IReadOnlyList<ExtensionSourceRoot>>? roots = null)
         {
             _dispatcher = dispatcher;
             _revitVersion = revitVersion;
             _hostSdkVersion = typeof(IRevitTask).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
+            _roots = roots ?? ExtensionSources.AllRoots;
         }
 
         /// <summary>
@@ -63,7 +67,7 @@ namespace AnalyseTool.Core.Common.Extensions
 
         private void LoadAll(ExtensionRegistrations into)
         {
-            foreach (ExtensionDescriptor scanned in ExtensionCatalog.Scan(_revitVersion))
+            foreach (ExtensionDescriptor scanned in _roots().SelectMany(r => ExtensionCatalog.ScanRoot(r, _revitVersion, strict: true)).ToList())
             {
                 // The WHOLE of one extension's load is guarded, preparation included: a locked year
                 // folder or an unreadable src\ used to throw out of PrepareHostBuild, abort the loop
