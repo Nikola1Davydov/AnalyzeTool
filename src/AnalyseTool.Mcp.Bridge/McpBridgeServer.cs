@@ -183,8 +183,11 @@ namespace AnalyseTool.Mcp.Bridge
                         finally { writeLock.Release(); }
                     }
 
+                    // One reader for the connection's whole life: the bytes after one request are the
+                    // start of the next, which a reader per message used to throw away.
+                    JsonFrameReader frames = new(stream, MaxMessageBytes);
                     string? message;
-                    while ((message = await ReadJsonAsync(stream, ct).ConfigureAwait(false)) != null)
+                    while ((message = await ReadMessageAsync(frames, ct).ConfigureAwait(false)) != null)
                     {
                         string response = WithCatalog(await HandleMessageAsync(message, ct, WriteAsync).ConfigureAwait(false));
                         await WriteAsync(response).ConfigureAwait(false);
@@ -502,88 +505,17 @@ namespace AnalyseTool.Mcp.Bridge
         /// attack, and reading it costs the Revit process its memory.</summary>
         private const int MaxMessageBytes = 8 * 1024 * 1024;
 
-        /// <summary>
-        /// Reads bytes until the accumulated buffer is one complete JSON value (handles a request that
-        /// spans several TCP reads). Returns null on EOF / connection close.
-        /// </summary>
-        private static async Task<string?> ReadJsonAsync(NetworkStream stream, CancellationToken ct)
+        /// <summary>The next request on a connection, or null when it closed, failed or sent a message
+        /// over the size limit — each of which ends the connection, never Revit.</summary>
+        private static async Task<string?> ReadMessageAsync(JsonFrameReader frames, CancellationToken ct)
         {
-            using MemoryStream ms = new();
-            byte[] buffer = new byte[8192];
-            JsonBoundaryScanner scanner = new();
-
-            while (true)
+            try
             {
-                int read;
-                try
-                {
-                    read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
-                }
-                catch
-                {
-                    return null;
-                }
-
-                if (read == 0) return null; // EOF
-                ms.Write(buffer, 0, read);
-
-                // Structural scan, resuming where the last read stopped: O(total bytes) for the whole
-                // message. The previous version decoded the entire buffer to a string and ran
-                // JToken.Parse in a try/catch after EVERY 8 KB read — quadratic work plus an exception
-                // per read, so a few megabytes of junk from any local process pegged a core and
-                // allocated gigabytes.
-                if (scanner.ConsumedCompleteValue(ms.GetBuffer(), (int)ms.Length))
-                    return Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-
-                if (ms.Length > MaxMessageBytes) return null;
+                return await frames.ReadFrameAsync(ct).ConfigureAwait(false);
             }
-        }
-
-        /// <summary>
-        /// Tracks JSON nesting depth across reads to spot the end of the top-level value. Strings and
-        /// escapes are honoured so braces inside a payload string don't confuse the depth count. This
-        /// answers "is the message complete", not "is it valid" — parsing still decides that.
-        /// </summary>
-        private struct JsonBoundaryScanner
-        {
-            private int _offset;      // bytes already scanned
-            private int _depth;       // open { and [
-            private bool _inString;
-            private bool _escaped;
-
-            public bool ConsumedCompleteValue(byte[] buffer, int length)
+            catch (Exception ex) when (ex is IOException or InvalidDataException or ObjectDisposedException or OperationCanceledException)
             {
-                for (; _offset < length; _offset++)
-                {
-                    char c = (char)buffer[_offset];
-
-                    if (_inString)
-                    {
-                        if (_escaped) _escaped = false;
-                        else if (c == '\\') _escaped = true;
-                        else if (c == '"') _inString = false;
-                        continue;
-                    }
-
-                    switch (c)
-                    {
-                        case '"': _inString = true; break;
-                        case '{':
-                        case '[': _depth++; break;
-                        case '}':
-                        case ']':
-                            if (--_depth <= 0)
-                            {
-                                _offset++;
-                                return true;
-                            }
-                            break;
-                    }
-                }
-
-                // The protocol only ever sends objects, so anything that hasn't closed its outermost
-                // bracket yet is simply an incomplete read — keep waiting for more bytes.
-                return false;
+                return null;
             }
         }
     }
