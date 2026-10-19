@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 🔌 **Saving Settings no longer interrupts a running agent command.** The MCP bridge restarts only when it is switched on or off or its port changes.
 - 🧾 **`GetJobResult` never reports a finished call without its result, and a reused call id is refused** instead of replacing a running call that could then no longer be cancelled.
 - 💾 **A snippet that runs in `ExecuteRevitCode` also compiles once saved with `SaveAsCommand`.** Saving now lifts leading `using` directives and brings in `System.Collections`, as running already did.
 - 🔒 **An extension's icon is read only from its own folder.** A `plugin.json` icon path that pointed elsewhere (`..\`, an absolute path) is ignored.

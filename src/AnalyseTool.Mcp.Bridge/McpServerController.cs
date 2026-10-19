@@ -54,18 +54,29 @@ namespace AnalyseTool.Mcp.Bridge
         /// <summary>Applies a new on/off + port from the Settings page, persists it, and starts/stops live.</summary>
         public static object Apply(bool enabled, int? port)
         {
+            int previousPort = _settings.Port;
             _settings.Enabled = enabled;
             if (port is > 0 and <= 65535)
                 _settings.Port = port.Value;
 
             Save(_settings);
 
-            _bridge?.Stop();
-            if (enabled)
-                TryStart();
+            // Stopping cancels every running agent command (their tokens hang off the listener's), so
+            // a Save on the Settings page that changed nothing must not restart the bridge.
+            if (NeedsRestart(enabled, _bridge?.IsRunning ?? false, previousPort, _settings.Port))
+            {
+                _bridge?.Stop();
+                if (enabled)
+                    TryStart();
+            }
 
             return Status();
         }
+
+        /// <summary>Whether applying settings has to stop (and, when enabled, start) the bridge: when
+        /// it should be off but runs, should run but does not, or must move to another port.</summary>
+        internal static bool NeedsRestart(bool enabled, bool running, int currentPort, int requestedPort) =>
+            enabled != running || (enabled && currentPort != requestedPort);
 
         public static object Status() => new
         {
