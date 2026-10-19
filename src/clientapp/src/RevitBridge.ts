@@ -1,10 +1,21 @@
 export type WebViewMessage = {
   Type: string;
   Command: string;
-  Payload: any;
+  Payload: unknown;
   Id?: string;
   Error?: string | null;
 };
+
+/** The part of WebView2's window.chrome.webview this file uses — typed once instead of as any. */
+type HostWebView = {
+  postMessage(message: WebViewMessage): void;
+  addEventListener(type: "message", listener: (event: { data: WebViewMessage }) => void): void;
+  __atInvokeAttached?: boolean;
+};
+
+function hostWebView(): HostWebView | undefined {
+  return (window as unknown as { chrome?: { webview?: HostWebView } }).chrome?.webview;
+}
 
 export const Commands = {
   SelectionInRevit: "SelectionInRevit",
@@ -32,8 +43,8 @@ export const enum MessageType {
 export type ProgressInfo = { fraction: number; message?: string | null };
 
 type PendingCall = {
-  resolve: (value: any) => void;
-  reject: (reason: any) => void;
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
   onProgress?: (p: ProgressInfo) => void;
   /** When the request was posted — the age of the oldest one is the page's only way to know that
    *  the host has stopped answering (see oldestPendingAge). */
@@ -87,7 +98,7 @@ let heartbeatArmed = false;
 
 function sendPing() {
   if (pingSentAt !== null) return; // the previous one has not come back — that is the signal
-  const webview = (window as any).chrome?.webview;
+  const webview = hostWebView();
   if (!webview) return;
   ensureInvokeListener();
   pingSentAt = Date.now();
@@ -120,12 +131,12 @@ export function hostStallMs(now: number = Date.now()): number {
 }
 
 function ensureInvokeListener(): void {
-  const webview = (window as any).chrome?.webview;
+  const webview = hostWebView();
   if (!webview || webview.__atInvokeAttached) return;
   webview.__atInvokeAttached = true;
 
-  webview.addEventListener("message", (event: any) => {
-    const message = event.data as WebViewMessage;
+  webview.addEventListener("message", (event) => {
+    const message = event.data;
     if (!message) return;
 
     // Host-initiated broadcasts (no request Id) — e.g. "DocumentChanged". Re-dispatched as DOM events
@@ -163,13 +174,16 @@ function ensureInvokeListener(): void {
  * Works for built-in commands and for commands added by C# extensions, e.g.
  *   const res = await invoke("acme.sample.Hello");
  */
+// T defaults to any on purpose: an untyped call site (an extension page, the console) gets the result
+// as it always did. Typed callers go through generated/commands.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function invoke<T = any>(
   command: string,
-  payload: any = null,
+  payload: unknown = null,
   options?: InvokeOptions,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const webview = (window as any).chrome?.webview;
+    const webview = hostWebView();
     if (!webview) {
       reject(new Error("WebView2 messaging not available"));
       return;
@@ -192,7 +206,7 @@ export function invoke<T = any>(
     // holding a finished request id and each posting a Cancel for it when the user finally aborts.
     let stopListening: (() => void) | undefined;
     pendingCalls.set(id, {
-      resolve: (value) => { stopListening?.(); resolve(value); },
+      resolve: (value) => { stopListening?.(); resolve(value as T); },
       reject: (reason) => { stopListening?.(); reject(reason); },
       onProgress: options?.onProgress,
       sentAt: Date.now(),
@@ -220,5 +234,5 @@ export function invoke<T = any>(
 // Expose for extension UIs (and the console) running inside the WebView.
 if (typeof window !== "undefined") {
   ensureInvokeListener();
-  (window as any).AT = { invoke };
+  (window as unknown as { AT: unknown }).AT = { invoke };
 }

@@ -5,7 +5,6 @@
 import { useExtensionManager } from "./useExtensionManager";
 
 const {
-  loading,
   removeDialogVisible,
   removeBusy,
   removeError,

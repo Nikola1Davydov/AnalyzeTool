@@ -133,7 +133,7 @@ interface CommandRow {
   readOnly: boolean;
   destructive: boolean;
   exposedToMcp: boolean;
-  inputSchema: any;
+  inputSchema: unknown;
 }
 
 const commands = ref<CommandRow[]>([]);
@@ -151,13 +151,19 @@ const filteredCommands = computed(() => {
 });
 
 /** Summarize a command's JSON-schema payload as "field: type, …" for the table. */
-function payloadSummary(schema: any): string {
-  if (!schema || typeof schema !== "object") return "—";
+type SchemaShape = {
+  properties?: Record<string, { type?: unknown } | undefined>;
+  additionalProperties?: unknown;
+};
+
+function payloadSummary(input: unknown): string {
+  if (!input || typeof input !== "object") return "—";
+  const schema = input as SchemaShape;
   const props = schema.properties;
   if (props && typeof props === "object") {
     const keys = Object.keys(props);
     if (keys.length)
-      return keys.map((k) => (props[k]?.type ? `${k}: ${props[k].type}` : k)).join(", ");
+      return keys.map((k) => (props[k]?.type ? `${k}: ${props[k]!.type}` : k)).join(", ");
   }
   if (schema.additionalProperties) return "(free-form object)";
   return "—";

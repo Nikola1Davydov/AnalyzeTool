@@ -75,7 +75,7 @@ const chartOptions = computed(() => ({
       ticks: {
         font: { size: 9 },
         // Long values would eat the plot area; the table carries them in full.
-        callback(this: any, value: number) {
+        callback(this: { getLabelForValue(value: number): string }, value: number) {
           const label = String(this.getLabelForValue(value) ?? "");
           return label.length > 34 ? label.slice(0, 33) + "…" : label;
         },

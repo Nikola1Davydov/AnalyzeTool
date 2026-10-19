@@ -63,8 +63,9 @@ sealed partial class Build
     /// <summary>
     /// Type-checks the Vue frontend (<c>npm run type-check</c> = vue-tsc). Vite strips types without
     /// checking them, so without this a call that disagrees with the generated command contract
-    /// (src/generated/commands.ts) builds fine and fails only at run time in Revit. Installs the npm
-    /// packages first when they are missing (a fresh CI checkout); a dev's own node_modules is left alone.
+    /// (src/generated/commands.ts) builds fine and fails only at run time in Revit. Then lints it
+    /// (<c>npm run lint:check</c>, ESLint with typescript-eslint, no --fix). Installs the npm packages
+    /// first when they are missing (a fresh CI checkout); a dev's own node_modules is left alone.
     /// </summary>
     Target TypeCheckClientApp => _ => _
         .Executes(() =>
@@ -73,6 +74,7 @@ sealed partial class Build
             if (!File.Exists(ClientAppDirectory / "node_modules" / ".bin" / "vue-tsc.cmd"))
                 ProcessTasks.StartProcess("cmd", "/c npm ci", ClientAppDirectory).AssertZeroExitCode();
             ProcessTasks.StartProcess("cmd", "/c npm run type-check", ClientAppDirectory).AssertZeroExitCode();
+            ProcessTasks.StartProcess("cmd", "/c npm run lint:check", ClientAppDirectory).AssertZeroExitCode();
         });
 
     /// <summary>Runs the Revit-free tests. Before this target existed, "the two Test targets" checked
