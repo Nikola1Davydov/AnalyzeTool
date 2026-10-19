@@ -18,7 +18,7 @@ namespace AnalyseTool.Core.Common.Extensions
         private static readonly object Gate = new();
         private static HashSet<string>? _disabled; // lazy cache; ids compared case-insensitively
 
-        private static string StateFile => Path.Combine(PathProvider.ProfilePath, "extensions-state.json");
+        private static readonly JsonFileStore<State> Store = new(Path.Combine(PathProvider.ProfilePath, "extensions-state.json"));
 
         public static bool IsEnabled(string extensionId) =>
             !Disabled().Contains(extensionId);
@@ -42,33 +42,18 @@ namespace AnalyseTool.Core.Common.Extensions
             {
                 if (_disabled is not null) return _disabled;
 
+                // Unreadable state = everything enabled (logged by the store); rewritten on the next toggle.
                 _disabled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                try
-                {
-                    if (File.Exists(StateFile))
-                    {
-                        State? state = JsonConvert.DeserializeObject<State>(File.ReadAllText(StateFile));
-                        foreach (string id in state?.Disabled ?? new())
-                            if (!string.IsNullOrWhiteSpace(id))
-                                _disabled.Add(id);
-                    }
-                }
-                catch { /* unreadable state = everything enabled; the file is rewritten on next toggle */ }
+                foreach (string id in Store.Read().Disabled)
+                    if (!string.IsNullOrWhiteSpace(id))
+                        _disabled.Add(id);
                 return _disabled;
             }
         }
 
-        private static void Save(HashSet<string> disabled)
-        {
-            try
-            {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
-                File.WriteAllText(StateFile, JsonConvert.SerializeObject(
-                    new State { Disabled = disabled.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList() },
-                    Formatting.Indented));
-            }
-            catch { /* best-effort; the in-memory set still applies for this session */ }
-        }
+        // Best-effort: if the write fails (logged), the in-memory set still applies for this session.
+        private static void Save(HashSet<string> disabled) =>
+            Store.Write(new State { Disabled = disabled.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList() });
 
         private sealed class State
         {

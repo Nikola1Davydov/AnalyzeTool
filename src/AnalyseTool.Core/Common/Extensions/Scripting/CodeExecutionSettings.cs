@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using System.IO;
 
 namespace AnalyseTool.Core.Common.Extensions.Scripting
@@ -10,44 +9,30 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
     /// </summary>
     internal static class CodeExecutionSettings
     {
+        private static readonly JsonFileStore<Settings> Store = new(Path.Combine(PathProvider.ProfilePath, "codeexec.json"));
+        private static readonly object Gate = new();
         private static bool? _enabled;
-
-        private static string SettingsFile => Path.Combine(PathProvider.ProfilePath, "codeexec.json");
 
         public static bool Enabled
         {
             get
             {
-                _enabled ??= Load();
-                return _enabled.Value;
+                lock (Gate)
+                {
+                    _enabled ??= Store.Read().Enabled;
+                    return _enabled.Value;
+                }
             }
         }
 
         public static void SetEnabled(bool value)
         {
-            _enabled = value;
-            Save(value);
-        }
-
-        private static bool Load()
-        {
-            try
+            lock (Gate)
             {
-                if (File.Exists(SettingsFile))
-                    return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFile))?.Enabled ?? false;
+                _enabled = value;
+                // Not persisted (logged by the store): the switch still applies for this session.
+                Store.Write(new Settings { Enabled = value });
             }
-            catch { /* fall through to the safe default */ }
-            return false;
-        }
-
-        private static void Save(bool enabled)
-        {
-            try
-            {
-                Directory.CreateDirectory(PathProvider.ProfilePath);
-                File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(new Settings { Enabled = enabled }, Formatting.Indented));
-            }
-            catch { /* best-effort; non-fatal */ }
         }
 
         private sealed class Settings
