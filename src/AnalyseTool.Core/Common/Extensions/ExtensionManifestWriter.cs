@@ -5,20 +5,15 @@ using System.IO;
 namespace AnalyseTool.Core.Common.Extensions
 {
     /// <summary>What a writer wants changed in <c>plugin.json</c>. Every field is optional: a null means
-    /// "leave whatever is already there", which is what lets two commands build one extension between
-    /// them — a C# command from SaveAsCommand and a web page from SaveExtensionUi.</summary>
+    /// "leave whatever is already there", which is what lets several commands edit one extension — a
+    /// web page from SaveExtensionUi, the button from UpdateExtensionManifest, the vendor fields from the
+    /// Edit form — without erasing what the others wrote.</summary>
     internal sealed record ManifestEdit
     {
         public string? ButtonName { get; init; }
         public string? Tooltip { get; init; }
         public string? Tab { get; init; }
         public string? Panel { get; init; }
-
-        /// <summary>The command the extension registers, from SaveAsCommand.</summary>
-        public string? CommandName { get; init; }
-
-        /// <summary>The DLL the host built from the extension's sources, from SaveAsCommand.</summary>
-        public string? EntryAssembly { get; init; }
 
         /// <summary>The page's entry file, from SaveExtensionUi.</summary>
         public string? EntryHtml { get; init; }
@@ -59,7 +54,6 @@ namespace AnalyseTool.Core.Common.Extensions
 
             manifest["id"] = id;
             if (manifest["version"] is null) manifest["version"] = "1.0.0";
-            if (!string.IsNullOrWhiteSpace(edit.EntryAssembly)) manifest["entryAssembly"] = edit.EntryAssembly!.Trim();
 
             SetOrRemove(manifest, "description", edit.Description);
             SetOrRemove(manifest, "publisher", edit.Publisher);
@@ -76,7 +70,6 @@ namespace AnalyseTool.Core.Common.Extensions
             Set(ui, "panel", edit.Panel);
             Set(ui, "entryHtml", edit.EntryHtml);
             if (edit.Dockable is bool dockable) ui["dockable"] = dockable;
-            if (edit.CommandName is not null) button["command"] = edit.CommandName;
             if (edit.Kind is not null)
             {
                 // "push" is the default the host falls back to, so it is written as absence — a manifest

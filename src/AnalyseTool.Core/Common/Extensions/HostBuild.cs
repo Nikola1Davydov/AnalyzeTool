@@ -116,7 +116,7 @@ namespace AnalyseTool.Core.Common.Extensions
         /// <summary>Writes a compiled assembly (and its PDB) where the catalog resolves the entry
         /// assembly for this Revit year. The loader reads it as bytes, so the file is never locked and
         /// can be replaced while the old version is loaded.</summary>
-        public static void Write(string directory, string entryAssembly, string revitVersion, ScriptCompileResult result)
+        private static void Write(string directory, string entryAssembly, string revitVersion, ScriptCompileResult result)
         {
             string yearDir = Path.Combine(directory, revitVersion);
             Directory.CreateDirectory(yearDir);

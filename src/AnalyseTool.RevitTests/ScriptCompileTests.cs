@@ -30,20 +30,6 @@ public sealed class ScriptCompileTests : RevitApiTest
     }
 
     [Test]
-    public async Task A_body_with_using_directives_also_compiles_once_saved_as_a_command()
-    {
-        // SaveAsCommand had its own wrapper that missed the #101 lift: the body ran in ExecuteRevitCode
-        // and then failed to compile when the agent saved it.
-        const string body = "using System.Text;\nvar sb = new StringBuilder();\nIList list = new ArrayList();\nreturn sb.ToString() + list.Count;";
-        string saved = AnalyseTool.Core.Features.Scripting.SaveAsCommand.BuildCommandClass(
-            body, "Acme.Probe", "Probe", "probe", readOnly: true, destructive: false);
-
-        ScriptCompileResult result = RoslynScriptCompiler.CompileSnippet(saved, "test_saved_101", null);
-
-        await Assert.That(result.Errors.Where(e => !IsOnlyTheMissingUi(e))).IsEmpty();
-    }
-
-    [Test]
     public async Task A_body_without_directives_compiles_the_same_way()
     {
         ScriptCompileResult result = RoslynScriptCompiler.CompileSnippet("return doc?.Title;", "test_plain", null);

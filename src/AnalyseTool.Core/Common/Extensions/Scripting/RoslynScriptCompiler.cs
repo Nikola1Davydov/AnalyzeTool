@@ -134,29 +134,6 @@ namespace AnalyseTool.Core.Common.Extensions.Scripting
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Encoding is required: emitting a PDB for a source whose tree has no encoding fails (CS8055).
-        /// <summary>True when the source already declares an IRevitTask class (so it should be saved/compiled
-        /// as-is); false for a bare body that needs wrapping. Public for SaveAsCommand.</summary>
-        public static bool LooksLikeFullCommand(string source) => IsFullCommand(source);
-
-        /// <summary>Names of the types in <paramref name="source"/> that list <c>IRevitTask</c> as a base —
-        /// how SaveAsCommand finds ITS command in an assembly compiled from several files.</summary>
-        public static IReadOnlyList<string> CommandTypeNames(string source)
-        {
-            try
-            {
-                return CSharpSyntaxTree.ParseText(source, ParseOptions).GetRoot()
-                    .DescendantNodes()
-                    .OfType<BaseTypeDeclarationSyntax>()
-                    .Where(t => t.BaseList?.Types.Any(bt => bt.Type.ToString().Contains("IRevitTask")) == true)
-                    .Select(t => t.Identifier.Text)
-                    .ToList();
-            }
-            catch
-            {
-                return Array.Empty<string>();
-            }
-        }
-
         private static SyntaxTree Parse(string text, string path) =>
             CSharpSyntaxTree.ParseText(text, ParseOptions, path, Encoding.UTF8);
 

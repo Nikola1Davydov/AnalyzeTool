@@ -450,16 +450,14 @@ namespace AnalyseTool.Mcp.Bridge
             command.ExposeToMcp && (CodeExecutionSettings.Enabled || !IsCodeAuthoringTool(command.Name));
 
         /// <summary>
-        /// The tools behind the Settings toggle. Not only the two that RUN code: reading a script's
-        /// source hands the AI code off the user's machine, and reloading is the step that makes written
-        /// code take effect — the toggle is the user saying "I am authoring code here with AI", and each
-        /// of these is part of doing that. The toggle itself stays out of reach: SetCodeExecution is
-        /// HiddenFromMcp, so only a person at the Settings page turns this on or off.
+        /// The tools behind the Settings toggle. Not only the one that RUNS code: writing an extension's
+        /// files and reloading are the steps that make written code take effect — the toggle is the user
+        /// saying "I am authoring code here with AI", and each of these is part of doing that. The toggle
+        /// itself stays out of reach: SetCodeExecution is HiddenFromMcp, so only a person at the Settings
+        /// page turns this on or off.
         /// </summary>
         private static bool IsCodeAuthoringTool(string name) =>
             string.Equals(name, ExecuteRevitCode.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, SaveAsCommand.CommandName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(name, GetScriptSource.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, SaveExtensionUi.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, UpdateExtensionManifest.CommandName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(name, ReloadExtensionsCommand.CommandName, StringComparison.OrdinalIgnoreCase);
@@ -469,7 +467,7 @@ namespace AnalyseTool.Mcp.Bridge
 
         /// <summary>Adds the catalog stamp to a finished reply. Done once, here, on the way out, so no
         /// branch of HandleMessageAsync can forget it — an error reply carries it too, and a reply to
-        /// SaveAsCommand is precisely the one that must say "the list just changed".</summary>
+        /// ReloadExtensions is precisely the one that must say "the list just changed".</summary>
         private string WithCatalog(string response)
         {
             try

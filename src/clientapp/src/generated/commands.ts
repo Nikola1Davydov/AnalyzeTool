@@ -280,11 +280,6 @@ export interface GetParameterReportRequest {
   topValues?: number;
 }
 
-export interface GetScriptSourceRequest {
-  /** Extension id, as listed by GetInstalledExtensions or GetExtensionDiagnostics. */
-  id?: string | null;
-}
-
 export interface GetSharedParameterFileRequest {
   /** Full path of the file to read; omit for the file Revit currently uses. */
   path?: string | null;
@@ -499,44 +494,6 @@ export interface ReportValueDto {
   count: number;
 }
 
-export interface SaveAsCommandRequest {
-  /** The C# to save: either a bare method body, which gets wrapped into a class, or a full IRevitTask. */
-  code: string;
-  /** Stable extension id, also used as the folder name, e.g. "acme.count-walls". */
-  id: string;
-  /** Ribbon button label. */
-  name: string;
-  /** Description of the saved command — becomes its [RevitCommand] Description, so it is what a later caller selects the command by. */
-  description?: string | null;
-  /** Ribbon tab to place the button on. Empty = the default tab. */
-  tab?: string | null;
-  /** Ribbon panel to place the button on. Empty = the default panel. */
-  panel?: string | null;
-  /** Optional registered source root to save into. Leave it EMPTY: an id that already exists then resolves to its own folder — including a shared team folder — and a new one to the folder chosen in Settings. */
-  targetRoot?: string | null;
-  /** Marks the saved command as read-only, i.e. it does not modify the model. */
-  readOnly?: boolean;
-  /** Marks the saved command as destructive, i.e. it deletes or overwrites. */
-  destructive?: boolean;
-  /** Replace this extension's existing file of the same name — how a generated command gets refined. Only a folder created by these commands can be written to; anything else is refused. */
-  overwrite?: boolean;
-  /** Source file name, e.g. "CreateSheets.cs". Default "Command.cs". Give each command its own name to put SEVERAL commands in one extension — they all compile into the same DLL and share one ribbon button, instead of becoming one extension and one button each. */
-  fileName?: string | null;
-  /** Give this command a ribbon button. Default true. Set false when adding a command to an extension that already has its button, or when the command is only meant to be called from MCP, from JS, or by another command. */
-  button?: boolean;
-}
-
-export interface SaveCommandResult {
-  ok: boolean;
-  created: boolean;
-  command: string | null;
-  directory: string | null;
-  fileName: string | null;
-  error: string | null;
-  diagnostics: string[] | null;
-  warnings: string[] | null;
-}
-
 export interface SaveExtensionUiRequest {
   /** Extension id — the folder name and the command namespace, e.g. "niko.sheets". Use the SAME id as the SaveAsCommand call to give a command its own form. */
   id?: string | null;
@@ -582,19 +539,6 @@ export interface SaveUiResult {
   directory: string | null;
   entryHtml: string | null;
   files: string[];
-  error: string | null;
-}
-
-export interface ScriptFile {
-  name: string;
-  content: string;
-}
-
-export interface ScriptSourceResult {
-  ok: boolean;
-  id: string | null;
-  directory: string | null;
-  files: ScriptFile[];
   error: string | null;
 }
 
@@ -882,9 +826,6 @@ export const commands = {
   /** Returns what AnalyseTool is doing right now: { running: [{ command, source, seconds, progress?: { fraction, message } }], pendingRevitWork, waitingSeconds, waitingForUser }. waitingForUser=true means Revit cannot execute queued work — the user is in a modal dialog or an edit mode. AI agents: check this before starting heavy commands and wait while busy. Read-only, answers instantly even when Revit is blocked. */
   GetQueueStatus: (options?: InvokeOptions) =>
     invoke<unknown>("GetQueueStatus", null, options),
-  /** Returns the C# source of a command extension saved with SaveAsCommand (its src folder) so a saved command can be refined rather than rewritten: read it, change it, save it back with SaveAsCommand and overwrite:true. Ids come from GetInstalledExtensions or GetExtensionDiagnostics. Only extensions the host builds — a DLL built from the author's own project has its source there. Read-only. Requires C# execution to be enabled in AnalyseTool Settings. */
-  GetScriptSource: (input: GetScriptSourceRequest = {}, options?: InvokeOptions) =>
-    invoke<ScriptSourceResult>("GetScriptSource", input, options),
   /** Reads a shared parameter file (the .txt behind Manage → Shared Parameters): { path, exists, isRevitCurrent, stamp, groups: [{ id, name }], parameters: [{ guid, name, dataType, dataCategory, groupId, visible, description, userModifiable, hideWhenNoValue }], error }. Without a path it reads the file Revit currently uses. Read-only. */
   GetSharedParameterFile: (input: GetSharedParameterFileRequest = {}, options?: InvokeOptions) =>
     invoke<SharedParameterFileData>("GetSharedParameterFile", input, options),
@@ -924,9 +865,6 @@ export const commands = {
   /** Removes a user-added extension source root. */
   RemoveExtensionPath: (input: RemoveExtensionPathRequest, options?: InvokeOptions) =>
     invoke<unknown>("RemoveExtensionPath", input, options),
-  /** Saves a working C# snippet as a permanent command with a ribbon button, callable from JS/MCP: the host compiles it into the extension's DLL (no .NET SDK needed) and reloads. The snippet is a bare body or a full IRevitTask. Disabled by default — enable C# execution in AnalyseTool Settings. MODIFIES the extensions on disk and reloads them; it does not touch the Revit model. Cost: compiles and writes files, then a full extension reload. */
-  SaveAsCommand: (input: SaveAsCommandRequest, options?: InvokeOptions) =>
-    invoke<SaveCommandResult>("SaveAsCommand", input, options),
   /** Saves a web UI into an extension folder: an entry HTML page plus any CSS/JS beside it, and the plugin.json entry that gives it a ribbon button. Use with SaveAsCommand to build a command WITH a form — save the C# first, the page second, and the button will open the page while the page calls the command via AT.invoke('<id>.<Command>', payload). Pass overwrite:true to replace an existing page. Files are written flat, so hand-authored HTML/CSS/JS only — not a framework build with an assets folder. Requires C# execution to be enabled in AnalyseTool Settings. */
   SaveExtensionUi: (input: SaveExtensionUiRequest = {}, options?: InvokeOptions) =>
     invoke<SaveUiResult>("SaveExtensionUi", input, options),
