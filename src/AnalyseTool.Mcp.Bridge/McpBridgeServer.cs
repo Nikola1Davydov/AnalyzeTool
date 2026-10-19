@@ -75,6 +75,20 @@ namespace AnalyseTool.Mcp.Bridge
         public bool IsRunning { get; private set; }
         public int Port { get; private set; }
 
+        /// <summary>How long a connection may sit without sending its next request. The exe connects per
+        /// call and closes after the reply, so only a stalled or hostile client ever waits this long —
+        /// and every one of them used to be held by Revit forever.</summary>
+        internal TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>Connections served at once; one more is closed on arrival. With the 8 MB request cap
+        /// this bounds what local clients can make Revit hold in memory. Well above what agents use: the
+        /// exe opens one per call in flight, plus a short one now and then for the catalog stamp.</summary>
+        internal int MaxConnections { get; init; } = 32;
+
+        private int _connections;
+
+        internal int OpenConnections => Volatile.Read(ref _connections);
+
         public void Start(int port)
         {
             if (IsRunning) return;
@@ -162,6 +176,14 @@ namespace AnalyseTool.Mcp.Bridge
 
         private async Task HandleClientAsync(TcpClient client, CancellationToken ct)
         {
+            if (Interlocked.Increment(ref _connections) > MaxConnections)
+            {
+                Interlocked.Decrement(ref _connections);
+                Log.Warning("MCP bridge: refused a connection, {Max} are already open", MaxConnections);
+                client.Dispose();
+                return;
+            }
+
             try
             {
                 using (client)
@@ -187,7 +209,7 @@ namespace AnalyseTool.Mcp.Bridge
                     // start of the next, which a reader per message used to throw away.
                     JsonFrameReader frames = new(stream, MaxMessageBytes);
                     string? message;
-                    while ((message = await ReadMessageAsync(frames, ct).ConfigureAwait(false)) != null)
+                    while ((message = await ReadMessageAsync(frames, IdleTimeout, ct).ConfigureAwait(false)) != null)
                     {
                         string response = WithCatalog(await HandleMessageAsync(message, ct, WriteAsync).ConfigureAwait(false));
                         await WriteAsync(response).ConfigureAwait(false);
@@ -200,6 +222,10 @@ namespace AnalyseTool.Mcp.Bridge
                 // away mid-command loses nothing: the job runs on and its outcome is stored (JobStore).
                 // Debug, not higher: a client closing its end is the normal way a connection ends.
                 Log.Debug(ex, "MCP bridge: a connection ended with an error");
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _connections);
             }
         }
 
@@ -509,11 +535,15 @@ namespace AnalyseTool.Mcp.Bridge
 
         /// <summary>The next request on a connection, or null when it closed, failed or sent a message
         /// over the size limit — each of which ends the connection, never Revit.</summary>
-        private static async Task<string?> ReadMessageAsync(JsonFrameReader frames, CancellationToken ct)
+        private static async Task<string?> ReadMessageAsync(JsonFrameReader frames, TimeSpan idleTimeout, CancellationToken ct)
         {
+            // The deadline covers waiting for and receiving ONE request; a command's run time is not
+            // counted, it happens between reads.
+            using CancellationTokenSource idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            idle.CancelAfter(idleTimeout);
             try
             {
-                return await frames.ReadFrameAsync(ct).ConfigureAwait(false);
+                return await frames.ReadFrameAsync(idle.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or ObjectDisposedException or OperationCanceledException)
             {
