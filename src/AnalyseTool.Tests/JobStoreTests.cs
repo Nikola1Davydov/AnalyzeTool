@@ -77,6 +77,37 @@ public class JobStoreTests
     }
 
     [Test]
+    public async Task Stored_results_are_bounded_by_size_oldest_first()
+    {
+        ManualTime time = new();
+        // Room for about two 1000-character results.
+        JobStore store = new(TimeSpan.FromHours(1), 200, time, maxResultChars: 2_500);
+        JobStore.Job running = store.TryStart("running", "X", new CancellationTokenSource())!;
+        for (int i = 0; i < 4; i++)
+        {
+            JobStore.Job j = store.TryStart("r" + i, "X", new CancellationTokenSource())!;
+            store.Finish(j, McpWire.JobStates.Done, new JValue(new string('x', 998)), null); // 1000 chars with quotes
+            time.Now += TimeSpan.FromSeconds(1);
+        }
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(store.ResultChars).IsLessThanOrEqualTo(2_500);
+            await Assert.That((string?)store.Describe("r0")[McpWire.JobStatus]).IsEqualTo(McpWire.JobStates.Unknown);
+            await Assert.That((string?)store.Describe("r1")[McpWire.JobStatus]).IsEqualTo(McpWire.JobStates.Unknown);
+            await Assert.That((string?)store.Describe("r3")[McpWire.JobStatus]).IsEqualTo(McpWire.JobStates.Done);
+            await Assert.That((string?)store.Describe("running")[McpWire.JobStatus]).IsEqualTo(McpWire.JobStates.Running);
+        }
+
+        // Expiry gives the size back: nothing finished is left, so nothing is counted.
+        time.Now += TimeSpan.FromHours(2);
+        store.Finish(running, McpWire.JobStates.Done, null, null);
+        time.Now += TimeSpan.FromHours(2);
+        store.Prune();
+        await Assert.That(store.ResultChars).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task Pruning_drops_expired_and_excess_finished_jobs_but_never_running_ones()
     {
         ManualTime time = new();

@@ -353,7 +353,7 @@ async Task<CallToolResult> AnswerJobResultAsync(JsonNode? payload, CancellationT
             return Error(string.IsNullOrWhiteSpace(hint) ? $"[{code}] {message}" : $"[{code}] {message}\nHint: {hint}");
         }
         default:
-            return Error($"[{McpWire.JobStates.Unknown}] No call with jobId \"{jobId}\" — it never ran, or its result is older than the retention window (one hour).");
+            return Error($"[{McpWire.JobStates.Unknown}] No call with jobId \"{jobId}\" — it never ran, or its result is older than the retention window (one hour) or was dropped to keep the stored results small. Run the command again if you still need it.");
     }
 
     static CallToolResult Error(string text) => new() { IsError = true, Content = { new TextContentBlock { Text = text } } };

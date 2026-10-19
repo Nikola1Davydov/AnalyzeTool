@@ -14,12 +14,20 @@ namespace AnalyseTool.Mcp.Bridge
         private readonly ConcurrentDictionary<string, Job> _jobs = new();
         private readonly TimeSpan _retention;
         private readonly int _maxStored;
+        private readonly long _maxResultChars;
         private readonly TimeProvider _time;
+        private long _resultChars;
 
-        public JobStore(TimeSpan retention, int maxStored, TimeProvider? time = null)
+        /// <summary>The default cap on stored results, in characters of their JSON. Every outcome stays
+        /// in Revit's memory until it expires — including the many a caller already received, because
+        /// whether a reply really arrived cannot be told from this side — so the total is what is bounded.</summary>
+        public const long DefaultMaxResultChars = 16 * 1024 * 1024;
+
+        public JobStore(TimeSpan retention, int maxStored, TimeProvider? time = null, long maxResultChars = DefaultMaxResultChars)
         {
             _retention = retention;
             _maxStored = maxStored;
+            _maxResultChars = maxResultChars;
             _time = time ?? TimeProvider.System;
         }
 
@@ -34,8 +42,19 @@ namespace AnalyseTool.Mcp.Bridge
             return null;
         }
 
-        public void Finish(Job job, string status, JToken? result, JObject? error) =>
-            job.Finish(new Outcome(status, result, error, _time.GetUtcNow().UtcDateTime));
+        public void Finish(Job job, string status, JToken? result, JObject? error)
+        {
+            long size = (result?.ToString(Newtonsoft.Json.Formatting.None).Length ?? 0)
+                        + (error?.ToString(Newtonsoft.Json.Formatting.None).Length ?? 0);
+            // Counted BEFORE the outcome is published: pruning removes only finished jobs and subtracts
+            // their size, so a prune can never subtract a size that was not added yet. A running job is
+            // never pruned, so it is still stored here.
+            Interlocked.Add(ref _resultChars, size);
+            job.Finish(new Outcome(status, result, error, _time.GetUtcNow().UtcDateTime, size));
+            // Pruned here too, not only when the next call starts: an idle bridge should not sit on an
+            // hour of results it has already been told it may drop.
+            Prune();
+        }
 
         public bool Cancel(string? id)
         {
@@ -83,26 +102,38 @@ namespace AnalyseTool.Mcp.Bridge
             return new JObject { [McpWire.Jobs] = jobs };
         }
 
-        /// <summary>Drops finished outcomes past the retention window, and the oldest beyond the cap.</summary>
+        /// <summary>Drops finished outcomes past the retention window, then the oldest finished ones while
+        /// there are more than the count cap or their results exceed the size cap. Running jobs stay.</summary>
         internal void Prune()
         {
             DateTime cutoff = _time.GetUtcNow().UtcDateTime - _retention;
-            foreach (KeyValuePair<string, Job> entry in _jobs)
-                if (entry.Value.Outcome is { } done && done.FinishedUtc < cutoff)
-                    _jobs.TryRemove(entry.Key, out _);
-            if (_jobs.Count <= _maxStored) return;
-            foreach (Job stale in _jobs.Values.Where(j => j.Outcome is not null).OrderBy(j => j.Outcome!.FinishedUtc).Take(_jobs.Count - _maxStored))
-                _jobs.TryRemove(stale.Id, out _);
+            foreach (Job job in _jobs.Values)
+                if (job.Outcome is { } done && done.FinishedUtc < cutoff)
+                    Remove(job);
+
+            if (_jobs.Count <= _maxStored && Interlocked.Read(ref _resultChars) <= _maxResultChars) return;
+            foreach (Job oldest in _jobs.Values.Where(j => j.Outcome is not null).OrderBy(j => j.Outcome!.FinishedUtc).ToList())
+            {
+                if (_jobs.Count <= _maxStored && Interlocked.Read(ref _resultChars) <= _maxResultChars) break;
+                Remove(oldest);
+            }
+        }
+
+        private void Remove(Job job)
+        {
+            if (_jobs.TryRemove(new KeyValuePair<string, Job>(job.Id, job)) && job.Outcome is { } done)
+                Interlocked.Add(ref _resultChars, -done.Size);
         }
 
         internal int Count => _jobs.Count;
+        internal long ResultChars => Interlocked.Read(ref _resultChars);
 
         private double Seconds(Job job, Outcome? outcome) =>
             Math.Round(((outcome?.FinishedUtc ?? _time.GetUtcNow().UtcDateTime) - job.StartedUtc).TotalSeconds, 1);
 
         /// <summary>How a job ended. Published as ONE object: a reader on another connection sees either
         /// no outcome or all of it — never "done" with the result not yet written.</summary>
-        internal sealed record Outcome(string Status, JToken? Result, JObject? Error, DateTime FinishedUtc);
+        internal sealed record Outcome(string Status, JToken? Result, JObject? Error, DateTime FinishedUtc, long Size = 0);
 
         /// <summary>One invoke and what became of it. Finished exactly once, by the runner.</summary>
         internal sealed class Job
