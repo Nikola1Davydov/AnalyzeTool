@@ -56,8 +56,19 @@ namespace AnalyseTool.App.Common.Transport
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
-            WebViewMessage? request = JsonConvert.DeserializeObject<WebViewMessage>(args.WebMessageAsJson);
-            if (request == null) return;
+            // async void: an exception escaping here reaches Revit's dispatcher and can take Revit down,
+            // so a malformed message from a page is logged and dropped, never thrown.
+            WebViewMessage? request;
+            try
+            {
+                request = JsonConvert.DeserializeObject<WebViewMessage>(args.WebMessageAsJson);
+            }
+            catch (Exception ex) when (ex is JsonException or ArgumentException)
+            {
+                Serilog.Log.Warning(ex, "Ignored a malformed message from a WebView page");
+                return;
+            }
+            if (request == null || string.IsNullOrEmpty(request.Type)) return;
 
             // Ping is answered here and now: this handler runs on the WebView's UI thread — Revit's — so
             // reaching this line IS the fact the page is asking about. Nothing to enqueue, nothing to log:
@@ -85,6 +96,11 @@ namespace AnalyseTool.App.Common.Transport
 
             string command = request.Command;
             string? id = request.Id;
+            if (string.IsNullOrEmpty(command))
+            {
+                SendError(command ?? string.Empty, id, "The request names no command.");
+                return;
+            }
 
             // A token for every request, whether or not anyone ever cancels it: deciding per command
             // would mean knowing in advance which ones are worth interrupting.
