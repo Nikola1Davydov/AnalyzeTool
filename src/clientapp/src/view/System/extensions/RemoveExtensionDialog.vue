@@ -32,10 +32,10 @@ const {
       <p v-if="removeTarget?.zone === 'dev'" class="text-xs text-surface-500 break-all font-mono">
         {{ removeTarget?.directory }}
       </p>
-      <!-- Two different losses, said differently. A saved command keeps its sources IN this folder
-           (src), so they go with it; a project someone builds keeps them elsewhere. -->
+      <!-- Two different losses, said differently. An extension AnalyseTool builds keeps its sources
+           IN this folder (src), so they go with it; a project someone builds keeps them elsewhere. -->
       <p v-if="removeTarget?.zone === 'dev' && removeTarget?.hostBuilt" class="text-red-600">
-        This is a saved command — its C# sources are in this folder and are deleted with it.
+        AnalyseTool builds this extension from C# sources in this folder — they are deleted with it.
       </p>
       <p
         v-else-if="removeTarget?.zone === 'dev' && removeTarget?.kind === 'dll'"

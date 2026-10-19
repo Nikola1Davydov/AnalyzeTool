@@ -377,8 +377,8 @@ export function createExtensionManager() {
     }
   }
 
-  // Where SaveAsCommand / SaveExtensionUi save when the caller names no folder — which is every call an
-  // AI makes over MCP, since "save this as a command" names an id, not a path. Only re-lists: nothing
+  // Where SaveExtensionUi saves when the caller names no folder — which is every call an AI makes over
+  // MCP, since "save this page" names an id, not a path. Only re-lists: nothing
   // that is already loaded moves, so there is no reason to reload extensions.
   async function useForSavedCommands(path: string) {
     pathsBusy.value = true;
@@ -386,7 +386,7 @@ export function createExtensionManager() {
       await invoke("SetAuthoringRoot", { path });
       await loadPaths();
     } catch (e) {
-      console.error("Failed to set the folder for saved commands", e);
+      console.error("Failed to set the folder AI-saved pages go to", e);
     } finally {
       pathsBusy.value = false;
     }

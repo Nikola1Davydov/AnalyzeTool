@@ -22,7 +22,7 @@ export interface ExtensionRow {
   binaryYears?: string[]; // Revit years this extension actually ships a build for
   zone: "managed" | "dev";
   kind: "dll" | "js"; // what it is made of, not what it does
-  hostBuilt?: boolean; // a command saved over MCP: AnalyseTool builds it from src\ in this folder
+  hostBuilt?: boolean; // AnalyseTool builds it from src\ in this folder (no .csproj)
   compileError?: string | null;
   directory: string;
   icon?: string | null; // data URI served by the backend
@@ -44,7 +44,7 @@ export interface PathRow {
   valid: boolean;
   reason: string;
   extensionCount: number;
-  isAuthoringRoot: boolean; // where saved commands go when no root is named
+  isAuthoringRoot: boolean; // where pages an AI saves go when no root is named
 }
 
 export interface CatalogRow {
@@ -115,7 +115,7 @@ export function buildState(row: ExtensionRow, hostRevit?: string): { label: stri
 export function kindInfo(row: ExtensionRow): { tip: string; icon: string } {
   if (row.hostBuilt)
     return {
-      tip: "Saved command — AnalyseTool builds it from the sources in its src folder.",
+      tip: "AnalyseTool builds it from the C# sources in its src folder.",
       icon: "pi pi-bolt",
     };
   if (row.kind === "dll")

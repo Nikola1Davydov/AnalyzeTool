@@ -7,8 +7,8 @@
  * whole point of this window: preferences live in Settings, extensions live here.
  *
  * One page, top to bottom by how often it is needed: packages (installed, then what the catalog
- * offers), what is your own, and — collapsed — the plumbing (which folders are scanned, where saved commands
- * land). A row says nothing while all is well: its status column only speaks about a problem or an
+ * offers), what is your own, and — collapsed — the plumbing (which folders are scanned, where pages your AI
+ * saves land). A row says nothing while all is well: its status column only speaks about a problem or an
  * update.
  */
 // The parts live in ./extensions: the state and actions in useExtensionManager (one instance per

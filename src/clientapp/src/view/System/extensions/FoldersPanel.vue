@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The folders that are scanned and the one saved commands go to — plumbing, collapsed.
+ * The folders that are scanned and the one AI-saved pages go to — plumbing, collapsed.
  */
 import { useExtensionManager } from "./useExtensionManager";
 
@@ -25,7 +25,7 @@ const {
     </template>
     <p class="text-xs text-surface-500 mb-3">
       Every extension found in these folders is loaded for this Revit version. The one tagged
-      <span class="font-medium">saved commands</span> is where commands your AI saves over MCP
+      <span class="font-medium">AI saves here</span> is where pages your AI saves over MCP
       go when no folder is named.
     </p>
     <div class="flex justify-end mb-2">
@@ -52,7 +52,7 @@ const {
             :severity="row.valid ? 'success' : 'warn'"
           />
           <Tag v-if="row.isDefault" value="default" severity="secondary" class="ml-1" />
-          <Tag v-if="row.isAuthoringRoot" value="saved commands" severity="info" class="ml-1" />
+          <Tag v-if="row.isAuthoringRoot" value="AI saves here" severity="info" class="ml-1" />
         </template>
       </Column>
       <Column header="" class="w-32">
