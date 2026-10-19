@@ -75,13 +75,10 @@ sealed partial class Build
             ProcessTasks.StartProcess("cmd", "/c npm run type-check", ClientAppDirectory).AssertZeroExitCode();
         });
 
-    /// <summary>
-    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
-    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
-    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
-    /// </summary>
     /// <summary>Runs the Revit-free tests. Before this target existed, "the two Test targets" checked
-    /// the SDK package and the extension template — not one line of platform code (#128).</summary>
+    /// the SDK package and the extension template — not one line of platform code (#128). Once per TFM:
+    /// R25 is net8, R27 is net10 with its own runtime and Revit API packages, and the MCP exe rolls
+    /// forward to whichever is installed.</summary>
     Target RunTests => _ => _
         .DependsOn(CheckBoundaries)
         .Executes(() =>
@@ -90,10 +87,16 @@ sealed partial class Build
             // and the old VSTest-style positional path is refused by the .NET 10 SDK. Plain invocation
             // rather than DotNetTest(), whose settings model is the VSTest one. No quotes by hand: the
             // argument handler quotes values with spaces itself (a repo path with a space taught us).
-            foreach (AbsolutePath project in TestProjects)
-                DotNet($"test --project {project} -c {"Debug R25"}", workingDirectory: RootDirectory);
+            foreach (string configuration in new[] { "Debug R25", "Debug R27" })
+                foreach (AbsolutePath project in TestProjects)
+                    DotNet($"test --project {project} -c {configuration}", workingDirectory: RootDirectory);
         });
 
+    /// <summary>
+    /// The full plugin chain for every supported Revit year. R25/R26 are net8 and R27 is net10, but
+    /// the years are not interchangeable within a TFM: each pins its own Revit API package set, so
+    /// R26 has to compile here too — covering only one year per TFM let R26-only breakage through.
+    /// </summary>
     Target CompileCi => _ => _
         .DependsOn(CheckBoundaries, CheckSchemas)
         .Executes(() =>
