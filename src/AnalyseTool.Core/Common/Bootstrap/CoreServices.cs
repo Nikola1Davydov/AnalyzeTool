@@ -48,17 +48,24 @@ namespace AnalyseTool.Core.Common.Bootstrap
         {
             if (!IsInitialized) return;
 
-            lock (ReloadGate)
+            try
             {
-                Log.Information("Reloading extensions");
-                Loader.UnloadAll();
-                Loader.LoadAll();
-                Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+                lock (ReloadGate)
+                {
+                    Log.Information("Reloading extensions");
+                    Loader.UnloadAll();
+                    Loader.LoadAll();
+                    Log.Information("Reload done — {CommandCount} commands registered", Queue.RegisteredCommands.Count);
+                }
             }
-
-            // Outside the lock: subscribers touch the ribbon (and hop to the Revit UI thread to do it),
-            // so holding the gate across them invites a deadlock for no benefit.
-            ExtensionsReloaded?.Invoke();
+            finally
+            {
+                // Raised even when loading threw: the old commands are unloaded by then, and a ribbon
+                // and a tool list that were never told would keep offering them.
+                // Outside the lock: subscribers touch the ribbon (and hop to the Revit UI thread to do it),
+                // so holding the gate across them invites a deadlock for no benefit.
+                ExtensionsReloaded?.Invoke();
+            }
         }
     }
 }

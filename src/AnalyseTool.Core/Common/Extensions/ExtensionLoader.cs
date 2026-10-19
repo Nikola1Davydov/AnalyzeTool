@@ -45,57 +45,64 @@ namespace AnalyseTool.Core.Common.Extensions
         {
             foreach (ExtensionDescriptor scanned in ExtensionCatalog.Scan(_revitVersion))
             {
-                // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
-                if (!ExtensionStateStore.IsEnabled(scanned.Manifest.Id)) continue;
-
-                ExtensionDiagnostics.Clear(scanned.Manifest.Id);
-
-                // Sources the host compiles are brought up to date first — which may migrate an old
-                // script folder and changes what the descriptor resolves to, so it is read again.
-                string? buildError = PrepareHostBuild(scanned, out ExtensionDescriptor descriptor);
-
-                // Nothing to load and a reason why (a script folder that could not be migrated, sources
-                // that never compiled): say so rather than skipping the extension in silence.
-                if (buildError is not null && !descriptor.HasDll)
-                {
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, buildError);
-                    Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, buildError);
-                    continue;
-                }
-
-                // Declared a DLL but ships no build for this Revit year: listed as incompatible,
-                // never loaded — surface WHY in diagnostics instead of failing on a missing file.
-                if (descriptor.DeclaresDll && !descriptor.HasDll)
-                {
-                    string error = $"No build for Revit {_revitVersion}: " +
-                        $"'{descriptor.Manifest.EntryAssembly}' not found in '{_revitVersion}\\' or the extension root.";
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
-                    Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
-                    continue;
-                }
-
-                if (!descriptor.HasCommands) continue; // JS-only extension, nothing to load here
-
+                // The WHOLE of one extension's load is guarded, preparation included: a locked year
+                // folder or an unreadable src\ used to throw out of PrepareHostBuild, abort the loop
+                // and leave every extension after it unloaded.
                 try
                 {
-                    LoadDllCommands(descriptor);
+                    LoadOne(scanned);
                 }
                 catch (Exception ex)
                 {
                     // No dialog from Core: the error is logged and lands in ExtensionDiagnostics,
                     // which the Settings extension listing surfaces to the user.
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id, ex.Message);
-                    Log.Error(ex, "Failed to load extension {Id}", descriptor.Manifest.Id);
-                    continue;
+                    ExtensionDiagnostics.SetError(scanned.Manifest.Id, ex.Message);
+                    Log.Error(ex, "Failed to load extension {Id}", scanned.Manifest.Id);
                 }
-
-                // The edit did not compile, but an earlier build did and is loaded: the commands keep
-                // working, and the error says why the change has not taken effect.
-                if (buildError is not null)
-                    ExtensionDiagnostics.SetError(descriptor.Manifest.Id,
-                        "The sources did not compile; the previous build is still in use." +
-                        Environment.NewLine + buildError);
             }
+        }
+
+        private void LoadOne(ExtensionDescriptor scanned)
+        {
+            // User-disabled (extensions-state.json): stays listed in Settings, loads nothing.
+            if (!ExtensionStateStore.IsEnabled(scanned.Manifest.Id)) return;
+
+            ExtensionDiagnostics.Clear(scanned.Manifest.Id);
+
+            // Sources the host compiles are brought up to date first — which may migrate an old
+            // script folder and changes what the descriptor resolves to, so it is read again.
+            string? buildError = PrepareHostBuild(scanned, out ExtensionDescriptor descriptor);
+
+            // Nothing to load and a reason why (a script folder that could not be migrated, sources
+            // that never compiled): say so rather than skipping the extension in silence.
+            if (buildError is not null && !descriptor.HasDll)
+            {
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id, buildError);
+                Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, buildError);
+                return;
+            }
+
+            // Declared a DLL but ships no build for this Revit year: listed as incompatible,
+            // never loaded — surface WHY in diagnostics instead of failing on a missing file.
+            if (descriptor.DeclaresDll && !descriptor.HasDll)
+            {
+                string error = $"No build for Revit {_revitVersion}: " +
+                    $"'{descriptor.Manifest.EntryAssembly}' not found in '{_revitVersion}\\' or the extension root.";
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id, error);
+                Log.Warning("Extension {Id}: {Error}", descriptor.Manifest.Id, error);
+                return;
+            }
+
+            if (!descriptor.HasCommands) return; // JS-only extension, nothing to load here
+
+            LoadDllCommands(descriptor);
+
+            // The edit did not compile, but an earlier build did and is loaded: the commands keep
+            // working, and the error says why the change has not taken effect.
+            if (buildError is not null)
+                ExtensionDiagnostics.SetError(descriptor.Manifest.Id,
+                    "The sources did not compile; the previous build is still in use." +
+                    Environment.NewLine + buildError);
         }
 
         /// <summary>

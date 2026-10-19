@@ -5,6 +5,7 @@
 - ✋ **Closing a window cancels the commands it started**, so a long one no longer keeps Revit busy for a window that is gone.
 - 🔌 **Saving Settings no longer interrupts a running agent command.** The MCP bridge restarts only when it is switched on or off or its port changes.
 - 🧾 **`GetJobResult` never reports a finished call without its result, and a reused call id is refused** instead of replacing a running call that could then no longer be cancelled.
+- 🧩 **One broken extension folder no longer stops the others from loading.** A locked or unreadable folder is reported for that extension alone.
 - 🧹 **The plugin no longer references the unused Blazor WebView package**, so its assemblies stop shipping with it.
 - 🔁 **An AI client that outlives a Revit restart re-reads the tool list**, so extensions changed in between show up without reconnecting.
 - 🏷️ **Rooms and other type-less elements are no longer reported as types**, and their parameters no longer show as type parameters in `GetCategoryParameters`.
