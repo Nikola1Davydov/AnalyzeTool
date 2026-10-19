@@ -194,10 +194,12 @@ namespace AnalyseTool.Mcp.Bridge
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Never let a connection fault crash Revit on a background thread. A caller that went
-                // away mid-command loses nothing: the job runs on and its outcome is stored (see Job).
+                // away mid-command loses nothing: the job runs on and its outcome is stored (JobStore).
+                // Debug, not higher: a client closing its end is the normal way a connection ends.
+                Log.Debug(ex, "MCP bridge: a connection ended with an error");
             }
         }
 

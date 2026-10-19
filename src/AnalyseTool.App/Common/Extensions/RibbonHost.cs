@@ -702,7 +702,7 @@ namespace AnalyseTool.App.Common.Extensions
             if (index >= 0 && index < items.Count && items[index] is PushButton button)
             {
                 try { button.Image = image; }
-                catch { /* icon is best-effort */ }
+                catch (Exception ex) { Log.Debug(ex, "Ribbon icon not set on {Button}", button.Name); } // icon is best-effort
             }
         }
 
@@ -727,7 +727,7 @@ namespace AnalyseTool.App.Common.Extensions
                     pushButton.LargeImage = resolved;
                 }
             }
-            catch { /* icon is best-effort */ }
+            catch (Exception ex) { Log.Debug(ex, "Ribbon icon not set on {Button}", name); } // icon is best-effort
 
             return pushButton;
         }
@@ -755,8 +755,10 @@ namespace AnalyseTool.App.Common.Extensions
             {
                 try
                 {
-                    string path = Path.Combine(descriptor.Directory, icon!); // icon lives beside plugin.json
-                    if (File.Exists(path))
+                    // The icon lives in the extension's folder — a path that leaves it is ignored, the
+                    // same rule the extension listing applies.
+                    string? path = ExtensionFolder.ResolveInside(descriptor.Directory, icon!);
+                    if (path is not null && File.Exists(path))
                     {
                         // OnLoad + Freeze: read the bytes NOW and release the file handle. The default
                         // (OnDemand) keeps the PNG locked for the button's lifetime, which would make
@@ -770,7 +772,11 @@ namespace AnalyseTool.App.Common.Extensions
                         return bitmap;
                     }
                 }
-                catch { /* fall through to the default */ }
+                catch (Exception ex)
+                {
+                    // Falls through to the default icon; the log says why the author's one is missing.
+                    Log.Warning(ex, "Extension {Id}: icon '{Icon}' could not be loaded", descriptor.Manifest.Id, icon);
+                }
             }
 
             string? firstName = descriptor.Manifest.Ui?.EffectiveButtons().FirstOrDefault()?.Name;

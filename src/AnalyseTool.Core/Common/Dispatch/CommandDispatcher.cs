@@ -147,7 +147,12 @@ namespace AnalyseTool.Core.Common.Dispatch
             {
                 if (type != null) return RelaxNullableRequired(AIJsonUtilities.CreateJsonSchema(type).GetRawText());
             }
-            catch { /* fall through to the empty-object schema */ }
+            catch (Exception ex)
+            {
+                // Published as an empty object, which tells a caller "no arguments" — wrong for a type
+                // that declares some. Said in the log, so an author can find out why.
+                Log.Warning(ex, "No JSON schema could be built for {Type}; it is published as an empty object", type?.FullName);
+            }
             return SchemaListing.EmptyObject;
         }
 

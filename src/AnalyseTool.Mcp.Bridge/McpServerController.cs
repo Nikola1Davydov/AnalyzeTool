@@ -48,7 +48,9 @@ namespace AnalyseTool.Mcp.Bridge
             if (!string.IsNullOrWhiteSpace(_settings.Token)) return;
 
             _settings.Token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
-            Save(_settings);
+            if (!Save(_settings))
+                Log.Error("MCP bridge token could not be saved: it lives in memory only, and an AI client " +
+                          "configured with it stops working when Revit restarts");
         }
 
         /// <summary>Applies a new on/off + port from the Settings page, persists it, and starts/stops live.</summary>
@@ -116,18 +118,29 @@ namespace AnalyseTool.Mcp.Bridge
                 if (File.Exists(SettingsFile))
                     return JsonConvert.DeserializeObject<McpSettings>(File.ReadAllText(SettingsFile)) ?? new();
             }
-            catch { /* fall through to defaults */ }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                // Defaults mean a NEW token, so every configured AI client stops authenticating — worth
+                // a line in the log for whoever wonders why.
+                Log.Warning(ex, "mcp.json could not be read; MCP settings fall back to defaults with a new token");
+            }
             return new();
         }
 
-        private static void Save(McpSettings settings)
+        /// <summary>Best-effort write; false when it failed (logged).</summary>
+        private static bool Save(McpSettings settings)
         {
             try
             {
                 Directory.CreateDirectory(PathProvider.ProfilePath);
                 File.WriteAllText(SettingsFile, JsonConvert.SerializeObject(settings, Formatting.Indented));
+                return true;
             }
-            catch { /* best-effort; non-fatal */ }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warning(ex, "mcp.json could not be written");
+                return false;
+            }
         }
 
         private sealed class McpSettings
