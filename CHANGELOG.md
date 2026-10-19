@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 🔢 **Element-id parameters accept ids above 2,147,483,647**, and integer values are read the same way in every Windows language.
 - 🧯 **A window that fails to start, or a malformed message from a page, no longer risks crashing Revit.** The error is logged and shown, and the window closes.
 - 🛑 **A write that Revit rolls back is reported as failed.** Setting parameters, isolating and adding shared parameters used to answer `ok` even when Revit rejected the change; now an error rolls the transaction back without a dialog, and the result says what Revit objected to.
 - 💥 **Revit 2025 no longer crashes in Manage Links after an AnalyseTool window was open (#138).** Revit 2025 draws Manage Links and a few other dialogs with an older CEF (Chromium) that registers the same Win32 window class, `Chrome_WidgetWin_0`, as a current WebView2 Runtime. Whoever came second lost: once an AnalyseTool window or the dock pane had started WebView2, opening Manage Links killed Revit in `libcef.dll` (Autodesk's known issue). Every WebView2 is now started with Microsoft's `--edge-webview-unique-window-class`, which gives WebView2's windows a class name of their own; environment creation lives in one place (`WebView2Runtime.CreateEnvironmentAsync`), since all windows share one profile folder and WebView2 refuses mismatched options on it.

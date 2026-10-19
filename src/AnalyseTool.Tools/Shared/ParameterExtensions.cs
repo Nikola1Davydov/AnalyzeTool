@@ -49,7 +49,7 @@ namespace AnalyseTool.Tools.Shared
                     parameter.Set(GetDoubleInternalValue(parameter, doubleValue));
                     break;
                 case StorageType.Integer:
-                    if (!int.TryParse(value, out int intValue))
+                    if (!TryParseInteger(value, out int intValue))
                         throw new ArgumentException($"Parameter '{paramName}': cannot convert '{value}' to Integer.");
                     parameter.Set(intValue);
                     break;
@@ -57,12 +57,22 @@ namespace AnalyseTool.Tools.Shared
                     parameter.Set(value);
                     break;
                 case StorageType.ElementId:
-                    if (!int.TryParse(value, out int elementIdValue))
+                    if (!TryParseElementId(value, out long elementIdValue))
                         throw new ArgumentException($"Parameter '{paramName}': cannot convert '{value}' to ElementId.");
                     parameter.Set(new ElementId(elementIdValue));
                     break;
             }
         }
+
+        /// <summary>Integer parameter text, read the same way on every machine (doubles above already
+        /// are): invariant culture, surrounding whitespace ignored.</summary>
+        internal static bool TryParseInteger(string value, out int result) =>
+            int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+
+        /// <summary>ElementId text. 64-bit: ids above int.MaxValue exist since Revit 2024 and were
+        /// rejected while this parsed an int.</summary>
+        internal static bool TryParseElementId(string value, out long result) =>
+            long.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
 
         private static string GetDoubleParameterValue(Parameter parameter)
         {
