@@ -4,6 +4,8 @@ export const paneCommands = {
   GetPaneButtons: "GetPaneButtons",
   RunButton: "RunButton",
   RefreshButtons: "RefreshButtons",
+  /** Turning an extension on or off: the command of the extensions, named here for the pane. */
+  SetFolderEnabled: "SetExtensionEnabled",
   GetPaneProfile: "GetPaneProfile",
   SavePaneProfile: "SavePaneProfile",
 } as const;

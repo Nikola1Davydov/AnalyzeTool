@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { bridge, CommandError } from "revit-bridge";
@@ -95,7 +96,7 @@ export function ActionsProvider({ children, onOpenPage }: { children: ReactNode;
   const activate = useCallback(
     (folder: PaneFolder, button: PaneButton) => {
       if (!folder.enabled) {
-        setSheet({ title: folder.name, body: <p className="small">This extension is turned off. Turn it on in Manage buttons.</p> });
+        setSheet({ title: folder.name, body: <TurnOn folder={folder} onDone={() => setSheet(null)} /> });
         return;
       }
       // An extension with compiler errors still runs its last good build: the problems stay one tap away on the folder
@@ -226,5 +227,34 @@ export function ProblemList({ problems }: { problems: string[] }) {
         </div>
       ))}
     </>
+  );
+}
+
+/** A tap on a button of a turned-off folder: say so, and turn the folder on right there. */
+function TurnOn({ folder, onDone }: { folder: PaneFolder; onDone: () => void }) {
+  const client = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="sheet-form">
+      <p className="small">
+        <b>{folder.name}</b> is turned off: its buttons and commands do not load (it was turned off by hand — maybe in AnalyseTool 1.x).
+      </p>
+      <button
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          void bridge
+            .invoke(paneCommands.SetFolderEnabled, { id: folder.id, enabled: true })
+            .then(() => client.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" }))
+            .then(onDone)
+            .catch((caught: unknown) => setError(messageOf(caught)))
+            .finally(() => setBusy(false));
+        }}
+      >
+        {busy ? "Turning on…" : "Turn it on"}
+      </button>
+      {error && <p className="error small">{error}</p>}
+    </div>
   );
 }

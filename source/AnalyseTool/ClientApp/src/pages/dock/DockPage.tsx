@@ -412,6 +412,7 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
   const edit = useContext(EditContext);
   const { profile, update } = useProfile();
   const sorted = ordered(overview.folders, (folder) => folder.id, profile.order.home);
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -436,6 +437,16 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               editBadge={
                 folder.builtIn
                   ? null
+                  : !folder.enabled
+                    ? {
+                        symbol: "+",
+                        title: "Turn the folder on — its buttons load again",
+                        onClick: () =>
+                          void bridge
+                            .invoke(extensionCommands.SetExtensionEnabled, { id: folder.id, enabled: true })
+                            .then(() => queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" }))
+                            .catch((error: unknown) => actions.toast(messageOf(error), "error")),
+                      }
                   : hidden
                     ? { symbol: "+", title: "Put its tab on the Revit ribbon", onClick: () => toggleIn(update, "hiddenFolders", folder.id) }
                     : { symbol: "−", title: "Take its tab off the Revit ribbon (it stays here)", onClick: () => toggleIn(update, "hiddenFolders", folder.id) }
