@@ -47,6 +47,7 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
     private Microsoft.Web.WebView2.Wpf.WebView2? _webView;
     private WebViewTransport? _transport;
     private string _route;
+    private ExternalPage? _page;
     private bool _initializing;
 
     internal WebViewHost(WebViewServices services, string route)
@@ -55,6 +56,14 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
         _route = route;
         Loaded += (_, _) => _ = InitializeAsync();
     }
+
+    internal WebViewHost(WebViewServices services, ExternalPage page) : this(services, page.Key)
+    {
+        _page = page;
+    }
+
+    /// <summary>Gets the external page the host shows, or <see langword="null" /> for a route of ClientApp.</summary>
+    public ExternalPage? Page => _page;
 
     /// <summary>Gets the route the host shows, for example <c>/families</c>.</summary>
     public string Route => _route;
@@ -99,11 +108,19 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
 
             Configure(webView.CoreWebView2);
             _transport = new WebViewTransport(webView.CoreWebView2, Dispatcher, _services.Executor,
-                _services.Security.RestrictNavigation ? _services.Source : null, _services.SerializerOptions.Value, _services.Logger);
+                // An external page is held to its own origin by the navigation guard; ClientApp by its source
+                _services.Security.RestrictNavigation && _page is null ? _services.Source : null, _services.SerializerOptions.Value, _services.Logger);
             _transport.Attach();
             _webView = webView;
 
-            webView.CoreWebView2.Navigate(_services.Source.GetUrl(_route));
+            if (_page is not null)
+            {
+                await ShowPageAsync(webView.CoreWebView2, _page);
+            }
+            else
+            {
+                webView.CoreWebView2.Navigate(_services.Source.GetUrl(_route));
+            }
         }
         catch (Exception exception)
         {
@@ -114,6 +131,21 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
         {
             _initializing = false;
         }
+    }
+
+    private static async Task ShowPageAsync(CoreWebView2 core, ExternalPage page)
+    {
+        if (page.HostName is not null && page.Folder is not null)
+        {
+            core.SetVirtualHostNameToFolderMapping(page.HostName, page.Folder, CoreWebView2HostResourceAccessKind.Allow);
+        }
+
+        if (page.InitScript is not null)
+        {
+            await core.AddScriptToExecuteOnDocumentCreatedAsync(page.InitScript);
+        }
+
+        core.Navigate(page.Url);
     }
 
     private void Configure(CoreWebView2 core)
@@ -153,7 +185,7 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
     {
         core.NavigationStarting += (_, args) =>
         {
-            if (_services.Source.IsOwn(args.Uri))
+            if (_page is null ? _services.Source.IsOwn(args.Uri) : IsPageOrigin(_page, args.Uri))
             {
                 return;
             }
@@ -167,6 +199,13 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
             args.Handled = true;
             OpenInBrowser(args.Uri);
         };
+    }
+
+    private static bool IsPageOrigin(ExternalPage page, string uri)
+    {
+        return Uri.TryCreate(uri, UriKind.Absolute, out var target)
+               && Uri.TryCreate(page.Url, UriKind.Absolute, out var own)
+               && string.Equals(target.GetLeftPart(UriPartial.Authority), own.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenInBrowser(string uri)

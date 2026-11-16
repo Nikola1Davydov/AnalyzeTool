@@ -3,6 +3,8 @@
   <Import Project="build\AnalyseTool.Extension.props" />
 
   <PropertyGroup>
+    <!-- The configurations of the AnalyseTool solution; the props keep the spaced names for extension authors -->
+    <Configurations>Debug.R25;Debug.R26;Debug.R27;Release.R25;Release.R26;Release.R27</Configurations>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

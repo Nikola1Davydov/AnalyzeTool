@@ -3,6 +3,7 @@ using System.Reflection;
 using Autodesk.Revit.UI;
 using AnalyseTool.Extensions;
 using AnalyseTool.Infrastructure;
+using AnalyseTool.Infrastructure.Extensions;
 using AnalyseTool.Services.Documents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -60,16 +61,18 @@ public static partial class Host
             .UseCommandLogging()
             .Use<DocumentCheckMiddleware>());
 
-        //AnalyseTool.Hosting.WebView: windows and the dock pane with the ClientApp pages
+        //AnalyseTool.Hosting.WebView: windows and the dock pane with the ClientApp pages. Navigation stays restricted: only our
+        //pages and the pages of extensions (each held to its own origin) may call commands
         builder.AddWebView(application, webView => webView
-            .DockPane(new Guid("6DFB18B8-31A9-4DC5-8FAE-6BE296CBA6AD"), "AnalyseTool", "/dock")
-            .AllowAnyNavigation());
+            .DockPane(new Guid("6DFB18B8-31A9-4DC5-8FAE-6BE296CBA6AD"), "AnalyseTool", "/dock"));
 
         //AnalyseTool.Hosting.Mcp: AI clients call the commands marked with [McpTool]; on in Debug, Mcp:Enabled otherwise
         builder.AddMcp(application, basePort: 48076);
 
         //AnalyseTool.Extensions: the user's buttons — C# sources compiled in Revit (or DLLs), each folder with its own git history
         builder.AddExtensions(application.ControlledApplication.VersionNumber);
+        builder.Services.AddSingleton<ExtensionButtonRunner>();
+        builder.Services.AddSingleton<ExtensionRibbon>();
 
         //AnalyseTool.Hosting.Visualization: geometry drawn over the views (ShowGeometry), nothing added to the model
         builder.AddVisualization();

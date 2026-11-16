@@ -20,6 +20,8 @@
         <PackageReference Include="Nice3point.Revit.Extensions"/>
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
         <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+        <!-- The ribbon buttons of extensions come and go at run time: only AdWindows can do that -->
+        <PackageReference Include="Nice3point.Revit.Api.AdWindows"/>
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
         <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
         <PackageReference Include="Polyfill" PrivateAssets="all"/>
@@ -33,6 +35,8 @@
     <ItemGroup>
         <!-- Embedded, not WPF resources: pack URIs resolve assemblies by name and could load a second copy outside the isolated context -->
         <EmbeddedResource Include="Resources\Icons\*.png"/>
+        <!-- The About page shows it -->
+        <None Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
     <ItemGroup>

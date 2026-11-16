@@ -32,9 +32,7 @@
     <Project Path="source/AnalyseTool.Hosting.Scripting/AnalyseTool.Hosting.Scripting.csproj" />
     <Project Path="source/AnalyseTool.Hosting.Visualization/AnalyseTool.Hosting.Visualization.csproj" />
     <Project Path="source/AnalyseTool.Hosting.WebView/AnalyseTool.Hosting.WebView.csproj" />
-    <Project Path="source/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj">
-      <BuildType Project="&#xD;&#xA;            Debug R25" />
-    </Project>
+    <Project Path="source/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/AnalyseTool.Hosting.Tests/AnalyseTool.Hosting.Tests.csproj" />

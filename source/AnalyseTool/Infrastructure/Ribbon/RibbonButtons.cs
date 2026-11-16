@@ -52,6 +52,19 @@ public static class RibbonButtons
     /// <param name="button">The button.</param>
     /// <returns>The same button, for chaining.</returns>
     /// <exception cref="InvalidOperationException">The Launcher has no proxy for <typeparamref name="TAvailability" />.</exception>
+    /// <summary>
+    ///     Describes a button without adding it, for <c>AddStackedItems</c>: small buttons in a column of three. The class
+    ///     points to the Launcher's proxy, as <see cref="AddButton{TCommand}" /> does.
+    /// </summary>
+    public static PushButtonData CreateButtonData<TCommand>(string text) where TCommand : IExternalCommand, new()
+    {
+        var command = typeof(TCommand);
+        var launcher = LauncherInfo.Current;
+        return launcher is null
+            ? new PushButtonData(command.FullName, text, command.Assembly.Location, command.FullName)
+            : new PushButtonData(command.FullName, text, launcher.Path, launcher.GetProxyName(command, CommandProxyBase));
+    }
+
     public static PushButton SetAvailability<TAvailability>(this PushButton button) where TAvailability : IExternalCommandAvailability, new()
     {
         var launcher = LauncherInfo.Current;

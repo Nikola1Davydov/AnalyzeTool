@@ -37,9 +37,29 @@ internal sealed class DockPaneContent : ContentControl
         Dispatcher.InvokeAsync(EnsureHost);
     }
 
+    /// <summary>Replaces the WebView with one that shows an external page; <see cref="Navigate" /> brings ClientApp back.</summary>
+    public void Show(ExternalPage page)
+    {
+        if (_services is null)
+        {
+            return;
+        }
+
+        (Content as WebViewHost)?.Dispose();
+        Content = new WebViewHost(_services, page);
+    }
+
     public void Navigate(string route)
     {
         _route = route;
+        if (Content is WebViewHost { Page: not null } external)
+        {
+            external.Dispose();
+            Content = null;
+            EnsureHost();
+            return;
+        }
+
         if (Content is WebViewHost host)
         {
             host.Navigate(route);

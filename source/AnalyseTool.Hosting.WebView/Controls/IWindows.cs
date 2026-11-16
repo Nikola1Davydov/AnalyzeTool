@@ -22,6 +22,14 @@ public interface IWindows
     /// <summary>Shows the dock pane with the route.</summary>
     /// <exception cref="InvalidOperationException">No dock pane was registered with <c>AddWebView(…, w =&gt; w.DockPane(…))</c>.</exception>
     void ShowDockPane(string route);
+
+    /// <summary>Opens a page that is not a route of ClientApp in a window, one window per <see cref="ExternalPage.Key" />.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="configure">The title and size of the window.</param>
+    void OpenPage(ExternalPage page, Action<WebViewWindowOptions>? configure = null);
+
+    /// <summary>Shows a page that is not a route of ClientApp in the dock pane.</summary>
+    void ShowDockPane(ExternalPage page);
 }
 
 /// <summary>One window per route: showing an open route brings its window to the front instead of opening a second one.</summary>
@@ -57,6 +65,39 @@ internal sealed class WindowManager(
     }
 
     /// <inheritdoc />
+    public void OpenPage(ExternalPage page, Action<WebViewWindowOptions>? configure = null)
+    {
+        var key = "page:" + page.Key;
+        if (_windows.TryGetValue(key, out var open))
+        {
+            if (open.WindowState == WindowState.Minimized)
+            {
+                open.WindowState = WindowState.Normal;
+            }
+
+            open.Activate();
+            return;
+        }
+
+        var options = new WebViewWindowOptions();
+        configure?.Invoke(options);
+        var window = new WebViewWindow(new WebViewHost(services, page), options, environment.ApplicationName, application.MainWindowHandle);
+        window.Closed += (_, _) => _windows.Remove(key);
+        _windows[key] = window;
+        window.Show();
+    }
+
+    public void ShowDockPane(ExternalPage page)
+    {
+        if (dockPane is null)
+        {
+            throw new InvalidOperationException("No dock pane is registered: add it with builder.AddWebView(application, w => w.DockPane(id, title, route)).");
+        }
+
+        dockPane.Show(page);
+        RevitContext.UiApplication.GetDockablePane(dockPane.Id).Show();
+    }
+
     public void ShowDockPane(string route)
     {
         if (dockPane is null)
