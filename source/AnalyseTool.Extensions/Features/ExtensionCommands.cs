@@ -172,6 +172,22 @@ public sealed class RemoveExtension(ExtensionManager manager) : ICommand<Extensi
     }
 }
 
+/// <summary>Input of <see cref="InstallExtensionPackage" />.</summary>
+public sealed record InstallExtensionPackageRequest(
+    [property: Description("The full path of the .zip package.")] string Path,
+    [property: Description("Replace an installed version.")] bool Overwrite = false);
+
+/// <summary>Installs an extension package (.zip). Not for AI clients: it installs code.</summary>
+[Command(Description = "Installs an extension package (.zip with plugin.json) into extensions-dist; an update keeps the history of the folder, so the previous version can be restored.")]
+public sealed class InstallExtensionPackage(ExtensionManager manager) : ICommand<InstallExtensionPackageRequest, PackageInstallResult>
+{
+    /// <inheritdoc />
+    public Task<PackageInstallResult> ExecuteAsync(InstallExtensionPackageRequest request, CommandContext context)
+    {
+        return manager.InstallPackageAsync(request.Path, request.Overwrite, context.CancellationToken);
+    }
+}
+
 /// <summary>The result of <see cref="BuildExtension" />.</summary>
 /// <param name="Success">The sources compile.</param>
 /// <param name="Diagnostics">The errors and warnings.</param>

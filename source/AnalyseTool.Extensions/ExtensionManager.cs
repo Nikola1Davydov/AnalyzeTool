@@ -219,6 +219,95 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Installs a zip package into <c>extensions-dist\&lt;id&gt;</c>. An installed version is replaced atomically (extract
+    ///     aside, swap, roll back on failure), and every install is saved as a version of the folder: the history of the
+    ///     package's updates, and a way back to the previous one.
+    /// </summary>
+    public async Task<PackageInstallResult> InstallPackageAsync(string zipPath, bool overwrite, CancellationToken cancellationToken)
+    {
+        var info = Packages.ExtensionPackage.Validate(zipPath);
+        var id = info.Manifest.Id;
+        var existing = host.GetState(id);
+        var twin = catalog.Scan().FirstOrDefault(descriptor => string.Equals(descriptor.Id, id, StringComparison.OrdinalIgnoreCase) && descriptor.Zone == ExtensionZone.Dev);
+        if (twin is not null)
+        {
+            throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"'{id}' exists as your own extension in {twin.Directory}: remove or rename it first — one id exists once.");
+        }
+
+        var target = Path.Combine(paths.ManagedRoot, id);
+        var exists = Directory.Exists(target);
+        if (exists && !overwrite)
+        {
+            return new PackageInstallResult(id, info.Manifest.Version, target, Replaced: false, AlreadyInstalled: true, existing is null ? null : Features.ExtensionSummary.From(existing));
+        }
+
+        var staging = target + ".installing";
+        var backup = target + ".old";
+        DeleteDirectory(staging);
+        DeleteDirectory(backup);
+        await host.UnloadAsync(id).ConfigureAwait(false);
+        try
+        {
+            Packages.ExtensionPackage.ExtractTo(zipPath, info, staging);
+            // The history stays with the folder: an update is the next version of the same package
+            if (exists && Directory.Exists(Path.Combine(target, ".git")))
+            {
+                CopyDirectory(Path.Combine(target, ".git"), Path.Combine(staging, ".git"));
+            }
+
+            if (exists)
+            {
+                Directory.Move(target, backup);
+            }
+
+            try
+            {
+                Directory.Move(staging, target);
+            }
+            catch
+            {
+                if (exists && !Directory.Exists(target))
+                {
+                    Directory.Move(backup, target);
+                }
+
+                throw;
+            }
+
+            DeleteDirectory(backup);
+        }
+        finally
+        {
+            DeleteDirectory(staging);
+        }
+
+        if (history.IsAvailable)
+        {
+            var descriptor = catalog.Read(target, ExtensionZone.Managed);
+            history.SaveVersion(target, Author, $"Installed {info.Manifest.Version} from {Path.GetFileName(zipPath)}", descriptor is null ? ExtensionScaffold.DllIgnore : IgnoreFor(descriptor));
+        }
+
+        await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
+        var state = host.GetState(id);
+        return new PackageInstallResult(id, info.Manifest.Version, target, exists, false, state is null ? null : Features.ExtensionSummary.From(state));
+    }
+
+    private static void DeleteDirectory(string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        {
+            File.SetAttributes(file, FileAttributes.Normal);
+        }
+
+        Directory.Delete(directory, true);
+    }
+
     /// <summary>A path inside the extension folder, never outside it nor into <c>.git</c>.</summary>
     private string Resolve(string id, string path)
     {
@@ -258,6 +347,15 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         }
     }
 }
+
+/// <summary>The result of installing a package.</summary>
+/// <param name="Id">The id of the extension.</param>
+/// <param name="Version">The version in the package.</param>
+/// <param name="Directory">Where it is installed.</param>
+/// <param name="Replaced">An installed version was replaced.</param>
+/// <param name="AlreadyInstalled">It was installed already and <c>overwrite</c> was not asked for: nothing changed.</param>
+/// <param name="Extension">The extension as loaded now.</param>
+public sealed record PackageInstallResult(string Id, string Version, string Directory, bool Replaced, bool AlreadyInstalled, Features.ExtensionSummary? Extension);
 
 /// <summary>A file of an extension.</summary>
 /// <param name="Path">Relative to the extension folder, with <c>/</c>.</param>
