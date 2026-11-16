@@ -6,8 +6,9 @@
 > generate a correct extension in one shot.
 
 You are helping write **extensions for AnalyseTool**, a Revit 2025/2026/2027 add-in. Extensions add
-functionality **without rebuilding the host** — the user drops a folder into their extensions
-directory and clicks **Reload**.
+functionality **without rebuilding the host**: an extension is a folder of C# sources (and, if it wants,
+an HTML page) that AnalyseTool compiles inside Revit. Saving a file reloads the extension by itself; every
+folder has its own version history (git) that the user controls from the AnalyseTool window.
 
 ---
 
@@ -15,18 +16,18 @@ directory and clicks **Reload**.
 
 | Kind | Ships | Role | Use it |
 | --- | --- | --- | --- |
-| **C# command** | a `.dll` of `IRevitTask` classes | **ADDS** commands | **always — this is the default** |
+| **C# sources** | `.cs` files in `src\` that AnalyseTool compiles (§5) | **ADDS** commands | **always — this is the default** |
 | **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | when the extension needs a page |
-| **Host-built** | `.cs` sources in `src\` the HOST compiles into the extension's `.dll` | ADDS commands | when there is no .NET SDK to build a project (§5) |
+| **C# project** | a `.dll` per Revit year the author builds (§4) | ADDS commands | for NuGet packages, closed source, or XAML/resources |
 
-**The principle:** C# extensions *add* commands to a shared dispatcher; JS pages *consume* them.
+**The principle:** C# extensions *add* commands to a shared pipeline; JS pages *consume* them.
 One folder can be C#-only, UI-only, or both.
 
-> **Every command extension is a DLL.** Either the author builds it (a C# project, §4) or the host
-> builds it from sources in the extension's `src\` folder (§5) — there is no third kind, and nothing compiles
-> loose `.cs` at load any more. For an extension a person will install and maintain, generate the C#
-> project: a build error is then something you can see and fix, and the per-year folders say which
-> Revit versions it supports.
+> **Sources are the default since AnalyseTool 2.0.** «New button» in Revit (or `CreateExtension` over MCP)
+> creates `src\<Name>.cs` and `"build": "host"` in `plugin.json`; AnalyseTool compiles it with its own Roslyn,
+> against the running Revit's API — no .NET SDK, no project, no DLL in the folder. The diff of a version is then
+> real code, one source serves every Revit year, and a saved edit runs a moment later. Ship a DLL only for what
+> sources cannot do: NuGet packages, closed code, XAML/resources.
 
 ---
 
@@ -328,36 +329,34 @@ per year you ship.
 
 ---
 
-## 5. Host-built — the host builds the DLL (no project)
-
-An extension folder with C# sources in `src\` and no `.csproj` is compiled by the host when it loads.
-Write the sources, then **Reload** (or `ReloadExtensions` over MCP); the host does what a build would do:
+## 5. C# sources — AnalyseTool builds them (the default)
 
 ```
 <id>\
-    plugin.json            the id and the button; entryAssembly "<id>.dll" is added if missing
-    src\Command.cs         the sources — every .cs here compiles into ONE assembly
-    2025\<id>.dll          compiled by AnalyseTool's own Roslyn for the running Revit year
+    plugin.json            id, buttons, "build": "host"
+    src\CountWalls.cs      the sources — every .cs under src\ compiles into ONE assembly
+    lib\*.dll              optional: further assemblies the sources reference
+    .editor\<id>.csproj    optional, git-ignored: IntelliSense for VS / VS Code / Rider only
+    bin\2025\<id>.<hash>.dll   the build, written by AnalyseTool (git-ignored)
 ```
 
-- **No .NET SDK, no NuGet, no build step** on the user's machine. The compiler is a library inside
-  the plugin, and the references are the Revit API, `AnalyseTool.Sdk` and `Newtonsoft.Json` the
-  running Revit already loaded. The price: only what those assemblies offer — no NuGet packages of
-  your own, no XAML/resources. Need those? Generate the project from §4.
-- **One Revit year per build.** The DLL is compiled against the running year's API (net8 for
-  2025/2026, net10 for 2027). When another Revit version loads the folder, or a file in `src\` is
-  newer than the build, the host compiles again on load — so a hand edit takes effect on Reload. A
-  compile error keeps the previous build loaded and shows up in `GetExtensionDiagnostics`.
-- **A `.csproj` anywhere in the folder means the author owns the build** — the host never compiles
-  such a folder.
+- **No .NET SDK, no NuGet, no build step.** References: the Revit API of the running Revit,
+  `AnalyseTool.Sdk`, `Newtonsoft.Json`, the .NET framework and `lib\*.dll`. The implicit usings of an
+  SDK-style project (`System`, `System.Linq`, `System.Collections.Generic`, `System.IO`, `System.Threading.Tasks`…)
+  are on.
+- **Save = reload.** AnalyseTool watches the folder: a saved `.cs` (or `plugin.json`) is compiled and the
+  commands replaced a moment later — the button runs the new code. The build is cached by a hash of the
+  sources, so a start of Revit with unchanged code compiles nothing.
+- **A compile error keeps the last good build running** and is reported with file, line and column
+  (the extension page in AnalyseTool, `BuildExtension` / `GetExtensions` over MCP).
+- **`"build": "host"`** in `plugin.json` makes the folder a source extension even with a `.csproj` beside it
+  (the `.editor` project). Without the field the rule of 1.x applies: sources and no `.csproj` → host-built.
 
 Two forms are accepted:
 
-**Body form** (only when `src\` holds a single file) — just statements; `uiapp` / `uidoc` / `doc` are in scope, `return` any object.
-`System`, `System.Linq`, `System.Collections.Generic`, `Autodesk.Revit.DB` and `Autodesk.Revit.UI`
-are already imported; `using` directives you put on the FIRST lines of the body (before any
-statement) are lifted above the class — `using System.Text;` or `using static System.Math;` work.
-Unqualified `Min(a, b)` is LINQ's, not `Math.Min` — write `Math.Min` or add the static using:
+**Body form** (only when `src\` holds a single file without any type declaration) — just statements;
+`uiapp` / `uidoc` / `doc` are in scope, `return` any object. `Autodesk.Revit.DB`, `Autodesk.Revit.UI` and the
+implicit usings are imported; `using` directives on the FIRST lines are lifted above the class.
 ```csharp
 var walls = new FilteredElementCollector(doc)
     .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().GetElementCount();
@@ -366,11 +365,7 @@ return new { walls };
 It is wrapped into a class named `Script`, so the command is `<id>.Script`.
 
 **Class form** — one or more full `IRevitTask` classes (as in §2), for your own command names,
-`InputType`/`OutputType` and metadata. Prefer it.
-
-> Commands saved over MCP with the former `SaveAsCommand` are host-built folders like this one and
-> keep loading. Folders older still kept loose `.cs` next to `plugin.json`; the host moves them into
-> `src\` on the first load and builds them; command names stay the same.
+`InputType`/`OutputType` and metadata. Prefer it; it is what «New button» creates.
 
 ---
 
@@ -382,11 +377,11 @@ The host opens your `index.html` in a WebView and injects `window.AT`. Any frame
 // Call any registered command (built-in or from any extension). Returns a Promise.
 const res = await window.AT.invoke("acme.doors.CountDoors", /* optional payload */ {});
 
-// Discover what you can call (name, source, description, payload schema, flags):
-const { commands } = await window.AT.invoke("GetCommands");
+// Discover the extensions and their commands (ids, descriptions, load errors):
+const { extensions } = await window.AT.invoke("GetExtensions");
 ```
 - `invoke` is id-correlated, so concurrent calls are fine; it **resolves** with the result and
-  **rejects** with the error message.
+  **rejects** with an `Error` whose `message` says why and whose `code` is the error code (`not_found`, `failed`, …).
 - Built with a framework: set Vite `base: "./"` (relative assets) and ship `dist` next to `plugin.json`.
 
 ### Your page is a separate application
@@ -410,24 +405,26 @@ page sees only `window.AT`.
 
 ---
 
-## 7. Deploy & reload
+## 7. Folders, reload and versions
 
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions\<id>\
+%LOCALAPPDATA%\AnalyseTool\extensions\<id>\       your own extensions (or any folder added in Settings)
+%LOCALAPPDATA%\AnalyseTool\extensions-dist\<id>\  installed packages (.zip)
     plugin.json
-    2025\<YourExt>.dll   (C# — one folder per Revit year)
-    src\*.cs             (sources without a project — the host builds them, §5)
+    src\*.cs             (sources — AnalyseTool builds them, §5)
+    2025\<YourExt>.dll   (or a DLL per Revit year, §4)
     index.html           (UI)
-    icon.png             (optional)
+    .git\                (the extension's own version history)
 ```
-- The extension folder sits DIRECTLY under a source root — the Revit year is a subfolder INSIDE it,
-  never above it. This is the same layout a published package has, so the folder you develop in is
-  the one you zip, and builds for several Revit years sit side by side.
-- The host picks the running year's build and falls back to a DLL in the folder root, so a hand-made
-  single-year extension works without year folders. UI is version-independent and always lives
-  in the root.
-- Changed code/manifest → **Reload** on the ribbon. No restart.
-- A brand-new ribbon button needs a **Revit restart** the first time.
+- The extension folder sits DIRECTLY under a root — a Revit year is a subfolder INSIDE it, never above it.
+- **No Reload needed:** a changed file reloads its extension, and ribbon buttons appear, change and disappear
+  without restarting Revit.
+- **Versions.** Each extension folder is a git repository. The user saves a version with a message, sees the
+  history and the diff, restores a version (or one file — unsaved work is saved as a version first, so nothing
+  is lost) and can **pin** a source extension to a version: the button runs that version's code whatever the
+  files say. Over MCP: `SaveExtensionVersion`, `GetExtensionVersions`, `GetExtensionDiff`,
+  `RestoreExtensionVersion`, `PinExtensionVersion`. Do not run git yourself in the folder unless asked; never
+  commit `bin\` or `.editor\`.
 
 ### 7.0 Migrating an extension from the OLD layout
 
@@ -538,86 +535,34 @@ then refuses to guess which one is the package.
 
 ### 7.2 Doing all of this yourself (over MCP)
 
-Everything above assumes a person copies files and clicks Reload. If you are connected over MCP you
-can run the whole loop, because the host exposes it as commands.
+Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as tools:
 
-**Gate first.** All of this requires **C# code execution** to be ON in AnalyseTool Settings. While it
-is off these tools are not merely refused — they are not in `tools/list` at all, so if you cannot see
-them, ask the user to turn the setting on. Only a person can: the command that flips it is hidden
-from MCP on purpose, so you cannot grant yourself code execution.
-
-The loop, and what each step answers:
-
-| Step | Command | What comes back |
+| Step | Tool | What comes back |
 | --- | --- | --- |
-| Learn the rules | `GetAuthoringGuide` | This document. Call it first — it is not otherwise reachable over MCP, and everything below assumes it. |
-| Try it | `ExecuteRevitCode { code, description? }` | The snippet's own return value. Nothing is persisted. On a compile failure, `{ error, diagnostics }` — read the diagnostics and fix the code; no human relays them. |
-| Give it a form | `SaveExtensionUi { id, name, files, … }` | `{ ok, id, directory, entryHtml, files, error }` |
-| Tidy the ribbon | `UpdateExtensionManifest { id, name?, tab?, panel?, removeButton? }` | The rewritten manifest |
-| Find out why | `GetExtensionDiagnostics` | Per extension: `kind`, `zone`, `enabled`, `compatible`, `error` if it failed to compile or load, and `shadowedBy` when another folder claimed the same id first |
-| Apply | `ReloadExtensions` | Only needed for changes made another way — `SaveExtensionUi` reloads by itself |
+| Learn the rules | `GetAuthoringGuide` | This document. |
+| See what exists | `GetExtensions` | Every extension: id, folder, kind (`Source`/`Dll`/`Page`), commands, load errors, compiler diagnostics, pinned version. |
+| Start a button | `CreateExtension { name, description?, template?, panel? }` | The new extension with its folder; `src\<Name>.cs` compiles, the first version is saved, the ribbon button is there. |
+| Read / write code | `ListExtensionFiles`, `ReadExtensionFile`, `WriteExtensionFile { id, path, content }` | Writing reloads at once; the answer carries the compiler diagnostics. |
+| Check it | `BuildExtension { id }` | `success` and diagnostics with file/line/column. |
+| Try it | the command itself (`<id>.<Command>`), or `ExecuteCode` for a throwaway snippet | Its result. |
+| Keep it | `SaveExtensionVersion { id, message }` | The new version (null when nothing changed). |
+| History | `GetExtensionVersions`, `GetExtensionDiff { id, from?, to? }`, `RestoreExtensionVersion`, `PinExtensionVersion` | Versions, diffs, restore and pin. |
 
-**There is no command that saves C# over MCP.** `ExecuteRevitCode` is for trying things out. Code
-worth keeping becomes an extension: generate the C# project (§4) for the user to build, or — if you
-can write files in the extensions folder — put the sources in `src\` (§5) and call `ReloadExtensions`.
-Overwrite only replaces a folder these commands created (`plugin.json`, page files, `src\*.cs`, the
-host's own `<year>\<id>.dll` — nothing else); anything else, a `.csproj` above all, is refused, so you
-cannot flatten someone's hand-built extension by picking its id.
-
-**A save for an existing id goes to that extension's OWN folder** — leave `targetRoot` empty and it
-resolves there, wherever it is. This matters most for a command that did not come from this machine:
-a team keeps its commands in a shared folder, everyone adds it as a source, and fixing one has to fix
-THAT copy. Naming a different root instead leaves the broken original where the team can see it and
-adds a second folder with the same id, one of which then silently wins.
-
-So when the result's `directory` is not the user's own folder, **say so**: a fix in a shared folder is
-everyone's fix, and that is their call to make, not yours.
-
-**A command WITH a form**: save the page under the SAME `id` as the extension that holds the command —
-`SaveExtensionUi { id: "niko.sheets", files: [{ name: "index.html", content: … }] }` — and the page
-calls it with `AT.invoke("niko.sheets.CreateSheets", { … })`. `GetCommands` lists the exact names.
-
-**The ribbon button follows one rule: if the extension has a page, the button OPENS the page;
-if it has none, the button RUNS the command.** So adding a page makes the button open the form — the
-host decides by whether `ui.button.command` is set, and adding a page clears it. `SaveExtensionUi`
-MERGES into the existing `plugin.json` rather than replacing it, so the command side and any vendor
-metadata already there stay.
-
-Files are written flat into the extension folder, so `SaveExtensionUi` takes hand-authored
-HTML/CSS/JS — plain `window.AT.invoke` as in §6, no build step. A framework project with an
-`assets/` tree is not this: that is a folder a person builds and installs.
-
-**One extension, many commands — do this by default.** Each extension gets at most ONE ribbon button
-(the host keys them by extension id), so ten commands in ten extensions put ten buttons on the
-ribbon. One DLL — a project's, or every `.cs` in `src\` — holds as many commands as you like, and they
-share the extension's id: `niko.sheets.CreateSheets`, `niko.sheets.RenumberSheets`, and so on.
-`UpdateExtensionManifest { id, removeButton: true }` takes an extension off the ribbon entirely
-without touching its code, for a ribbon that has already collected too much.
-
-`overwrite` is asked of the FILE, not the folder: `SaveExtensionUi` refuses to replace a file that is
-already there unless you pass it.
-
-**A command with no button is still a command.** It is callable from MCP and from any page via
-`AT.invoke` — but a person in Revit can only reach it through a ribbon button or a page. So decide by
-who runs it: commands an agent or a page calls need no button; a command a PERSON runs needs either
-its own button (no arguments — the click runs it and shows the result) or a page that collects its
-input and calls it. A ribbon click has no arguments to give, so **a command that takes input belongs
-behind a page**, not behind a bare button.
-
-**Where saves land is also the user's call.** With no `targetRoot`, `SaveExtensionUi` writes into
-the folder chosen in Extensions → Folders scanned (tagged `AI saves here`), which is the built-in dev
-root until the user picks another. Leave `targetRoot` empty unless the user names a folder — passing
-the default explicitly overrides a choice they made on purpose.
-
-**A brand-new ribbon button needs one Revit restart** to appear, as in §7. The page and the commands
-are reachable immediately after the reload — you do not have to wait to test them.
+- **One extension, many commands — do this by default.** One folder holds as many `IRevitTask` classes as
+  you like; they share the id: `niko.sheets.CreateSheets`, `niko.sheets.RenumberSheets`.
+- **A command that takes input belongs behind a page.** A ribbon click has no arguments: give such a command
+  a page (`template: CommandWithPage`) that collects the input and calls it with `AT.invoke`.
+- **Shared folders are shared.** When an extension's folder is not the user's own (a network folder added in
+  Settings), say so before changing it: a fix there is everyone's fix.
+- Save a version after a change that works, with a message that says what changed — that is what the user
+  will scroll through when something breaks.
 
 ---
 
 ## 8. Rules — ALWAYS / NEVER
 
-- **ALWAYS** generate a C# project (`.dll`) for an extension a person will install. Host-built
-  sources (§5) are for a machine without a .NET SDK.
+- **ALWAYS** write C# sources in `src\` (§5) unless the extension needs NuGet packages, closed code or
+  XAML/resources — then a C# project (§4).
 - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
@@ -653,11 +598,11 @@ model) in the payload or from your own settings file, and run the call **outside
 
 ## 10. Checklist for a generated extension
 
-- [ ] A C# project (`.dll`) for anything a person installs; host-built sources (§5) only where there is no .NET SDK.
+- [ ] C# sources in `src\` with `"build": "host"` (§5); a C# project only for NuGet / closed code / resources.
 - [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for UI-only).
 - [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
       for commands that take arguments; `OutputType` for what they return (SDK 1.2+).
 - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
-- [ ] Tell the user the deploy path and that they click **Reload** on the ribbon (or restart for a new button).
+- [ ] Tell the user where the folder is; a saved file reloads by itself, and the button appears without a restart.
