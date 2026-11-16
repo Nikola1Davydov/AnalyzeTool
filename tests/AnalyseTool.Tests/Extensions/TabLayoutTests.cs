@@ -193,6 +193,8 @@ public sealed class TabLayoutTests
             await Assert.That(folder.Panels).IsEquivalentTo(["Second", "First"]);
             await Assert.That(folder.Buttons.Select(button => button.Key)).IsEquivalentTo(["sheets.b/B", "sheets.a/A"]);
             await Assert.That(folder.Buttons.Select(button => button.Panel)).IsEquivalentTo(["Second", "First"]);
+            // 📁 on a button opens its own folder, not the tab's
+            await Assert.That(folder.Buttons[0].Directory).IsEqualTo(Path.Combine(sheets.Directory, "Second.panel", "B.pushbutton"));
         }
     }
 

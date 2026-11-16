@@ -16,6 +16,7 @@ import { FoldersScreen, McpScreen } from "./SettingsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, folderOf, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
+import { type CarryItem, CarryProvider, useCarry } from "./Carry";
 import { move, ordered, spring, Tile, TileIcon } from "./Tile";
 import "./pane.css";
 
@@ -169,6 +170,7 @@ function Pane() {
   return (
     <ActionsProvider onOpenPage={openPage}>
     <OpenFromRoute overview={overview} />
+    <MoveAndRemove overview={overview} onToFolders={() => go({ kind: "home" })}>
     <EditContext.Provider value={{ editing, start: () => setEditing((value) => !value) }}>
       <div className={`pane projects tiles-${profile.size} ${profile.effects ? "" : "no-effects"}`}>
         <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => {
@@ -233,7 +235,50 @@ function Pane() {
         <Dock overview={overview} />
       </div>
     </EditContext.Provider>
+    </MoveAndRemove>
     </ActionsProvider>
+  );
+}
+
+/** A button may move into another folder: one of the user's tabs, not the folder it is in. */
+function canTake(folder: PaneFolder, item: CarryItem) {
+  return folder.canAddButtons && folder.id.toLowerCase().endsWith(".tab") && folder.id !== item.folderId;
+}
+
+/** Drag a button out of its folder: onto another folder (the top of the pane takes it there) or onto the trash. */
+function MoveAndRemove(props: { overview: PaneOverview; onToFolders: () => void; children: React.ReactNode }) {
+  const actions = useActions();
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" });
+  return (
+    <CarryProvider
+      onToFolders={props.onToFolders}
+      onMove={(item, folderId) => {
+        const target = props.overview.folders.find((folder) => folder.id === folderId);
+        if (!target || !canTake(target, item)) {
+          actions.toast(target ? `«${target.name}» does not take buttons: drop it on one of your folders` : "Drop it on a folder", "error");
+          return;
+        }
+        const panel = target.panels?.[0] ?? target.panel ?? target.name;
+        void bridge
+          .invoke(extensionCommands.MoveExtensionButton, { id: item.folderId, button: item.name, panel, toId: target.id })
+          .then(refresh)
+          .then(() => actions.toast(`«${item.name}» moved to ${target.name} › ${panel}`))
+          .catch((error: unknown) => actions.toast(messageOf(error), "error"));
+      }}
+      onRemove={(item) => {
+        if (!confirm(`Remove «${item.name}»? Its folder — code, page and versions — moves to the AnalyseTool trash.`)) return;
+        void bridge
+          .invoke<{ movedTo: string }>(extensionCommands.RemoveExtension, { id: item.extensionId })
+          .then((result) => {
+            void refresh();
+            actions.toast(`Removed — the folder is in ${result.movedTo}`);
+          })
+          .catch((error: unknown) => actions.toast(messageOf(error), "error"));
+      }}
+    >
+      {props.children}
+    </CarryProvider>
   );
 }
 
@@ -409,6 +454,8 @@ function ActionList({ items }: { items: ActionItem[] }) {
  * takes it off (it stays here); a folder off the ribbon is grey.
  */
 function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onOpen: (id: string) => void; onGuide: () => void }) {
+  const carryState = useCarry().state;
+  const carried = carryState?.phase === "carry" ? carryState.item : null;
   const actions = useActions();
   const edit = useContext(EditContext);
   const { profile, update } = useProfile();
@@ -457,7 +504,7 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               label={folder.name}
               title={`${folder.name} — ${folder.parts ? "folders of plugin.json, each on its own tab" : `the tab «${folder.tab ?? folder.name}»`}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
               icon={<FolderIcon buttons={folder.buttons} />}
-              className={folder.dllBuilds ? "folder dll" : "folder"}
+              className={`${folder.dllBuilds ? "folder dll" : "folder"}${carried ? (canTake(folder, carried) ? " drop-ok" : " drop-no") : ""}`}
               off={hidden}
               badge={folder.problems.length > 0 || folder.buttons.some((button) => button.problems?.length) ? "error" : null}
               dim={!folder.enabled}
@@ -757,11 +804,30 @@ function ButtonTile(props: {
   const loaded = button.offRibbon ? profile.ribbon.includes(button.key) : !profile.hiddenButtons.includes(button.key);
   const onRibbon = loaded && !folderHidden;
   const toastError = (message: string) => actions.toast(message, "error");
+  const carry = useCarry();
+  // In the grid of a folder of the user (a tab, or a folder of plugin.json that moves into tabs) a button can leave it
+  const leaves = props.dragGroup === "grid" && folder.canAddButtons;
   return (
     <Tile
       dragKey={props.dragKey}
       dragGroup={props.dragGroup}
       onMove={props.onMove}
+      onDragStart={
+        leaves
+          ? () =>
+              carry.begin({
+                key: button.key,
+                name: button.name,
+                folderId: folder.id,
+                extensionId: folderOf(button.key),
+                glyph: button.glyph,
+                image: button.image,
+                canRemove: folder.id.toLowerCase().endsWith(".tab"),
+              })
+          : undefined
+      }
+      onDragMove={leaves ? carry.move : undefined}
+      onDropped={leaves ? carry.drop : undefined}
       editing={edit.editing}
       onEdit={edit.start}
       editBadge={
@@ -787,7 +853,11 @@ function ButtonTile(props: {
             }
           : null
       }
-      onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, toastError) } : null}
+      onOpenFolder={
+        (button.directory ?? folder.directory)
+          ? { title: "Open the folder of this button (edit it with an AI tool)", onClick: () => openFolder((button.directory ?? folder.directory)!, toastError) }
+          : null
+      }
       star={{ on: inDock, title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)", onClick: () => toggleIn(update, "dock", button.key) }}
       label={button.name}
       title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}

@@ -2024,3 +2024,74 @@
   background: var(--label);
   opacity: 0.75;
 }
+
+/* A button in hand (Carry): «into another folder» at the top, the trash at the bottom, the button floating over the folders */
+.drop-zone {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 14px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: auto;
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+}
+
+.drop-zone.top {
+  top: 52px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--tile-background));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Over the folders: a small note at the very top, the folders stay free to drop on */
+.drop-zone.top.hint {
+  top: 6px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.drop-zone.trash {
+  bottom: calc(var(--dock-height, 80px) + 12px);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--tile-background));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--red) 40%, transparent);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.drop-zone.trash.over {
+  transform: scale(1.04);
+  background: color-mix(in srgb, var(--red) 26%, var(--tile-background));
+}
+
+.carry-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.carry-ghost .tile-face {
+  /* The layer is outside the pane, where --tile is set: its own size */
+  width: 56px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 35%);
+}
+
+.tile.drop-ok .tile-face {
+  box-shadow: var(--shadow), 0 0 0 3px var(--accent);
+}
+
+.tile.drop-no {
+  opacity: 0.35;
+}

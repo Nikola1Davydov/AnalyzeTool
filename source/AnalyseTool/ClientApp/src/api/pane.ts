@@ -32,6 +32,8 @@ export interface PaneButton {
   input?: unknown;
   /** Its page is a small interface, shown inside the pane; otherwise a page opens a window. */
   dockable?: boolean;
+  /** The folder of this button: its <Name>.pushbutton\ in a tab, else the folder of its extension. */
+  directory?: string | null;
   hasPage?: boolean;
   /** Compiler errors in the files of this button. */
   problems?: string[] | null;

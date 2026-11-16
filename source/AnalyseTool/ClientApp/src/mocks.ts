@@ -114,9 +114,16 @@ const paneFolders: PaneFolder[] = [
   { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], dllBuilds: ["2025", "2026", "2027"], problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello"), paneButton("Acme.Sample", "Doors", null, "Acme.Sample.Doors")] },
 ];
 
+// Two tabs of the user: their buttons are folders of their own (<tab>.<button>)
+paneFolders.splice(1, 0,
+  { id: "sheets.tab", name: "Sheets", builtIn: false, enabled: true, canAddButtons: true, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/Sheets.tab", tab: "Sheets", panel: "Numbering", panels: ["Numbering"], problems: [],
+    buttons: [{ ...paneButton("sheets.renumber", "Renumber", g(0xe8ef), "sheets.renumber.Renumber"), panel: "Numbering", directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/Sheets.tab/Numbering.panel/Renumber.pushbutton" }] },
+  { id: "rooms.tab", name: "Rooms", builtIn: false, enabled: true, canAddButtons: true, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/Rooms.tab", tab: "Rooms", panel: "Rooms", panels: ["Rooms"], problems: [], buttons: [] },
+);
+
 // The user's folders of plugin.json (1.x) are sections of «Older buttons»
 {
-  const old = paneFolders.splice(1, 1);
+  const old = paneFolders.splice(paneFolders.findIndex((folder) => folder.id === "count-walls"), 1);
   const off = { ...old[0], id: "old-export", name: "Old export", enabled: false, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/old-export", buttons: [paneButton("old-export", "Export IFC", g(0xe898), "old-export.Export")] };
   const parts = [...old, off];
   paneFolders.push({

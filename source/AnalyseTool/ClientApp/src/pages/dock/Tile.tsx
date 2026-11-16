@@ -66,6 +66,12 @@ export function Tile(props: {
   /** The right mouse button: starts the edit mode. */
   onEdit?: () => void;
   onMove?: (from: string, to: string) => void;
+  /** A drag starts: the tile can leave its folder (the zones of Carry). */
+  onDragStart?: () => void;
+  /** Where the pointer is while the tile is dragged. */
+  onDragMove?: (x: number, y: number) => void;
+  /** The tile is let go: true when something else took it (the trash), so it does not move among its neighbours. */
+  onDropped?: (x: number, y: number) => boolean;
   /** The tile was opened: where on the screen it was, for the zoom of the screen that opens. */
   onOpenFrom?: (rect: DOMRect) => void;
 }) {
@@ -104,9 +110,15 @@ export function Tile(props: {
       dragElastic={1}
       dragMomentum={false}
       whileDrag={{ scale: 1.12, zIndex: 5 }}
+      onDragStart={() => props.onDragStart?.()}
+      onDrag={(event) => {
+        const point = "clientX" in event ? event : (event as TouchEvent).touches?.[0];
+        if (point) props.onDragMove?.(point.clientX, point.clientY);
+      }}
       onDragEnd={(event) => {
         const point = "clientX" in event ? event : (event as TouchEvent).changedTouches?.[0];
-        if (point) dropOn(point.clientX, point.clientY);
+        if (!point || props.onDropped?.(point.clientX, point.clientY)) return;
+        dropOn(point.clientX, point.clientY);
       }}
       data-tile-key={props.dragKey}
       data-tile-group={props.dragGroup}

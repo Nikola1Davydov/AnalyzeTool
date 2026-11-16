@@ -33,9 +33,10 @@ namespace AnalyseTool.Features.Pane;
 /// <param name="Problems">The compiler errors in the files of this button (its command, the commands its page calls).</param>
 /// <param name="LastFailure">The error of its last run, when that run failed.</param>
 /// <param name="LastFailureAt">When it failed.</param>
+/// <param name="Directory">The folder of this button: its <c>&lt;Name&gt;.pushbutton\</c> in a tab, else its extension's; <see langword="null" /> for AnalyseTool's own.</param>
 public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null,
     bool OffRibbon = false, JsonElement? Input = null, bool Dockable = false, bool HasPage = false, IReadOnlyList<string>? Problems = null, string? LastFailure = null,
-    DateTimeOffset? LastFailureAt = null);
+    DateTimeOffset? LastFailureAt = null, string? Directory = null);
 
 /// <summary>A folder of buttons: AnalyseTool itself, or an extension.</summary>
 /// <param name="Id">The folder id.</param>
@@ -265,7 +266,8 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
         var (tab, panel) = ButtonCatalog.Place(source, placed);
         return new PaneButton(ButtonUsageStore.Key(extension.Id, button.Name), ButtonUsageStore.Normalize(button.Name), button.Tooltip, glyph, image,
             string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, tab, panel, !button.OnRibbon || !placed.OnRibbon,
-            Input(button, registry), ButtonRunner.IsDockable(extension, button), string.IsNullOrWhiteSpace(button.Command));
+            Input(button, registry), ButtonRunner.IsDockable(extension, button), string.IsNullOrWhiteSpace(button.Command),
+            Directory: source.BuiltIn ? null : extension.Directory);
     }
 
     /// <summary>The schema of a form: the command takes properties, and plugin.json gives the button no fixed <c>args</c>.</summary>
