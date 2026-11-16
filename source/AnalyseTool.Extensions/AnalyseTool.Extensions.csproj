@@ -33,8 +33,12 @@
         <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj"/>
     </ItemGroup>
 
-    <!-- The guide for extension authors and AI agents: written into every new extension folder and served over MCP -->
+    <!--
+        The guide for extension authors and AI agents: installed next to the add-in (updated with it), pointed at by the
+        AGENTS.md / CLAUDE.md of every new extension folder, served over MCP; the embedded copy is the fallback.
+    -->
     <ItemGroup>
+        <None Include="Authoring\LLM.md" Link="LLM.md" CopyToOutputDirectory="PreserveNewest"/>
         <EmbeddedResource Include="Authoring\LLM.md" LogicalName="AnalyseTool.Extensions.LLM.md" WithCulture="false"/>
     </ItemGroup>
 

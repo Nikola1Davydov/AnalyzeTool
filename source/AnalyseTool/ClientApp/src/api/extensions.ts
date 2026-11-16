@@ -124,6 +124,8 @@ export interface BuildExtensionResult {
 
 export interface AuthoringGuide {
   markdown: string;
+  /** LLM.md next to the add-in, updated with it. */
+  path: string;
 }
 
 // ---- Files ----------------------------------------------------------------------------------------

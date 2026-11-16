@@ -282,8 +282,8 @@ they accumulate side by side. (CI builds `samples/Acme.Sample` against the fresh
 exactly this mode — `-p:UseSdkPackage=true` — so this path stays verified.)
 
 > **Tip:** you don't have to write this by hand — **AnalyseTool tab → New** (every template is page + C#; delete the half you don't need)
-> scaffolds a ready-to-build project, a `plugin.json`, and an `LLM.md` (paste it into an AI to have it
-> write commands for you).
+> scaffolds a ready-to-build project, a `plugin.json`, and `AGENTS.md` / `CLAUDE.md` that point an AI agent to `LLM.md`, the authoring guide installed
+> next to AnalyseTool (and updated with it).
 
 With that `OutDir`, `dotnet build -c Release` already writes into `<project>\<year>\` — so if your
 project folder *is* the extension folder (`plugin.json` beside the `.csproj`), there is nothing to
@@ -802,8 +802,8 @@ That reads your repository's latest release and its zip asset. An HTTPS URL retu
 `{ "version": "...", "downloadUrl": "..." }` works too, if you host elsewhere.
 
 **Release from CI.** With a `.github/workflows/release.yml` that runs `PackExtension` and attaches
-`artifacts/*.zip` to the release, publishing becomes `git tag v1.0.0 && git push --tags`. The
-generated `LLM.md` in every scaffolded extension contains a ready workflow to copy (§7.1 there).
+`artifacts/*.zip` to the release, publishing becomes `git tag v1.0.0 && git push --tags`. `LLM.md`
+(next to the add-in, or `GetAuthoringGuide` over MCP) contains a ready workflow to copy (§7.1 there).
 
 
 **Getting listed.** The catalog rows of the Extensions window's **Packages** list is the "where do extensions come

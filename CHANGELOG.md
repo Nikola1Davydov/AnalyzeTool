@@ -7,6 +7,7 @@
 - ⚡ **Save and it runs.** A changed file reloads its extension, and ribbon buttons appear, change and disappear without a restart or a Reload button.
 - 🕓 **Every button has its own version history.** Save a version, compare, restore a version or a file, or pin the button to an older version — from its page or over MCP.
 - 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
+- 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
 - 📦 **Installing a package keeps a version per install**, so an update can be rolled back.
 
 ## [1.6.0] / 2026-10-19

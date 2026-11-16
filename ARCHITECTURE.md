@@ -203,9 +203,10 @@ An extension is a folder under `%LOCALAPPDATA%\AnalyseTool\extensions\` (or any 
 count-walls  .git\            its own history
   plugin.json      id, buttons (name, icon, command or page), "build": "host"
   src\CountWalls.cs
-  LLM.md           the authoring guide
+  AGENTS.md        where the authoring guide is: LLM.md next to the add-in, updated with it
+  CLAUDE.md        @AGENTS.md, for Claude Code
   .editor\         a .csproj for IntelliSense only (git-ignored)
-  bin5\        builds of the host, named by a hash of the sources (git-ignored)
+  bin\<year>\     builds of the host, named by a hash of the sources (git-ignored)
 ```
 
 * **Compile.** `ExtensionCompiler` compiles `src\**\*.cs` with Roslyn against what the add-in runs with (the Revit API of

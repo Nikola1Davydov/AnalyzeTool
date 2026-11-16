@@ -30,17 +30,64 @@ public static partial class ExtensionScaffold
     /// <summary>What git never keeps in the folder of a DLL extension: the DLLs per Revit year are the extension, so they stay.</summary>
     public static readonly IReadOnlyList<string> DllIgnore = ["obj/", ".vs/", ".vscode/", ".idea/", "*.user", "*.tmp"];
 
-    /// <summary>The guide for authors and AI agents, written into every new folder as <c>LLM.md</c>.</summary>
+    /// <summary>The file name of the authoring guide next to the add-in.</summary>
+    public const string GuideFileName = "LLM.md";
+
+    /// <summary>
+    ///     The authoring guide in the add-in folder: installed and updated with AnalyseTool, never copied into an
+    ///     extension folder (that copy would go stale). Extension folders get <c>AGENTS.md</c> / <c>CLAUDE.md</c> pointing here.
+    /// </summary>
+    public static string GuidePath => Path.Combine(Path.GetDirectoryName(typeof(ExtensionScaffold).Assembly.Location) is { Length: > 0 } folder ? folder : AppContext.BaseDirectory, GuideFileName);
+
+    /// <summary>The guide for authors and AI agents: <see cref="GuidePath" />, or the copy built into the assembly.</summary>
     public static string Guide
     {
         get
         {
+            if (File.Exists(GuidePath))
+            {
+                return File.ReadAllText(GuidePath);
+            }
+
             using var stream = typeof(ExtensionScaffold).Assembly.GetManifestResourceStream("AnalyseTool.Extensions.LLM.md")
                                ?? throw new InvalidOperationException("The authoring guide is missing from AnalyseTool.Extensions.");
             using var reader = new StreamReader(stream);
             return reader.ReadToEnd();
         }
     }
+
+    /// <summary><c>AGENTS.md</c> of a new extension folder: what the folder is and where the guide lives.</summary>
+    public static string AgentsPointer(string name)
+    {
+        return $"""
+                # {name} — an AnalyseTool extension
+
+                This folder is a ribbon button of AnalyseTool, a Revit add-in: `plugin.json`, C# sources in `src\` that
+                AnalyseTool compiles inside Revit (no project, no DLL) and, for a page, `index.html`. The folder is a git
+                repository whose commits are the versions the user manages in AnalyseTool — do not commit or switch
+                branches yourself unless asked.
+
+                **Read the authoring guide before you change anything.** It ships with AnalyseTool and is updated with it:
+
+                - `{GuidePath}`
+                - or, connected to AnalyseTool over MCP, the tool `GetAuthoringGuide` (same text).
+
+                If that path does not exist (another machine, another Revit year), `{GuideFileName}` lies next to
+                `AnalyseTool.dll` in the `AnalyseTool.Launcher` folder of Revit's add-ins:
+                `%AppData%\Autodesk\Revit\Addins\<year>\` (Revit 2027: `%ProgramFiles%\Autodesk\Revit\Addins\2027\`).
+
+                """;
+    }
+
+    /// <summary><c>CLAUDE.md</c> of a new extension folder: Claude Code imports <c>AGENTS.md</c>.</summary>
+    public const string ClaudePointer = """
+                                        # Instructions
+
+                                        The instructions for this folder are in AGENTS.md, which says where the AnalyseTool authoring guide is:
+
+                                        @AGENTS.md
+
+                                        """;
 
     /// <summary>Makes an id from a name: <c>Count walls</c> → <c>count-walls</c>.</summary>
     public static string ToId(string name)
@@ -138,8 +185,10 @@ public static partial class ExtensionScaffold
             files.Add("index.html");
         }
 
-        File.WriteAllText(Path.Combine(directory, "LLM.md"), Guide);
-        files.Add("LLM.md");
+        File.WriteAllText(Path.Combine(directory, "AGENTS.md"), AgentsPointer(name));
+        files.Add("AGENTS.md");
+        File.WriteAllText(Path.Combine(directory, "CLAUDE.md"), ClaudePointer);
+        files.Add("CLAUDE.md");
         File.WriteAllText(Path.Combine(directory, ".gitignore"), string.Join("\n", SourceIgnore) + "\n");
         files.Add(".gitignore");
 
@@ -236,7 +285,7 @@ public static partial class ExtensionScaffold
 
                 /// <summary>
                 ///     The command of the button «{{id}}». Edit and save: AnalyseTool compiles it again and the button runs the new code.
-                ///     The text you return is shown after the click. Read LLM.md next to src\ for the whole contract.
+                ///     The text you return is shown after the click. AGENTS.md next to src\ says where the whole contract is.
                 /// </summary>
                 [RevitCommand(Description = "{{literal}}", ReadOnly = true)]
                 public sealed class {{className}} : IRevitTask

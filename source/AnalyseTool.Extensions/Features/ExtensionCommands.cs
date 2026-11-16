@@ -124,7 +124,7 @@ public sealed record CreateExtensionRequest(
 
 /// <summary>Creates a new extension: C# sources by default, with the first version saved.</summary>
 [McpTool(Title = "Create extension")]
-[Command(Description = "Creates a new ribbon button as an extension: a folder with plugin.json and C# sources in src\\ that AnalyseTool compiles itself (no project, no DLL), LLM.md with the authoring guide, and the first saved version. Returns the extension with its folder; then edit src\\*.cs with WriteExtensionFile.")]
+[Command(Description = "Creates a new ribbon button as an extension: a folder with plugin.json and C# sources in src\\ that AnalyseTool compiles itself (no project, no DLL), AGENTS.md and CLAUDE.md that point to the authoring guide (LLM.md next to the add-in), and the first saved version. Returns the extension with its folder; then edit src\\*.cs with WriteExtensionFile.")]
 public sealed class CreateExtension(ExtensionManager manager) : ICommand<CreateExtensionRequest, ExtensionSummary>
 {
     /// <inheritdoc />
@@ -216,16 +216,17 @@ public sealed class BuildExtension(ExtensionManager manager) : ICommand<Extensio
 
 /// <summary>The authoring guide.</summary>
 /// <param name="Markdown">LLM.md: the Sdk contract, the manifest, pages and the AT bridge.</param>
-public sealed record AuthoringGuide(string Markdown);
+/// <param name="Path">Where LLM.md lies: next to the add-in, updated with it.</param>
+public sealed record AuthoringGuide(string Markdown, string Path);
 
 /// <summary>Returns the authoring guide.</summary>
 [McpTool(ReadOnly = true, Title = "Extension authoring guide")]
-[Command(Description = "Returns LLM.md, the guide to writing AnalyseTool extensions: the IRevitTask contract of AnalyseTool.Sdk, plugin.json, pages and AT.invoke. Read it before writing extension code.")]
+[Command(Description = "Returns LLM.md, the guide to writing AnalyseTool extensions: the IRevitTask contract of AnalyseTool.Sdk, plugin.json, pages and AT.invoke, and the path of the file next to the add-in. Read it before writing extension code.")]
 public sealed class GetAuthoringGuide : ICommand<AuthoringGuide>
 {
     /// <inheritdoc />
     public Task<AuthoringGuide> ExecuteAsync(CommandContext context)
     {
-        return Task.FromResult(new AuthoringGuide(ExtensionScaffold.Guide));
+        return Task.FromResult(new AuthoringGuide(ExtensionScaffold.Guide, ExtensionScaffold.GuidePath));
     }
 }

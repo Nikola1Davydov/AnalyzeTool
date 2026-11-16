@@ -50,7 +50,7 @@ Every fixed bug gets a test on its tier.
 
 ## Docs to keep in sync
 
-- `source/AnalyseTool.Extensions/Authoring/LLM.md` — the guide for extension authors and agents: written into every new extension folder, served by `GetAuthoringGuide`, mirrored to the wiki.
+- `source/AnalyseTool.Extensions/Authoring/LLM.md` — the guide for extension authors and agents: copied next to the add-in (updated with it; the `AGENTS.md` / `CLAUDE.md` of every new extension folder point there), served by `GetAuthoringGuide`, mirrored to the wiki.
 - `ONBOARDING.md` — extension author guide (wiki home, NuGet README of the Sdk).
 - `CHANGELOG.md` — shipped next to the add-in, shown on the About page.
 - `docs/REWRITE-PLAN.md` — the 2.0 plan and its open questions.

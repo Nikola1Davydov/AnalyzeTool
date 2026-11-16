@@ -414,6 +414,7 @@ page sees only `window.AT`.
     src\*.cs             (sources — AnalyseTool builds them, §5)
     2025\<YourExt>.dll   (or a DLL per Revit year, §4)
     index.html           (UI)
+    AGENTS.md, CLAUDE.md (written by «New button»: they point to this guide, LLM.md next to the add-in)
     .git\                (the extension's own version history)
 ```
 - The extension folder sits DIRECTLY under a root — a Revit year is a subfolder INSIDE it, never above it.

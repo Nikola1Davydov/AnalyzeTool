@@ -131,6 +131,8 @@ const pluginJson = (id: string, name: string, description: string) =>
   JSON.stringify({ id, version: "1.0.0", description, ui: { panel: "Extensions", buttons: [{ name }] } }, null, 2) + "\n";
 
 const llm = "# Writing AnalyseTool extensions\n\nRead this before writing extension code.\n";
+const agents = "# An AnalyseTool extension\n\nRead the authoring guide: LLM.md next to the add-in, or GetAuthoringGuide over MCP.\n";
+const claude = "# Instructions\n\n@AGENTS.md\n";
 
 function summary(partial: Partial<ExtensionSummary> & Pick<ExtensionSummary, "id" | "name">): ExtensionSummary {
   return {
@@ -186,7 +188,8 @@ const extensions: MockExtension[] = [
     }),
     files: {
       "plugin.json": pluginJson("CountWalls", "Count walls", "Counts the walls of the active view by type."),
-      "LLM.md": llm,
+      "AGENTS.md": agents,
+      "CLAUDE.md": claude,
       "src/CountWalls.cs": countWallsWorking,
       "src/Notes.txt": "Ideas: group by level too.\n",
     },
@@ -195,7 +198,8 @@ const extensions: MockExtension[] = [
         version: v2,
         files: {
           "plugin.json": pluginJson("CountWalls", "Count walls", "Counts the walls of the active view by type."),
-          "LLM.md": llm,
+          "AGENTS.md": agents,
+          "CLAUDE.md": claude,
           "src/CountWalls.cs": countWallsV2,
         },
       },
@@ -203,7 +207,8 @@ const extensions: MockExtension[] = [
         version: v1,
         files: {
           "plugin.json": pluginJson("CountWalls", "Count walls", "Counts the walls of the model."),
-          "LLM.md": llm,
+          "AGENTS.md": agents,
+          "CLAUDE.md": claude,
           "src/CountWalls.cs": countWallsV1,
         },
       },
@@ -519,7 +524,8 @@ registerMocks({
     const page = request.template !== "Command";
     const files: Record<string, string> = {
       "plugin.json": pluginJson(id, request.name, request.description ?? ""),
-      "LLM.md": llm,
+      "AGENTS.md": agents,
+      "CLAUDE.md": claude,
       ...(request.template !== "Page" ? { [`src/${id}.cs`]: countWallsV1.replaceAll("CountWalls", id) } : {}),
       ...(page ? { "index.html": `<!doctype html>\n<h1>${request.name}</h1>\n` } : {}),
     };
@@ -573,7 +579,7 @@ registerMocks({
     };
     return { success: !broken, diagnostics: extension.summary.diagnostics, extension: extension.summary };
   },
-  GetAuthoringGuide: () => ({ markdown: llm }),
+  GetAuthoringGuide: () => ({ markdown: llm, path: "C:/Users/me/AppData/Roaming/Autodesk/Revit/Addins/2025/AnalyseTool.Launcher/LLM.md" }),
   ListExtensionFiles: (payload) => {
     const extension = find((payload as { id: string }).id);
     return Object.entries(extension.files).map(([path, text], index) => ({ path, size: text.length || 24576, modified: ago(index * 37 + 5) }));

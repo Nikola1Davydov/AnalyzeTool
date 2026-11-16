@@ -32,6 +32,24 @@ public sealed class ExtensionLifecycleTests
     }
 
     [Test]
+    public async Task Create_NewButton_PointsToTheGuideNextToTheAddIn()
+    {
+        using var environment = new ExtensionTestEnvironment();
+
+        var state = await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+
+        var directory = state.Descriptor.Directory;
+        using (Assert.Multiple())
+        {
+            await Assert.That(File.Exists(ExtensionScaffold.GuidePath)).IsTrue();
+            await Assert.That(File.Exists(Path.Combine(directory, ExtensionScaffold.GuideFileName))).IsFalse();
+            await Assert.That(File.ReadAllText(Path.Combine(directory, "AGENTS.md"))).Contains(ExtensionScaffold.GuidePath);
+            await Assert.That(File.ReadAllText(Path.Combine(directory, "CLAUDE.md"))).Contains("@AGENTS.md");
+            await Assert.That(ExtensionScaffold.Guide).Contains("GetAuthoringGuide");
+        }
+    }
+
+    [Test]
     public async Task Create_EveryTemplate_Compiles()
     {
         using var environment = new ExtensionTestEnvironment();
