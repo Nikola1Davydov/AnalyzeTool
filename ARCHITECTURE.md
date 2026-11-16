@@ -47,7 +47,7 @@ Debug builds); the user's are in their extension folders.
   AnalyseTool's own ribbon is three buttons — Buttons (the pane), About, Refresh (`RefreshButtons`); the rest are tiles or links of
   the pane's profile. A folder (extension) is created empty (`CreateExtensionFolder`) and gets buttons one by one
   (`AddExtensionButton`: C# in `src\` and/or a page, the entry in `plugin.json`, a version each).
-* Stars of the pane: the `ribbon` array of `pane-profile.json` (`RibbonFavorites`). Starred buttons get a «Favourites»
+* «+» of the pane: the `ribbon` array of `pane-profile.json` (`RibbonFavorites`); ☆ is the `dock` array. Those buttons get a «Favourites»
   panel right after AnalyseTool's own, whatever their `"ribbon"` says; saving the profile rebuilds the ribbon.
 * `AppRibbon` builds the buttons with AdWindows (the Revit API cannot add or remove buttons after startup), on the
   AnalyseTool tab unless a button names another, and rebuilds them on `ExtensionHost.Changed`.

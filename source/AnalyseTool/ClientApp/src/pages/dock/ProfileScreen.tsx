@@ -152,7 +152,7 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
 
       <section>
         <h2>Dock</h2>
-        {dock.length === 0 && <p className="muted small">No favourites yet. Right-click a button and tap + to put it in the dock.</p>}
+        {dock.length === 0 && <p className="muted small">No favourites yet. Right-click a button and tap ☆ to put it in the dock.</p>}
         <ul className="dock-list">
           {dock.map(({ key, found }, index) => (
             <li key={key}>
@@ -194,7 +194,7 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
       <section>
         <h2>On the Revit ribbon</h2>
         {ribbon.length === 0 && (
-          <p className="muted small">No stars yet. Right-click a button and tap ☆: it goes on the ribbon, in the Favourites panel of the AnalyseTool tab.</p>
+          <p className="muted small">Nothing yet. Right-click a button and tap +: it goes on the ribbon, in the Favourites panel of the AnalyseTool tab.</p>
         )}
         <ul className="dock-list">
           {ribbon.map(({ key, found }, index) => (

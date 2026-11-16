@@ -50,13 +50,13 @@ export function Tile(props: {
   /** Tiles are dropped only onto tiles of the same group: the grid, or the dock. */
   dragGroup?: string;
   editing?: boolean;
-  /** The round badge at the top left in the edit mode: «−» or «+». */
+  /** The round badge at the top left in the edit mode: «+» puts the button on the Revit ribbon, «−» takes it off. */
   editBadge?: { symbol: "−" | "+"; title: string; onClick: () => void } | null;
   /** The round ✎ at the top right in the edit mode: opens the sheet of the button — change it, its file, its versions. */
   onChange?: { title: string; onClick: () => void } | null;
   /** 📁 at the bottom left in the edit mode: opens the folder of the button in Explorer — to edit it with an AI tool. */
   onOpenFolder?: { title: string; onClick: () => void } | null;
-  /** The star: the button is on the Revit ribbon. A small ★ shows it; in the edit mode a ☆/★ at the bottom right toggles it. */
+  /** The star: the button is in the dock of the pane. A small ★ marks it; in the edit mode ☆/★ at the bottom right toggles it. */
   star?: { on: boolean; title: string; onClick: () => void } | null;
   onClick: () => void;
   /** The right mouse button: starts the edit mode. */
@@ -120,7 +120,7 @@ export function Tile(props: {
         {props.badge === "error" && <span className="tile-badge error">!</span>}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
-        {props.star?.on && !props.editing && <span className="tile-star" title="On the Revit ribbon">★</span>}
+        {props.star?.on && !props.editing && <span className="tile-star" title="In the dock">★</span>}
       </motion.span>
       {props.editing && props.editBadge && (
         <motion.span

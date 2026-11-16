@@ -332,7 +332,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
           />
         )}
       </div>
-      <p className="muted small center">Each extension is a folder of buttons. In a folder, right-click a button: + keeps it in the dock below, ☆ puts it on the Revit ribbon.</p>
+      <p className="muted small center">Each extension is a folder of buttons. In a folder, right-click a button: ☆ keeps it in the dock below, + puts it on the Revit ribbon.</p>
     </>
   );
 }
@@ -362,9 +362,6 @@ function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: 
     update((value) => ({ ...value, order: { ...value.order, [folder.id]: [...keys, ...rest] } }));
   };
 
-  const togglePin = (button: PaneButton) =>
-    update((value) => ({ ...value, dock: value.dock.includes(button.key) ? value.dock.filter((item) => item !== button.key) : [...value.dock, button.key] }));
-
   return (
     <>
       <h1 className="large-title">{group ?? folder.name}</h1>
@@ -384,11 +381,6 @@ function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: 
               dragKey={item.key}
               dragGroup="grid"
               onMove={onMove}
-              editBadge={
-                profile.dock.includes(item.button.key)
-                  ? { symbol: "−", title: "Remove from the dock", onClick: () => togglePin(item.button!) }
-                  : { symbol: "+", title: "Add to the dock", onClick: () => togglePin(item.button!) }
-              }
             />
           ) : (
             <Tile
@@ -431,20 +423,28 @@ function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: 
   );
 }
 
-/** A button as a tile: a tap runs it; in the edit mode ✎ opens its versions and files (extensions only). */
+/**
+ * A button as a tile: a tap runs it. In the edit mode its four corners: ☆/★ keeps it in the dock below (quick access in the
+ * pane), +/− puts it on the Revit ribbon, ✎ its name and description, 📁 its folder.
+ */
 function ButtonTile(props: {
   folder: PaneFolder;
   button: PaneButton;
   dragKey: string;
   dragGroup: string;
   onMove: (from: string, to: string) => void;
-  editBadge: { symbol: "−" | "+"; title: string; onClick: () => void };
 }) {
   const { folder, button } = props;
   const actions = useActions();
   const edit = useContext(EditContext);
   const { profile, update } = useProfile();
-  const starred = profile.ribbon.includes(button.key);
+  const inDock = profile.dock.includes(button.key);
+  const onRibbon = profile.ribbon.includes(button.key);
+  const toggle = (list: "dock" | "ribbon") =>
+    update((value) => ({
+      ...value,
+      [list]: value[list].includes(button.key) ? value[list].filter((item) => item !== button.key) : [...value[list], button.key],
+    }));
   return (
     <Tile
       dragKey={props.dragKey}
@@ -452,7 +452,11 @@ function ButtonTile(props: {
       onMove={props.onMove}
       editing={edit.editing}
       onEdit={edit.start}
-      editBadge={props.editBadge}
+      editBadge={
+        onRibbon
+          ? { symbol: "−", title: "Remove from the Revit ribbon", onClick: () => toggle("ribbon") }
+          : { symbol: "+", title: "Put on the Revit ribbon (Favourites panel)", onClick: () => toggle("ribbon") }
+      }
       onChange={
         folder.canAddButtons
           ? {
@@ -472,16 +476,12 @@ function ButtonTile(props: {
       }
       onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
       star={{
-        on: starred,
-        title: starred ? "Remove from the Revit ribbon" : "Put on the Revit ribbon (Favourites panel)",
-        onClick: () =>
-          update((value) => ({
-            ...value,
-            ribbon: value.ribbon.includes(button.key) ? value.ribbon.filter((item) => item !== button.key) : [...value.ribbon, button.key],
-          })),
+        on: inDock,
+        title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)",
+        onClick: () => toggle("dock"),
       }}
       label={button.name}
-      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${starred ? "\n★ On the Revit ribbon" : ""}`}
+      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "\nOn the Revit ribbon" : ""}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
       badge={folder.problems.length > 0 ? "error" : null}
       busy={actions.isRunning(button.key)}
@@ -522,7 +522,7 @@ function Dock({ overview }: { overview: PaneOverview }) {
 
   return (
     <nav className="dock glass" aria-label="Dock" ref={nav}>
-      {pinned.length === 0 && <span className="dock-hint">Right-click a button and tap + to keep it here</span>}
+      {pinned.length === 0 && <span className="dock-hint">Right-click a button and tap ☆ to keep it here</span>}
       {pinned.map(({ key, folder, button }) => (
         <ButtonTile
           key={key}
@@ -531,7 +531,6 @@ function Dock({ overview }: { overview: PaneOverview }) {
           dragKey={key}
           dragGroup="dock"
           onMove={(from, to) => update((value) => ({ ...value, dock: move(value.dock, from, to) }))}
-          editBadge={{ symbol: "−", title: "Remove from the dock", onClick: () => update((value) => ({ ...value, dock: value.dock.filter((item) => item !== key) })) }}
         />
       ))}
     </nav>
