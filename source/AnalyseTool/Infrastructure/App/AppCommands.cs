@@ -273,7 +273,21 @@ public static class AppWindows
 /// <summary>The WPF thread of Revit, for dialogs and windows asked for by a command on the thread pool.</summary>
 internal static class Ui
 {
-    public static Window? Owner => System.Windows.Application.Current?.MainWindow;
+    /// <summary>
+    ///     The owner of a dialog: the active AnalyseTool window, else none — Windows then owns it by the active window of the
+    ///     thread (Revit, or the pane docked in it). Never a window without a handle: inside Revit <c>MainWindow</c> can be a WPF
+    ///     window that was never shown, and <c>ShowDialog(owner)</c> throws InvalidOperationException for it.
+    /// </summary>
+    public static Window? Owner
+    {
+        get
+        {
+            var windows = System.Windows.Application.Current?.Windows.OfType<Window>().Where(HasHandle).ToList() ?? [];
+            return windows.FirstOrDefault(window => window.IsActive) ?? windows.FirstOrDefault(window => window.IsVisible && window.OwnedWindows.Count == 0 && window.IsKeyboardFocusWithin);
+
+            static bool HasHandle(Window window) => new System.Windows.Interop.WindowInteropHelper(window).Handle != IntPtr.Zero;
+        }
+    }
 
     public static Task<T> InvokeAsync<T>(Func<T> work)
     {
