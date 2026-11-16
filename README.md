@@ -111,8 +111,12 @@ token for every open Revit version — and gives an AI client the built-in comma
 %LOCALAPPDATA%\AnalyseTool\extensions\
   Sheets.tab\                     a tab of the ribbon
     Numbering.panel\              a panel
-      Renumber.pushbutton\        one button: bundle.json, Renumber.cs, index.html, its own .git\
-    _shared\*.cs                  C# every button of the tab compiles with
+      Renumber.pushbutton\        one button, all of it in one folder:
+        bundle.json                 its name, icon, tooltip
+        Renumber.cs                 its command
+        index.html                  its page (optional)
+        .git\                       its versions
+    _shared\*.cs                  optional: C# every button of the tab compiles with
 ```
 
 The layout is pyRevit's: the folders are the ribbon. AnalyseTool compiles the C# itself, with its own Roslyn against the
