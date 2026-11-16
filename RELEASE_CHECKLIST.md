@@ -63,8 +63,11 @@ the release itself.
 - [ ] SingleUser and MultiUser install on a clean user/machine; the WebView2 prompt works without the runtime.
 - [ ] Installed **over 1.x** of the same kind: 1.x is gone (its folder and `AnalyseTool.addin`), 2.0 loads, the
       extensions in `%LOCALAPPDATA%\AnalyseTool\extensions\` are still there.
-- [ ] `rewrite` (or `dev`) merged into `main`; tag `vX.Y.Z` on `main`; the GitHub release carries both MSIs and the
-      changelog of the version.
+- [ ] `rewrite` (or `dev`) merged into `main`, CHANGELOG dated (`## [X.Y.Z] / <date>`).
+- [ ] Tag `vX.Y.Z` on `main` — `git tag vX.Y.Z && git push origin vX.Y.Z`, or on GitHub Releases › Draft a new release
+      with a new tag. `.github/workflows/Release.yml` builds, tests, packs and attaches both MSIs and the bundle, with the
+      changelog of the version as the notes (a release made on GitHub keeps its own notes if it has any). A suffix
+      (`v2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
 - [ ] **The Sdk package, only if its contract changed**: the release does not push it. Bump its version, take the
       `.nupkg` of a green build, `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`, then
       move the pinned version in `LLM.md` and `ONBOARDING.md`.
