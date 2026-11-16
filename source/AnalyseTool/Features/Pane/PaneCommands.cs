@@ -24,7 +24,9 @@ namespace AnalyseTool.Features.Pane;
 /// <param name="Image">A PNG icon of the folder as a data URL.</param>
 /// <param name="Command">The command it runs; <see langword="null" /> when it opens a page.</param>
 /// <param name="Group">The pulldown it sits in on the ribbon: a folder in the pane.</param>
-public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group);
+/// <param name="Tab">Its own ribbon tab (plugin.json), when it has one.</param>
+/// <param name="Panel">Its own ribbon panel, when it has one.</param>
+public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null);
 
 /// <summary>A folder of buttons: AnalyseTool itself, or an extension.</summary>
 /// <param name="Id">The folder id.</param>
@@ -36,8 +38,10 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="CanAddButtons">One of the user's folders: «+ New button» adds C# or a page to it (not AnalyseTool, not a package, not a DLL).</param>
 /// <param name="Description">What its buttons are for.</param>
 /// <param name="Directory">The folder on disk, to open in Explorer or an AI tool; <see langword="null" /> for AnalyseTool's own.</param>
+/// <param name="Tab">The ribbon tab of its buttons (plugin.json <c>ui.tab</c>); the AnalyseTool tab when absent.</param>
+/// <param name="Panel">The ribbon panel of its buttons (<c>ui.panel</c>); «Extensions» when absent.</param>
 public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
-    string? Description = null, string? Directory = null);
+    string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -65,7 +69,9 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
                 Buttons(source.Extension).ToList(),
                 !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
                 source.Extension.Manifest.Description,
-                source.BuiltIn ? null : source.Extension.Directory))
+                source.BuiltIn ? null : source.Extension.Directory,
+                source.Extension.Manifest.Ui?.Tab,
+                source.Extension.Manifest.Ui?.Panel))
             .ToList();
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
     }
@@ -112,7 +118,7 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
     {
         var (glyph, image) = Icon(extension.Directory, button.Icon);
         return new PaneButton(ButtonUsageStore.Key(extension.Id, button.Name), ButtonUsageStore.Normalize(button.Name), button.Tooltip, glyph, image,
-            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group);
+            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, button.Tab, button.Panel);
     }
 
     /// <summary>A glyph character, or a PNG of the folder as a data URL — never a file outside the folder.</summary>

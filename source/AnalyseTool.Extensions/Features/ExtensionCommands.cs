@@ -180,7 +180,9 @@ public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddE
 public sealed record UpdateExtensionFolderRequest(
     [property: Description("The id of the folder (extension).")] string Id,
     [property: Description("Its new name.")] string Name,
-    [property: Description("What its buttons are for.")] string? Description = null);
+    [property: Description("What its buttons are for.")] string? Description = null,
+    [property: Description("The ribbon tab of its buttons: empty for the AnalyseTool tab, absent to keep it.")] string? Tab = null,
+    [property: Description("The ribbon panel of its buttons: empty for «Extensions», absent to keep it.")] string? Panel = null);
 
 /// <summary>Renames a folder.</summary>
 [McpTool(Title = "Rename a folder of buttons")]
@@ -190,7 +192,7 @@ public sealed class UpdateExtensionFolder(ExtensionManager manager) : ICommand<U
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionFolderRequest request, CommandContext context)
     {
-        return ExtensionSummary.From(await manager.UpdateFolderAsync(request.Id, request.Name, request.Description, context.CancellationToken).ConfigureAwait(false));
+        return ExtensionSummary.From(await manager.UpdateFolderAsync(request.Id, request.Name, request.Description, request.Tab, request.Panel, context.CancellationToken).ConfigureAwait(false));
     }
 }
 
@@ -199,7 +201,9 @@ public sealed record UpdateExtensionButtonRequest(
     [property: Description("The id of the folder (extension).")] string Id,
     [property: Description("The current text of the button.")] string Button,
     [property: Description("Its new text.")] string Name,
-    [property: Description("Its tooltip: what it does.")] string? Tooltip = null);
+    [property: Description("Its tooltip: what it does.")] string? Tooltip = null,
+    [property: Description("Its own ribbon tab: empty for the folder's, absent to keep it.")] string? Tab = null,
+    [property: Description("Its own ribbon panel: empty for the folder's, absent to keep it.")] string? Panel = null);
 
 /// <summary>Renames a button.</summary>
 [McpTool(Title = "Rename a button")]
@@ -209,7 +213,7 @@ public sealed class UpdateExtensionButton(ExtensionManager manager) : ICommand<U
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionButtonRequest request, CommandContext context)
     {
-        return ExtensionSummary.From(await manager.UpdateButtonAsync(request.Id, request.Button, request.Name, request.Tooltip, context.CancellationToken).ConfigureAwait(false));
+        return ExtensionSummary.From(await manager.UpdateButtonAsync(request.Id, request.Button, request.Name, request.Tooltip, request.Tab, request.Panel, context.CancellationToken).ConfigureAwait(false));
     }
 }
 

@@ -105,7 +105,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     }
 
     /// <summary>Renames a folder or changes its description (plugin.json <c>name</c> / <c>description</c>), saved as a version.</summary>
-    public async Task<ExtensionState> UpdateFolderAsync(string id, string name, string? description, CancellationToken cancellationToken)
+    public async Task<ExtensionState> UpdateFolderAsync(string id, string name, string? description, string? tab, string? panel, CancellationToken cancellationToken)
     {
         var descriptor = Own(id);
         if (string.IsNullOrWhiteSpace(name))
@@ -117,6 +117,16 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         {
             manifest["name"] = name.Trim();
             manifest["description"] = string.IsNullOrWhiteSpace(description) ? name.Trim() : description.Trim();
+            if (tab is not null || panel is not null)
+            {
+                if (manifest["ui"] is not System.Text.Json.Nodes.JsonObject ui)
+                {
+                    manifest["ui"] = ui = new System.Text.Json.Nodes.JsonObject();
+                }
+
+                SetOrRemove(ui, "tab", tab);
+                SetOrRemove(ui, "panel", panel);
+            }
         });
         SaveChange(descriptor, $"Renamed the folder to «{name.Trim()}»");
         return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
@@ -126,7 +136,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     ///     Renames a button or changes its tooltip in plugin.json, saved as a version. The command and its file keep their names:
     ///     the button is what the user sees, the code stays where it is.
     /// </summary>
-    public async Task<ExtensionState> UpdateButtonAsync(string id, string button, string name, string? tooltip, CancellationToken cancellationToken)
+    public async Task<ExtensionState> UpdateButtonAsync(string id, string button, string name, string? tooltip, string? tab, string? panel, CancellationToken cancellationToken)
     {
         var descriptor = Own(id);
         var trimmed = name.Trim();
@@ -156,6 +166,8 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
                 {
                     node["name"] = trimmed;
                     node["tooltip"] = string.IsNullOrWhiteSpace(tooltip) ? trimmed : tooltip.Trim();
+                    SetOrRemove(node, "tab", tab);
+                    SetOrRemove(node, "panel", panel);
                 }
             }
         });
@@ -195,6 +207,24 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
                     yield return item;
                 }
             }
+        }
+    }
+
+    /// <summary>Sets a text field of a JSON object: <see langword="null" /> keeps it, empty removes it (the default applies).</summary>
+    private static void SetOrRemove(System.Text.Json.Nodes.JsonObject target, string field, string? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            target.Remove(field);
+        }
+        else
+        {
+            target[field] = value.Trim();
         }
     }
 

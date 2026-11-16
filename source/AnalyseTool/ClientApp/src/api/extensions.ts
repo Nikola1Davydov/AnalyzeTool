@@ -101,6 +101,9 @@ export interface UpdateExtensionFolderRequest {
   id: string;
   name: string;
   description?: string | null;
+  /** Empty: the default; absent: keep. */
+  tab?: string | null;
+  panel?: string | null;
 }
 
 export interface UpdateExtensionButtonRequest {
@@ -109,6 +112,9 @@ export interface UpdateExtensionButtonRequest {
   button: string;
   name: string;
   tooltip?: string | null;
+  /** Empty: the folder's; absent: keep. */
+  tab?: string | null;
+  panel?: string | null;
 }
 
 export interface CreateExtensionRequest {

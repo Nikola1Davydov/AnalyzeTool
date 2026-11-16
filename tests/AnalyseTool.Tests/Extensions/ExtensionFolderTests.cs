@@ -67,9 +67,9 @@ public sealed class ExtensionFolderTests
         await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None);
         await environment.Manager.AddButtonAsync("sheets", "Check", null, ExtensionTemplate.Command, CancellationToken.None);
 
-        await environment.Manager.UpdateFolderAsync("sheets", "Sheet tools", "Everything about sheets.", CancellationToken.None);
-        var state = await environment.Manager.UpdateButtonAsync("sheets", "Renumber", "Renumber sheets", "From 101 up.", CancellationToken.None);
-        var taken = await Assert.That(async () => await environment.Manager.UpdateButtonAsync("sheets", "Renumber sheets", "Check", null, CancellationToken.None))
+        await environment.Manager.UpdateFolderAsync("sheets", "Sheet tools", "Everything about sheets.", "Sheets", null, CancellationToken.None);
+        var state = await environment.Manager.UpdateButtonAsync("sheets", "Renumber", "Renumber sheets", "From 101 up.", null, "Numbers", CancellationToken.None);
+        var taken = await Assert.That(async () => await environment.Manager.UpdateButtonAsync("sheets", "Renumber sheets", "Check", null, null, null, CancellationToken.None))
             .Throws<CommandException>();
 
         var renamed = state.Descriptor.Manifest.Ui!.EffectiveButtons()[0];
@@ -79,6 +79,10 @@ public sealed class ExtensionFolderTests
             await Assert.That(state.Descriptor.Manifest.Description).IsEqualTo("Everything about sheets.");
             await Assert.That(renamed.Name).IsEqualTo("Renumber sheets");
             await Assert.That(renamed.Tooltip).IsEqualTo("From 101 up.");
+            // Advanced: the folder's tab, the button's own panel
+            await Assert.That(state.Descriptor.Manifest.Ui.Tab).IsEqualTo("Sheets");
+            await Assert.That(renamed.Panel).IsEqualTo("Numbers");
+            await Assert.That(renamed.Tab).IsNull();
             // The code keeps its file and its command
             await Assert.That(renamed.Command).IsEqualTo("sheets.Renumber");
             await Assert.That(state.Commands).Contains("sheets.Renumber");

@@ -9,6 +9,7 @@
 - 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
 - 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
 - 🎯 **The ribbon keeps three buttons: Buttons (the pane), About and Refresh.** Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
+- ✏️ **In the pane, ✎ renames a button or a folder** (and, under Advanced, moves it to another ribbon tab or panel); 📁 opens its folder for an AI tool.
 - 📁 **Buttons live in folders.** The pane creates an empty folder and adds buttons to it one by one, each addition a version of the folder.
 - ⭐ **A star in the pane puts any button on the Revit ribbon**, in a Favourites panel of the AnalyseTool tab.
 - 🧲 **The Buttons pane shows every button as a tile**, with a dock of favourites, your own order, tile size, theme and statistics. The profile is kept in `pane-profile.json` and is the same in every Revit version.

@@ -116,6 +116,8 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
   const { update } = useProfile();
   const [name, setName] = useState(button.name);
   const [tooltip, setTooltip] = useState(button.tooltip && button.tooltip !== button.name ? button.tooltip : "");
+  const [tab, setTab] = useState(button.tab ?? "");
+  const [panel, setPanel] = useState(button.panel ?? "");
   const save = useMutation({
     mutationFn: (request: UpdateExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionButton, request),
     onSuccess: (_, request) => {
@@ -140,7 +142,7 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim()) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null });
+        if (name.trim()) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null, tab: tab.trim(), panel: panel.trim() });
       }}
     >
       <label className="field">
@@ -151,6 +153,15 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
         <span>What it does</span>
         <textarea rows={3} value={tooltip} onChange={(event) => setTooltip(event.target.value)} placeholder="The tooltip of the button" />
       </label>
+      <RibbonPlace
+        hint="By default the button sits where its folder puts it. Give it a tab or a panel of its own:"
+        tab={tab}
+        panel={panel}
+        tabDefault={folder.tab || "AnalyseTool"}
+        panelDefault={folder.panel || "Extensions"}
+        onTab={setTab}
+        onPanel={setPanel}
+      />
       <p className="muted small">Saved as a version of {folder.name}. The code keeps its file; a new name starts the statistics of the button anew.</p>
       <button type="submit" disabled={!name.trim() || save.isPending}>
         {save.isPending ? "Saving…" : "Save"}
@@ -169,6 +180,8 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
   const refresh = useRefreshAll();
   const [name, setName] = useState(folder.name);
   const [description, setDescription] = useState(folder.description && folder.description !== folder.name ? folder.description : "");
+  const [tab, setTab] = useState(folder.tab ?? "");
+  const [panel, setPanel] = useState(folder.panel ?? "");
   const save = useMutation({
     mutationFn: (request: UpdateExtensionFolderRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionFolder, request),
     onSuccess: (_, request) => {
@@ -183,7 +196,7 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim()) save.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null });
+        if (name.trim()) save.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, tab: tab.trim(), panel: panel.trim() });
       }}
     >
       <label className="field">
@@ -194,11 +207,47 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
         <span>What its buttons are for</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
+      <RibbonPlace
+        hint="Where the buttons of this folder go on the Revit ribbon:"
+        tab={tab}
+        panel={panel}
+        tabDefault="AnalyseTool"
+        panelDefault="Extensions"
+        onTab={setTab}
+        onPanel={setPanel}
+      />
       <p className="muted small">Saved as a version of the folder. Its id ({folder.id}) and its commands stay.</p>
       <button type="submit" disabled={!name.trim() || save.isPending}>
         {save.isPending ? "Saving…" : "Save"}
       </button>
       {save.isError && <p className="error small">{messageOf(save.error)}</p>}
     </form>
+  );
+}
+
+/** «Advanced»: the ribbon tab and panel. Closed by default — the defaults are fine; who knows the ribbon sets them. */
+function RibbonPlace(props: {
+  hint: string;
+  tab: string;
+  panel: string;
+  tabDefault: string;
+  panelDefault: string;
+  onTab: (value: string) => void;
+  onPanel: (value: string) => void;
+}) {
+  return (
+    <details className="advanced" open={!!(props.tab || props.panel)}>
+      <summary>Advanced: ribbon tab and panel</summary>
+      <p className="muted small">{props.hint}</p>
+      <label className="field">
+        <span>Tab</span>
+        <input value={props.tab} onChange={(event) => props.onTab(event.target.value)} placeholder={props.tabDefault} />
+      </label>
+      <label className="field">
+        <span>Panel</span>
+        <input value={props.panel} onChange={(event) => props.onPanel(event.target.value)} placeholder={props.panelDefault} />
+      </label>
+      <p className="muted small">Empty: {props.tabDefault} › {props.panelDefault}. A tab that does not exist yet is created.</p>
+    </details>
   );
 }

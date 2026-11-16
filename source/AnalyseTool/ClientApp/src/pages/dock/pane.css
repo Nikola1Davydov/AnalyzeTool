@@ -1545,3 +1545,20 @@
   top: calc(var(--tile) * 0.72 - 16px);
   background: var(--orange);
 }
+
+/* «Advanced» of a form: closed by default */
+.sheet-form details.advanced {
+  border-radius: 10px;
+  background: var(--fill);
+  padding: 8px 12px;
+}
+
+.sheet-form details.advanced summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.sheet-form details.advanced[open] summary {
+  margin-bottom: 6px;
+}
