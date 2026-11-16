@@ -1,7 +1,8 @@
 name: Compile solution
 
-# Runs only by hand: Actions › Compile solution › Run workflow (any branch).
+# Builds and tests what is in git, on a clean machine: on a pull request, and by hand (Actions › Run workflow).
 on:
+  pull_request:
   workflow_dispatch:
 
 jobs:
