@@ -749,11 +749,12 @@
 
 /* Toasts: a notification that drops in from the top */
 
+/* Just above the dock: the header and the title stay readable, and it appears where the user taps most */
 .toast {
   position: fixed;
   left: 8px;
   right: 8px;
-  top: 8px;
+  bottom: calc(var(--dock-height, 88px) + 16px);
   z-index: 20;
   display: flex;
   align-items: center;

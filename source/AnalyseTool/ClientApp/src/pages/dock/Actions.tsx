@@ -33,8 +33,8 @@ function duration(milliseconds: number) {
 }
 
 /**
- * The actions of the pane and the layers over the grid: a sheet (a result, errors, a list of actions) and a toast at the
- * top (the result of a run). Every tile — of the grid and of the dock — goes through `activate`.
+ * The actions of the pane and the layers over the grid: a sheet (a result, errors, a list of actions) and a toast above the
+ * dock (the result of a run). Every tile — of the grid and of the dock — goes through `activate`.
  */
 export function ActionsProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -153,9 +153,9 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
             key={toastState.id}
             className={`toast glass ${toastState.kind}`}
             title="Details"
-            initial={{ y: -80, opacity: 0 }}
+            initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
+            exit={{ y: 40, opacity: 0 }}
             transition={spring}
             onClick={() => {
               if (toastState.detail) setSheet({ title: "Result", body: toastState.detail });

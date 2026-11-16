@@ -456,8 +456,18 @@ function Dock({ overview }: { overview: PaneOverview }) {
     return found ? [{ key, ...found }] : [];
   });
 
+  // The toast sits just above the dock, whose height follows the tile size and the pinned buttons
+  const nav = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const element = nav.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => document.documentElement.style.setProperty("--dock-height", `${element.offsetHeight}px`));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <nav className="dock glass" aria-label="Dock">
+    <nav className="dock glass" aria-label="Dock" ref={nav}>
       {pinned.length === 0 && <span className="dock-hint">Right-click a button and tap + to keep it here</span>}
       {pinned.map(({ key, folder, button }) => (
         <ButtonTile
