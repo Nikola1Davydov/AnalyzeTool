@@ -50,6 +50,24 @@ export function HowItWorks() {
       <Step picture={<span className="guide-tile off" />} title="Grey and struck through: not on the ribbon">
         The button (or the folder) stays here and works, but Revit does not show it. «+» brings it back.
       </Step>
+      <Step
+        picture={
+          <span className="guide-tile">
+            <span className="guide-error">!</span>
+          </span>
+        }
+        title="A red «!»: something is wrong"
+      >
+        The code of that button does not compile — tap the «!» for its errors with file and line; the button keeps running its last
+        good build meanwhile. A problem of the whole folder (a shared file, plugin.json) is a red bar inside the folder. An orange dot:
+        the last run of the button failed — tap it for the error. ✎ › «Code, files and versions…» shows the line in the file; an
+        AI client over MCP sees the same errors and can fix them. A button that fails when it runs shows a red message at the bottom
+        (tap it for the whole text); Profile › Statistics keeps how often it failed and its last error.
+      </Step>
+      <Step picture={<span className="guide-tile dim" />} title="Pale: the folder is turned off">
+        Its buttons and commands do not load (it was turned off — maybe in AnalyseTool 1.x). Tap a button of it, or the bar at the
+        top of the folder, and «Turn it on»; ⋯ › «Turn the folder off» turns it off again.
+      </Step>
       <Step picture={<span className="guide-tile pulldown" />} title="▾ is a pulldown">
         Several buttons behind one: on the ribbon a button with a list; here a tap shows the list.
       </Step>
@@ -62,7 +80,8 @@ export function HowItWorks() {
         version: ✎ › «Code, files and versions…» shows, compares and restores them.
       </Step>
       <Step picture={<span className="guide-avatar">NI</span>} title="Your profile">
-        Top right: statistics of your buttons, Manage buttons, settings (AI over MCP, the folders of buttons), tile size and theme.
+        Top right: statistics of your buttons, packages (.zip extensions others shared), AI clients (what to paste into Claude Code,
+        Codex, Cursor…), the folders of buttons, report a bug, about, tile size and theme.
       </Step>
     </div>
   );

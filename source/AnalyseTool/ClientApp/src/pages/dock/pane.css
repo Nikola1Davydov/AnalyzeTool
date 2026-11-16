@@ -1952,3 +1952,22 @@
 .command-form .switch-row span {
   color: var(--label);
 }
+
+.guide-error {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--red);
+}
+
+.guide-tile.dim {
+  opacity: 0.4;
+}
