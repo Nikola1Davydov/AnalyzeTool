@@ -22,7 +22,9 @@ namespace AnalyseTool.Infrastructure.App;
 /// <param name="Url">The address of the endpoint.</param>
 /// <param name="ClaudeCode">The <c>claude mcp add …</c> command, while it listens.</param>
 /// <param name="ConnectionFile">The file with the address and the token.</param>
-public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile)
+/// <param name="Name">The server name for a client configuration, unique per Revit version.</param>
+/// <param name="Token">The bearer token, while it listens: the pages build the configuration of other clients with it.</param>
+public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile, string? Name = null, string? Token = null)
 {
     internal static McpInfo From(IMcpEndpoint endpoint, McpOptions options)
     {
@@ -33,7 +35,7 @@ public sealed record McpInfo(bool Enabled, string State, string Url, string? Cla
             McpEndpointState.PortBusy => "portBusy",
             _ => "off"
         };
-        return new McpInfo(options.Enabled ?? info.State != McpEndpointState.Off, state, info.Url.ToString(), info.ClaudeCode, info.ConnectionFile);
+        return new McpInfo(options.Enabled ?? info.State != McpEndpointState.Off, state, info.Url.ToString(), info.ClaudeCode, info.ConnectionFile, info.Name, info.Token);
     }
 }
 
@@ -62,6 +64,32 @@ public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions
             File.Exists(changelog) ? File.ReadAllText(changelog) : "",
             paths.ProfileRoot,
             McpInfo.From(endpoint, mcp.CurrentValue)));
+    }
+}
+
+/// <summary>The colour theme of Revit.</summary>
+/// <param name="Theme"><c>light</c> or <c>dark</c>.</param>
+public sealed record RevitTheme(string Theme);
+
+/// <summary>
+///     The theme Revit shows (Revit 2024+ has a dark one): the pages follow it when the profile says «Revit». WebView2 only
+///     knows the theme of Windows, so the pages ask.
+/// </summary>
+[Command(Description = "Returns the colour theme of Revit: light or dark.")]
+public sealed class GetRevitTheme : ICommand<RevitTheme>
+{
+    /// <inheritdoc />
+    public Task<RevitTheme> ExecuteAsync(CommandContext context)
+    {
+        try
+        {
+            return Task.FromResult(new RevitTheme(Autodesk.Revit.UI.UIThemeManager.CurrentTheme == Autodesk.Revit.UI.UITheme.Dark ? "dark" : "light"));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or TypeLoadException or MissingMethodException)
+        {
+            // Outside Revit (tests) or an API without themes: light, as Revit itself
+            return Task.FromResult(new RevitTheme("light"));
+        }
     }
 }
 

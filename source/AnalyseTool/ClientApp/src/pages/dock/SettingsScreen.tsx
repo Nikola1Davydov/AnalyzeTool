@@ -8,14 +8,55 @@ import { messageOf, useActions } from "./Actions";
 
 const states: Record<McpInfo["state"], string> = { off: "Off", listening: "Listening", portBusy: "Port in use" };
 
-/** Settings, in the pane: the AI connection (MCP) and the folders your buttons live in. */
-export function SettingsScreen() {
+/** AI clients, in the pane: the MCP server inside Revit and how each client connects to it. */
+export function McpScreen() {
   return (
     <div className="profile settings">
       <McpSection />
+    </div>
+  );
+}
+
+/** The folders your buttons live in: yours, a network share, a git checkout. */
+export function FoldersScreen() {
+  return (
+    <div className="profile settings">
       <FoldersSection />
     </div>
   );
+}
+
+type Client = "claude-code" | "codex" | "cursor" | "vscode" | "claude-desktop" | "gemini";
+
+const clients: { value: Client; label: string; where: string }[] = [
+  { value: "claude-code", label: "Claude Code", where: "Run once in a terminal:" },
+  { value: "codex", label: "Codex", where: "Add to ~/.codex/config.toml (Windows: %USERPROFILE%\\.codex\\config.toml):" },
+  { value: "cursor", label: "Cursor", where: "Add to ~/.cursor/mcp.json (or .cursor/mcp.json of a project):" },
+  { value: "vscode", label: "VS Code", where: "Add to .vscode/mcp.json of a project (or «MCP: Open User Configuration»):" },
+  { value: "claude-desktop", label: "Claude Desktop", where: "Add to claude_desktop_config.json (Settings › Developer › Edit Config); needs Node.js for mcp-remote:" },
+  { value: "gemini", label: "Gemini CLI", where: "Add to ~/.gemini/settings.json:" },
+];
+
+/** What a client needs: a command or a piece of its configuration, with the address and the token of this Revit. */
+function snippet(client: Client, mcp: McpInfo) {
+  const name = mcp.name ?? "analysetool";
+  const url = mcp.url;
+  const auth = `Bearer ${mcp.token ?? "<token>"}`;
+  const json = (value: unknown) => JSON.stringify(value, null, 2);
+  switch (client) {
+    case "claude-code":
+      return mcp.claudeCode ?? `claude mcp add --transport http ${name} ${url} --header "Authorization: ${auth}"`;
+    case "codex":
+      return `[mcp_servers.${name}]\nurl = "${url}"\nhttp_headers = { "Authorization" = "${auth}" }`;
+    case "cursor":
+      return json({ mcpServers: { [name]: { url, headers: { Authorization: auth } } } });
+    case "vscode":
+      return json({ servers: { [name]: { type: "http", url, headers: { Authorization: auth } } } });
+    case "claude-desktop":
+      return json({ mcpServers: { [name]: { command: "npx", args: ["-y", "mcp-remote", url, "--header", `Authorization:${auth}`] } } });
+    case "gemini":
+      return json({ mcpServers: { [name]: { httpUrl: url, headers: { Authorization: auth } } } });
+  }
 }
 
 function McpSection() {
@@ -28,7 +69,6 @@ function McpSection() {
     onError: (error) => actions.toast(messageOf(error), "error"),
   });
   const mcp = info.data?.mcp;
-  const [copied, setCopied] = useState(false);
 
   return (
     <section>
@@ -44,7 +84,7 @@ function McpSection() {
             </button>
           </label>
           <p className="muted small">
-            Claude Code, Claude Desktop, Cursor or any MCP client calls the commands of AnalyseTool and of your buttons.
+            Claude Code, Codex, Cursor, VS Code, Gemini or any MCP client calls the commands of AnalyseTool and of your buttons.
             {mcp.enabled && mcp.state === "off" ? " It starts with the next Revit session." : ""}
             {!mcp.enabled && mcp.state !== "off" ? " It stops when Revit restarts." : ""}
           </p>
@@ -60,14 +100,7 @@ function McpSection() {
               </button>
             </dd>
           </dl>
-          {mcp.claudeCode && (
-            <>
-              <p className="small">Connect Claude Code — run once in a terminal:</p>
-              <pre className="result small">{mcp.claudeCode}</pre>
-              <button onClick={() => void copy(mcp.claudeCode!).then(setCopied)}>{copied ? "Copied" : "Copy"}</button>
-              <p className="muted small">Other clients read the address and the token from the connection file. Keep the token on this computer.</p>
-            </>
-          )}
+          <ConnectClient mcp={mcp} />
         </>
       )}
     </section>
@@ -137,5 +170,43 @@ function FoldersSection() {
         Add a folder…
       </button>
     </section>
+  );
+}
+
+/** Connect a client: pick it, copy what it needs. */
+function ConnectClient({ mcp }: { mcp: McpInfo }) {
+  const [client, setClient] = useState<Client>("claude-code");
+  const [copied, setCopied] = useState(false);
+  const chosen = clients.find((item) => item.value === client)!;
+  const text = snippet(client, mcp);
+
+  return (
+    <>
+      <h2>Connect a client</h2>
+      <div className="client-list" role="radiogroup">
+        {clients.map((item) => (
+          <button
+            key={item.value}
+            role="radio"
+            aria-checked={client === item.value}
+            className={`chip ${client === item.value ? "on" : ""}`}
+            onClick={() => {
+              setClient(item.value);
+              setCopied(false);
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {!mcp.token && <p className="muted small">The server is not listening yet — turn it on (it starts with the next Revit), then copy.</p>}
+      <p className="small">{chosen.where}</p>
+      <pre className="result small">{text}</pre>
+      <button onClick={() => void copy(text).then(setCopied)}>{copied ? "Copied" : "Copy"}</button>
+      <p className="muted small">
+        Each Revit version has its own address and token; they are also in the connection file. Keep the token on this computer — it
+        lets a program drive the open model.
+      </p>
+    </>
   );
 }

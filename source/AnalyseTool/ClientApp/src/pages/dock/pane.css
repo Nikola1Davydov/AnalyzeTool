@@ -1881,3 +1881,27 @@
   flex-direction: column;
   align-items: flex-start;
 }
+
+/* ---- Connect a client: a row of chips ---- */
+.client-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.pane .chip {
+  border: none;
+  border-radius: 14px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--fill);
+  color: var(--label);
+  cursor: pointer;
+}
+
+.pane .chip.on {
+  background: var(--accent);
+  color: #fff;
+}

@@ -1,7 +1,7 @@
 import { FluentProvider, Spinner, Toaster } from "@fluentui/react-components";
 import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
-import { applyTheme, useProfile } from "../pages/dock/profile";
+import { applyTheme, useEffectiveTheme } from "../pages/dock/profile";
 import { ConfirmProvider } from "./confirm";
 import { darkTheme, lightTheme } from "./theme";
 import { TOASTER_ID } from "./notify";
@@ -48,11 +48,11 @@ function BusyBar() {
 
 /** Theme, toasts, the confirmation dialog and the busy strip around every page. */
 export function AppFrame({ children }: { children: ReactNode }) {
-  // Light or dark as the profile of the pane says — the same in the pane and in every window
-  const { profile } = useProfile();
+  // Light or dark as the profile of the pane says — Revit's theme by default — the same in the pane and in every window
+  const theme = useEffectiveTheme();
   const systemDark = usePrefersDark();
-  const dark = profile.theme === "dark" || (profile.theme === "system" && systemDark);
-  useEffect(() => applyTheme(profile.theme), [profile.theme]);
+  const dark = theme === "dark" || (theme === "system" && systemDark);
+  useEffect(() => applyTheme(theme), [theme]);
   return (
     <FluentProvider theme={dark ? darkTheme : lightTheme} className="app-frame">
       <ConfirmProvider>

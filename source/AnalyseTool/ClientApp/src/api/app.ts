@@ -9,6 +9,7 @@ export const appCommands = {
   BrowseFolder: "BrowseFolder",
   BrowseFile: "BrowseFile",
   OpenWindow: "OpenWindow",
+  GetRevitTheme: "GetRevitTheme",
 } as const;
 
 export type McpState = "off" | "listening" | "portBusy";
@@ -20,6 +21,14 @@ export interface McpInfo {
   /** The `claude mcp add …` command line; null when there is nothing to connect to. */
   claudeCode: string | null;
   connectionFile: string;
+  /** The server name for a client configuration. */
+  name?: string | null;
+  /** The bearer token while it listens. */
+  token?: string | null;
+}
+
+export interface RevitTheme {
+  theme: "light" | "dark";
 }
 
 export interface AppInfo {

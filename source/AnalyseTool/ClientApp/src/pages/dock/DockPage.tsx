@@ -9,7 +9,7 @@ import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { HowItWorks } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
-import { SettingsScreen } from "./SettingsScreen";
+import { FoldersScreen, McpScreen } from "./SettingsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
@@ -22,7 +22,8 @@ type Screen =
   | { kind: "profile" }
   | { kind: "guide" }
   | { kind: "packages" }
-  | { kind: "settings" }
+  | { kind: "mcp" }
+  | { kind: "folders" }
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string };
 
@@ -41,7 +42,8 @@ function depth(screen: Screen) {
       return 1;
     case "stats":
     case "packages":
-    case "settings":
+    case "mcp":
+    case "folders":
       return 2;
     default:
       return 0;
@@ -101,7 +103,6 @@ function Pane() {
   const main = useRef<HTMLElement | null>(null);
   const openedFrom = useRef<DOMRect | null>(null);
 
-  useEffect(() => applyTheme(profile.theme), [profile.theme]);
 
   // Buttons removed from a folder leave the dock and the order of the profile. Only when a new list of buttons arrives — not
   // on every change of the profile: a renamed button is renamed in the profile first and would be pruned against the old list
@@ -179,12 +180,15 @@ function Pane() {
                 overview={overview}
                 onStats={() => go({ kind: "stats" })}
                 onPackages={() => go({ kind: "packages" })}
-                onSettings={() => go({ kind: "settings" })}
+                onMcp={() => go({ kind: "mcp" })}
+                onFolders={() => go({ kind: "folders" })}
               />
             ) : current.kind === "packages" ? (
               <PackagesScreen />
-            ) : current.kind === "settings" ? (
-              <SettingsScreen />
+            ) : current.kind === "mcp" ? (
+              <McpScreen />
+            ) : current.kind === "folders" ? (
+              <FoldersScreen />
             ) : current.kind === "guide" ? (
               <HowItWorks />
             ) : current.kind === "stats" ? (
@@ -219,7 +223,7 @@ function Header(props: {
   const toastError = (message: string) => actions.toast(message, "error");
 
   const back =
-    screen.kind === "packages" || screen.kind === "settings"
+    screen.kind === "packages" || screen.kind === "mcp" || screen.kind === "folders"
       ? { label: "Profile", to: { kind: "profile" } as Screen }
       : screen.kind === "stats"
       ? screen.folder
@@ -233,7 +237,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "settings" ? "Settings" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },

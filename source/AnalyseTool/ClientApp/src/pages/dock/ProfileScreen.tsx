@@ -57,13 +57,15 @@ const sizeOptions: { value: TileSize; label: string }[] = [
 ];
 
 const themeOptions: { value: Theme; label: string }[] = [
-  { value: "system", label: "System" },
+  { value: "revit", label: "Revit" },
+  { value: "system", label: "Windows" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ];
 
 /** The profile: every setting of the pane in one place, kept in the AnalyseTool profile folder; export and import move it. */
-export function ProfileScreen({ overview, onStats, onPackages, onSettings }: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onSettings: () => void }) {
+export function ProfileScreen(props: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onMcp: () => void; onFolders: () => void }) {
+  const { overview, onStats, onPackages } = props;
   const { profile, update } = useProfile();
   const actions = useActions();
   const [importError, setImportError] = useState<string | null>(null);
@@ -126,11 +128,19 @@ export function ProfileScreen({ overview, onStats, onPackages, onSettings }: { o
       </section>
 
       <section className="link-section">
-        <button className="row-link" onClick={onSettings}>
-          <span>⚙️ Settings</span>
+        <button className="row-link" onClick={props.onMcp}>
+          <span>🤖 AI clients (MCP)</span>
           <span className="chevron-right">›</span>
         </button>
-        <p className="muted small">Connect an AI client over MCP, and choose where your folders of buttons live.</p>
+        <p className="muted small">Let Claude Code, Codex, Cursor and others use AnalyseTool and your buttons — what to paste where.</p>
+      </section>
+
+      <section className="link-section">
+        <button className="row-link" onClick={props.onFolders}>
+          <span>📂 Folders of buttons</span>
+          <span className="chevron-right">›</span>
+        </button>
+        <p className="muted small">Where your folders live: yours, a network share or a git checkout shared with your team.</p>
       </section>
 
       <section>

@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { bridge } from "revit-bridge";
+import { appCommands, type RevitTheme } from "../../api/app";
 import { type PaneFolder, type PaneProfileResult, paneCommands } from "../../api/pane";
 
 // The profile of the pane: the size of the tiles, the theme, the dock (favourites), the order of the tiles, the last
 // folder. Kept by the add-in in %LOCALAPPDATA%\AnalyseTool\pane-profile.json — the same in every Revit version.
 
-export type Theme = "system" | "light" | "dark";
+/** «revit» follows the theme of Revit (2024+ has a dark one), «system» the theme of Windows. */
+export type Theme = "revit" | "system" | "light" | "dark";
 export type TileSize = "small" | "medium" | "large";
 
 export type Profile = {
@@ -33,7 +35,7 @@ export type Profile = {
 export const defaultProfile: Profile = {
   version: 1,
   size: "medium",
-  theme: "system",
+  theme: "revit",
   effects: true,
   dock: [],
   ribbon: [],
@@ -52,7 +54,7 @@ export function normalize(value: unknown): Profile {
     ...source,
     version: 1,
     size: (["small", "medium", "large"] as const).includes(source.size as TileSize) ? (source.size as TileSize) : defaultProfile.size,
-    theme: (["system", "light", "dark"] as const).includes(source.theme as Theme) ? (source.theme as Theme) : defaultProfile.theme,
+    theme: (["revit", "system", "light", "dark"] as const).includes(source.theme as Theme) ? (source.theme as Theme) : defaultProfile.theme,
     effects: typeof source.effects === "boolean" ? source.effects : defaultProfile.effects,
     dock: Array.isArray(source.dock) ? source.dock.filter((item): item is string => typeof item === "string") : [],
     ribbon: Array.isArray(source.ribbon) ? source.ribbon.filter((item): item is string => typeof item === "string") : [],
@@ -154,10 +156,27 @@ export function withoutMissingFolders(profile: Profile, folders: PaneFolder[]): 
   };
 }
 
-/** The colours of the pane: light, dark, or the system's. */
-export function applyTheme(theme: Theme) {
+/** The colours of the pane: light, dark, or the system's — «revit» is resolved before (useEffectiveTheme). */
+export function applyTheme(theme: "system" | "light" | "dark") {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme === "system" ? "light dark" : theme;
+}
+
+/**
+ * The theme to show: the profile's, with «revit» resolved by asking Revit — WebView2 only knows the theme of Windows. Asked
+ * again every few seconds, so switching the theme in Revit reaches the open pane and windows.
+ */
+export function useEffectiveTheme(): "system" | "light" | "dark" {
+  const { profile } = useProfile();
+  const revit = useQuery({
+    queryKey: ["revitTheme"],
+    queryFn: ({ signal }) => bridge.invoke<RevitTheme>(appCommands.GetRevitTheme, null, { signal }),
+    enabled: profile.theme === "revit",
+    refetchInterval: 4000,
+    staleTime: 2000,
+  });
+  if (profile.theme !== "revit") return profile.theme;
+  return revit.data?.theme ?? "system";
 }
 
 /** The profile as a file to keep or to move to another computer. */

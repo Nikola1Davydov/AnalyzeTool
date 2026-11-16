@@ -165,6 +165,8 @@ const mcp: McpInfo = {
   url: mcpUrl,
   claudeCode: `claude mcp add --transport http analysetool-2026 ${mcpUrl} --header "Authorization: Bearer ${token}"`,
   connectionFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\2026\mcp.json`,
+  name: "analysetool-2026",
+  token,
 };
 
 const changelog = `# Changelog
@@ -687,6 +689,7 @@ registerMocks({
     if (!(to.panels ?? []).includes(panel)) to.panels = [...(to.panels ?? []), panel];
     return { id: to.id, name: to.name };
   },
+  GetRevitTheme: () => ({ theme: window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light" }),
   RefreshButtons: async () => {
     await delay(400);
     return null;
