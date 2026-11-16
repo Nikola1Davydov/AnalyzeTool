@@ -1,69 +1,60 @@
-import { useEffect, useState } from "react";
-import { bridge } from "revit-bridge";
-import { DevPage } from "./dev/DevPage";
-import { useActiveDocument, useCommandMutation } from "./revit/hooks";
+import { Spinner } from "@fluentui/react-components";
+import { lazy, type ReactNode, Suspense } from "react";
+import { AppFrame } from "./components/AppFrame";
+import { Empty, Page } from "./components/Page";
+import { useRoute } from "./router";
 
-type CategoryCount = { category: string; count: number };
+// Every window (and the dock pane) shows one route, so each page is its own chunk: the narrow dock pane does not
+// parse the code of the report or the diff viewer.
+const DevPage = lazy(() => import("./dev/DevPage").then((m) => ({ default: m.DevPage })));
+const MainWindow = lazy(() => import("./pages/tools/MainWindow").then((m) => ({ default: m.MainWindow })));
+const ExtensionsPage = lazy(() => import("./pages/extensions/ExtensionsPage").then((m) => ({ default: m.ExtensionsPage })));
+const NewExtensionPage = lazy(() =>
+  import("./pages/extensions/NewExtensionPage").then((m) => ({ default: m.NewExtensionPage })),
+);
+const ExtensionDetailPage = lazy(() =>
+  import("./pages/extensions/ExtensionDetailPage").then((m) => ({ default: m.ExtensionDetailPage })),
+);
+const SettingsPage = lazy(() => import("./pages/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const AboutPage = lazy(() => import("./pages/about/AboutPage").then((m) => ({ default: m.AboutPage })));
+const DockPage = lazy(() => import("./pages/dock/DockPage").then((m) => ({ default: m.DockPage })));
 
-/** The route of the page: `#/` in a window, `#/dock` in the dock pane (IWindows.Open / ShowDockPane). */
-function useRoute() {
-  const [route, setRoute] = useState(() => location.hash.slice(1) || "/");
-  useEffect(() => {
-    const update = () => setRoute(location.hash.slice(1) || "/");
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
-  return route;
+function routePage(path: string, query: URLSearchParams): ReactNode {
+  switch (path) {
+    case "/":
+    case "/report":
+    case "/elements":
+      return <MainWindow path={path} query={query} />;
+    case "/dev":
+      return <DevPage />;
+    case "/dock":
+      return <DockPage />;
+    case "/extensions":
+      return <ExtensionsPage />;
+    case "/extensions/new":
+      return <NewExtensionPage />;
+    case "/settings":
+      return <SettingsPage />;
+    case "/about":
+      return <AboutPage />;
+  }
+  if (path.startsWith("/extensions/")) {
+    const id = decodeURIComponent(path.slice("/extensions/".length));
+    return <ExtensionDetailPage key={id} id={id} query={query} />;
+  }
+  return (
+    <Page title="Not found" back={{ label: "AnalyseTool", path: "/" }}>
+      <Empty>There is no page at {path}.</Empty>
+    </Page>
+  );
 }
 
-/** The sample page: the active document and one command with progress. */
+/** The page of this window, by its hash route (IWindows.Open / ShowDockPane on the C# side, OpenWindow from a page). */
 export function App() {
-  const route = useRoute();
-  const document = useActiveDocument();
-  const count = useCommandMutation<CategoryCount[]>("CountElementsByCategory");
-
-  if (route === "/dev") return <DevPage />;
-
+  const { path, query } = useRoute();
   return (
-    <main className={route === "/dock" ? "page compact" : "page"}>
-      <header>
-        <h1>{route === "/dock" ? "Palette" : "Sample page"}</h1>
-        {!bridge.inRevit && <span className="badge">mock — outside Revit</span>}
-      </header>
-
-      <section>
-        <h2>Active document</h2>
-        {document.isPending && <p>Loading…</p>}
-        {document.isError && <p className="error">{document.error.message}</p>}
-        {document.isSuccess && <p>{document.data?.title ?? "No document is open."}</p>}
-        <button onClick={() => void document.refetch()}>Refresh</button>
-      </section>
-
-      <section>
-        <h2>Elements by category</h2>
-        <button disabled={!document.data || count.isPending} onClick={() => count.mutate(undefined)}>
-          Count elements
-        </button>
-        {count.isPending && <button onClick={count.cancel}>Cancel</button>}
-        {count.progress && (
-          <p>
-            <progress value={count.progress.fraction} /> {count.progress.message}
-          </p>
-        )}
-        {count.isError && <p className="error">{count.error.message}</p>}
-        {count.isSuccess && (
-          <table>
-            <tbody>
-              {count.data.map((item) => (
-                <tr key={item.category}>
-                  <td>{item.category}</td>
-                  <td>{item.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </main>
+    <AppFrame>
+      <Suspense fallback={<Spinner className="page-spinner" />}>{routePage(path, query)}</Suspense>
+    </AppFrame>
   );
 }

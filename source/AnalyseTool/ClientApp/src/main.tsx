@@ -4,6 +4,7 @@ import { bridge } from "revit-bridge";
 import { App } from "./App";
 import { RevitQueryProvider } from "./revit/RevitQueryProvider";
 import "./styles.css";
+import "./app.css";
 
 // The mock answers are for a normal browser only: inside Revit they stay out of the loaded code
 if (!bridge.inRevit) {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { bridge, type InvokeOptions, type ProgressInfo } from "revit-bridge";
 
 // React hooks over revit-bridge. The page always works with the active document:
@@ -53,4 +53,30 @@ export function useCommandMutation<T, TPayload = unknown>(command: string) {
   });
 
   return { ...mutation, progress, cancel: () => abort.current?.abort() };
+}
+
+/** Calls a command with the Document header of the active document — for calls made from event handlers. */
+export function useInvoke() {
+  const document = useActiveDocument();
+  const key = document.data?.key;
+  return useCallback(
+    <T,>(command: string, payload: unknown = null, options: InvokeOptions = {}) =>
+      bridge.invoke<T>(command, payload, {
+        ...options,
+        headers: key ? { Document: key, ...options.headers } : options.headers,
+      }),
+    [key],
+  );
+}
+
+/** The query key prefix of the commands that do not depend on the document (extensions, settings, versions). */
+export const appQueryKey = ["app"] as const;
+
+/** Reads data with a command that does not depend on the active document. */
+export function useAppQuery<T>(command: string, payload: unknown = null, options: { enabled?: boolean; refetchInterval?: number } = {}) {
+  return useQuery({
+    queryKey: [...appQueryKey, command, payload],
+    queryFn: ({ signal }) => bridge.invoke<T>(command, payload, { signal }),
+    ...options,
+  });
 }

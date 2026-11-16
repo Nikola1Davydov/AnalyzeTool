@@ -1,4 +1,4 @@
-/* Minimal styles of the sample page; pick a UI library of your own. */
+/* Base colours, and the styles of the Dev page (scoped to .page so they do not touch the Fluent UI pages). */
 
 :root {
   color-scheme: light dark;
@@ -21,32 +21,32 @@ body {
   padding: 8px 10px;
 }
 
-header {
+.page header {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-h1 {
+.page h1 {
   font-size: 18px;
   margin: 0;
 }
 
-h2 {
+.page h2 {
   font-size: 14px;
   margin: 16px 0 6px;
 }
 
-button {
+.page button {
   margin-right: 6px;
 }
 
-table {
+.page table {
   border-collapse: collapse;
   margin-top: 8px;
 }
 
-td {
+.page td {
   padding: 2px 12px 2px 0;
 }
 
