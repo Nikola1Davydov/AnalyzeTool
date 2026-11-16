@@ -149,6 +149,8 @@ export interface CreateExtensionRequest {
   template?: ExtensionTemplate;
   panel?: string | null;
   root?: string | null;
+  /** The tab: an id («sheets.tab») or a name; a tab of that name is made when there is none. */
+  tab?: string | null;
 }
 
 export interface ExtensionRequest {

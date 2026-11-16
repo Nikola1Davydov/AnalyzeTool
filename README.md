@@ -12,7 +12,7 @@ AnalyseTool is a free Revit add-in. It brings shared parameters and a printable 
 own tools: a button is a folder with a C# file (and, if you like, a page); save the file and the button runs the new code.
 Claude Code, Codex, Cursor or any MCP client can read and change the model through AnalyseTool — and write buttons with you.
 
-<p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
+<p align="center"><img src="img/Overview.png" width="860" alt="Revit with the AnalyseTool ribbon tab — one button, Buttons — and the Buttons pane on the right: the folders AnalyseTool and test, New folder, the dock below" /></p>
 
 ---
 
@@ -59,9 +59,9 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
 ## The pane
 
-<p align="center"><img src="img/ribbon.png" width="680" alt="AnalyseTool ribbon" /></p>
-
 **Buttons** opens the pane, laid out like the home screen of a phone — and it is the map of your ribbon:
+
+<p align="center"><img src="img/Pane.gif" width="860" alt="The pane in Revit: a folder opens, edit mode, ☆ flies a button into the dock, the button is dragged into another folder, a new folder starts with its first button" /></p>
 
 - **A folder is a tab of the Revit ribbon, its sections are the panels.** New folder, New button, + New panel — nothing to
   set by hand.
@@ -70,6 +70,9 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
   ribbon (it stays in the pane, grey), **☆** keeps a button in the dock at the bottom, **✎** renames it, sets its page to
   open in the pane and shows its code, files and versions, **📁** opens its folder for an AI tool. **?** explains it all
   with pictures.
+
+<p align="center"><img src="img/Ribbon.gif" width="860" alt="Edit mode in the AnalyseTool folder: + on Parameters, and the button appears on the Revit ribbon" /></p>
+
 - **A command that needs a few values** gets a form in the pane, built from its input type; a page marked `dockable`
   opens inside the pane, any other in a window.
 - **DLL projects** (built by their author) are boxes marked DLL, with the Revit years they are built for; their buttons
@@ -108,8 +111,12 @@ token for every open Revit version — and gives an AI client the built-in comma
 %LOCALAPPDATA%\AnalyseTool\extensions\
   Sheets.tab\                     a tab of the ribbon
     Numbering.panel\              a panel
-      Renumber.pushbutton\        one button: bundle.json, Renumber.cs, index.html, its own .git\
-    _shared\*.cs                  C# every button of the tab compiles with
+      Renumber.pushbutton\        one button, all of it in one folder:
+        bundle.json                 its name, icon, tooltip
+        Renumber.cs                 its command
+        index.html                  its page (optional)
+        .git\                       its versions
+    _shared\*.cs                  optional: C# every button of the tab compiles with
 ```
 
 The layout is pyRevit's: the folders are the ribbon. AnalyseTool compiles the C# itself, with its own Roslyn against the

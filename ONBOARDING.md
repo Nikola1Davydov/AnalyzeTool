@@ -55,9 +55,13 @@ or transport details from inside a command. Return a serializable result; the tr
 ```
 %LOCALAPPDATA%\AnalyseTool\extensions\
     Sheets.tab\                      a ribbon tab = a folder of the pane     (bundle.json: name, order of the panels)
-        _shared\*.cs                 C# every button of the tab compiles with
+        _shared\*.cs                 optional: C# every button of the tab compiles with
         Numbering.panel\             a panel = a section                     (bundle.json: name, order of the buttons)
-            Renumber.pushbutton\     ONE button: bundle.json, Renumber.cs, index.html, its own .git\
+            Renumber.pushbutton\     ONE button, all of it in one folder:
+                bundle.json          its name, icon, tooltip
+                Renumber.cs          its command
+                index.html           its page (optional)
+                .git\                its versions
             More.pulldown\           a pulldown: *.pushbutton folders inside
 ```
 

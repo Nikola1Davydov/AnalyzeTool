@@ -1,20 +1,24 @@
 name: Release
 
-# A tag vX.Y.Z publishes AnalyseTool X.Y.Z: the whole pipeline with the installers (`build -- pack`), then a GitHub
-# release with both MSIs, the Autodesk bundle and the section of CHANGELOG.md of that version as its notes.
-#   git tag v2.0.0 && git push origin v2.0.0
-# or a tag made on GitHub (Releases › Choose a tag › create v2.0.0 on main) — the workflow then makes the release itself; a
-# release that already exists for the tag stops it. CHANGELOG.md must have «## [2.0.0] / <date>» (not «unreleased») on
-# that commit, or nothing is published.
-# GitVersion takes the version from the tag. A tag with a suffix (v2.1.0-beta.1) makes a pre-release.
+# The version lives in the code: "Build" › "Version" of build/appsettings.json (local builds and installers carry it too).
+# A push to main with a version that has no tag yet publishes it: the whole pipeline with the installers
+# (`build -- pack`), then the tag vX.Y.Z and a GitHub release with both MSIs, the Autodesk bundle and the section of
+# CHANGELOG.md of that version as its notes. A version that is tagged already: nothing happens.
+# To release: raise the version, date its section in CHANGELOG.md («## [X.Y.Z] / <date>»), merge into main.
+# A version with a suffix (2.1.0-beta.1) makes a pre-release.
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -27,19 +31,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: The changelog has this version
-        id: notes
+      - name: The version and whether it is released
+        id: version
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".Substring(1)
+          $version = (Get-Content build/appsettings.json -Raw | ConvertFrom-Json).Build.Version
+          if ([string]::IsNullOrWhiteSpace($version)) { throw "build/appsettings.json has no Build.Version." }
+          git rev-parse -q --verify "refs/tags/v$version" *> $null
+          $released = $LASTEXITCODE -eq 0
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "release=$(if ($released) { 'false' } else { 'true' })" >> $env:GITHUB_OUTPUT
+          if ($released) { "v$version is released already: nothing to do. Raise Build.Version to release." }
+
+      - name: The changelog has this version
+        if: steps.version.outputs.release == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
           $text = (Get-Content CHANGELOG.md -Raw) -replace "`r`n", "`n"
           $match = [regex]::Match($text, "(?ms)^## \[$([regex]::Escape($version))\]([^\n]*)\n(.*?)(?=^## \[|\z)")
-          if (-not $match.Success) { throw "CHANGELOG.md has no section «## [$version]»: add it before tagging." }
+          if (-not $match.Success) { throw "CHANGELOG.md has no section «## [$version]»." }
           if ($match.Groups[1].Value -match "unreleased") { throw "CHANGELOG.md still says «## [$version] / unreleased»: put the date of the release there." }
           Set-Content -Path release-notes.md -Value $match.Groups[2].Value.Trim() -Encoding utf8
-          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Setup Node.js
+        if: steps.version.outputs.release == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -49,6 +65,7 @@ jobs:
             source/AnalyseTool.Hosting.WebView/revit-bridge/package-lock.json
 
       - name: Cache packages
+        if: steps.version.outputs.release == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
@@ -56,27 +73,22 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Build, test and pack the installers
+        if: steps.version.outputs.release == 'true'
         run: dotnet run -c Release -- pack
         working-directory: "build"
         env:
           DOTNET_ENVIRONMENT: Production
 
-      - name: The installers carry this version
-        shell: pwsh
-        run: |
-          $version = "${{ steps.notes.outputs.version }}"
-          $installers = Get-ChildItem output -Filter "AnalyseTool-$version-*.msi"
-          if ($installers.Count -ne 2) { throw "Expected AnalyseTool-$version-SingleUser.msi and -MultiUser.msi in output/, found: $((Get-ChildItem output).Name -join ', ')" }
-          if (-not (Test-Path output/AnalyseTool.bundle.zip)) { throw "output/AnalyseTool.bundle.zip is missing" }
-          Copy-Item output/AnalyseTool.bundle.zip "output/AnalyseTool-$version.bundle.zip"
-
       - name: Publish the release
+        if: steps.version.outputs.release == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = "${{ steps.notes.outputs.version }}"
-          $files = @(Get-ChildItem output -Filter "AnalyseTool-$version-*.msi" | ForEach-Object FullName) + "output/AnalyseTool-$version.bundle.zip"
-          # The workflow makes the release; one that exists already (made by hand) stops it here
+          $version = "${{ steps.version.outputs.version }}"
+          $installers = @(Get-ChildItem output -Filter "AnalyseTool-$version-*.msi" | ForEach-Object FullName)
+          if ($installers.Count -ne 2) { throw "Expected AnalyseTool-$version-SingleUser.msi and -MultiUser.msi in output/, found: $((Get-ChildItem output).Name -join ', ')" }
+          Copy-Item output/AnalyseTool.bundle.zip "output/AnalyseTool-$version.bundle.zip"
           $prerelease = if ($version -match "-") { "--prerelease" } else { "--latest" }
-          gh release create "${{ github.ref_name }}" @files --title "AnalyseTool $version" --notes-file release-notes.md $prerelease
+          # Makes the tag v<version> on this commit, and the release
+          gh release create "v$version" @installers "output/AnalyseTool-$version.bundle.zip" --target "${{ github.sha }}" --title "AnalyseTool $version" --notes-file release-notes.md $prerelease

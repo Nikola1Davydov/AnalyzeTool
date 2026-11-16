@@ -1,0 +1,13 @@
+<Project>
+  <!-- The version of AnalyseTool lives in build/appsettings.json ("Build" › "Version"). The build pipeline passes it as
+       VersionPrefix/VersionSuffix; this gives a plain `dotnet build` or an IDE build the same version, so the About
+       page of a Debug build does not say 1.0.0. A project with its own <Version> (AnalyseTool.Sdk) keeps it. -->
+  <PropertyGroup>
+    <_AnalyseToolSettings>$(MSBuildThisFileDirectory)..\build\appsettings.json</_AnalyseToolSettings>
+    <_AnalyseToolVersion Condition="Exists('$(_AnalyseToolSettings)')">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(_AnalyseToolSettings)')), '"Version"\s*:\s*"([^"]*)"').Groups[1].Value)</_AnalyseToolVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_AnalyseToolVersion)' != '' And '$(VersionPrefix)' == ''">
+    <VersionPrefix>$(_AnalyseToolVersion.Split('-')[0])</VersionPrefix>
+    <VersionSuffix Condition="$(_AnalyseToolVersion.Contains('-'))">$(_AnalyseToolVersion.Substring($([MSBuild]::Add($(_AnalyseToolVersion.IndexOf('-')), 1))))</VersionSuffix>
+  </PropertyGroup>
+</Project>

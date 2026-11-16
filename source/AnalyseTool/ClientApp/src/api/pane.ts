@@ -65,6 +65,8 @@ export interface PaneFolder {
   dllBuilds?: string[] | null;
   /** «Older buttons»: the folders of plugin.json of the user, each a section with its own state. */
   parts?: PaneFolder[] | null;
+  /** AnalyseTool's own folder: the user's tab named «AnalyseTool», on the same tab of the ribbon. */
+  userTab?: PaneFolder | null;
 }
 
 export interface PaneOverview {
