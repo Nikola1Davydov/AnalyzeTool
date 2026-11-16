@@ -168,7 +168,7 @@ public sealed partial class ExtensionManager
 
                 try
                 {
-                    Directory.Move(current.Directory, renamed);
+                    MoveWithRetry(current.Directory, renamed);
                     order[order.IndexOf(current.Directory)] = renamed;
                     current = current with { Directory = renamed };
                 }
@@ -235,7 +235,7 @@ public sealed partial class ExtensionManager
             await host.UnloadAsync(oldId).ConfigureAwait(false);
             try
             {
-                Directory.Move(source, destination);
+                MoveWithRetry(source, destination);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -306,7 +306,7 @@ public sealed partial class ExtensionManager
         Directory.CreateDirectory(Path.GetDirectoryName(trash)!);
         try
         {
-            Directory.Move(tab.Directory, trash);
+            MoveWithRetry(tab.Directory, trash);
         }
         catch (IOException)
         {

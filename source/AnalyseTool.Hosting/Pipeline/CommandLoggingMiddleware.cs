@@ -17,7 +17,17 @@ public sealed partial class CommandLoggingMiddleware(ILogger<CommandLoggingMiddl
         try
         {
             var result = await next(context).ConfigureAwait(false);
-            LogSucceeded(logger, context.CommandName, context.Source, stopwatch.ElapsedMilliseconds);
+            // The pages call commands all the time (the pane polls its buttons and the theme): their successes are
+            // details; a click on the ribbon and a call of an AI client are worth a line
+            if (context.Source == CommandSources.WebView)
+            {
+                LogSucceededQuietly(logger, context.CommandName, context.Source, stopwatch.ElapsedMilliseconds);
+            }
+            else
+            {
+                LogSucceeded(logger, context.CommandName, context.Source, stopwatch.ElapsedMilliseconds);
+            }
+
             return result;
         }
         catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
@@ -34,6 +44,9 @@ public sealed partial class CommandLoggingMiddleware(ILogger<CommandLoggingMiddl
 
     [LoggerMessage(LogLevel.Information, "Command {Command} ({Source}) succeeded in {ElapsedMilliseconds} ms")]
     private static partial void LogSucceeded(ILogger logger, string command, string source, long elapsedMilliseconds);
+
+    [LoggerMessage(LogLevel.Debug, "Command {Command} ({Source}) succeeded in {ElapsedMilliseconds} ms")]
+    private static partial void LogSucceededQuietly(ILogger logger, string command, string source, long elapsedMilliseconds);
 
     [LoggerMessage(LogLevel.Information, "Command {Command} ({Source}) canceled by the caller after {ElapsedMilliseconds} ms")]
     private static partial void LogCanceled(ILogger logger, string command, string source, long elapsedMilliseconds);

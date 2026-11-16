@@ -36,11 +36,17 @@ internal sealed partial class McpTools(
     /// <summary>The tool that lists the open Revit versions.</summary>
     public const string ListVersionsTool = "ListRevitVersions";
 
+    /// <summary>
+    ///     The tool that runs any tool by its name — for a command an extension registered a moment ago, which a client
+    ///     that does not refresh its list on <c>tools/list_changed</c> does not show yet.
+    /// </summary>
+    public const string RunCommandTool = "RunCommand";
+
     private static readonly Dictionary<string, JsonElement> NoArguments = [];
 
     public ValueTask<ListToolsResult> ListToolsAsync(RequestContext<ListToolsRequestParams> request, CancellationToken cancellationToken)
     {
-        var tools = catalog.Tools.Select(WithRevitArgument).Prepend(ListVersions()).ToList();
+        var tools = catalog.Tools.Select(WithRevitArgument).Prepend(RunCommand()).Prepend(ListVersions()).ToList();
         return ValueTask.FromResult(new ListToolsResult { Tools = tools });
     }
 
@@ -52,7 +58,25 @@ internal sealed partial class McpTools(
             return Json(peers.List().Select(peer => new { version = peer.Version, lastActive = peer.LastActive, answersHere = peers.IsSelf(peer) }).ToList());
         }
 
+        var name = parameters.Name;
         var arguments = parameters.Arguments ?? NoArguments;
+        if (name == RunCommandTool)
+        {
+            // RunCommand { name, payload, revit? } is the tool «name» called with «payload»
+            name = arguments.TryGetValue("name", out var named) && named.ValueKind == JsonValueKind.String && named.GetString() is { Length: > 0 } given
+                ? given
+                : throw new McpProtocolException("RunCommand needs the name of a command, e.g. \"sheets.renumber.Renumber\".", McpErrorCode.InvalidParams);
+            var inner = arguments.TryGetValue("payload", out var payloadArgument) && payloadArgument.ValueKind == JsonValueKind.Object
+                ? payloadArgument.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone())
+                : new Dictionary<string, JsonElement>();
+            if (arguments.TryGetValue(RevitArgument, out var version))
+            {
+                inner[RevitArgument] = version;
+            }
+
+            arguments = inner;
+        }
+
         var asked = arguments.TryGetValue(RevitArgument, out var revit) && revit.ValueKind == JsonValueKind.String ? revit.GetString() : null;
         var target = peers.Resolve(asked);
         if (target is null)
@@ -67,11 +91,11 @@ internal sealed partial class McpTools(
             var forwarded = arguments.ToDictionary(pair => pair.Key, pair => (object?)pair.Value);
             forwarded[RevitArgument] = target.Version;
             var bearer = McpConnectionFile.ReadToken(settings.ConnectionFile) ?? "";
-            return await peers.CallAsync(target, parameters.Name, forwarded, bearer, cancellationToken).ConfigureAwait(false);
+            return await peers.CallAsync(target, name, forwarded, bearer, cancellationToken).ConfigureAwait(false);
         }
 
         // Looked up here, not before: another Revit version may have extensions this one has not
-        var entry = catalog.Find(parameters.Name) ?? throw new McpProtocolException($"Unknown tool '{parameters.Name}'.", McpErrorCode.InvalidParams);
+        var entry = catalog.Find(name) ?? throw new McpProtocolException($"Unknown tool '{name}'.", McpErrorCode.InvalidParams);
         arguments = arguments.Where(pair => pair.Key != RevitArgument).ToDictionary(pair => pair.Key, pair => pair.Value);
         var payload = entry.Command.RequestType is null
             ? default
@@ -145,6 +169,29 @@ internal sealed partial class McpTools(
             ["description"] = $"The Revit version to run in, e.g. \"2026\". Only when several Revit versions are open ({ListVersionsTool}); without it, the Revit used last."
         };
         return node.Deserialize<Tool>(McpJsonUtilities.DefaultOptions)!;
+    }
+
+    private static Tool RunCommand()
+    {
+        var schema = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["name"] = new JsonObject { ["type"] = "string", ["description"] = "The command, as its tool is named: e.g. \"sheets.renumber.Renumber\"." },
+                ["payload"] = new JsonObject { ["type"] = "object", ["description"] = "Its arguments, as the command's input schema has them." },
+                [RevitArgument] = new JsonObject { ["type"] = "string", ["description"] = "The Revit version to run in; without it, the Revit used last." }
+            },
+            ["required"] = new JsonArray("name")
+        };
+        return new Tool
+        {
+            Name = RunCommandTool,
+            Title = "Run a command by its name",
+            Description = "Runs a command of AnalyseTool or of an extension by its name — also one a button got a moment ago (CreateExtension, " +
+                          "WriteExtensionFile, BuildExtension) that your tool list does not show yet. Same result as calling its tool.",
+            InputSchema = JsonSerializer.SerializeToElement(schema)
+        };
     }
 
     private static Tool ListVersions()

@@ -104,21 +104,27 @@ namespace AnalyseTool.Sdk
     }
 
     // OPTIONAL (SDK 1.1+): implement alongside IRevitTask on a long-running command to report live
-    // progress. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
+    // progress. It only shows between SEVERAL RunInRevitAsync calls: inside one call Revit's thread is
+    // busy and nothing reaches the page until it returns. The host sets Progress before ExecuteAsync (null when nobody listens); from JS use
     // AT.invoke(cmd, payload, { onProgress: p => ... }) — p = { fraction, message }. Over MCP the same
     // reports reach the AI client as notifications/progress, and a command that runs longer than a
     // minute is handed back to the client as a job it collects with GetJobResult — so report progress:
     // an agent that sees movement waits instead of retrying.
     //
-    // RULE FOR ANYTHING THAT MAY TAKE MORE THAN A FEW SECONDS: work in CHUNKS. One RunInRevitAsync per
-    // chunk (say 50–200 elements), one Transaction per chunk, Progress?.Report between chunks. A single
-    // RunInRevitAsync holding one transaction for minutes freezes Revit for the person at it, cannot be
-    // cancelled until it ends, and shows no progress; chunks keep Revit responsive, let Cancel act
-    // between them, and cost nothing you cannot undo: wrap the chunks in a TransactionGroup and
-    // Assimilate() it at the end for ONE undo step. (Measured: 7,200 elements in 40-cell chunks took
-    // 131 s with a live window; in one transaction 189 s with Revit frozen throughout.)
-    // For the bar to animate, work in CHUNKS with one RunInRevitAsync per chunk and
-    // Progress?.Report(new ProgressInfo(done/total, "…")) between them.
+    // EVERY Transaction AND TransactionGroup STARTS AND ENDS INSIDE ONE RunInRevitAsync. Each call is
+    // one external event of Revit, and Revit rolls back whatever is still open when the event returns:
+    // a TransactionGroup started in one call and Assimilate()d in a later one throws «The Transaction
+    // group has not been started». No group, no transaction spans two calls — ever.
+    //
+    // So choose, per command:
+    // - ONE undo step (most commands: rename, renumber, set parameters): ONE RunInRevitAsync with one
+    //   Transaction (or a TransactionGroup with several transactions inside it, assimilated before the
+    //   lambda returns). Fine up to a few thousand elements — a few seconds.
+    // - Work of minutes: CHUNKS. One RunInRevitAsync per chunk (say 50–200 elements), one Transaction per
+    //   chunk, Progress?.Report(new ProgressInfo(done/total, "…")) and the cancellation check between
+    //   them. Revit stays responsive, Cancel acts between chunks, the bar moves — and every chunk is an
+    //   undo step of its own: say so to the user (or make the command idempotent, so running it again
+    //   finishes the job). One transaction for minutes freezes Revit and cannot be cancelled.
     public sealed record ProgressInfo(double Fraction, string? Message = null);
     public interface IProgressAware
     {
@@ -510,6 +516,11 @@ const { extensions } = await window.AT.invoke("GetExtensions");
 ```
 - `invoke` is id-correlated, so concurrent calls are fine; it **resolves** with the result and
   **rejects** with an `Error` whose `message` says why and whose `code` is the error code (`not_found`, `failed`, …).
+- **The names in the result are the C# names, as written** (Newtonsoft, no renaming): a result class
+  `SheetListResult { string Title; List<SheetInfo> Sheets }` arrives as `{ "Title": …, "Sheets": [ { "Number": … } ] }`,
+  an anonymous `new { title, count }` as `{ "title": …, "count": … }`. Read them in the page with exactly those names
+  (`result.Sheets.map(…)`) — `result.sheets` is `undefined`. The payload you SEND is matched without regard to case.
+  Prefer a named result class with `OutputType` (§8) and read its PascalCase names.
 - Built with a framework: set Vite `base: "./"` (relative assets) and ship `dist` next to `plugin.json`.
 
 ### Your page is a separate application
@@ -682,6 +693,7 @@ Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as
 | Add a button to a tab | `AddExtensionButton { id: "<name>.tab", name, description?, template?, panel? }` | As `CreateExtension`, in that tab. |
 | Organise | `SetExtensionPanel { id: "<name>.tab", panel?, name }` (add or rename a panel), `MoveExtensionButton { id: "<name>.tab", button, panel, before?, toId? }` | Another panel or another tab: its folder moves with its history; in another tab its id changes and its page follows. From a `plugin.json` folder, `toId: "<name>.tab"` migrates the button (§7.0). |
 | Rename | `UpdateExtensionFolder { id: "<name>.tab", name }` (the tab), `UpdateExtensionButton { id, button, name, tooltip?, dockable? }` | `bundle.json` only — folders, ids and commands stay. |
+| Run a new command | `RunCommand { name, payload?, revit? }` | Runs any command by name — also one your tool list does not show yet (a client that ignores `tools/list_changed`). |
 | Read / write code | `ListExtensionFiles`, `ReadExtensionFile`, `WriteExtensionFile { id, path, content }` | Writing reloads at once; the answer carries the compiler diagnostics. |
 | Check it | `BuildExtension { id }` | `success` and diagnostics with file/line/column. |
 | Try it | the command itself (`<id>.<Command>`), or `ExecuteCode` for a throwaway snippet | Its result. |

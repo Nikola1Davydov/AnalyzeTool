@@ -45,7 +45,7 @@ public sealed class McpServerTests
         var tools = await client.ListToolsAsync();
 
         // ListRevitVersions is the tool of the one address of every Revit version
-        await Assert.That(tools.Select(tool => tool.Name)).IsEquivalentTo(["ListRevitVersions", "McpGreet", "McpRefuse"]);
+        await Assert.That(tools.Select(tool => tool.Name)).IsEquivalentTo(["ListRevitVersions", "RunCommand", "McpGreet", "McpRefuse"]);
     }
 
     [Test]
@@ -77,6 +77,9 @@ public sealed class McpServerTests
         var here = await client.CallToolAsync("McpGreet", new Dictionary<string, object?> { ["name"] = "Revit", ["revit"] = "2025" });
         var closed = await client.CallToolAsync("McpGreet", new Dictionary<string, object?> { ["name"] = "Revit", ["revit"] = "2027" });
         var versions = await client.CallToolAsync("ListRevitVersions", new Dictionary<string, object?>());
+        // RunCommand: a tool by its name, also on another Revit
+        var byName = await client.CallToolAsync("RunCommand", new Dictionary<string, object?> { ["name"] = "McpGreet", ["payload"] = new Dictionary<string, object?> { ["name"] = "Revit" } });
+        var byNameThere = await client.CallToolAsync("RunCommand", new Dictionary<string, object?> { ["name"] = "McpPoint", ["revit"] = "2026" });
 
         using (Assert.Multiple())
         {
@@ -87,6 +90,8 @@ public sealed class McpServerTests
             await Assert.That(TextOf(closed)).StartsWith("revit_not_open");
             await Assert.That(TextOf(versions)).Contains("2025");
             await Assert.That(TextOf(versions)).Contains("2026");
+            await Assert.That(TextOf(byName)).IsEqualTo("\"Hello, Revit (mcp)\"");
+            await Assert.That(TextOf(byNameThere)).Contains("\"x\"");
         }
     }
 

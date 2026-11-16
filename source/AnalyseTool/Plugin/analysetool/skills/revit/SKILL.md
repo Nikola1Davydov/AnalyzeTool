@@ -33,7 +33,12 @@ Sheets.tab\Numbering.panel\Renumber.pushbutton\   bundle.json, Renumber.cs, inde
   A failed build keeps the last good one running.
 - Every button folder is a git history the user manages (versions, restore, pin) from AnalyseTool. Save a version
   with `SaveExtensionVersion` when a change works; do not run git in the folder yourself.
-- The Revit API only inside `RunInRevitAsync`; transactions there too. Return small JSON-able results.
+- The Revit API only inside `RunInRevitAsync`. Every Transaction and TransactionGroup starts AND ends inside ONE
+  `RunInRevitAsync` — Revit rolls back what is open when a call returns. One undo step: one call. Work of minutes:
+  chunks, one transaction each (several undo steps — say so).
+- A page reads the result with the C# names as written (`result.Sheets`, not `result.sheets`).
+- A command you just added may not be in your tool list yet: call it with `RunCommand { name, payload }` (a dry run
+  first when it changes the model).
 
 ## The open model
 

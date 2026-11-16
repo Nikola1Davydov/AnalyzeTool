@@ -17,5 +17,5 @@ Make a working Revit button for: $ARGUMENTS
    user has to enter or choose something or see a table; `Command` when one click does it all.
 5. Write the C# (and the page) in the folder it returned. Keep it to what was asked; read-only unless the task is to
    change the model.
-6. `BuildExtension` until it has no errors. Then tell the user the button is on the ribbon and in the AnalyseTool pane
+6. `BuildExtension` until it has no errors, then try it with `RunCommand { name: "<tab>.<button>.<Class>", payload }` (dry run first). Then tell the user the button is on the ribbon and in the AnalyseTool pane
    under that tab, and how to try it. Offer to save a version (`SaveExtensionVersion`) once they confirm it works.

@@ -290,7 +290,17 @@ public sealed partial class ExtensionHost : IDisposable
         }
 
         previous?.Unload();
-        if (errors.Count > 0)
+        // A full reload loads every extension again after any change: only what changed is worth a line of the log
+        var changed = previous?.State is not { } before
+                      || before.Enabled != enabled
+                      || before.LoadedVersion != loadedVersion
+                      || !before.Errors.SequenceEqual(errors)
+                      || !before.Commands.SequenceEqual(registered);
+        if (!changed)
+        {
+            LogReloadedUnchanged(_logger, id);
+        }
+        else if (errors.Count > 0)
         {
             LogLoadedWithErrors(_logger, id, string.Join(" | ", errors));
         }
@@ -370,6 +380,9 @@ public sealed partial class ExtensionHost : IDisposable
 
         previous?.Unload();
     }
+
+    [LoggerMessage(LogLevel.Debug, "Extension {Id} loaded again, unchanged")]
+    private static partial void LogReloadedUnchanged(ILogger logger, string id);
 
     [LoggerMessage(LogLevel.Information, "Extension {Id} loaded ({Kind}): {Count} commands")]
     private static partial void LogLoaded(ILogger logger, string id, ExtensionKind kind, int count);

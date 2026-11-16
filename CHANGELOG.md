@@ -16,6 +16,10 @@
 - 🧾 **A command with an input type gets a form in the pane** — built from its schema, no HTML; a page marked `dockable` opens inside the pane, any other in a window.
 - 🗃️ **Buttons are laid out on disk as on the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button with its code, page and versions. Folders with a `plugin.json` keep loading as they are.
 - ✂️ **A button's C# is full classes only.** A file of bare statements is no longer wrapped into a `Script` command; for a quick snippet there is `ExecuteCode`. The authoring guide explains how to move older buttons into tabs.
+- 🧯 **A transaction left open at the end of `RunInRevitAsync` is reported with what to do**, and the authoring guide no longer advises a TransactionGroup across several calls — Revit rolls those back.
+- 🧪 **`RunCommand` over MCP runs a command by its name**, also one a button got a moment ago that the AI client's tool list does not show yet.
+- 🔤 **The guide says which names a page gets back** (the C# names, as written), and a new button's command returns a named result its page reads that way.
+- 🪵 **The log keeps what matters**: the pages' routine calls and unchanged reloads of extensions are no longer written to the file.
 - 📦 **A DLL project is a box of its own in the pane**, with the Revit years it is built for: its buttons run there, its author edits it. It loads its NuGet packages and their native libraries, and the authoring guide says when a DLL is worth it and how to build one.
 - 🏷️ **An older folder with a `plugin.json` goes on the tab it names**, not on a tab called after its description.
 - 🗄️ **Your folders with a `plugin.json` are together in «Older buttons»** in the pane, one section each; on the ribbon they keep their tabs. ✎ › Move to… turns such a button into a button folder of a tab; an old folder left empty goes to the trash.

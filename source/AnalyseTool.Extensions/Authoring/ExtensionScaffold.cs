@@ -433,7 +433,7 @@ public static partial class ExtensionScaffold
                 using Autodesk.Revit.DB;
 
                 /// <summary>Called by index.html: counts the elements of a category in the active document.</summary>
-                [RevitCommand(Description = "{{literal}}", ReadOnly = true, InputType = typeof({{className}}Input))]
+                [RevitCommand(Description = "{{literal}}", ReadOnly = true, InputType = typeof({{className}}Input), OutputType = typeof({{className}}Result))]
                 public sealed class {{className}} : IRevitTask
                 {
                     public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
@@ -444,21 +444,28 @@ public static partial class ExtensionScaffold
                             var document = app.ActiveUIDocument?.Document;
                             if (document is null)
                             {
-                                return new { title = "(no open document)", count = 0 };
+                                return new {{className}}Result { Title = "(no open document)" };
                             }
 
                             var category = Enum.TryParse<BuiltInCategory>(input.Category, out var parsed) ? parsed : BuiltInCategory.OST_Walls;
                             var count = new FilteredElementCollector(document).OfCategory(category).WhereElementIsNotElementType().GetElementCount();
-                            return new { title = document.Title, count };
+                            return new {{className}}Result { Title = document.Title, Count = count };
                         });
                     }
                 }
 
-                /// <summary>What the page sends.</summary>
+                /// <summary>What the page sends (the names are matched without regard to case).</summary>
                 public sealed class {{className}}Input
                 {
                     /// <summary>A BuiltInCategory name, e.g. OST_Walls.</summary>
                     public string Category { get; set; } = "OST_Walls";
+                }
+
+                /// <summary>What the page gets: AT.invoke returns these names AS WRITTEN here — result.Title, result.Count.</summary>
+                public sealed class {{className}}Result
+                {
+                    public string Title { get; set; } = "";
+                    public int Count { get; set; }
                 }
 
                 """
@@ -471,7 +478,7 @@ public static partial class ExtensionScaffold
                 ///     The command of the button «{{id}}». Edit and save: AnalyseTool compiles it again and the button runs the new code.
                 ///     The text you return is shown after the click. AGENTS.md next to src\ says where the whole contract is.
                 /// </summary>
-                [RevitCommand(Description = "{{literal}}", ReadOnly = true)]
+                [RevitCommand(Description = "{{literal}}", ReadOnly = true, OutputType = typeof(string))]
                 public sealed class {{className}} : IRevitTask
                 {
                     public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken)
@@ -505,7 +512,8 @@ public static partial class ExtensionScaffold
                   out.textContent = '…';
                   try {
                     const result = await AT.invoke('{{command}}', { category: document.getElementById('category').value });
-                    out.textContent = `${result.title}: ${result.count}`;
+                    // The names of the C# result class, as written there (PascalCase)
+                    out.textContent = `${result.Title}: ${result.Count}`;
                   } catch (error) {
                     out.textContent = String(error.message ?? error);
                   }
