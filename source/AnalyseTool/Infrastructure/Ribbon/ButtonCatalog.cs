@@ -101,6 +101,15 @@ public sealed class ButtonCatalog(ExtensionHost host)
         return source.Extension.Tab?.Id ?? source.Extension.Id;
     }
 
+    /// <summary>The id of the folder of the pane that holds the user's folders of plugin.json (the 1.x layout).</summary>
+    public const string OlderFolderId = "older";
+
+    /// <summary>A folder of the user in the plugin.json layout: not AnalyseTool's, not a package, not in a tab.</summary>
+    public static bool IsOlder(ButtonSource source)
+    {
+        return !source.BuiltIn && source.Extension.Tab is null && source.Extension.Zone == ExtensionZone.Dev;
+    }
+
     /// <summary>The tab of AnalyseTool's own buttons.</summary>
     public const string DefaultTab = "AnalyseTool";
 

@@ -58,7 +58,9 @@ New buttons are laid out as pyRevit does it: the folders ARE the ribbon.
 - Moving a button = moving its folder (the pane does it, with its history). Into another tab its id changes, and
   AnalyseTool rewrites the `AT.invoke` names in its pages.
 - **The 1.x layout stays**: a folder with a `plugin.json` (§3) is read as before, as one folder of the pane with all
-  its buttons. Everything below about `plugin.json`, `src\` and versions applies to it; for a button folder, read
+  its buttons (in the pane: a section of «Older buttons»). To move one of its buttons into a tab, call
+  `MoveExtensionButton` with `toId` = the tab id (`sheets.tab`): it becomes a button folder with its C#, its page
+  (as `index.html`) and a new history. Everything below about `plugin.json`, `src\` and versions applies to it; for a button folder, read
   «the extension folder» as «the button folder».
 
 ---

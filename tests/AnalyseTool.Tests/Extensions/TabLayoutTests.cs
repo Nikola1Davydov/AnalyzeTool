@@ -196,6 +196,74 @@ public sealed class TabLayoutTests
         }
     }
 
+    [Test]
+    public async Task MoveToTab_AnOldButtonBecomesAButtonFolder_TheOtherStays_AndAnEmptyOldFolderGoes()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreatePluginFolderAsync("Sheets", "sheets", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Sheet list", null, ExtensionTemplate.CommandWithPage, CancellationToken.None);
+        var helper = Path.Combine(environment.Host.GetState("sheets")!.Descriptor.Directory, "src", "Helper.cs");
+        File.WriteAllText(helper, "public static class Helper { public static int Two => 2; }\n");
+        var tab = await environment.Manager.CreateTabAsync("Tools", null, CancellationToken.None);
+
+        var moved = await environment.Manager.MoveToTabAsync("sheets", "Sheet list", tab.Id, "Lists", null, CancellationToken.None);
+
+        var old = environment.Host.GetState("sheets")!;
+        var directory = moved.Descriptor.Directory;
+        var bundle = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, ButtonFolder.FileName)))!.AsObject();
+        using (Assert.Multiple())
+        {
+            await Assert.That(directory).IsEqualTo(Path.Combine(tab.Directory, "Lists.panel", "Sheet list.pushbutton"));
+            await Assert.That(moved.Descriptor.Id).IsEqualTo("tools.sheet-list");
+            await Assert.That(moved.Errors).IsEmpty();
+            await Assert.That(moved.Commands).Contains("tools.sheet-list.SheetList");
+            await Assert.That(File.ReadAllText(Path.Combine(directory, "index.html"))).Contains("'tools.sheet-list.SheetList'");
+            await Assert.That(File.Exists(Path.Combine(directory, "SheetList.cs"))).IsTrue();
+            // A helper without a command is copied: the old folder may still need it
+            await Assert.That(File.Exists(Path.Combine(directory, "Helper.cs"))).IsTrue();
+            await Assert.That(File.Exists(helper)).IsTrue();
+            await Assert.That(bundle["page"]!.GetValue<string>()).IsEqualTo("index.html");
+            await Assert.That(bundle.ContainsKey("panel")).IsFalse();
+            await Assert.That(environment.History.GetHistory(directory)).HasSingleItem();
+            // The old folder keeps its other button, without the moved one and its files
+            await Assert.That(old.Descriptor.Manifest.Ui!.EffectiveButtons().Select(button => button.Name)).IsEquivalentTo(["Sheets"]);
+            await Assert.That(File.Exists(Path.Combine(old.Descriptor.Directory, "src", "SheetList.cs"))).IsFalse();
+            await Assert.That(old.Errors).IsEmpty();
+        }
+
+        // The last button: the old folder is gone (to the trash), the button lives in the tab
+        File.Delete(helper);
+        var last = await environment.Manager.MoveToTabAsync("sheets", "Sheets", tab.Id, "Lists", "Sheet list", CancellationToken.None);
+        using (Assert.Multiple())
+        {
+            await Assert.That(environment.Host.GetState("sheets")).IsNull();
+            await Assert.That(last.Commands).IsNotEmpty();
+            await Assert.That(environment.Manager.GetTab(tab.Id).Panels.Single().Buttons.Select(Path.GetFileName)).IsEquivalentTo(["Sheets.pushbutton", "Sheet list.pushbutton"]);
+        }
+    }
+
+    [Test]
+    public async Task Pane_PutsTheUsersPluginJsonFolders_IntoOlderButtons()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreatePluginFolderAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreateAsync("Renumber", null, ExtensionTemplate.Command, null, null, "Sheets", CancellationToken.None);
+
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry, extensions: environment.Catalog, store: environment.Store)
+            .ExecuteAsync(new CommandContext(null, new CommandRequest(nameof(GetPaneButtons), default, CommandSources.WebView), new NoServices()));
+
+        var older = overview.Folders.Single(item => item.Id == ButtonCatalog.OlderFolderId);
+        using (Assert.Multiple())
+        {
+            await Assert.That(overview.Folders.Select(item => item.Id)).DoesNotContain("count-walls");
+            await Assert.That(overview.Folders.Select(item => item.Id)).Contains("sheets.tab");
+            await Assert.That(older.CanAddButtons).IsFalse();
+            await Assert.That(older.Parts!.Single().Id).IsEqualTo("count-walls");
+            await Assert.That(older.Buttons.Single().Key).IsEqualTo("count-walls/Count walls");
+            await Assert.That(older.Buttons.Single().Panel).IsEqualTo(older.Parts!.Single().Name);
+        }
+    }
+
     private sealed class NoServices : IServiceProvider
     {
         public object? GetService(Type serviceType) => null;

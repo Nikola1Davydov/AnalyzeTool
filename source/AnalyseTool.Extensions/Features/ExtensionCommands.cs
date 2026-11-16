@@ -301,16 +301,22 @@ public sealed record MoveExtensionButtonRequest(
 
 /// <summary>Moves a button to another panel or folder.</summary>
 [McpTool(Title = "Move a button")]
-[Command(Description = "Moves a button to another panel of its folder, or to another folder of the user — its C# file and page go along and its command is renamed to the new folder. Saved as versions.")]
+[Command(Description = "Moves a button to another panel of its folder or tab, or to another folder or tab of the user. A button of a plugin.json folder moved to a tab (toId «<name>.tab») becomes a button folder <Name>.pushbutton with its C#, page and a new history.")]
 public sealed class MoveExtensionButton(ExtensionManager manager) : ICommand<MoveExtensionButtonRequest, ExtensionSummary>
 {
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(MoveExtensionButtonRequest request, CommandContext context)
     {
         var toTab = request.ToId is { Length: > 0 } to && ExtensionManager.IsTab(to);
-        if (ExtensionManager.IsTab(request.Id) != (toTab || (string.IsNullOrWhiteSpace(request.ToId) && ExtensionManager.IsTab(request.Id))))
+        if (!ExtensionManager.IsTab(request.Id) && toTab)
         {
-            throw new CommandException(ExtensionErrorCodes.Invalid, "A button moves between tabs, or between folders of the old layout (plugin.json) — not from one to the other yet.");
+            // A button of the old layout becomes a button folder of the tab
+            return ExtensionSummary.From(await manager.MoveToTabAsync(request.Id, request.Button, request.ToId!, request.Panel, request.Before, context.CancellationToken).ConfigureAwait(false));
+        }
+
+        if (ExtensionManager.IsTab(request.Id) && !toTab && !string.IsNullOrWhiteSpace(request.ToId))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A button of a tab moves to another tab, not back into a folder of plugin.json.");
         }
 
         if (ExtensionManager.IsTab(request.Id))

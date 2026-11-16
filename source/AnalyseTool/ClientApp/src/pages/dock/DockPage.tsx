@@ -293,15 +293,15 @@ function Header(props: {
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },
     ...(folder && screen.kind === "folder"
       ? [
-          { label: "Statistics of this folder", onClick: () => props.onGo({ kind: "stats", folder: folder.id }) },
+          ...(folder.parts ? [] : [{ label: "Statistics of this folder", onClick: () => props.onGo({ kind: "stats", folder: folder.id }) }]),
           ...(folder.directory ? [{ label: "Open the folder", hint: "Edit its buttons with an AI tool", onClick: () => openFolder(folder.directory!, toastError) }] : []),
           ...(folder.canAddButtons ? [{ label: "Name and description…", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") }] : []),
           // A tab has no versions of its own: each of its buttons has (✎ on the button)
-          ...(folder.builtIn || folder.id.toLowerCase().endsWith(".tab")
+          ...(folder.builtIn || folder.parts || folder.id.toLowerCase().endsWith(".tab")
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
           // Any folder but AnalyseTool's own can be turned off and on, a DLL one or a package too
-          ...(!folder.builtIn
+          ...(!folder.builtIn && !folder.parts
             ? [
                 {
                   label: folder.enabled ? "Turn the folder off" : "Turn the folder on",
@@ -455,7 +455,7 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") } : null}
               onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
               label={folder.name}
-              title={`${folder.name} — the tab «${folder.tab ?? folder.name}»\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
+              title={`${folder.name} — ${folder.parts ? "folders of plugin.json, each on its own tab" : `the tab «${folder.tab ?? folder.name}»`}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
               icon={<FolderIcon buttons={folder.buttons} />}
               className="folder"
               off={hidden}
@@ -496,6 +496,95 @@ function toggleIn(update: ReturnType<typeof useProfile>["update"], list: "hidden
  * between sections (of a folder of the user), a section is renamed with ✎, «+ New panel» adds one.
  */
 function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
+  if (folder.parts) return <OlderScreen folder={folder} folders={folders} />;
+  return <FolderSections folder={folder} folders={folders} />;
+}
+
+/**
+ * «Older buttons»: the folders of plugin.json (1.x) of the user, one section each — its buttons act on their own folder.
+ * ✎ › Move to… puts a button into a tab.
+ */
+function OlderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
+  const actions = useActions();
+  const refresh = useQueryClient();
+  const toastError = (message: string) => actions.toast(message, "error");
+  return (
+    <>
+      <h1 className="large-title">{folder.name}</h1>
+      <p className="muted small">
+        Folders with a plugin.json — the layout of AnalyseTool 1.x. They work as before and keep their tabs on the ribbon. To give a button a
+        folder of its own in a tab: right-click, ✎ › Move to…
+      </p>
+      {(folder.parts ?? []).map((part) => {
+        const groups = new Map<string, PaneButton[]>();
+        for (const button of part.buttons) if (button.group) groups.set(button.group, [...(groups.get(button.group) ?? []), button]);
+        return (
+          <section key={part.id} className="pane-section">
+            <header className="pane-section-header">
+              <span>{part.name}</span>
+              {part.directory && (
+                <button className="icon-button" title="Open the folder" onClick={() => openFolder(part.directory!, toastError)}>
+                  📁
+                </button>
+              )}
+              <button className="icon-button" title="Versions and files" onClick={() => openWindow(`/extensions/${encodeURIComponent(part.id)}`, toastError)}>
+                🕓
+              </button>
+            </header>
+            {!part.enabled && (
+              <button
+                className="banner"
+                onClick={() =>
+                  void bridge
+                    .invoke(extensionCommands.SetExtensionEnabled, { id: part.id, enabled: true })
+                    .then(() => refresh.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" }))
+                    .then(() => actions.toast(`${part.name} is on — its buttons are back`))
+                    .catch((error: unknown) => toastError(messageOf(error)))
+                }
+              >
+                Turned off: its buttons and commands do not load. <b>Tap to turn it on.</b>
+              </button>
+            )}
+            {part.problems.length > 0 && (
+              <button className="banner error" onClick={() => actions.openSheet(`Problems of ${part.name}`, <ProblemList problems={part.problems} />)}>
+                {part.problems.length} problem(s) — the last good build still runs. Tap for details.
+              </button>
+            )}
+            <div className="grid">
+              {part.buttons
+                .filter((button) => !button.group || groups.get(button.group)![0] === button)
+                .map((button) =>
+                  !button.group ? (
+                    <ButtonTile key={button.key} folder={part} folders={folders} button={button} />
+                  ) : (
+                    <Tile
+                      key={`group:${button.group}`}
+                      className="pulldown"
+                      label={button.group}
+                      title={`${button.group} ▾ — a pulldown of ${groups.get(button.group)!.length} button(s)`}
+                      icon={<FolderIcon buttons={groups.get(button.group)!} />}
+                      onClick={() =>
+                        actions.openSheet(
+                          `${button.group} ▾`,
+                          <div className="grid pulldown-list">
+                            {groups.get(button.group!)!.map((child) => (
+                              <ButtonTile key={child.key} folder={part} folders={folders} button={child} />
+                            ))}
+                          </div>,
+                        )
+                      }
+                    />
+                  ),
+                )}
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+function FolderSections({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
   const actions = useActions();
   const edit = useContext(EditContext);
   const refresh = useQueryClient();

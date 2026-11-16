@@ -93,7 +93,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             // Shown extensions, minus the folders whose tab the user turned off (AnalyseTool's own is always there)
             var sources = catalog.GetSources()
-                .Where(source => source.Shown && (source.BuiltIn || !visibility.IsFolderHidden(ButtonCatalog.FolderId(source))))
+                .Where(source => source.Shown && (source.BuiltIn || !visibility.IsFolderHidden(ButtonCatalog.FolderId(source)) && !(ButtonCatalog.IsOlder(source) && visibility.IsFolderHidden(ButtonCatalog.OlderFolderId))))
                 .ToList();
 
             // Nothing that the ribbon shows changed: a reload of unchanged code keeps the buttons as they are

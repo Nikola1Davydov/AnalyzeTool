@@ -106,11 +106,13 @@ export function folderOf(key: string) {
  * The folder of the pane a button key belongs to: the folder of that id, or the tab whose buttons have ids
  * `<tab>.<button>` (a tab folder `sheets.tab` holds the keys `sheets.renumber/…`).
  */
-export function ownerOf<T extends { id: string }>(folders: T[], key: string): T | undefined {
+export function ownerOf<T extends { id: string; parts?: T[] | null }>(folders: T[], key: string): T | undefined {
   const id = folderOf(key).toLowerCase();
+  // The folders of «Older buttons» are found as themselves: a button acts on its own folder
+  const all = folders.flatMap((folder) => [...(folder.parts ?? []), folder]);
   return (
-    folders.find((folder) => folder.id.toLowerCase() === id) ??
-    folders.find((folder) => folder.id.toLowerCase().endsWith(".tab") && id.startsWith(folder.id.toLowerCase().slice(0, -".tab".length) + "."))
+    all.find((folder) => folder.id.toLowerCase() === id) ??
+    all.find((folder) => folder.id.toLowerCase().endsWith(".tab") && id.startsWith(folder.id.toLowerCase().slice(0, -".tab".length) + "."))
   );
 }
 

@@ -24,7 +24,8 @@ export function HowItWorks() {
         Every folder here is a tab of its own name; AnalyseTool is the AnalyseTool tab. «New folder» makes a new tab. Inside a
         folder, its sections are the panels of that tab. On disk it is the same, as in pyRevit:{" "}
         <span className="mono">Sheets.tab\Numbering.panel\Renumber.pushbutton\</span> — one folder per button, with its code, page
-        and versions.
+        and versions. Folders of AnalyseTool 1.x (with a plugin.json) are together in «Older buttons»; ✎ › Move to… puts such a button
+        into a tab.
       </Step>
       <Step picture={<span className="guide-section">PANEL</span>} title="Sections are panels">
         Right-click to edit, then drag a button into another section — it moves to that panel of the ribbon. ✎ next to a section

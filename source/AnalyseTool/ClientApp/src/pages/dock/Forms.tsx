@@ -227,7 +227,10 @@ function MoveTo({ folder, folders, button }: { folder: PaneFolder; folders: Pane
   const refresh = useRefreshAll();
   // A button moves between tabs (its folder goes along) or between folders of plugin.json, not from one to the other
   const isTab = (candidate: PaneFolder) => candidate.id.toLowerCase().endsWith(".tab");
-  const targets = folders.filter((candidate) => candidate.canAddButtons && isTab(candidate) === isTab(folder));
+  // A button of a plugin.json folder moves into a tab (it becomes a folder of its own there)
+  const targets = isTab(folder)
+    ? folders.filter((candidate) => candidate.canAddButtons && isTab(candidate))
+    : [folder, ...folders.filter((candidate) => candidate.canAddButtons && isTab(candidate))];
   const [to, setTo] = useState(folder.id);
   const target = targets.find((candidate) => candidate.id === to) ?? folder;
   const panels = target.panels?.length ? target.panels : [target.panel ?? target.name];
@@ -276,6 +279,11 @@ function MoveTo({ folder, folders, button }: { folder: PaneFolder; folders: Pane
       {to !== folder.id &&
         (isTab(folder) ? (
           <p className="muted small">Its folder moves with its code, page and versions.</p>
+        ) : isTab(target) ? (
+          <p className="muted small">
+            It becomes a folder of its own in the tab — {target.name}\{panel}\{button.name}.pushbutton — with its C#, its page and a new history.{" "}
+            {`«${folder.name}»`} saves a version; when no button is left in it, it goes to the trash.
+          </p>
         ) : (
           <p className="muted small">Its C# file and page go along; its command becomes {target.id}.… A version is saved in both folders.</p>
         ))}

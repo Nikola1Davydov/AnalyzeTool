@@ -59,6 +59,8 @@ export interface PaneFolder {
   panels?: string[] | null;
   /** The tab is the one the package author chose, not the folder name. */
   tabFromPackage?: boolean;
+  /** «Older buttons»: the folders of plugin.json of the user, each a section with its own state. */
+  parts?: PaneFolder[] | null;
 }
 
 export interface PaneOverview {

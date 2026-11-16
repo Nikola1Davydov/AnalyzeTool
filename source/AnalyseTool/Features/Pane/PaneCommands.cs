@@ -51,8 +51,13 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="Panel">The default panel of its buttons (<c>ui.panel</c>, else the name of the folder).</param>
 /// <param name="Panels">Its sections in order: the panels of its tab.</param>
 /// <param name="TabFromPackage">The tab is the package author's, not the folder name.</param>
+/// <param name="Parts">
+///     «Older buttons»: the folders of plugin.json (the 1.x layout) of the user, each a section with its own state; the folder
+///     itself holds all their buttons.
+/// </param>
 public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
-    string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null, IReadOnlyList<string>? Panels = null, bool TabFromPackage = false);
+    string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null, IReadOnlyList<string>? Panels = null, bool TabFromPackage = false,
+    IReadOnlyList<PaneFolder>? Parts = null);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -77,9 +82,14 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
         var sources = catalog.GetSources();
         var folders = new List<PaneFolder>();
         var tabs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var older = new List<PaneFolder>();
         foreach (var source in sources)
         {
-            if (source.Extension.Tab is not { } tab)
+            if (ButtonCatalog.IsOlder(source))
+            {
+                older.Add(Folder(source, failures));
+            }
+            else if (source.Extension.Tab is not { } tab)
             {
                 folders.Add(Folder(source, failures));
             }
@@ -97,6 +107,19 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
             {
                 folders.Add(TabFolder(tab, [], failures));
             }
+        }
+
+        // The user's folders of the old layout together: one section each; on the ribbon they stay on their tabs
+        if (older.Count > 0)
+        {
+            folders.Add(new PaneFolder(ButtonCatalog.OlderFolderId, "Older buttons", false, true, [],
+                older.SelectMany(part => part.Buttons.Select(button => button with
+                {
+                    Panel = part.Name,
+                    Problems = part.Problems.Count == 0 ? button.Problems : (button.Problems ?? []).Concat(part.Problems).ToList()
+                })).ToList(),
+                false, "Folders with a plugin.json (the layout of 1.x). ✎ › Move to… puts a button into a tab.", null, null, null,
+                older.Select(part => part.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), false, older));
         }
 
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));

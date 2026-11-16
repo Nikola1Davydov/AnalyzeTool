@@ -1,6 +1,7 @@
 using System.IO;
 using AnalyseTool.Extensions.Authoring;
 using AnalyseTool.Extensions.Building;
+using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Manifest;
 using AnalyseTool.Extensions.Storage;
 using AnalyseTool.Hosting.Commands;
@@ -208,14 +209,7 @@ public sealed partial class ExtensionManager
             throw new CommandException(ExtensionErrorCodes.Invalid, "A panel is required.");
         }
 
-        var panelDirectory = ExtensionScaffold.FindChild(target.Directory, panelName, ButtonFolder.PanelSuffix);
-        if (panelDirectory is null)
-        {
-            panelDirectory = Path.Combine(target.Directory, ExtensionScaffold.FolderName(panelName) + ButtonFolder.PanelSuffix);
-            Directory.CreateDirectory(panelDirectory);
-            ButtonFolder.UpdateBundle(panelDirectory, json => json["name"] = panelName);
-            ButtonFolder.SetLayout(target.Directory, target.Panels.Select(item => item.Directory).Append(panelDirectory));
-        }
+        var panelDirectory = EnsurePanel(target, panelName);
 
         var oldParent = Path.GetDirectoryName(source)!;
         var destination = source;
@@ -321,6 +315,235 @@ public sealed partial class ExtensionManager
         }
 
         return trash;
+    }
+
+    /// <summary>
+    ///     Moves a button of a folder of plugin.json (the 1.x layout) into a tab: it becomes a folder <c>&lt;Name&gt;.pushbutton\</c>
+    ///     with its C# (the files of its command and of the commands its page calls — moved, or copied while another button of
+    ///     the old folder still uses them; C# without a command, helpers, is copied), its page as <c>index.html</c> and its icon,
+    ///     with a new history. The old folder saves a version; a folder left with no button and no C# goes to the trash.
+    /// </summary>
+    public async Task<Loading.ExtensionState> MoveToTabAsync(string id, string button, string tabId, string panel, string? before, CancellationToken cancellationToken)
+    {
+        var source = Own(id);
+        var tab = GetTab(tabId);
+        var key = Usage.ButtonUsageStore.Normalize(button);
+        var all = (source.Manifest.Ui?.EffectiveButtons() ?? []).SelectMany(item => item.ResolvedKind == ButtonKind.Pulldown ? item.Items ?? [] : [item]).ToList();
+        var entry = all.FirstOrDefault(item => Same(item.Name, key)) ?? throw new CommandException(ExtensionErrorCodes.Invalid, $"The folder '{id}' has no button «{button}».");
+        if (source.Kind == ExtensionKind.Dll && !string.IsNullOrWhiteSpace(entry.Command) && entry.Command.StartsWith(id + ".", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"'{id}' is built as a DLL: the command of «{key}» lives in its project, not in C# a tab could compile.");
+        }
+
+        var panelName = string.IsNullOrWhiteSpace(panel) ? tab.Panels.FirstOrDefault()?.Name ?? tab.Name : panel.Trim();
+        var panelDirectory = EnsurePanel(tab, panelName);
+        var directory = Path.Combine(panelDirectory, ExtensionScaffold.FolderName(key) + ButtonFolder.ButtonSuffix);
+        var newId = tab.Prefix + "." + ButtonFolder.IdOf(directory);
+        if (Directory.Exists(directory) || host.GetState(newId) is not null)
+        {
+            throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The tab «{tab.Name}» has a button «{key}» already.");
+        }
+
+        var (classes, page) = PartsOf(source, entry);
+        var others = all.Where(item => !ReferenceEquals(item, entry)).Select(item => PartsOf(source, item)).ToList();
+        var stillUsed = others.SelectMany(item => item.Classes).ToHashSet(StringComparer.Ordinal);
+        var pagesUsed = others.Select(item => item.Page).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        SaveChange(source, $"Before moving «{key}» to the tab «{tab.Name}»");
+        Directory.CreateDirectory(directory);
+        var remove = new List<string>();
+        var hasCode = false;
+        foreach (var file in Catalog.ExtensionCatalog.GetSourceFiles(source.Directory))
+        {
+            var text = File.ReadAllText(file);
+            var declared = System.Text.RegularExpressions.Regex.Matches(text, @"\bclass\s+(\w+)").Select(match => match.Groups[1].Value).ToList();
+            var mine = declared.Any(classes.Contains);
+            var helper = !text.Contains("IRevitTask", StringComparison.Ordinal);
+            if (!mine && !helper)
+            {
+                continue;
+            }
+
+            File.Copy(file, FreeName(directory, Path.GetFileName(file)));
+            hasCode = true;
+            if (mine && !declared.Any(stillUsed.Contains))
+            {
+                remove.Add(file);
+            }
+        }
+
+        string? newPage = null;
+        if (page is not null && File.Exists(Path.Combine(source.Directory, page)))
+        {
+            newPage = "index.html";
+            var text = File.ReadAllText(Path.Combine(source.Directory, page));
+            File.WriteAllText(Path.Combine(directory, newPage), text.Replace($"'{id}.", $"'{newId}.").Replace($"\"{id}.", $"\"{newId}.").Replace($"`{id}.", $"`{newId}."));
+            if (!pagesUsed.Contains(page))
+            {
+                remove.Add(Path.Combine(source.Directory, page));
+            }
+        }
+
+        string? icon = null;
+        if (entry.Icon is { Length: > 0 } path && !path.StartsWith("glyph:", StringComparison.OrdinalIgnoreCase)
+                                               && Path.GetFullPath(Path.Combine(source.Directory, path)) is var full && full.StartsWith(source.Directory, StringComparison.OrdinalIgnoreCase) && File.Exists(full))
+        {
+            icon = Path.GetFileName(full);
+            File.Copy(full, Path.Combine(directory, icon));
+        }
+
+        // Its entry of plugin.json, as bundle.json: where it sits is now the folder
+        System.Text.Json.Nodes.JsonObject? node = null;
+        var folderDockable = source.Manifest.Ui?.Dockable == true;
+        ExtensionManifest.Update(source.Directory, manifest =>
+        {
+            foreach (var candidate in ButtonNodes(manifest["ui"] as System.Text.Json.Nodes.JsonObject).ToList())
+            {
+                if (candidate["items"] is null && candidate["name"]?.GetValue<string>() is { } name && Same(name, key))
+                {
+                    node = candidate;
+                    if (candidate.Parent is System.Text.Json.Nodes.JsonArray array)
+                    {
+                        array.Remove(candidate);
+                    }
+                    else
+                    {
+                        // The single ui.button of schema 1
+                        ((System.Text.Json.Nodes.JsonObject)manifest["ui"]!).Remove("button");
+                    }
+
+                    break;
+                }
+            }
+        });
+        var bundle = (System.Text.Json.Nodes.JsonObject?)node?.DeepClone() ?? new System.Text.Json.Nodes.JsonObject { ["name"] = key };
+        foreach (var field in new[] { "tab", "panel", "order", "entryHtml" })
+        {
+            bundle.Remove(field);
+        }
+
+        if (bundle["command"]?.GetValue<string>() is { } command && command.StartsWith(id + ".", StringComparison.OrdinalIgnoreCase))
+        {
+            bundle["command"] = command[(id.Length + 1)..];
+        }
+
+        if (newPage is not null)
+        {
+            bundle["page"] = newPage;
+        }
+
+        if (icon is not null)
+        {
+            bundle["icon"] = icon;
+        }
+
+        if (folderDockable && bundle["dockable"] is null && page is not null)
+        {
+            bundle["dockable"] = true;
+        }
+
+        ButtonFolder.UpdateBundle(directory, json =>
+        {
+            foreach (var (field, value) in bundle)
+            {
+                json[field] = value?.DeepClone();
+            }
+        });
+        File.WriteAllText(Path.Combine(directory, "AGENTS.md"), ExtensionScaffold.AgentsPointer(key));
+        File.WriteAllText(Path.Combine(directory, "CLAUDE.md"), ExtensionScaffold.ClaudePointer);
+        File.WriteAllText(Path.Combine(directory, ".gitignore"), string.Join("\n", ExtensionScaffold.SourceIgnore) + "\n");
+        if (hasCode)
+        {
+            ExtensionScaffold.WriteEditorProject(directory, newId, catalog.RevitVersion);
+        }
+
+        var children = ButtonFolder.Children(panelDirectory).Where(child => !ExtensionPaths.SamePath(child, directory)).ToList();
+        var at = before is null ? -1 : children.FindIndex(child => Same(ButtonFolder.NameOf(child), before));
+        children.Insert(at < 0 ? children.Count : at, directory);
+        ButtonFolder.SetLayout(panelDirectory, children);
+
+        foreach (var file in remove)
+        {
+            File.Delete(file);
+        }
+
+        if (history.IsAvailable)
+        {
+            history.Init(directory, Author, $"Moved «{key}» from «{FolderTitle(source)}»", ExtensionScaffold.SourceIgnore);
+        }
+
+        SaveChange(source, $"Moved «{key}» to the tab «{tab.Name}»");
+        var left = ExtensionManifest.Read(source.Directory);
+        if ((left.Ui?.EffectiveButtons().Count ?? 0) == 0 && Catalog.ExtensionCatalog.GetSourceFiles(source.Directory).Count == 0)
+        {
+            // Nothing left of the old folder: it goes, with its history, to the trash
+            await RemoveAsync(id).ConfigureAwait(false);
+        }
+
+        await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
+        return Get(newId);
+
+        static bool Same(string left, string right) =>
+            string.Equals(Usage.ButtonUsageStore.Normalize(left), Usage.ButtonUsageStore.Normalize(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The classes a button of a plugin.json folder runs (its command, the commands its page calls) and its page.</summary>
+    private static (HashSet<string> Classes, string? Page) PartsOf(ExtensionDescriptor descriptor, ExtensionButton button)
+    {
+        var id = descriptor.Id;
+        string? page = null;
+        if (string.IsNullOrWhiteSpace(button.Command))
+        {
+            page = !string.IsNullOrWhiteSpace(button.EntryHtml) ? button.EntryHtml : descriptor.Manifest.Ui?.EntryHtml ?? "index.html";
+        }
+        else if (!string.IsNullOrWhiteSpace(button.EntryHtml))
+        {
+            page = button.EntryHtml;
+        }
+
+        var classes = new HashSet<string>(StringComparer.Ordinal);
+        if (button.Command is { } command && command.StartsWith(id + ".", StringComparison.OrdinalIgnoreCase))
+        {
+            classes.Add(command[(id.Length + 1)..]);
+        }
+
+        if (page is not null && File.Exists(Path.Combine(descriptor.Directory, page)))
+        {
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(Path.Combine(descriptor.Directory, page)),
+                         $@"[""'`]{System.Text.RegularExpressions.Regex.Escape(id)}\.(\w+)[""'`]"))
+            {
+                classes.Add(match.Groups[1].Value);
+            }
+        }
+
+        return (classes, page);
+    }
+
+    /// <summary>A file name in a folder that is not taken yet: <c>Name.cs</c>, else <c>Name2.cs</c>, …</summary>
+    private static string FreeName(string directory, string name)
+    {
+        var path = Path.Combine(directory, name);
+        for (var number = 2; File.Exists(path); number++)
+        {
+            path = Path.Combine(directory, Path.GetFileNameWithoutExtension(name) + number + Path.GetExtension(name));
+        }
+
+        return path;
+    }
+
+    /// <summary>The folder of a panel of a tab, made (last in the layout) when it is new.</summary>
+    private static string EnsurePanel(ExtensionTab tab, string panel)
+    {
+        var directory = ExtensionScaffold.FindChild(tab.Directory, panel, ButtonFolder.PanelSuffix);
+        if (directory is null)
+        {
+            directory = Path.Combine(tab.Directory, ExtensionScaffold.FolderName(panel) + ButtonFolder.PanelSuffix);
+            Directory.CreateDirectory(directory);
+            ButtonFolder.UpdateBundle(directory, json => json["name"] = panel.Trim());
+            ButtonFolder.SetLayout(tab.Directory, tab.Panels.Select(item => item.Directory).Append(directory));
+        }
+
+        return directory;
     }
 
     /// <summary>One of the user's roots: the authoring root when <see langword="null" />.</summary>

@@ -24,7 +24,7 @@ public sealed class PaneTests
         var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry).ExecuteAsync(Context(nameof(GetPaneButtons)));
 
         var builtIn = overview.Folders[0];
-        var walls = overview.Folders.Single(folder => folder.Id == "count-walls");
+        var walls = Older(overview).Single(folder => folder.Id == "count-walls");
         using (Assert.Multiple())
         {
             await Assert.That(builtIn.Id).IsEqualTo(ButtonCatalog.BuiltInId);
@@ -65,7 +65,7 @@ public sealed class PaneTests
 
         var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry).ExecuteAsync(Context(nameof(GetPaneButtons)));
 
-        var buttons = overview.Folders.Single(folder => folder.Id == "sheets").Buttons;
+        var buttons = Older(overview).Single(folder => folder.Id == "sheets").Buttons;
         var renumber = buttons.Single(button => button.Name == "Renumber");
         var list = buttons.Single(button => button.Name == "List");
         using (Assert.Multiple())
@@ -92,7 +92,7 @@ public sealed class PaneTests
 
         var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry, usage).ExecuteAsync(Context(nameof(GetPaneButtons)));
 
-        var folder = overview.Folders.Single(item => item.Id == "sheets");
+        var folder = Older(overview).Single(item => item.Id == "sheets");
         var renumber = folder.Buttons.Single(button => button.Name == "Renumber");
         var check = folder.Buttons.Single(button => button.Name == "Check");
         using (Assert.Multiple())
@@ -207,6 +207,12 @@ public sealed class PaneTests
         var exception = await Assert.That(async () => await command.ExecuteAsync(new RunButtonRequest("nobody/Nothing"), Context(nameof(RunButton)))).Throws<CommandException>();
 
         await Assert.That(exception!.Code).IsEqualTo(CommandErrorCodes.NotFound);
+    }
+
+    /// <summary>The user's folders of plugin.json: sections of «Older buttons».</summary>
+    private static IReadOnlyList<PaneFolder> Older(PaneOverview overview)
+    {
+        return overview.Folders.Single(folder => folder.Id == ButtonCatalog.OlderFolderId).Parts!;
     }
 
     private static CommandContext Context(string command)

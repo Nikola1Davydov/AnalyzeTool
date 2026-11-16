@@ -113,6 +113,26 @@ const paneFolders: PaneFolder[] = [
   },
   { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], tabFromPackage: true, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
 ];
+
+// The user's folders of plugin.json (1.x) are sections of «Older buttons»
+{
+  const old = paneFolders.splice(1, 1);
+  const off = { ...old[0], id: "old-export", name: "Old export", enabled: false, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/old-export", buttons: [paneButton("old-export", "Export IFC", g(0xe898), "old-export.Export")] };
+  const parts = [...old, off];
+  paneFolders.push({
+    id: "older",
+    name: "Older buttons",
+    builtIn: false,
+    enabled: true,
+    canAddButtons: false,
+    description: null,
+    directory: null,
+    problems: [],
+    panels: parts.map((part) => part.name),
+    buttons: parts.flatMap((part) => part.buttons.map((button) => ({ ...button, panel: part.name }))),
+    parts,
+  });
+}
 let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/Parameters"] };
 
 // ---- Statistics: a few weeks of clicks

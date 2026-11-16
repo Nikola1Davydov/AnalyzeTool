@@ -13,6 +13,7 @@
 - 🎯 **The ribbon keeps one button: Buttons (the pane).** Refresh is ↻ in its header, About is in its profile. Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
 - 🧾 **A command with an input type gets a form in the pane** — built from its schema, no HTML; a page marked `dockable` opens inside the pane, any other in a window.
 - 🗃️ **Buttons are laid out on disk as on the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button with its code, page and versions. Folders with a `plugin.json` keep loading as they are.
+- 🗄️ **Your folders with a `plugin.json` are together in «Older buttons»** in the pane, one section each; on the ribbon they keep their tabs. ✎ › Move to… turns such a button into a button folder of a tab; an old folder left empty goes to the trash.
 - 🗂️ **A folder of the pane is a tab of the ribbon, its sections are the panels.** Buttons drag between sections or move to another folder with their code; no tab or panel to set by hand.
 - ✏️ **In the pane, ✎ renames a button or a folder**; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
 - 📁 **Buttons live in folders.** The pane creates an empty folder and adds buttons to it one by one, each addition a version of the folder.
