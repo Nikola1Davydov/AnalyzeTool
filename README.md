@@ -65,13 +65,13 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 Open the **AnalyseTool** tab:
 
 - **AnalyseTool** — the main window: the shared parameters of your file and project in one table (create, edit, add to the project), and a printable A4 report of how well the chosen ones are filled.
-- **Settings** — the AI connection (MCP) and the plugin's own switches.
-- **Report a bug** — opens the GitHub issues page (works even if the plugin failed to load).
+- **Buttons pane** — your buttons in the dock pane.
+- **New button** — a ribbon button with a C# command (and, if you want, a page), compiled by AnalyseTool, with its first version saved.
+- **Manage buttons** — your buttons and installed packages: status, compiler errors, versions, install a `.zip`.
+- **Settings** — the AI connection (MCP) and the folders of your buttons.
 - **About** — versions, what's new and links to the source.
-- **Reload** — reload extensions (DLLs + buttons) without restarting Revit.
-- **Extensions** — install, update and manage extensions.
-- **New** — create an extension: a ribbon button with a page and a C# command.
-- Buttons of installed packages and of the extensions you or your AI added.
+- **Report a bug** — opens the GitHub issues page.
+- Buttons of installed packages and of the extensions you or your AI added — they appear, change and disappear live.
 
 ## 📊 Shared parameters & report
 
@@ -84,11 +84,9 @@ The main window (**AnalyseTool** on the ribbon):
 
 ## 🤖 AI — the one you already use
 
-- Connect Claude Desktop, Cursor or any other **MCP** client: it reads and changes the model through AnalyseTool's commands — built-in and from your extensions.
-- It can **try C#** against the open model (`ExecuteRevitCode`) and **give your extension a page** with a ribbon button. Code worth keeping goes into an extension — **New** on the ribbon scaffolds one.
-- **Nothing runs code until you allow it:** running C# and saving pages is off until you switch it on in Settings, and the assistant cannot switch it on itself.
-
-<p align="center"><img src="img/mcp-flow.svg" width="860" alt="An AI call travels from the client through AnalyseTool.Mcp and the bridge into Revit's command queue, and the answer comes back" /></p>
+- Connect Claude Code, Claude Desktop, Cursor or any other **MCP** client: it reads and changes the model through AnalyseTool's commands — built-in and from your extensions.
+- It can **build buttons with you**: create one, write its C#, see the compiler errors, run it and save a version — every version is yours to compare, restore or pin.
+- Running arbitrary C# (`ExecuteCode`) exists only where scripting is switched on (`Scripting:Enabled`, on in Debug builds).
 
 ---
 
