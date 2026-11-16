@@ -29,15 +29,14 @@ Use the built-in tools (shared parameters and a printable parameter report) and 
 4. Start Revit and open the **AnalyseTool** ribbon tab.
 
 ### AI setup
-AnalyseTool has no AI of its own — you connect the one you already use. In **Settings → AI assistant**, turn the MCP server on, open *Connection details* and paste the config snippet into your client (Claude Desktop, Cursor, …). To let the assistant run C# in Revit and save pages for your extensions, turn on **C# execution** in the same block.
+AnalyseTool has no AI of its own — you connect the one you already use. In **Settings**, turn the MCP server on (it starts with the next Revit) and copy the `claude mcp add …` command or the address and token into your client (Claude Code, Claude Desktop, Cursor, …). The server runs inside Revit over HTTP on localhost.
 
 ### Troubleshooting
 - **Blank AnalyseTool window** → the WebView2 Runtime is missing; install it and restart Revit.
-- **A new extension's ribbon button doesn't appear** → a brand-new button needs a Revit restart the first time; changing an existing extension only needs **Reload** on the ribbon.
+- **A button doesn't appear or does nothing** → open **Manage buttons**: the extension may be off, fail to compile (the error shows file and line) or have no build for this Revit year.
 - **Duplicate AnalyseTool tab / buttons** → both the SingleUser and MultiUser builds are installed; uninstall one.
 - **AI tools don't update after toggling MCP** → the AI client caches the tool list; restart the client.
-- **The AI client lists only `GetJobResult` and `CancelJob`** → it connected before the bridge was up. The bridge starts the first time you open AnalyseTool in a Revit session; open it once, then reconnect the server in your client.
-- **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\analysetool-<date>.log`.
+- **Logs** for diagnosing anything: `%LOCALAPPDATA%\AnalyseTool\logs\<year>\log-<date>.txt`.
 </details>
 
 ### Compatibility
@@ -50,7 +49,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 | 🧰 **Use it** | 🛠️ **Build on it** |
 | --- | --- |
 | Shared parameters and the parameter report built in; more tools as installable packages. | Shared commands · MCP server · dockable panes · a live extension system · a NuGet SDK. |
-| Install the plugin and go. | *Write once, use everywhere.* Ship your own DLL — no host rebuild. |
+| Install the plugin and go. | *Write once, use everywhere.* A button is a C# file AnalyseTool compiles — with its own version history. |
 | [→ Features](#-use-it--features) · [→ Quick start](#quick-start) | [→ Build on it](#-build-on-it--the-framework) |
 
 ---
@@ -96,7 +95,7 @@ The main window (**AnalyseTool** on the ribbon):
 
 # 🛠️ Build on it — the framework
 
-AnalyseTool isn't just a set of tools — it's a small framework for authoring Revit commands and UIs. You add your own **C# commands** and **web UI pages** **without rebuilding the plugin**: they drop into your extensions folder and load live on **Reload**.
+AnalyseTool isn't just a set of tools — it's a small framework for authoring Revit commands and UIs. You add your own **buttons** — **C# sources** that AnalyseTool compiles inside Revit, and **web pages** — **without rebuilding the plugin**: save a file and the button runs the new code. Every button keeps **its own version history**.
 
 ## Build once. Use everywhere.
 
@@ -106,32 +105,30 @@ Write a command once as an `IRevitTask`. The dispatcher is transport-neutral, so
 
 ## Command flow
 
-Everything goes through one dispatcher, and the Revit model is only ever touched inside `RunInRevitAsync` (a valid API context on the Revit thread).
+Everything goes through one command pipeline (logging, the active document, progress, cancellation), and the Revit model is only ever touched on the Revit thread.
 
 ```mermaid
 flowchart LR
-    A["Ribbon · MCP · JS"] --> B[CommandDispatcher] --> C["IRevitTask.ExecuteAsync"] --> D["RunInRevitAsync → Revit model"]
+    A["Ribbon · pages (AT.invoke) · MCP"] --> B[Command pipeline] --> C["IRevitTask.ExecuteAsync"] --> D["RunInRevitAsync → Revit model"]
 ```
 
 ## AI, precisely
 
-The **MCP server** exposes every command (built-in *and* your extensions) to external AI agents like Claude Desktop, so an agent can drive Revit through your commands. AnalyseTool itself runs no model. The path of one call is in the diagram above: the exe the client launches, a token-checked localhost bridge inside Revit, one command queue, the Revit thread. A call that outlives its wait comes back as a job the agent collects with `GetJobResult`, and progress reaches the client as it happens.
+The **MCP server** runs inside Revit (Streamable HTTP on localhost, bearer token) and exposes the built-in tools and every command of your extensions to AI agents like Claude Code, so an agent can drive Revit through your commands. AnalyseTool itself runs no model. When extensions change, the server tells the client (`tools/list_changed`).
 
-An agent can also **build with you**. It reads the authoring guide (`GetAuthoringGuide`), tries C# against the open model with `ExecuteRevitCode` — compiler errors come back to it, not to you — and saves a web page with a ribbon button for an extension's commands. Code worth keeping goes into the extension itself: a project (**New** scaffolds one), or C# sources in its `src\` folder, which AnalyseTool compiles on load. Every command publishes an input **and** an output schema, so the agent knows what to send and what shape comes back, instead of inferring either from prose.
+An agent can also **build with you**: it reads the authoring guide (`GetAuthoringGuide`), creates a button (`CreateExtension`), writes its C# (`WriteExtensionFile` — compiler errors come back to it with file and line), runs it, and saves a version with a message (`SaveExtensionVersion`). You see every version on the button's page and can compare, restore or pin.
 
-## Extensions — plug in a DLL, don't fork the host
+## Extensions — C# you can read, versions you control
 
-You don't modify AnalyseTool — you drop an extension next to it. It gets its own ribbon button and can open a window **or reuse the shared dockable pane** (`"dockable": true`). C# command DLLs and web UI pages are supported, and everything reloads live. An extension without a project — C# sources in its `src\` folder — is compiled by the plugin itself on load, no .NET SDK needed.
+You don't modify AnalyseTool — you add buttons next to it. **New button** on the ribbon creates a folder with `plugin.json` and `src\<Name>.cs`; AnalyseTool compiles it with its own Roslyn, against the running Revit, and the button appears at once. Edit the file in any editor and save: the extension reloads by itself. A button can open a page (in a window or the dock pane) that calls C# with `AT.invoke`. DLL extensions built with the SDK still load, and `.zip` packages install.
+
+Each extension folder is a git repository behind the scenes. On the button's page: **Save version**, **History**, **Changes** (diff), **Restore** (nothing is lost — unsaved work becomes a version first) and **Run this version** (pin the button to an older version without touching the files).
 
 ```mermaid
 flowchart TB
-    E["Your extension<br/>(.dll + page)"] -->|"drop in + Reload"| AT["AnalyseTool host<br/>(Core · UI · MCP)"]
+    E["Your button<br/>(src\\*.cs + page)"] -->|"save"| AT["AnalyseTool<br/>(Roslyn · pipeline · versions)"]
     AT --> R[Revit]
 ```
-
-Prefer clicking to typing? **New** on the ribbon scaffolds an extension — a `plugin.json`, a page, a starter C# command and an `LLM.md` — and its button appears on the ribbon right away:
-
-<p align="center"><img src="img/new-button.svg" width="860" alt="Click New, type a name — the id and tooltip follow — click Create, and the extension's button appears on the ribbon" /></p>
 
 ## Extension quick start (SDK)
 
@@ -159,32 +156,31 @@ public sealed class CountWalls : IRevitTask
 ```
 
 
-Add a `plugin.json`, build with a year config (`Release R25` / `R26` / `R27`), drop the output into
-`%LOCALAPPDATA%\AnalyseTool\extensions\<id>\<RevitYear>\` (with `plugin.json` in `<id>\`), and hit **Reload**. Your command is now callable
-from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP — no host rebuild.
+Put it in `src\CountWalls.cs` of an extension folder (or let **New button** create one) — AnalyseTool compiles it, no project needed.
+Or build a DLL with a year config (`Release R25` / `R26` / `R27`) into `%LOCALAPPDATA%\AnalyseTool\extensions\<id>\<RevitYear>\`.
+Either way the command is callable from a button, from JavaScript (`AT.invoke("<id>.CountWalls")`) and from AI clients over MCP — no host rebuild.
 
-📖 **Full authoring guide:** the [GitHub Wiki](https://github.com/Nikola1Davydov/AnalyzeTool/wiki) (mirrored from [`ONBOARDING.md`](ONBOARDING.md)) — the manifest, the SDK contract, deploy & live reload, MCP, and more. Writing with AI? Paste [`LLM.md`](src/LLM.md) into Claude/ChatGPT and it writes AnalyseTool extensions for you.
+📖 **Full authoring guide:** the [GitHub Wiki](https://github.com/Nikola1Davydov/AnalyzeTool/wiki) (mirrored from [`ONBOARDING.md`](ONBOARDING.md)) — the manifest, the SDK contract, deploy & live reload, MCP, and more. Writing with AI? Paste [`LLM.md`](source/AnalyseTool.Extensions/Authoring/LLM.md) into Claude/ChatGPT and it writes AnalyseTool extensions for you.
 
 ## Project structure
 
 ```
-src/
-  AnalyseTool.Sdk/        public SDK extension authors compile against (the only contract)
-  AnalyseTool.Core/       platform: command queue & dispatcher, extension loader (ALC), Roslyn (ExecuteRevitCode, host-built extensions)
-  AnalyseTool.Tools/      built-in feature commands in vertical slices (Actions/Elements/SharedParameters) — references ONLY the Sdk
-  AnalyseTool.Mcp.Bridge/ in-Revit MCP transport (TCP bridge into the command queue)
-  AnalyseTool.Mcp/        out-of-process MCP server the AI client launches (stdio ⇄ TCP)
-  AnalyseTool.App/        host UI: windows, ribbon, dockable pane, WebView2 transport, bootstrap
-  AnalyseTool.Launcher/   thin Revit add-in shim that loads the host in isolation
-  clientapp/              Vue 3 + Vite + PrimeVue frontend
-  Installer/              packaging & installation assets
-samples/                  example extensions (Acme.Sample doubles as the SDK guardrail in CI)
+source/
+  AnalyseTool.Sdk/                 public SDK extension authors compile against (the only contract)
+  AnalyseTool.Extensions/          the user's buttons: Roslyn builds, DLL loading, live reload, git versions, packages
+  AnalyseTool.Hosting/             command pipeline, Revit dispatcher, settings (template module)
+  AnalyseTool.Hosting.Mcp/         MCP server inside Revit (Streamable HTTP)
+  AnalyseTool.Hosting.WebView/     WebView2 windows, dock pane, extension pages
+  AnalyseTool.Hosting.Scripting/   ExecuteCode / DescribeApi for agents
+  AnalyseTool.Hosting.Visualization/ geometry drawn over views
+  AnalyseTool/                     the add-in: ribbon, built-in tools (Elements, Actions, SharedParameters), React app (ClientApp/)
+  AnalyseTool.Launcher/            thin Revit entry that loads the add-in in isolation
+tests/                             Revit-free tests and tests inside Revit
+build/  install/                   build pipeline (ModularPipelines) and installer (WixSharp)
+samples/                           example extensions (Acme.Sample)
 ```
 
-Dependency contract (enforced by `src/build/Check-Boundaries.ps1` in CI): extensions and
-`Tools` see only the `Sdk`; transports (`Mcp.Bridge`) plug into `Core` from outside; `App`
-composes everything; `Core` and `Tools` are headless (no WPF).
-
+Built on the [davydov-revit template](https://github.com/Nikola1Davydov/Davydov.Revit.Template); the dependency contract is enforced by `build/Check-Boundaries.ps1`.
 
 ## Feedback
 
@@ -192,4 +188,4 @@ Found a bug or have an idea? Use the [issue tracker](https://github.com/Nikola1D
 
 ## License
 
-AnalyseTool is licensed under the [Apache License 2.0](LICENSE), with one exception: the public extension SDK, [`AnalyseTool.Sdk`](src/AnalyseTool.Sdk), is licensed under the [MIT License](src/AnalyseTool.Sdk/LICENSE) so extension authors can consume it without any strings attached. Bundled third-party components are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+AnalyseTool is licensed under the [Apache License 2.0](LICENSE), with one exception: the public extension SDK, [`AnalyseTool.Sdk`](source/AnalyseTool.Sdk), is licensed under the [MIT License](source/AnalyseTool.Sdk/LICENSE) so extension authors can consume it without any strings attached. Bundled third-party components are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
