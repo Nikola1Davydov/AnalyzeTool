@@ -24,7 +24,36 @@ public sealed record CommandDescriptor(
     Type? RequestType,
     Type ResponseType,
     string? Description,
-    CommandInvoker Invoke);
+    CommandInvoker Invoke)
+{
+    /// <summary>
+    ///     Gets the group of a command registered at run time (<see cref="CommandRegistry.SetGroup" />), for example the id
+    ///     of its extension; <see langword="null" /> for a scanned command.
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>
+    ///     Gets what a command registered at run time tells transports about itself. A scanned command describes itself
+    ///     with attributes instead (<c>[McpTool]</c>).
+    /// </summary>
+    public CommandAnnotations? Annotations { get; init; }
+}
+
+/// <summary>
+///     What a command registered at run time tells transports: whether AI clients see it, its hints and its schemas.
+/// </summary>
+/// <param name="ExposeToMcp">Whether AI clients see the command as an MCP tool.</param>
+/// <param name="ReadOnly">The command only reads the model.</param>
+/// <param name="Destructive">The command deletes or overwrites data.</param>
+/// <param name="InputSchema">The JSON Schema of the input, when the request is not a CLR type the transport can describe.</param>
+/// <param name="OutputSchema">The JSON Schema of the result, if known.</param>
+[PublicAPI]
+public sealed record CommandAnnotations(
+    bool ExposeToMcp,
+    bool ReadOnly = false,
+    bool Destructive = false,
+    JsonElement? InputSchema = null,
+    JsonElement? OutputSchema = null);
 
 /// <summary>
 ///     The naming rules of commands — the only place they live.

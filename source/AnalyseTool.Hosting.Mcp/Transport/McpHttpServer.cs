@@ -130,6 +130,7 @@ internal sealed partial class McpHttpServer(
         _state = McpEndpointState.Listening;
 
         _acceptLoop = Task.Run(AcceptLoopAsync, CancellationToken.None);
+        catalog.Changed += OnToolsChanged;
         LogListening(_logger, Url, settings.ConnectionFile);
         return Task.CompletedTask;
     }
@@ -143,6 +144,7 @@ internal sealed partial class McpHttpServer(
         }
 
         _state = McpEndpointState.Off;
+        catalog.Changed -= OnToolsChanged;
         await _stopping.CancelAsync().ConfigureAwait(false);
         _listener.Stop();
         _listener.Close();
@@ -398,6 +400,33 @@ internal sealed partial class McpHttpServer(
         }
     }
 
+    /// <summary>
+    ///     Tells every client with a session that the tools changed — an extension was loaded, reloaded or removed — so it
+    ///     asks <c>tools/list</c> again. A client that is gone only costs a debug line.
+    /// </summary>
+    private void OnToolsChanged(object? sender, EventArgs e)
+    {
+        foreach (var session in _sessions.Values)
+        {
+            _ = NotifyAsync(session);
+        }
+
+        async Task NotifyAsync(Session session)
+        {
+            try
+            {
+                await session.Server.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, session.Closing).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                LogNotifyFailed(_logger, exception, session.Id);
+            }
+        }
+    }
+
+    [LoggerMessage(LogLevel.Debug, "MCP session {SessionId} could not be told that the tools changed")]
+    private static partial void LogNotifyFailed(ILogger logger, Exception exception, string sessionId);
+
     private McpServerOptions CreateServerOptions()
     {
         return new McpServerOptions
@@ -408,7 +437,7 @@ internal sealed partial class McpHttpServer(
                 Title = $"{environment.ApplicationName} (Revit {settings.RevitVersion})",
                 Version = typeof(McpHttpServer).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0"
             },
-            Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = false } },
+            Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },
             Handlers = new McpServerHandlers
             {
                 ListToolsHandler = tools.ListToolsAsync,
@@ -511,6 +540,8 @@ internal sealed partial class McpHttpServer(
         public StreamableHttpServerTransport Transport { get; } = transport;
 
         public CancellationToken Closing { get; } = closing.Token;
+
+        public McpServer Server { get; } = server;
 
         public async ValueTask DisposeAsync()
         {

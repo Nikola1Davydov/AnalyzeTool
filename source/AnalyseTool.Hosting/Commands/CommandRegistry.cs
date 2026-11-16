@@ -10,19 +10,32 @@ namespace AnalyseTool.Hosting.Commands;
 [PublicAPI]
 public sealed class CommandRegistry
 {
-    private readonly Dictionary<string, CommandDescriptor> _byName;
-    private readonly Dictionary<Type, CommandDescriptor> _byType;
+    private readonly Dictionary<string, CommandDescriptor> _static;
+    private readonly Dictionary<Type, CommandDescriptor> _staticByType;
+    private readonly Dictionary<string, IReadOnlyList<CommandDescriptor>> _groups = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _lock = new();
+    private Snapshot _snapshot;
 
     internal CommandRegistry(IEnumerable<CommandDescriptor> commands, IReadOnlyList<string> warnings)
     {
         var list = commands.ToList();
-        _byName = list.ToDictionary(command => command.Name, StringComparer.OrdinalIgnoreCase);
-        _byType = list.ToDictionary(command => command.CommandType);
+        _static = list.ToDictionary(command => command.Name, StringComparer.OrdinalIgnoreCase);
+        _staticByType = list.ToDictionary(command => command.CommandType);
+        _snapshot = new Snapshot(_static, _staticByType);
         Warnings = warnings;
     }
 
-    /// <summary>Gets all registered commands.</summary>
-    public IReadOnlyCollection<CommandDescriptor> Commands => _byName.Values;
+    /// <summary>
+    ///     Raised after <see cref="SetGroup" /> or <see cref="RemoveGroup" /> changed the commands — for transports that
+    ///     announce their command list (MCP <c>tools/list_changed</c>).
+    /// </summary>
+    public event EventHandler? Changed;
+
+    /// <summary>Gets all registered commands: the scanned ones and every group.</summary>
+    public IReadOnlyCollection<CommandDescriptor> Commands => _snapshot.ByName.Values;
+
+    /// <summary>Gets a number that grows with every change of the commands.</summary>
+    public int Version => _snapshot.Version;
 
     /// <summary>Gets problems found while scanning that did not stop the registration, for the startup log.</summary>
     public IReadOnlyList<string> Warnings { get; }
@@ -30,14 +43,101 @@ public sealed class CommandRegistry
     /// <summary>Finds a command by name.</summary>
     public CommandDescriptor? Find(string name)
     {
-        return _byName.GetValueOrDefault(name);
+        return _snapshot.ByName.GetValueOrDefault(name);
     }
 
     /// <summary>Finds a command by its class.</summary>
     public CommandDescriptor? Find(Type commandType)
     {
-        return _byType.GetValueOrDefault(commandType);
+        return _snapshot.ByType.GetValueOrDefault(commandType);
     }
+
+    /// <summary>
+    ///     Replaces the commands of a group — the commands that come and go at run time, such as those of an extension. A
+    ///     command whose name is taken by a scanned command or another group is skipped and reported.
+    /// </summary>
+    /// <param name="group">The owner of the commands, for example an extension id.</param>
+    /// <param name="commands">The new commands of the group; an empty list removes the group.</param>
+    /// <returns>Why some commands were skipped; empty when all were registered.</returns>
+    public IReadOnlyList<string> SetGroup(string group, IEnumerable<CommandDescriptor> commands)
+    {
+        var problems = new List<string>();
+        lock (_lock)
+        {
+            var taken = _groups
+                .Where(entry => !string.Equals(entry.Key, group, StringComparison.OrdinalIgnoreCase))
+                .SelectMany(entry => entry.Value)
+                .ToDictionary(command => command.Name, StringComparer.OrdinalIgnoreCase);
+
+            var accepted = new List<CommandDescriptor>();
+            foreach (var command in commands)
+            {
+                if (_static.ContainsKey(command.Name))
+                {
+                    problems.Add($"The command '{command.Name}' of '{group}' is skipped: a built-in command has this name.");
+                }
+                else if (taken.TryGetValue(command.Name, out var owner))
+                {
+                    problems.Add($"The command '{command.Name}' of '{group}' is skipped: {owner.Group ?? "another group"} registered it first.");
+                }
+                else if (accepted.Any(other => string.Equals(other.Name, command.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    problems.Add($"The command '{command.Name}' is declared more than once in '{group}'.");
+                }
+                else
+                {
+                    accepted.Add(command with { Group = group });
+                }
+            }
+
+            if (accepted.Count == 0)
+            {
+                _groups.Remove(group);
+            }
+            else
+            {
+                _groups[group] = accepted;
+            }
+
+            Rebuild();
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        return problems;
+    }
+
+    /// <summary>Removes the commands of a group.</summary>
+    public void RemoveGroup(string group)
+    {
+        SetGroup(group, []);
+    }
+
+    /// <summary>Gets the commands of a group; empty for an unknown group.</summary>
+    public IReadOnlyList<CommandDescriptor> GetGroup(string group)
+    {
+        lock (_lock)
+        {
+            return _groups.GetValueOrDefault(group) ?? [];
+        }
+    }
+
+    private void Rebuild()
+    {
+        var byName = new Dictionary<string, CommandDescriptor>(_static, StringComparer.OrdinalIgnoreCase);
+        var byType = new Dictionary<Type, CommandDescriptor>(_staticByType);
+        foreach (var command in _groups.Values.SelectMany(commands => commands))
+        {
+            byName[command.Name] = command;
+            byType.TryAdd(command.CommandType, command);
+        }
+
+        _snapshot = new Snapshot(byName, byType, _snapshot.Version + 1);
+    }
+
+    private sealed record Snapshot(
+        Dictionary<string, CommandDescriptor> ByName,
+        Dictionary<Type, CommandDescriptor> ByType,
+        int Version = 0);
 }
 
 /// <summary>
