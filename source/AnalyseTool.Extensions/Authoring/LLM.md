@@ -16,7 +16,7 @@ folder has its own version history (git) that the user controls from the Analyse
 
 | Kind | Ships | Role | Use it |
 | --- | --- | --- | --- |
-| **C# sources** | `.cs` files in `src\` that AnalyseTool compiles (§5) | **ADDS** commands | **always — this is the default** |
+| **C# sources** | `.cs` files in a button folder that AnalyseTool compiles (§1.1, §5) | **ADDS** commands | **always — this is the default** |
 | **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | when the extension needs a page |
 | **C# project** | a `.dll` per Revit year the author builds (§4) | ADDS commands | for NuGet packages, closed source, or XAML/resources |
 
@@ -204,7 +204,7 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 
 ---
 
-## 3. The manifest — `plugin.json` (required, sits in the extension folder root)
+## 3. The manifest — `plugin.json` (DLL extensions, packages; a button of a tab has `bundle.json`, §1.1)
 
 ```json
 {
@@ -368,40 +368,31 @@ per year you ship.
 ## 5. C# sources — AnalyseTool builds them (the default)
 
 ```
-<id>\
-    plugin.json            id, buttons, "build": "host"
-    src\CountWalls.cs      the sources — every .cs under src\ compiles into ONE assembly
-    lib\*.dll              optional: further assemblies the sources reference
-    .editor\<id>.csproj    optional, git-ignored: IntelliSense for VS / VS Code / Rider only
-    bin\2025\<id>.<hash>.dll   the build, written by AnalyseTool (git-ignored)
+Sheets.tab\
+    _shared\*.cs                 optional: C# every button of the tab compiles with
+    Numbering.panel\
+        Renumber.pushbutton\
+            bundle.json          name, tooltip, icon, "command": "Renumber" | "page": "index.html"
+            Renumber.cs          its C# — every *.cs of the folder (subfolders too) and _shared\ compile into ONE assembly
+            lib\*.dll            optional: further assemblies it references
+            .editor\*.csproj     optional, git-ignored: IntelliSense for VS / VS Code / Rider only
+            bin\2025\*.dll       the build, written by AnalyseTool (git-ignored)
 ```
+
+An extension of `plugin.json` keeps its C# in `src\` instead (and `"build": "host"`); everything else below is the same.
 
 - **No .NET SDK, no NuGet, no build step.** References: the Revit API of the running Revit,
   `AnalyseTool.Sdk`, `Newtonsoft.Json`, the .NET framework and `lib\*.dll`. The implicit usings of an
   SDK-style project (`System`, `System.Linq`, `System.Collections.Generic`, `System.IO`, `System.Threading.Tasks`…)
   are on.
-- **Save = reload.** AnalyseTool watches the folder: a saved `.cs` (or `plugin.json`) is compiled and the
-  commands replaced a moment later — the button runs the new code. The build is cached by a hash of the
-  sources, so a start of Revit with unchanged code compiles nothing.
+- **Save = reload.** AnalyseTool watches the folder: a saved `.cs` (or `bundle.json`) is compiled and the
+  commands replaced a moment later — the button runs the new code. A change in `_shared\` rebuilds every button of
+  the tab. The build is cached by a hash of the sources, so a start of Revit with unchanged code compiles nothing.
 - **A compile error keeps the last good build running** and is reported with file, line and column
-  (the extension page in AnalyseTool, `BuildExtension` / `GetExtensions` over MCP).
-- **`"build": "host"`** in `plugin.json` makes the folder a source extension even with a `.csproj` beside it
-  (the `.editor` project). Without the field the rule of 1.x applies: sources and no `.csproj` → host-built.
-
-Two forms are accepted:
-
-**Body form** (only when `src\` holds a single file without any type declaration) — just statements;
-`uiapp` / `uidoc` / `doc` are in scope, `return` any object. `Autodesk.Revit.DB`, `Autodesk.Revit.UI` and the
-implicit usings are imported; `using` directives on the FIRST lines are lifted above the class.
-```csharp
-var walls = new FilteredElementCollector(doc)
-    .OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().GetElementCount();
-return new { walls };
-```
-It is wrapped into a class named `Script`, so the command is `<id>.Script`.
-
-**Class form** — one or more full `IRevitTask` classes (as in §2), for your own command names,
-`InputType`/`OutputType` and metadata. Prefer it; it is what «New button» creates.
+  (the «!» on the tile in the pane, `BuildExtension` / `GetExtensions` over MCP).
+- **Full classes only**: one or more `IRevitTask` classes (as in §2), with their command names, `InputType` /
+  `OutputType` and metadata — what «New button» creates. A file of bare statements is not a command (it does not
+  compile); for a throwaway snippet use `ExecuteCode` over MCP instead.
 
 ---
 
@@ -444,57 +435,64 @@ page sees only `window.AT`.
 ## 7. Folders, reload and versions
 
 ```
-%LOCALAPPDATA%\AnalyseTool\extensions\<id>\       your own extensions (or any folder added in Settings)
-%LOCALAPPDATA%\AnalyseTool\extensions-dist\<id>\  installed packages (.zip)
-    plugin.json
-    src\*.cs             (sources — AnalyseTool builds them, §5)
-    2025\<YourExt>.dll   (or a DLL per Revit year, §4)
-    index.html           (UI)
-    AGENTS.md, CLAUDE.md (written by «New button»: they point to this guide, LLM.md next to the add-in)
-    .git\                (the extension's own version history)
+%LOCALAPPDATA%\AnalyseTool\extensions\            your own buttons (or any folder added in the pane › Folders of buttons)
+    Sheets.tab\Numbering.panel\Renumber.pushbutton\   one button: bundle.json, *.cs, index.html, AGENTS.md, CLAUDE.md, .git\
+    acme.doors\                                    an extension of plugin.json (a DLL one, or an older folder)
+        plugin.json, src\*.cs or 2025\<YourExt>.dll, index.html, .git\
+%LOCALAPPDATA%\AnalyseTool\extensions-dist\<id>\  installed packages (.zip, plugin.json)
 ```
-- The extension folder sits DIRECTLY under a root — a Revit year is a subfolder INSIDE it, never above it.
-- **No Reload needed:** a changed file reloads its extension, and ribbon buttons appear, change and disappear
+- A tab folder and an extension folder sit DIRECTLY under a root — a Revit year is a subfolder INSIDE a DLL
+  extension, never above it.
+- **No Reload needed:** a changed file reloads its button, and ribbon buttons appear, change and disappear
   without restarting Revit.
-- **Versions.** Each extension folder is a git repository. The user saves a version with a message, sees the
-  history and the diff, restores a version (or one file — unsaved work is saved as a version first, so nothing
-  is lost) and can **pin** a source extension to a version: the button runs that version's code whatever the
-  files say. Over MCP: `SaveExtensionVersion`, `GetExtensionVersions`, `GetExtensionDiff`,
-  `RestoreExtensionVersion`, `PinExtensionVersion`. Do not run git yourself in the folder unless asked; never
-  commit `bin\` or `.editor\`.
+- **Versions.** Each button folder (and each extension folder) is a git repository. The user saves a version with a
+  message, sees the history and the diff, restores a version (or one file — unsaved work is saved as a version
+  first, so nothing is lost) and can **pin** a button to a version: it runs that version's code whatever the files
+  say. Over MCP: `SaveExtensionVersion`, `GetExtensionVersions`, `GetExtensionDiff`, `RestoreExtensionVersion`,
+  `PinExtensionVersion` — the id of a button of a tab is `<tab>.<button>`. Do not run git yourself in the folder
+  unless asked; never commit `bin\` or `.editor\`. `_shared\` of a tab has no history of its own.
 
-### 7.0 Migrating an extension from the OLD layout
+### 7.0 Migrating buttons into tabs
 
-If you are asked to update an existing extension, check which layout it uses first. The old one put
-the Revit year **above** the extension; the current one puts it **inside**:
+Check the layout first. A folder `<Name>.pushbutton\` with a `bundle.json` is the current layout (§1.1). A folder
+with a `plugin.json` is the older one — AnalyseTool 1.x, or written by hand: it still loads (in the pane it is a
+section of «Older buttons»), but every new button goes into a tab. Move a button over when you change it anyway.
 
-```
-OLD (deprecated, still loads)          NEW
-extensions\2025\acme.doors\            extensions\acme.doors\
-    plugin.json                            plugin.json          <- ONE copy
-    Acme.Doors.dll                         index.html           <- ONE copy
-    index.html                             icon.png
-extensions\2026\acme.doors\                2025\Acme.Doors.dll
-    plugin.json      (duplicate)           2026\Acme.Doors.dll
-    Acme.Doors.dll
-    index.html       (duplicate)
-```
+**With AnalyseTool** (the user, or you over MCP) — one button at a time:
 
-Rules for the conversion — they cover every case:
+- Pane › «Older buttons» › right-click the button › ✎ › **Move to…** › a tab and a panel.
+- Over MCP: `MoveExtensionButton { id: "<old id>", button: "<its name>", panel: "<panel>", toId: "<tab>.tab", before? }`
+  (`ListRevitVersions`/`GetExtensions` show what exists; `CreateExtensionFolder { name }` makes a tab).
 
-1. **DLLs** move into a `<year>\` subfolder of the extension, one per Revit version.
-2. **Everything else** (`plugin.json`, `index.html`, `ui/`, `icon.png`, assets) goes
-   in the extension root, exactly ONCE. The old layout duplicated these per year; they are
-   version-independent, so collapse them to a single copy. If the duplicates differ, the newest wins
-   — say so rather than guessing silently.
-3. **`plugin.json` needs no change.** The year folders are the version declaration. If an old
-   manifest still carries a `targetRevit` field, DELETE it — it is not read.
-4. **The csproj** gets `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>` and the
-   `RevitVersion`-driven TFM/packages from §4, so the build writes into the right subfolder itself.
-   Remove any post-build copy step that targeted `extensions\<year>\<id>\`.
+What the move does:
 
-Do NOT delete the old folder as part of the migration — leave that to the user; both layouts load,
-so nothing breaks while both exist.
+| From the `plugin.json` folder | To `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` |
+| --- | --- |
+| The button entry of `ui.buttons` | `bundle.json`: `name`, `tooltip`, `icon`, `args`, `input`, `ribbon`, `pane`, `dockable` as they were; `command` becomes the class name only; `entryHtml` becomes `page`; `tab`/`panel` are the folders |
+| The C# file of its command and of every command its page calls (`AT.invoke('<old id>.X')`) | Moved; COPIED while another button of the old folder still uses it |
+| C# files with no command (helpers) | Copied |
+| Its page | `index.html`; every `'<old id>.X'` becomes `'<tab>.<button>.X'` |
+| Its icon file | Copied |
+| The old folder | Saves a version; when no button and no C# is left in it, it goes to the AnalyseTool trash with its history |
+
+The new folder starts its own history. After the move:
+
+1. `BuildExtension { id: "<tab>.<button>" }` — no errors?
+2. Files the page loads itself (its own `.css`, `.js`, images) are NOT moved: copy them next to `index.html`.
+3. Helpers copied into several buttons: put ONE copy into `<Tab>.tab\_shared\` and delete the copies — every button
+   of the tab compiles with `_shared\`.
+4. Tell the user what moved and what stayed (`GetExtensions` for the old folder).
+
+**By hand** — the same, without the tool: create the folders, write `bundle.json` from the entry as in the table,
+put the `.cs` of the command next to it (one class per button is the rule; shared code to `_shared\`), rename the
+`AT.invoke` calls of the page, then remove the entry and the files from the old folder. Saving reloads both.
+
+**What stays a `plugin.json` folder:** a DLL extension (its commands live in its project, §4), an installed package
+(its author's updates would undo a change) and AnalyseTool's own buttons.
+
+**The oldest layout** `extensions\<year>\<id>\` (the year ABOVE the extension) still loads too. To fix it, move the
+year inside — `extensions\<id>\<year>\*.dll`, everything else (`plugin.json`, pages, icons) once in `<id>\`; if the
+duplicates differ, the newest wins — say so. Leave deleting the old folders to the user.
 
 ### 7.0a Releasing from GitHub
 
@@ -578,19 +576,20 @@ Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as
 | --- | --- | --- |
 | Learn the rules | `GetAuthoringGuide` | This document. |
 | See what exists | `GetExtensions` | Every extension: id, folder, kind (`Source`/`Dll`/`Page`), commands, load errors, compiler diagnostics, pinned version. |
-| Start a folder | `CreateExtensionFolder { name, description?, panel? }` | An empty folder (extension) with its history; buttons come next. |
-| Add a button | `AddExtensionButton { id, name, description?, template? }` | `src\<Name>.cs` (and/or a page) and the entry in `plugin.json`, saved as a version. |
-| Organise | `SetExtensionPanel { id, panel?, name }` (add or rename a panel), `MoveExtensionButton { id, button, panel, before?, toId? }` (another panel, or another folder — its C# file and page go along, the command is renamed) | A folder of the user is a tab of the ribbon named after it, its panels are the sections of the pane: `tab` in plugin.json is not used for it. |
-| Rename | `UpdateExtensionFolder { id, name, description?, tab?, panel? }`, `UpdateExtensionButton { id, button, name, tooltip?, tab?, panel? }` | plugin.json only — the code keeps its file and command; a version each. |
-| Start a button | `CreateExtension { name, description?, template?, panel? }` | The new extension with its folder; `src\<Name>.cs` compiles, the first version is saved, the ribbon button is there. |
+| Which Revit | `ListRevitVersions` | The open Revit versions; every other tool takes `"revit": "2026"`, without it the Revit used last. |
+| Start a button | `CreateExtension { name, description?, template?, tab?, panel? }` | `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` (the tab is made when it is new) with `<Class>.cs` that compiles and its first version; id `<tab>.<button>`. |
+| Start a tab | `CreateExtensionFolder { name, panel? }` | An empty tab `<Name>.tab\`, id `<name>.tab`. |
+| Add a button to a tab | `AddExtensionButton { id: "<name>.tab", name, description?, template?, panel? }` | As `CreateExtension`, in that tab. |
+| Organise | `SetExtensionPanel { id: "<name>.tab", panel?, name }` (add or rename a panel), `MoveExtensionButton { id: "<name>.tab", button, panel, before?, toId? }` | Another panel or another tab: its folder moves with its history; in another tab its id changes and its page follows. From a `plugin.json` folder, `toId: "<name>.tab"` migrates the button (§7.0). |
+| Rename | `UpdateExtensionFolder { id: "<name>.tab", name }` (the tab), `UpdateExtensionButton { id, button, name, tooltip?, dockable? }` | `bundle.json` only — folders, ids and commands stay. |
 | Read / write code | `ListExtensionFiles`, `ReadExtensionFile`, `WriteExtensionFile { id, path, content }` | Writing reloads at once; the answer carries the compiler diagnostics. |
 | Check it | `BuildExtension { id }` | `success` and diagnostics with file/line/column. |
 | Try it | the command itself (`<id>.<Command>`), or `ExecuteCode` for a throwaway snippet | Its result. |
 | Keep it | `SaveExtensionVersion { id, message }` | The new version (null when nothing changed). |
 | History | `GetExtensionVersions`, `GetExtensionDiff { id, from?, to? }`, `RestoreExtensionVersion`, `PinExtensionVersion` | Versions, diffs, restore and pin. |
 
-- **One extension, many commands — do this by default.** One folder holds as many `IRevitTask` classes as
-  you like; they share the id: `niko.sheets.CreateSheets`, `niko.sheets.RenumberSheets`.
+- **One button, one folder.** A button folder may hold several `IRevitTask` classes (its page can call each:
+  `sheets.renumber.Preview`, `sheets.renumber.Apply`); code several buttons need goes to `_shared\` of the tab.
 - **A command that takes input belongs behind a page.** A ribbon click has no arguments: give such a command
   a page (`template: CommandWithPage`) that collects the input and calls it with `AT.invoke`.
 - **Shared folders are shared.** When an extension's folder is not the user's own (a network folder added in
@@ -602,7 +601,7 @@ Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as
 
 ## 8. Rules — ALWAYS / NEVER
 
-- **ALWAYS** write C# sources in `src\` (§5) unless the extension needs NuGet packages, closed code or
+- **ALWAYS** write C# sources in the button folder (§5) unless the extension needs NuGet packages, closed code or
   XAML/resources — then a C# project (§4).
 - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
@@ -639,7 +638,7 @@ model) in the payload or from your own settings file, and run the call **outside
 
 ## 10. Checklist for a generated extension
 
-- [ ] C# sources in `src\` with `"build": "host"` (§5); a C# project only for NuGet / closed code / resources.
+- [ ] A button folder `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` with `bundle.json` and its `*.cs` (§1.1, §5); a C# project only for NuGet / closed code / resources.
 - [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for UI-only).
 - [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.

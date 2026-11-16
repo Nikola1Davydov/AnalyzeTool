@@ -165,8 +165,8 @@ public sealed record CreateExtensionFolderRequest(
     [property: Description("The name of the folder, e.g. «Sheets».")] string Name,
     [property: Description("What its buttons are for.")] string? Description = null,
     [property: Description("The id; derived from the name when absent. Letters, digits, '.', '-', '_'.")] string? Id = null,
-    [property: Description("The ribbon panel of its buttons; «Extensions» when absent.")] string? Panel = null,
-    [property: Description("The ribbon tab of its buttons; the AnalyseTool tab when absent.")] string? Tab = null,
+    [property: Description("A first panel of the tab; one is made with the first button when absent.")] string? Panel = null,
+    [property: Description("Not used: the tab is the folder this creates.")] string? Tab = null,
     [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null);
 
 /// <summary>Creates an empty folder of buttons.</summary>
@@ -193,12 +193,12 @@ public sealed record AddExtensionButtonRequest(
     [property: Description("The text of the button, e.g. «Renumber sheets».")] string Name,
     [property: Description("What the button does: its tooltip and the description of its command.")] string? Description = null,
     [property: Description("CommandWithPage (default): opens a page that calls its C# command; Command: runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage,
-    [property: Description("Its own ribbon tab; the folder's when absent.")] string? Tab = null,
-    [property: Description("Its own ribbon panel; the folder's when absent.")] string? Panel = null);
+    [property: Description("A plugin.json folder only: its own ribbon tab. A button of a tab sits in the tab it is added to.")] string? Tab = null,
+    [property: Description("The panel: of the tab (made when new; the first one when absent), or of a plugin.json folder.")] string? Panel = null);
 
 /// <summary>Adds a button to a folder.</summary>
 [McpTool(Title = "Add a button to a folder")]
-[Command(Description = "Adds a button to one of the user's folders: its C# command in src\\<Name>.cs (and/or a page) and its entry in plugin.json, saved as a version. Returns the folder; then edit the new src\\*.cs with WriteExtensionFile.")]
+[Command(Description = "Adds a button. To a tab (id «<name>.tab»): a folder <Panel>.panel\\<Name>.pushbutton\\ with bundle.json, <Class>.cs (and/or index.html) and its own history; returns the button (id <tab>.<button>). To a plugin.json folder: src\\<Name>.cs and its entry in plugin.json. Then edit the new *.cs with WriteExtensionFile.")]
 public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddExtensionButtonRequest, ExtensionSummary>
 {
     /// <inheritdoc />
@@ -221,7 +221,7 @@ public sealed record UpdateExtensionFolderRequest(
 
 /// <summary>Renames a folder.</summary>
 [McpTool(Title = "Rename a folder of buttons")]
-[Command(Description = "Changes the name and description of one of the user's folders (plugin.json), saved as a version. The id stays.")]
+[Command(Description = "Renames a tab (id «<name>.tab»: bundle.json, the folder and the ids stay) or a plugin.json folder (name and description, saved as a version).")]
 public sealed class UpdateExtensionFolder(ExtensionManager manager) : ICommand<UpdateExtensionFolderRequest, ExtensionSummary>
 {
     /// <inheritdoc />
@@ -242,13 +242,13 @@ public sealed record UpdateExtensionButtonRequest(
     [property: Description("The current text of the button.")] string Button,
     [property: Description("Its new text.")] string Name,
     [property: Description("Its tooltip: what it does.")] string? Tooltip = null,
-    [property: Description("Its own ribbon tab: empty for the folder's, absent to keep it.")] string? Tab = null,
-    [property: Description("Its own ribbon panel: empty for the folder's, absent to keep it.")] string? Panel = null,
+    [property: Description("A plugin.json folder only: its own ribbon tab, empty for the folder's, absent to keep it. A button of a tab moves with MoveExtensionButton.")] string? Tab = null,
+    [property: Description("A plugin.json folder only: its own ribbon panel. A button of a tab moves with MoveExtensionButton.")] string? Panel = null,
     [property: Description("Its page opens inside the pane (a small interface) instead of a window; absent to keep it.")] bool? Dockable = null);
 
 /// <summary>Renames a button.</summary>
 [McpTool(Title = "Rename a button")]
-[Command(Description = "Changes the text and tooltip of a button in plugin.json, saved as a version. Its command and code keep their names.")]
+[Command(Description = "Changes the text, tooltip and dockable of a button — in its bundle.json (a button of a tab: id «<tab>.<button>» or the tab id) or in plugin.json — saved as a version. Its command and code keep their names.")]
 public sealed class UpdateExtensionButton(ExtensionManager manager) : ICommand<UpdateExtensionButtonRequest, ExtensionSummary>
 {
     /// <inheritdoc />
@@ -396,7 +396,7 @@ public sealed record BuildExtensionResult(bool Success, IReadOnlyList<CompileDia
 
 /// <summary>Compiles the sources of an extension and loads the result.</summary>
 [McpTool(Title = "Build extension")]
-[Command(Description = "Compiles the C# sources (src\\*.cs) of an extension against the running Revit and loads the result. Returns the compiler errors with file, line and column — the way to check code before clicking the button.")]
+[Command(Description = "Compiles the C# sources of a button or an extension (a button folder: its *.cs and _shared\\ of its tab; a plugin.json folder: src\\*.cs) against the running Revit and loads the result. Returns the compiler errors with file, line and column — the way to check code before clicking the button.")]
 public sealed class BuildExtension(ExtensionManager manager) : ICommand<ExtensionRequest, BuildExtensionResult>
 {
     /// <inheritdoc />
@@ -421,7 +421,7 @@ public sealed record AuthoringGuide(string Markdown, string Path);
 
 /// <summary>Returns the authoring guide.</summary>
 [McpTool(ReadOnly = true, Title = "Extension authoring guide")]
-[Command(Description = "Returns LLM.md, the guide to writing AnalyseTool extensions: the IRevitTask contract of AnalyseTool.Sdk, plugin.json, pages and AT.invoke, and the path of the file next to the add-in. Read it before writing extension code.")]
+[Command(Description = "Returns LLM.md, the guide to writing AnalyseTool extensions: the IRevitTask contract of AnalyseTool.Sdk, where a button lives (<Tab>.tab\\<Panel>.panel\\<Name>.pushbutton\\, bundle.json), pages and AT.invoke, migrating plugin.json folders, and the path of the file next to the add-in. Read it before writing extension code.")]
 public sealed class GetAuthoringGuide : ICommand<AuthoringGuide>
 {
     /// <inheritdoc />

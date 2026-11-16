@@ -44,14 +44,10 @@ public sealed record CompileResult(byte[]? Assembly, byte[]? Pdb, IReadOnlyList<
 ///     Compiles the C# sources of an extension with Roslyn, against the assemblies AnalyseTool runs with: the Revit API of the
 ///     running Revit, <c>AnalyseTool.Sdk</c>, Newtonsoft.Json, the framework — and the DLLs in the extension's <c>lib\</c>.
 /// </summary>
-/// <remarks>
-///     A single file that is only a method body (no class implementing <c>IRevitTask</c>) is wrapped into a command class, as
-///     1.x did for scripts. The PDB embeds the sources, so a debugger attached to Revit stops in them.
-/// </remarks>
+/// <remarks>The PDB embeds the sources, so a debugger attached to Revit stops in them.</remarks>
 public static class ExtensionCompiler
 {
     private static readonly CSharpParseOptions ParseOptions = new(LanguageVersion.Latest);
-    private static readonly Regex UsingDirective = new(@"^using\s+(static\s+)?[A-Za-z_][\w.]*(\s*=\s*[A-Za-z_][\w.<>,\s]*)?\s*;\s*(//.*)?$", RegexOptions.Compiled);
     private static readonly Lazy<IReadOnlyList<MetadataReference>> HostReferences = new(CollectHostReferences);
 
     private const string ImplicitUsings = """
@@ -75,12 +71,10 @@ public static class ExtensionCompiler
     {
         if (sources.Count == 0)
         {
-            return new CompileResult(null, null, [new CompileDiagnostic("src", 1, 1, "error", "AT0001", "There is no C# source in src\\ to compile.")]);
+            return new CompileResult(null, null, [new CompileDiagnostic(".", 1, 1, "error", "AT0001", "There is no C# source to compile.")]);
         }
 
-        var trees = sources.Count == 1 && IsBodyOnly(sources[0].Text)
-            ? [Parse(WrapBody(sources[0].Text, sources[0].Path), sources[0].Path)]
-            : sources.Select(source => Parse(source.Text, source.Path)).ToList();
+        var trees = sources.Select(source => Parse(source.Text, source.Path)).ToList();
         // The implicit usings of an SDK-style project, so code written in an editor with the .editor project compiles here too
         trees.Add(Parse(ImplicitUsings, "ImplicitUsings.g.cs"));
 
@@ -122,65 +116,6 @@ public static class ExtensionCompiler
         return result.Success
             ? new CompileResult(assembly.ToArray(), pdb.ToArray(), diagnostics)
             : new CompileResult(null, null, diagnostics);
-    }
-
-    /// <summary>Wraps a method body into a command class: <c>uiapp</c>, <c>uidoc</c> and <c>doc</c> in scope, leading <c>using</c>s lifted.</summary>
-    internal static string WrapBody(string body, string path)
-    {
-        var lines = body.Split('\n');
-        var usings = new List<string>();
-        for (var index = 0; index < lines.Length; index++)
-        {
-            var trimmed = lines[index].TrimEnd('\r').Trim();
-            if (trimmed.Length == 0 || trimmed.StartsWith("//", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (!UsingDirective.IsMatch(trimmed))
-            {
-                break;
-            }
-
-            usings.Add(trimmed);
-            lines[index] = string.Empty;
-        }
-
-        var builder = new StringBuilder();
-        builder.Append("""
-                       using Autodesk.Revit.DB;
-                       using Autodesk.Revit.UI;
-                       using AnalyseTool.Sdk;
-
-                       """);
-        foreach (var directive in usings)
-        {
-            builder.Append(directive).Append('\n');
-        }
-
-        builder.Append("""
-
-                       [RevitCommand(Description = "Script command.")]
-                       public sealed class Script : IRevitTask
-                       {
-                           public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) =>
-                               revitContext.RunInRevitAsync<object?>(uiapp =>
-                               {
-                                   var uidoc = uiapp.ActiveUIDocument;
-                                   var doc = uidoc != null ? uidoc.Document : null;
-
-                       """);
-        builder.Append("#line 1 \"").Append(path.Replace("\\", "\\\\")).Append("\"\n");
-        builder.Append(string.Join("\n", lines));
-        builder.Append("\n#line default\n            return null;\n        });\n}\n");
-        return builder.ToString();
-    }
-
-    /// <summary>Whether the source is only a method body: no type and no namespace declared — then it is wrapped into a command.</summary>
-    internal static bool IsBodyOnly(string source)
-    {
-        var root = CSharpSyntaxTree.ParseText(source, ParseOptions).GetRoot();
-        return !root.DescendantNodes().Any(node => node is BaseTypeDeclarationSyntax or BaseNamespaceDeclarationSyntax or DelegateDeclarationSyntax);
     }
 
     private static SyntaxTree Parse(string text, string path)

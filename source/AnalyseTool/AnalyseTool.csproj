@@ -38,8 +38,8 @@
         <!-- The buttons of AnalyseTool itself: plugin.json folders like an extension's, built by the same ribbon code -->
         <None Include="Ribbon\analysetool\**" CopyToOutputDirectory="PreserveNewest"/>
         <None Include="Ribbon\analysetool.dev\**" CopyToOutputDirectory="PreserveNewest" Condition="$(Configuration.StartsWith('Debug'))"/>
-        <!-- The plugin of Claude Code (a marketplace of one plugin): installed from the add-in folder, updated with it -->
-        <None Include="Claude\**" CopyToOutputDirectory="PreserveNewest"/>
+        <!-- The plugin of Claude Code and Codex (a marketplace of one plugin for each): installed from the add-in folder, updated with it -->
+        <None Include="Plugin\**" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -207,7 +207,7 @@ const mcp: McpInfo = {
   connectionFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\mcp.json`,
   name: "analysetool",
   token,
-  claudePlugin: String.raw`C:\Users\you\AppData\Roaming\Autodesk\Revit\Addins\2026\AnalyseTool.Launcher\Claude`,
+  claudePlugin: String.raw`C:\Users\you\AppData\Roaming\Autodesk\Revit\Addins\2026\AnalyseTool.Launcher\Plugin`,
 };
 
 const changelog = `# Changelog

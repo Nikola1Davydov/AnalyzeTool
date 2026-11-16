@@ -1,0 +1,20 @@
+{
+  "name": "analysetool",
+  "interface": {
+    "displayName": "AnalyseTool"
+  },
+  "plugins": [
+    {
+      "name": "analysetool",
+      "source": {
+        "source": "local",
+        "path": "./analysetool"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

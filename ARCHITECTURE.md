@@ -141,7 +141,7 @@ nothing else is visible to the client. A command failure is a tool result with `
   (version, port, when its window was in front); every tool takes `revit`, a call for another version is sent on to it
   as an MCP client, a call without one goes to the Revit used last; `ListRevitVersions` lists them.
 * `%LOCALAPPDATA%\AnalyseTool\mcp.json` holds that address, the one token (kept across Revit sessions) and the
-  `claude mcp add …` command. The Claude Code plugin in `source/AnalyseTool/Claude/` (copied next to the add-in) reads
+  `claude mcp add …` command. The plugin for Claude Code and Codex in `source/AnalyseTool/Plugin/` (copied next to the add-in; one plugin folder, a manifest and an MCP file for each client) reads
   the token there with a `headersHelper`.
 * `IMcpEndpoint.GetInfo()` returns the same details for a page; in Debug the «MCP» tab of the Dev page shows them.
 * A command that returns `McpImage` gives the client a picture, not JSON.

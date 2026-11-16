@@ -30,7 +30,7 @@ type Client = "claude-code" | "codex" | "cursor" | "vscode" | "claude-desktop" |
 
 const clients: { value: Client; label: string; where: string }[] = [
   { value: "claude-code", label: "Claude Code", where: "Run once in a terminal — the AnalyseTool plugin: the tools of every open Revit, no token to copy, and the guide for buttons:" },
-  { value: "codex", label: "Codex", where: "Add to ~/.codex/config.toml (Windows: %USERPROFILE%\\.codex\\config.toml):" },
+  { value: "codex", label: "Codex", where: "Run once in a terminal — the AnalyseTool plugin: the tools of every open Revit, no token to copy, and the guide for buttons:" },
   { value: "cursor", label: "Cursor", where: "Add to ~/.cursor/mcp.json (or .cursor/mcp.json of a project):" },
   { value: "vscode", label: "VS Code", where: "Add to .vscode/mcp.json of a project (or «MCP: Open User Configuration»):" },
   { value: "claude-desktop", label: "Claude Desktop", where: "Add to claude_desktop_config.json (Settings › Developer › Edit Config); needs Node.js for mcp-remote:" },
@@ -49,6 +49,7 @@ function snippet(client: Client, mcp: McpInfo) {
         ? `claude plugin marketplace add "${mcp.claudePlugin}"\nclaude plugin install analysetool@analysetool`
         : (mcp.claudeCode ?? `claude mcp add --transport http ${name} ${url} --header "Authorization: ${auth}"`);
     case "codex":
+      if (mcp.claudePlugin) return `codex plugin marketplace add "${mcp.claudePlugin}"\ncodex plugin add analysetool@analysetool`;
       return `[mcp_servers.${name}]\nurl = "${url}"\nhttp_headers = { "Authorization" = "${auth}" }`;
     case "cursor":
       return json({ mcpServers: { [name]: { url, headers: { Authorization: auth } } } });

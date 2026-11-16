@@ -28,7 +28,7 @@ public sealed record ExtensionFileContent(string Path, string Content);
 
 /// <summary>Reads a text file of an extension.</summary>
 [McpTool(ReadOnly = true, Title = "Read extension file")]
-[Command(Description = "Reads a text file of an extension, e.g. src/CountWalls.cs or plugin.json.")]
+[Command(Description = "Reads a text file of a button or an extension, e.g. Renumber.cs or bundle.json (a plugin.json folder: src/CountWalls.cs, plugin.json).")]
 public sealed class ReadExtensionFile(ExtensionManager manager) : ICommand<ExtensionFileRequest, ExtensionFileContent>
 {
     /// <inheritdoc />
@@ -46,7 +46,7 @@ public sealed record WriteExtensionFileRequest(
 
 /// <summary>Writes a text file of an extension and loads the result.</summary>
 [McpTool(Title = "Write extension file")]
-[Command(Description = "Writes (creates or replaces) a text file of an extension and reloads it at once: a C# source in src\\ is compiled, and the result carries the compiler errors. The change is not a saved version until SaveExtensionVersion.")]
+[Command(Description = "Writes (creates or replaces) a text file of an extension and reloads it at once: a C# source is compiled, and the result carries the compiler errors. The change is not a saved version until SaveExtensionVersion.")]
 public sealed class WriteExtensionFile(ExtensionManager manager) : ICommand<WriteExtensionFileRequest, ExtensionSummary?>
 {
     /// <inheritdoc />

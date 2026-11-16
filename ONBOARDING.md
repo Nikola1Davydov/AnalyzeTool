@@ -25,10 +25,11 @@ A single extension folder can be any of these, or a combination. The sample
 (`samples/Acme.Sample`) is a C# project + UI: a `Hello` command plus an `index.html` page with a button
 that calls it.
 
-**Since AnalyseTool 2.0 a new button is C# sources.** «New button» on the ribbon creates a folder with
-`plugin.json` and `src\<Name>.cs`; AnalyseTool compiles the sources itself, with its own Roslyn against
-the running Revit's API — no .NET SDK, no project, no DLL. Save a file and the extension reloads; the
-button runs the new code a moment later. Every extension folder has **its own version history** (git):
+**Since AnalyseTool 2.0 a new button is C# sources in a folder of its own.** «New button» in the pane creates
+`<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` with `bundle.json` and `<Name>.cs` — the folders are the ribbon, as in
+pyRevit (§2). AnalyseTool compiles the sources itself, with its own Roslyn against the running Revit's API — no .NET
+SDK, no project, no DLL. Save a file and the button reloads; it runs the new code a moment later. Every button folder
+has **its own version history** (git):
 save a version, compare, restore, or pin the button to an older version — from the extension's page in
 AnalyseTool (§6) or over MCP (§9). Build a DLL project (§4) only for what sources cannot do: NuGet
 packages, closed code, XAML/resources.
@@ -48,6 +49,22 @@ or transport details from inside a command. Return a serializable result; the tr
 ---
 
 ## 2. Where extensions live
+
+**Your own buttons live in tabs**, laid out as the ribbon:
+
+```
+%LOCALAPPDATA%\AnalyseTool\extensions\
+    Sheets.tab\                      a ribbon tab = a folder of the pane     (bundle.json: name, order of the panels)
+        _shared\*.cs                 C# every button of the tab compiles with
+        Numbering.panel\             a panel = a section                     (bundle.json: name, order of the buttons)
+            Renumber.pushbutton\     ONE button: bundle.json, Renumber.cs, index.html, its own .git\
+            More.pulldown\           a pulldown: *.pushbutton folders inside
+```
+
+A button folder is an extension of its own, id `<tab>.<button>` (`sheets.renumber`); its commands are
+`sheets.renumber.<Class>`. `bundle.json` of a button is the button entry of §3, with `command` as the class name only
+and `page` for its page; where it sits is the folders. The rest of this section is about **extensions of
+`plugin.json`**: DLL extensions (§4), packages, and folders made before tabs (see «Migrating» below).
 
 One extension = one folder, sitting **directly** under an extensions root. Inside it, the Revit
 year is a **subfolder** holding that year's binaries:
@@ -90,14 +107,18 @@ so two extensions can't collide and a reload can swap one out.
 As an author you work in the dev zone. The managed zone is what your users get when they install
 your `.zip`.
 
-### Migrating from the old layout
+### Migrating
 
-Before this format, extensions lived in `extensions\<year>\<id>\` — the year **above** the
-extension. Those folders **still load**, unchanged; nothing you have deployed breaks. But the
-year-above layout is deprecated: it cannot express one extension supporting several Revit
-versions, which is the whole point of the package format.
+**A `plugin.json` folder of your own buttons → tabs.** It keeps loading (a section of «Older buttons» in the pane),
+but new buttons go to tabs. Move a button over in the pane: right-click it › ✎ › **Move to…** › a tab. Its C#, its
+page (as `index.html`, with its `AT.invoke` names renamed) and its icon go into a new `<Name>.pushbutton\` with a
+history of its own; code another button still uses is copied, not moved; the old folder saves a version and goes to
+the trash once it is empty. Copy files the page loads itself (`.css`, `.js`, images) by hand, and put helper code
+several buttons share into `<Tab>.tab\_shared\`. The full table — and how to do it by hand or over MCP — is §7.0 of
+`LLM.md`. DLL extensions and installed packages stay `plugin.json` folders.
 
-To convert, move the year inside and merge the copies:
+**The year above the extension** (`extensions\<year>\<id>\`, before packages) still loads, unchanged. To convert,
+move the year inside and merge the copies:
 
 ```
 BEFORE                                   AFTER
@@ -111,18 +132,8 @@ extensions\2026\acme.doors\                  2025\Acme.Doors.dll
     index.html
 ```
 
-Three rules cover every case:
-
-- **DLLs** go into a `<year>\` subfolder — one per Revit version you built for.
-- **Everything else** — `plugin.json`, `index.html`, `ui/`, `icon.png`, assets —
-  goes in the root, exactly once. These files were duplicated per year before; they are
-  version-independent, so keep a single copy.
-- **`plugin.json` needs no edit.** There was never a `targetRevit` field; the year folders are the
-  declaration. If you have an old manifest that still carries one, delete the line.
-
-Then point your build at the new location — set `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>`
-as in §4.1, and the DLL lands in the right subfolder by itself. It reloads by itself; if the extension
-shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
+DLLs go into a `<year>\` subfolder, everything else in the root exactly once, `plugin.json` needs no edit; point the
+build at `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>` as in §4.1.
 
 ---
 
@@ -736,9 +747,10 @@ AnalyseTool 2.0 serves MCP **inside Revit** over Streamable HTTP — no separate
   `%LOCALAPPDATA%\AnalyseTool\mcp.json`. The first Revit you open answers on it and hands a call to the version it
   names: every tool takes `"revit": "2026"`, `ListRevitVersions` lists the open ones, and a call without it goes to
   the Revit you used last.
-- **Claude Code:** install the AnalyseTool plugin that ships with the add-in — no token to copy, plus a skill for
-  writing buttons (`/analysetool:new-button`). The pane › profile › AI clients shows the two commands:
-  `claude plugin marketplace add "<add-in folder>\Claude"` and `claude plugin install analysetool@analysetool`.
+- **Claude Code and Codex:** install the AnalyseTool plugin that ships with the add-in (`<add-in folder>\Plugin`) — no
+  token to copy, plus skills for writing buttons (`new-button`). The pane › profile › AI clients shows the two commands:
+  `claude plugin marketplace add "<add-in folder>\Plugin"` + `claude plugin install analysetool@analysetool`, or
+  `codex plugin marketplace add "<add-in folder>\Plugin"` + `codex plugin add analysetool@analysetool`.
   Other clients get a snippet with the address and the token there.
 - Only `localhost`, a bearer token on every request, no request from a web page (`Origin`) — a page in your
   browser cannot reach the model.

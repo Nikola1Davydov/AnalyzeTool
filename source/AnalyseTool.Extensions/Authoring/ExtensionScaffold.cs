@@ -62,10 +62,12 @@ public static partial class ExtensionScaffold
         return $"""
                 # {name} — an AnalyseTool extension
 
-                This folder is a ribbon button of AnalyseTool, a Revit add-in: `plugin.json`, C# sources in `src\` that
-                AnalyseTool compiles inside Revit (no project, no DLL) and, for a page, `index.html`. The folder is a git
-                repository whose commits are the versions the user manages in AnalyseTool — do not commit or switch
-                branches yourself unless asked.
+                This folder is a ribbon button of AnalyseTool, a Revit add-in: `bundle.json` (its name, tooltip, icon,
+                command class or page), its C# — every `*.cs` here, plus `_shared\` of its tab — that AnalyseTool
+                compiles inside Revit (no project, no DLL) and, for a page, `index.html`. Where it sits is the folders:
+                `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\`. (An older folder has `plugin.json` and `src\` instead.)
+                The folder is a git repository whose commits are the versions the user manages in AnalyseTool — do not
+                commit or switch branches yourself unless asked.
 
                 **Read the authoring guide before you change anything.** It ships with AnalyseTool and is updated with it:
 

@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "analysetool",
-      "source": "./plugin",
+      "source": "./analysetool",
       "description": "Connects Claude Code to AnalyseTool in Revit (every open version, no token to copy) and teaches it to write AnalyseTool buttons."
     }
   ]

@@ -8,13 +8,14 @@
 - 🕓 **Every button has its own version history.** Save a version, compare, restore a version or a file, or pin the button to an older version — from its page or over MCP.
 - 🌗 **The pane and the windows follow the theme of Revit** (or Windows, light, dark — in the profile).
 - 🔌 **Connect Codex, Cursor, VS Code, Claude Desktop or Gemini CLI** from the pane: pick the client, copy what to paste where.
-- 🧩 **A Claude Code plugin ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings a skill for writing buttons (`/analysetool:new-button`).
+- 🧩 **A plugin for Claude Code and Codex ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings a skill for writing buttons (`new-button`).
 - 🔀 **One MCP address for every Revit version.** The first Revit you open answers; a tool call with `"revit": "2026"` runs in that version, without it in the Revit you used last.
 - 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
 - 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
 - 🎯 **The ribbon keeps one button: Buttons (the pane).** Refresh is ↻ in its header, About is in its profile. Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
 - 🧾 **A command with an input type gets a form in the pane** — built from its schema, no HTML; a page marked `dockable` opens inside the pane, any other in a window.
 - 🗃️ **Buttons are laid out on disk as on the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button with its code, page and versions. Folders with a `plugin.json` keep loading as they are.
+- ✂️ **A button's C# is full classes only.** A file of bare statements is no longer wrapped into a `Script` command; for a quick snippet there is `ExecuteCode`. The authoring guide explains how to move older buttons into tabs.
 - 🗄️ **Your folders with a `plugin.json` are together in «Older buttons»** in the pane, one section each; on the ribbon they keep their tabs. ✎ › Move to… turns such a button into a button folder of a tab; an old folder left empty goes to the trash.
 - 🗂️ **A folder of the pane is a tab of the ribbon, its sections are the panels.** Buttons drag between sections or move to another folder with their code; no tab or panel to set by hand.
 - ✏️ **In the pane, ✎ renames a button or a folder**; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
