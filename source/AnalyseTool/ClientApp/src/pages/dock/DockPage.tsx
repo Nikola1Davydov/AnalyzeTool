@@ -299,7 +299,8 @@ function Header(props: {
           ...(folder.builtIn
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
-          ...(folder.canAddButtons
+          // Any folder but AnalyseTool's own can be turned off and on, a DLL one or a package too
+          ...(!folder.builtIn
             ? [
                 {
                   label: folder.enabled ? "Turn the folder off" : "Turn the folder on",
@@ -524,7 +525,20 @@ function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFo
     <>
       <h1 className="large-title">{folder.name}</h1>
       {folder.tabFromPackage && <p className="muted small">On the tab «{folder.tab}» — its author chose it.</p>}
-      {!folder.enabled && <div className="banner">This extension is turned off — turn it on in Manage buttons.</div>}
+      {!folder.enabled && (
+        <button
+          className="banner"
+          onClick={() =>
+            void bridge
+              .invoke(extensionCommands.SetExtensionEnabled, { id: folder.id, enabled: true })
+              .then(() => refresh.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" }))
+              .then(() => actions.toast(`${folder.name} is on — its buttons are back`))
+              .catch((error: unknown) => toastError(messageOf(error)))
+          }
+        >
+          This folder is turned off: its buttons and commands do not load. <b>Tap to turn it on.</b>
+        </button>
+      )}
       {folder.problems.length > 0 && (
         <button className="banner error" onClick={() => actions.openSheet(`Problems of ${folder.name}`, <ProblemList problems={folder.problems} />)}>
           {folder.problems.length} problem(s) — the last good build still runs. Tap for details.
