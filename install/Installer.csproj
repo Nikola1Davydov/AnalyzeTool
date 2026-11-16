@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+        The .msi builder, as install/ in Nice3point Revit Templates: build/ runs it with the version and
+        the publish folders of the Launcher. Product name, vendor and UpgradeCode come from build/appsettings.json.
+    -->
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>true</ImplicitUsings>
+        <TargetFramework>net10.0-windows</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="WixSharp.Core"/>
+        <PackageReference Include="WixSharp.Msi.Core"/>
+    </ItemGroup>
+
+</Project>

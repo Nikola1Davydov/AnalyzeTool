@@ -1,0 +1,52 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        The add-in application (Nice3point "Revit AddIn Application"). Revit does not load this assembly
+        directly: AnalyseTool.Launcher loads it into an isolated AssemblyLoadContext.
+        The .addin manifest, DeployAddin and LaunchRevit live in the Launcher.
+    -->
+
+    <PropertyGroup>
+        <UseWPF>true</UseWPF>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <!-- ClientApp is an npm project: node_modules must not become MSBuild items; only its dist ships (below) -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);ClientApp\**</DefaultItemExcludes>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Toolkit"/>
+        <PackageReference Include="Nice3point.Revit.Extensions"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+        <PackageReference Include="Polyfill" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="AnalyseTool.Tests"/>
+        <InternalsVisibleTo Include="AnalyseTool.RevitTests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Embedded, not WPF resources: pack URIs resolve assemblies by name and could load a second copy outside the isolated context -->
+        <EmbeddedResource Include="Resources\Icons\*.png"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.ServiceDefaults\AnalyseTool.ServiceDefaults.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting\AnalyseTool.Hosting.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting.WebView\AnalyseTool.Hosting.WebView.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting.Mcp\AnalyseTool.Hosting.Mcp.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting.Scripting\AnalyseTool.Hosting.Scripting.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting.Visualization\AnalyseTool.Hosting.Visualization.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The built pages (npm run build in ClientApp), served over the virtual host in Release -->
+        <Content Include="ClientApp\dist\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+</Project>

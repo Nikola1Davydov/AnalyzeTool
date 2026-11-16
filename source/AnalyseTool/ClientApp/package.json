@@ -1,0 +1,24 @@
+{
+  "name": "analysetool-clientapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.104.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "revit-bridge": "file:../../AnalyseTool.Hosting.WebView/revit-bridge"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  }
+}

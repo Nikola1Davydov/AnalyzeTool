@@ -1,0 +1,73 @@
+<Project>
+
+    <!--
+        Central Package Management — the one deviation from the Nice3point layout.
+        Revit-specific packages float with the Revit version of the configuration; RevitVersion is
+        set by Nice3point.Revit.Sdk from the configuration name (Debug.R25, Release.R27, ...).
+    -->
+
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
+    </PropertyGroup>
+
+    <!-- Revit API and Nice3point libraries, compiled per Revit version; build/ has no Revit version and skips them -->
+    <ItemGroup Condition="'$(RevitVersion)' != ''">
+        <PackageVersion Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*-*"/>
+        <PackageVersion Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*-*"/>
+        <PackageVersion Include="Nice3point.Revit.Toolkit" Version="$(RevitVersion).*-*"/>
+        <PackageVersion Include="Nice3point.Revit.Extensions" Version="$(RevitVersion).*-*"/>
+        <PackageVersion Include="Nice3point.Revit.Logging" Version="$(RevitVersion).*-*"/>
+        <PackageVersion Include="Nice3point.TUnit.Revit" Version="$(RevitVersion).*-*"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- One version for every Revit version; the Launcher's AssemblyLoadContext isolates it -->
+        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12"/>
+
+        <!-- File log of ServiceDefaults: Serilog as a logging provider -->
+        <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0"/>
+        <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0"/>
+
+        <!-- WebView2 for AnalyseTool.Hosting.WebView; loads in the Launcher's AssemblyLoadContext like everything else -->
+        <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.4258.31"/>
+
+        <!-- MCP server of AnalyseTool.Hosting.Mcp: the Core package only, the ASP.NET Core one needs a framework Revit lacks -->
+        <PackageVersion Include="ModelContextProtocol.Core" Version="2.2.0"/>
+
+        <!-- Roslyn of AnalyseTool.Hosting.Scripting: 4.11 needs System.Collections.Immutable 8.0, which .NET 8 of Revit 2025 has -->
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0"/>
+
+        <!-- Tests: TUnit on Microsoft.Testing.Platform (global.json), as in Nice3point MultiProjectSolution -->
+        <PackageVersion Include="TUnit" Version="1.78.0"/>
+
+        <!-- build/: the ModularPipelines pipeline, as in Nice3point Revit Templates -->
+        <PackageVersion Include="ModularPipelines" Version="3.2.8"/>
+        <PackageVersion Include="ModularPipelines.DotNet" Version="3.2.8"/>
+        <PackageVersion Include="ModularPipelines.Git" Version="3.2.8"/>
+        <PackageVersion Include="ModularPipelines.Node" Version="3.2.8"/>
+        <PackageVersion Include="Sourcy.DotNet" Version="1.1.1"/>
+        <PackageVersion Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52"/>
+        <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.12"/>
+        <PackageVersion Include="Shouldly" Version="4.3.0"/>
+        <PackageVersion Include="Autodesk.PackageBuilder" Version="2.0.2"/>
+
+        <!-- install/: the .msi builder -->
+        <PackageVersion Include="WixSharp.Core" Version="2.14.1"/>
+        <PackageVersion Include="WixSharp.Msi.Core" Version="2.14.1"/>
+
+        <!-- AnalyseTool.Sdk: the public contract wraps the payload in Newtonsoft's JToken (1.x wire compatibility) -->
+        <PackageVersion Include="Newtonsoft.Json" Version="13.0.4"/>
+
+        <!-- AnalyseTool.Extensions: the version history of every extension folder, in process -->
+        <PackageVersion Include="LibGit2Sharp" Version="0.32.0"/>
+
+        <!-- JSON Schemas of the inputs of extension commands for MCP -->
+        <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.5.2"/>
+
+        <!-- Compile-time only -->
+        <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0"/>
+        <PackageVersion Include="Polyfill" Version="11.4.3"/>
+    </ItemGroup>
+
+</Project>

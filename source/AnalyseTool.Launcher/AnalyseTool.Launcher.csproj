@@ -1,0 +1,50 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        The only assembly Revit loads directly. It references nothing but the Revit API:
+        AnalyseTool and all its dependencies run in the Launcher's own AssemblyLoadContext.
+        The project reference to the add-in exists only for build order and for copying its files;
+        Launcher code must never use add-in types, or they would load into Revit's context.
+    -->
+
+    <PropertyGroup>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <LaunchRevit>true</LaunchRevit>
+        <!-- Roslyn of the Scripting module brings its messages in 13 languages; the add-in speaks English -->
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <!-- Debug builds deploy to %AppData%\Autodesk\Revit\Addins\<year>; release builds only publish to bin\publish -->
+    <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
+        <DeployAddin>true</DeployAddin>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$(Configuration.Contains('Release'))">
+        <PublishAddin>true</PublishAddin>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+    </ItemGroup>
+
+    <!--
+        Revit is x64 only: drop the assets of other platforms and the WebView2 API docs before PublishAddin (Nice3point.Revit.Sdk)
+        copies the output to publish and to the Revit add-ins folder. A RuntimeIdentifier would not do: WebView2 copies the
+        loaders of every platform itself, and the publish folder would move to bin\<configuration>\win-x64.
+    -->
+    <Target Name="RemoveForeignPlatformAssets" AfterTargets="CopyFilesToOutputDirectory" BeforeTargets="PublishAddin">
+        <RemoveDir Directories="$(TargetDir)runtimes\win-x86;$(TargetDir)runtimes\win-arm64;$(TargetDir)runtimes\browser"/>
+        <ItemGroup>
+            <_WebView2Docs Include="$(TargetDir)Microsoft.Web.WebView2.*.xml"/>
+        </ItemGroup>
+        <Delete Files="@(_WebView2Docs)"/>
+    </Target>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool\AnalyseTool.csproj"/>
+    </ItemGroup>
+
+</Project>
