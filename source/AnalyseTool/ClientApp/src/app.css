@@ -131,33 +131,68 @@ code.block,
   color: var(--colorNeutralForeground2);
 }
 
-/* ---- Pages of their own window ------------------------------------------------------------------------ */
+/* ---- Pages of their own window: the look of the dock pane ------------------------------------------- */
 
+/* FluentProvider paints itself with Background1 (white): the page is the grouped grey of the pane, the cards white. Only the
+   provider in #root: Fluent copies the class onto the layer of its portals (toasts, dialogs), which must stay clear */
+#root > .app-frame.fui-FluentProvider {
+  background: var(--colorNeutralBackground2);
+  -webkit-font-smoothing: antialiased;
+}
 .app-page {
-  padding: 16px 20px 40px;
+  padding: 0 0 40px;
 }
 .app-page.compact {
-  padding: 8px 10px 32px;
+  padding: 0 0 32px;
 }
 .app-page-inner {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 12px 20px 0;
+}
+.app-page.compact .app-page-inner {
+  padding: 8px 10px 0;
 }
 .app-page-inner.narrow {
   max-width: 760px;
 }
-.back-link {
+
+/* The navigation bar of iOS: frosted, sticky, «‹ back» in the accent colour */
+.glass-bar {
+  background: color-mix(in srgb, var(--colorNeutralBackground2) 78%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--colorNeutralStroke1);
+}
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+.app-nav-back {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
-  font-size: var(--fontSizeBase200);
+  gap: 2px;
+  font-size: 15px;
+  color: var(--colorBrandForegroundLink) !important;
+  text-decoration: none !important;
 }
+.app-nav-back .chevron {
+  font-size: 26px;
+  line-height: 1;
+  margin-top: -3px;
+}
+
 .app-page-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
+  margin: 8px 0 4px;
 }
 .app-page-title {
   display: flex;
@@ -166,8 +201,16 @@ code.block,
   flex: 1;
   min-width: 0;
 }
-.app-page-title h1 {
+.app-page-title h1.large-title {
   margin: 0;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.app-page.compact .app-page-title h1.large-title {
+  font-size: 22px;
+  line-height: 28px;
 }
 .app-page-actions {
   display: flex;
@@ -176,8 +219,9 @@ code.block,
   align-items: center;
 }
 .app-page-subtitle {
-  margin: 4px 0 12px;
-  color: var(--colorNeutralForeground2);
+  margin: 2px 0 16px;
+  color: var(--colorNeutralForeground3);
+  font-size: 13px;
 }
 .detail-subtitle {
   display: flex;
@@ -185,11 +229,22 @@ code.block,
   gap: 4px;
 }
 
+/* A card of the grouped list: white on the grey page, no border, rounded */
 .panel {
   background: var(--colorNeutralBackground1);
-  border: 1px solid var(--colorNeutralStroke2);
+  border: none;
   border-radius: var(--borderRadiusLarge);
-  padding: 12px;
+  padding: 14px 16px;
+}
+.panel h2,
+.section-head h2 {
+  display: block;
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.fui-Text.block-text {
+  display: block;
 }
 .section-head {
   display: flex;
@@ -1331,4 +1386,81 @@ code.block,
 }
 .usage-gone {
   opacity: 0.6;
+}
+
+/* ---- The pane look for Fluent pieces ------------------------------------------------------------------ */
+
+/* Tables sit in a card like the lists of iOS */
+.table-scroll {
+  background: var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusLarge);
+  padding: 4px 8px;
+}
+.table-scroll .fui-TableHeaderCell {
+  color: var(--colorNeutralForeground3);
+  font-size: 12px;
+}
+.table-scroll .fui-TableRow {
+  border-bottom-color: var(--colorNeutralStroke2);
+}
+.fui-Card {
+  box-shadow: none;
+}
+.fui-TabList {
+  margin-bottom: 4px;
+}
+
+/* ---- Narrow windows: the pages also fit a width like the pane's -------------------------------------- */
+
+@media (max-width: 600px) {
+  .app-page-inner,
+  .app-page.compact .app-page-inner {
+    padding: 8px 12px 0;
+  }
+  .app-page-title h1.large-title {
+    font-size: 26px;
+    line-height: 32px;
+  }
+  .app-page-header {
+    align-items: flex-start;
+  }
+  .app-page-actions {
+    width: 100%;
+  }
+  .panel {
+    padding: 12px;
+  }
+  .section-head {
+    flex-wrap: wrap;
+  }
+  .key-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+  .key-values > :nth-child(odd) {
+    margin-top: 6px;
+    color: var(--colorNeutralForeground3);
+    font-size: 12px;
+  }
+  .form-row > .fui-Field {
+    min-width: 100%;
+  }
+  .usage-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A path as a link (a button element) still wraps anywhere instead of running under the next column */
+.fui-Link.path {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  text-align: left;
+}
+
+/* The layer of Fluent's portals copies the class of the provider: it must not get the size or the colour of the page,
+   or it covers it */
+.app-frame[data-portal-node] {
+  min-height: 0 !important;
+  background: transparent !important;
 }

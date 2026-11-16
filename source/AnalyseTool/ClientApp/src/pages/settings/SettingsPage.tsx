@@ -202,7 +202,7 @@ function FoldersSection() {
                 return (
                   <TableRow key={root.path}>
                     <TableCell>
-                      <Link className="mono small" onClick={() => openPath(root.path).catch((error) => notify.failed(error))}>
+                      <Link className="mono small path" onClick={() => openPath(root.path).catch((error) => notify.failed(error))}>
                         {root.path}
                       </Link>
                     </TableCell>

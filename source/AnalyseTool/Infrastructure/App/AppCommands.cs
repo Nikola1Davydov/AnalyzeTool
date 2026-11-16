@@ -225,11 +225,11 @@ public static class AppWindows
         var (title, width, height) = route switch
         {
             "/" or "" => ("AnalyseTool", 1280d, 820d),
-            "/extensions" => ("AnalyseTool — Extensions", 1100d, 720d),
-            "/extensions/new" => ("AnalyseTool — New button", 720d, 760d),
-            "/settings" => ("AnalyseTool — Settings", 880d, 720d),
-            "/about" => ("AnalyseTool — About", 760d, 760d),
-            "/statistics" => ("AnalyseTool — Statistics", 1100d, 760d),
+            "/extensions" => ("AnalyseTool — Manage buttons", 1000d, 720d),
+            "/extensions/new" => ("AnalyseTool — New button", 560d, 720d),
+            "/settings" => ("AnalyseTool — Settings", 720d, 780d),
+            "/about" => ("AnalyseTool — About", 640d, 760d),
+            "/statistics" => ("AnalyseTool — Statistics", 960d, 760d),
             _ when route.StartsWith("/extensions/", StringComparison.Ordinal) => ($"AnalyseTool — {route["/extensions/".Length..]}", 1200d, 800d),
             _ => ("AnalyseTool", 1000d, 700d)
         };
