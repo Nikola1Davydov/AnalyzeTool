@@ -62,7 +62,14 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// </param>
 public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
     string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null, IReadOnlyList<string>? Panels = null, bool TabFromPackage = false,
-    IReadOnlyList<PaneFolder>? Parts = null, IReadOnlyList<string>? DllBuilds = null);
+    IReadOnlyList<PaneFolder>? Parts = null, IReadOnlyList<string>? DllBuilds = null)
+{
+    /// <summary>
+    ///     AnalyseTool's own folder: the tab of the user named «AnalyseTool» (<c>AnalyseTool.tab</c>), whose buttons go on the
+    ///     same tab of the ribbon. The built-in buttons live in the add-in folder, the user's in theirs.
+    /// </summary>
+    public PaneFolder? UserTab { get; init; }
+}
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -125,6 +132,17 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
                 })).ToList(),
                 false, "Folders with a plugin.json (the layout of 1.x). ✎ › Move to… puts a button into a tab.", null, null, null,
                 older.Select(part => part.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), false, older));
+        }
+
+        // A tab of the user named «AnalyseTool» is part of AnalyseTool's own folder, as its buttons are on its tab of the ribbon
+        var own = folders.FindIndex(folder => !folder.BuiltIn && folder.Id.EndsWith(ButtonFolder.TabSuffix, StringComparison.OrdinalIgnoreCase)
+                                              && string.Equals(folder.Name, ButtonCatalog.DefaultTab, StringComparison.OrdinalIgnoreCase));
+        var builtIn = folders.FindIndex(folder => folder.Id == ButtonCatalog.BuiltInId);
+        if (own >= 0 && builtIn >= 0)
+        {
+            var userTab = folders[own];
+            folders[builtIn] = folders[builtIn] with { UserTab = userTab };
+            folders.RemoveAt(own);
         }
 
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));

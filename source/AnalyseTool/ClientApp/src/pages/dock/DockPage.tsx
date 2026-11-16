@@ -17,6 +17,7 @@ import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, folderOf, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
 import { type CarryItem, CarryProvider, useCarry } from "./Carry";
+import { flyToDock } from "./fly";
 import { move, ordered, spring, Tile, TileIcon } from "./Tile";
 import "./pane.css";
 
@@ -568,7 +569,50 @@ function toggleIn(update: ReturnType<typeof useProfile>["update"], list: "hidden
  */
 function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
   if (folder.parts) return <OlderScreen folder={folder} folders={folders} />;
+  if (folder.builtIn && folder.id === "analysetool") return <AnalyseToolScreen folder={folder} folders={folders} />;
   return <FolderSections folder={folder} folders={folders} />;
+}
+
+/**
+ * AnalyseTool's own folder: its built-in buttons, then the user's — a tab «AnalyseTool» in their own folders, on the same
+ * tab of the ribbon. «New button» makes that tab with its first button when there is none yet.
+ */
+function AnalyseToolScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
+  const actions = useActions();
+  const toastError = (message: string) => actions.toast(message, "error");
+  return (
+    <>
+      <FolderSections folder={folder} folders={folders} />
+      {folder.userTab ? (
+        <FolderSections folder={folder.userTab} folders={folders} embedded />
+      ) : (
+        <section className="pane-section">
+          <header className="pane-section-header">
+            <span>Your buttons</span>
+          </header>
+          <div className="grid">
+            <Tile
+              label="New button"
+              className="add"
+              title="A button of your own on the AnalyseTool tab of the ribbon"
+              icon={<span className="tile-icon add">+</span>}
+              onClick={() =>
+                actions.openSheet(
+                  "New button in AnalyseTool",
+                  <NewButtonForm
+                    folder={{ ...folder, id: "analysetool.tab", name: "AnalyseTool" }}
+                    createInTab="AnalyseTool"
+                    onOpenFiles={(id) => openWindow(`/extensions/${encodeURIComponent(id)}`, toastError)}
+                  />,
+                  "Add",
+                )
+              }
+            />
+          </div>
+        </section>
+      )}
+    </>
+  );
 }
 
 /**
@@ -656,7 +700,7 @@ function OlderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFol
   );
 }
 
-function FolderSections({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
+function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; folders: PaneFolder[]; embedded?: boolean }) {
   const actions = useActions();
   const edit = useContext(EditContext);
   const refresh = useQueryClient();
@@ -696,7 +740,7 @@ function FolderSections({ folder, folders }: { folder: PaneFolder; folders: Pane
 
   return (
     <>
-      <h1 className="large-title">{folder.name}</h1>
+      {!embedded && <h1 className="large-title">{folder.name}</h1>}
       {folder.dllBuilds ? (
         <p className="muted small dll-note">
           <span className="dll-chip">DLL</span> A project its author builds and edits — buttons run here, changes are made in the project.
@@ -882,7 +926,15 @@ function ButtonTile(props: {
           ? { title: "Open the folder of this button (edit it with an AI tool)", onClick: () => openFolder((button.directory ?? folder.directory)!, toastError) }
           : null
       }
-      star={{ on: inDock, title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)", onClick: () => toggleIn(update, "dock", button.key) }}
+      star={{
+        on: inDock,
+        title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)",
+        onClick: (tile) => {
+          // Into the dock: the icon flies there first, the dock makes room for it meanwhile
+          if (!inDock && tile && !tile.closest(".dock")) flyToDock(tile);
+          toggleIn(update, "dock", button.key);
+        },
+      }}
       label={button.name}
       title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}

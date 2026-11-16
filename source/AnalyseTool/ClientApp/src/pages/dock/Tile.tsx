@@ -61,7 +61,7 @@ export function Tile(props: {
   /** 📁 at the bottom left in the edit mode: opens the folder of the button in Explorer — to edit it with an AI tool. */
   onOpenFolder?: { title: string; onClick: () => void } | null;
   /** The star: the button is in the dock of the pane. A small ★ marks it; in the edit mode ☆/★ at the bottom right toggles it. */
-  star?: { on: boolean; title: string; onClick: () => void } | null;
+  star?: { on: boolean; title: string; onClick: (tile: HTMLElement | null) => void } | null;
   onClick: () => void;
   /** The right mouse button: starts the edit mode. */
   onEdit?: () => void;
@@ -235,7 +235,7 @@ export function Tile(props: {
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
-            props.star!.onClick();
+            props.star!.onClick(element.current);
           }}
         >
           {props.star.on ? "★" : "☆"}

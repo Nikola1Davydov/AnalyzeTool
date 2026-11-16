@@ -319,6 +319,26 @@ public sealed class TabLayoutTests
         }
     }
 
+    [Test]
+    public async Task Pane_PutsTheUsersTabNamedAnalyseTool_IntoAnalyseToolsOwnFolder()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateAsync("My tool", null, ExtensionTemplate.Command, null, null, "AnalyseTool", CancellationToken.None);
+
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry, extensions: environment.Catalog, store: environment.Store)
+            .ExecuteAsync(new CommandContext(null, new CommandRequest(nameof(GetPaneButtons), default, CommandSources.WebView), new NoServices()));
+
+        var own = overview.Folders.Single(item => item.Id == ButtonCatalog.BuiltInId);
+        using (Assert.Multiple())
+        {
+            // Not a second «AnalyseTool» folder: inside the built-in one, on the same tab of the ribbon
+            await Assert.That(overview.Folders.Select(item => item.Id)).DoesNotContain("analysetool.tab");
+            await Assert.That(own.UserTab!.Id).IsEqualTo("analysetool.tab");
+            await Assert.That(own.UserTab.Buttons.Single().Key).IsEqualTo("analysetool.my-tool/My tool");
+            await Assert.That(own.UserTab.Buttons.Single().Tab).IsEqualTo("AnalyseTool");
+        }
+    }
+
     private sealed class NoServices : IServiceProvider
     {
         public object? GetService(Type serviceType) => null;

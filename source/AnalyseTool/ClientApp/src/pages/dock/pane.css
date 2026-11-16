@@ -2095,3 +2095,10 @@
 .tile.drop-no {
   opacity: 0.35;
 }
+
+/* ☆: the copy of an icon on its way into the dock */
+.fly-ghost {
+  z-index: 60;
+  pointer-events: none;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 30%);
+}

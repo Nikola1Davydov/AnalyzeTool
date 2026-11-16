@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { bridge } from "revit-bridge";
 import {
+  type CreateExtensionRequest,
   type AddExtensionButtonRequest,
   type CreateExtensionFolderRequest,
   type ExtensionSummary,
@@ -25,20 +26,32 @@ function useRefreshAll() {
 }
 
 /** «New folder»: a name (and what its buttons are for) — an empty folder with its own version history. */
+/** The id of the tab a name makes, as the add-in makes it: «Sheets» → «sheets.tab». */
+export function tabIdOf(name: string) {
+  const id = name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
+  return `${id || "extension"}.tab`;
+}
+
+/**
+ * «New folder»: a tab of the ribbon and its first button at once — a folder with nothing in it would only be an empty
+ * tab. The button starts as a page with its C# command, a small working example to edit.
+ */
 export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
+  const [button, setButton] = useState("");
   const [description, setDescription] = useState("");
   const create = useMutation({
-    mutationFn: (request: CreateExtensionFolderRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.CreateExtensionFolder, request),
-    onSuccess: (folder) => {
+    mutationFn: (request: CreateExtensionRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.CreateExtension, request),
+    onSuccess: (created, request) => {
       refresh();
       actions.closeSheet();
-      actions.toast(`Folder «${folder.name}» created — add its first button with +`);
-      onCreated(folder.id);
+      actions.toast(`Folder «${request.tab}» with «${created.name}» — it works already; its code is a file to edit`);
+      onCreated(tabIdOf(request.tab ?? ""));
     },
   });
+  const ready = name.trim().length > 0 && button.trim().length > 0;
 
   return (
     <form
@@ -46,18 +59,23 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !create.isPending) create.mutate({ name: name.trim(), description: description.trim() || null });
+        if (ready && !create.isPending)
+          create.mutate({ name: button.trim(), description: description.trim() || null, tab: name.trim(), template: "CommandWithPage" });
       }}
     >
       <label className="field">
-        <span>Name</span>
+        <span>Folder — a tab of the ribbon</span>
         <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Sheets" />
       </label>
       <label className="field">
-        <span>What its buttons are for</span>
-        <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Create, renumber and check sheets." />
+        <span>Its first button</span>
+        <input value={button} onChange={(event) => setButton(event.target.value)} placeholder="Renumber sheets" />
       </label>
-      <p className="muted small">A folder of buttons that belong together, with its own version history.</p>
+      <label className="field">
+        <span>What the button does</span>
+        <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Renumbers the selected sheets from 101." />
+      </label>
+      <p className="muted small">The tab and its first button, which opens a page that calls its C# command — both a small example to edit. More buttons come with + in the folder.</p>
       {create.isPending && <p className="muted small">Creating…</p>}
       {create.isError && <p className="error small">{messageOf(create.error)}</p>}
     </form>
@@ -65,13 +83,33 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
 }
 
 /** «+ New button» in a folder: a name and what it does — a page with its C# command, added to the folder as a version. */
-export function NewButtonForm({ folder, panel, onOpenFiles }: { folder: PaneFolder; panel?: string; onOpenFiles: (id: string) => void }) {
+export function NewButtonForm({
+  folder,
+  panel,
+  onOpenFiles,
+  createInTab,
+}: {
+  folder: PaneFolder;
+  panel?: string;
+  onOpenFiles: (id: string) => void;
+  /** No tab yet: make the tab of this name with the button (CreateExtension). */
+  createInTab?: string;
+}) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const add = useMutation({
-    mutationFn: (request: AddExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.AddExtensionButton, request),
+    mutationFn: (request: AddExtensionButtonRequest) =>
+      createInTab
+        ? bridge.invoke<ExtensionSummary>(extensionCommands.CreateExtension, {
+            name: request.name,
+            description: request.description,
+            template: request.template,
+            panel: request.panel,
+            tab: createInTab,
+          } satisfies CreateExtensionRequest)
+        : bridge.invoke<ExtensionSummary>(extensionCommands.AddExtensionButton, request),
     onSuccess: (created, request) => {
       refresh();
       actions.closeSheet();

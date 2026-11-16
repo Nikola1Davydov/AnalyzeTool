@@ -10,6 +10,7 @@ DLL extensions and the built-in tools of 1.x carry over; the 2.0 installer repla
 - 🧩 **A new button is C# that AnalyseTool compiles itself** — no .NET SDK, no project, no DLL. Save a file and the button runs the new code; a compile error keeps the last good build and shows file and line on the tile.
 - 🕓 **Every button has its own version history**: save a version, compare, restore a version or a file, or pin the button to an older one.
 - 🫳 **Right-click to edit, drag to arrange**: between sections, up into another folder, down to the trash — a whole folder too. ✎ renames a button and shows its code, files and versions; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
+- ➕ **A new folder starts with its first button**, so no tab is empty; buttons of your own can join AnalyseTool's folder and its tab on the ribbon. ☆ sends a button flying into the dock.
 - 🧾 **A command that needs a few values gets a form in the pane**, built from its input type; a page marked `dockable` opens inside the pane, any other in a window.
 - 📦 **DLL projects are boxes of their own**, with the Revit years they are built for; they load their NuGet packages and native libraries. Folders with a `plugin.json` from 1.x are together in **Older buttons** and move into tabs with ✎ › Move to….
 - 🤖 **MCP runs inside Revit on one address for every Revit version** (`localhost:48075`): a call with `"revit": "2026"` runs in that version, without it in the Revit you used last. AI clients create, edit, build, run (`RunCommand`) and version buttons.
