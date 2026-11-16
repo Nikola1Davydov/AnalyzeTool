@@ -1987,3 +1987,40 @@
 .tile-badge.error[role="button"] {
   cursor: pointer;
 }
+
+/* A DLL project: a box rather than a folder — its author builds it, the pane only runs its buttons */
+.tile.folder.dll .tile-face {
+  mask-image: none;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--label) 9%, var(--tile-background));
+  box-shadow: var(--shadow), inset 0 0 0 1.5px color-mix(in srgb, var(--label) 28%, transparent);
+}
+
+.tile.folder.dll .tile-face::after {
+  content: "DLL";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 12px;
+  color: var(--tile-background);
+  background: var(--label);
+  opacity: 0.75;
+}
+
+.dll-chip {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--tile-background);
+  background: var(--label);
+  opacity: 0.75;
+}

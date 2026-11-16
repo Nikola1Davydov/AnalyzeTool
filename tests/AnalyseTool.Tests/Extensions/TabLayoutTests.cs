@@ -286,6 +286,9 @@ public sealed class TabLayoutTests
             await Assert.That(environment.Host.GetState("acme.doors")!.Commands).Contains("acme.doors.CountDoors");
             await Assert.That(doors).IsNotNull();
             await Assert.That(doors!.Tab).IsEqualTo("Acme");
+            // A DLL project: the pane shows it as one (a box), its author edits it — no «New button», no ✎
+            await Assert.That(doors.DllBuilds!).IsEquivalentTo(["2025"]);
+            await Assert.That(doors.CanAddButtons).IsFalse();
             await Assert.That(doors.Buttons.Single().Panel).IsEqualTo("Doors");
             await Assert.That(overview.Folders.Select(item => item.Id)).DoesNotContain(ButtonCatalog.OlderFolderId);
         }

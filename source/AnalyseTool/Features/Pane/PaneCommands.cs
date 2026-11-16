@@ -51,13 +51,17 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="Panel">The default panel of its buttons (<c>ui.panel</c>, else the name of the folder).</param>
 /// <param name="Panels">Its sections in order: the panels of its tab.</param>
 /// <param name="TabFromPackage">The tab is the package author's, not the folder name.</param>
+/// <param name="DllBuilds">
+///     A DLL project (its author builds and edits it): the Revit years it ships a build for; <see langword="null" /> for any
+///     other folder.
+/// </param>
 /// <param name="Parts">
 ///     «Older buttons»: the folders of plugin.json (the 1.x layout) of the user, each a section with its own state; the folder
 ///     itself holds all their buttons.
 /// </param>
 public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
     string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null, IReadOnlyList<string>? Panels = null, bool TabFromPackage = false,
-    IReadOnlyList<PaneFolder>? Parts = null);
+    IReadOnlyList<PaneFolder>? Parts = null, IReadOnlyList<string>? DllBuilds = null);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -180,7 +184,9 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
             ButtonCatalog.Place(source, new ExtensionButton()).Tab,
             ButtonCatalog.Place(source, new ExtensionButton()).Panel,
             ButtonCatalog.Panels(source),
-            !source.BuiltIn && source.Extension.Zone != ExtensionZone.Dev && !string.Equals(ButtonCatalog.Place(source, new ExtensionButton()).Tab, ButtonCatalog.FolderName(source), StringComparison.Ordinal));
+            !source.BuiltIn && source.Extension.Kind != ExtensionKind.Dll && source.Extension.Zone != ExtensionZone.Dev
+            && !string.Equals(ButtonCatalog.Place(source, new ExtensionButton()).Tab, ButtonCatalog.FolderName(source), StringComparison.Ordinal),
+            DllBuilds: source.Extension.Kind == ExtensionKind.Dll ? source.Extension.BinaryYears : null);
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/').TrimStart('.', '/');

@@ -457,7 +457,7 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               label={folder.name}
               title={`${folder.name} — ${folder.parts ? "folders of plugin.json, each on its own tab" : `the tab «${folder.tab ?? folder.name}»`}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
               icon={<FolderIcon buttons={folder.buttons} />}
-              className="folder"
+              className={folder.dllBuilds ? "folder dll" : "folder"}
               off={hidden}
               badge={folder.problems.length > 0 || folder.buttons.some((button) => button.problems?.length) ? "error" : null}
               dim={!folder.enabled}
@@ -626,7 +626,14 @@ function FolderSections({ folder, folders }: { folder: PaneFolder; folders: Pane
   return (
     <>
       <h1 className="large-title">{folder.name}</h1>
-      {folder.tabFromPackage && <p className="muted small">On the tab «{folder.tab}» — its author chose it.</p>}
+      {folder.dllBuilds ? (
+        <p className="muted small dll-note">
+          <span className="dll-chip">DLL</span> A project its author builds and edits — buttons run here, changes are made in the project.
+          {folder.dllBuilds.length > 0 ? ` Built for Revit ${folder.dllBuilds.join(" · ")}.` : " No build yet."} On the tab «{folder.tab ?? folder.name}».
+        </p>
+      ) : (
+        folder.tabFromPackage && <p className="muted small">On the tab «{folder.tab}» — its author chose it.</p>
+      )}
       {!folder.enabled && (
         <button
           className="banner"

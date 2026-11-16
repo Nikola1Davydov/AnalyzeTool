@@ -111,7 +111,7 @@ const paneFolders: PaneFolder[] = [
       },
     ],
   },
-  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], tabFromPackage: true, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
+  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], dllBuilds: ["2025", "2026", "2027"], problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello"), paneButton("Acme.Sample", "Doors", null, "Acme.Sample.Doors")] },
 ];
 
 // The user's folders of plugin.json (1.x) are sections of «Older buttons»
