@@ -193,11 +193,11 @@ function Header(props: {
         ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
         : { label: "Profile", to: { kind: "profile" } as Screen }
       : screen.kind === "profile"
-        ? { label: "Buttons", to: { kind: "home" } as Screen }
+        ? { label: "Folders", to: { kind: "home" } as Screen }
         : screen.kind === "folder" && screen.group !== undefined
           ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
           : screen.kind === "folder"
-            ? { label: "Buttons", to: { kind: "home" } as Screen }
+            ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
     screen.kind === "stats" ? "Statistics" : screen.kind === "profile" ? "Profile" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
@@ -212,7 +212,7 @@ function Header(props: {
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
         ]
       : [
-          { label: "New button…", onClick: () => openWindow("/extensions/new", toastError) },
+          { label: "New folder…", onClick: () => openWindow("/extensions/new", toastError) },
           { label: "Manage buttons", onClick: () => openWindow("/extensions", toastError) },
         ]),
     { label: "Refresh", onClick: props.onRefresh },
@@ -287,7 +287,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
   return (
     <>
       <h1 className="large-title">
-        Buttons
+        Folders
         {!bridge.inRevit && <span className="badge">mock</span>}
       </h1>
       <div className="grid">
@@ -310,15 +310,15 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
         ))}
         {!edit.editing && (
           <Tile
-            label="New button"
+            label="New folder"
             className="add"
-            title="A new button: C# that AnalyseTool compiles, with its own versions"
+            title="A new folder with its first button: C# that AnalyseTool compiles, with its own versions"
             icon={<span className="tile-icon add">+</span>}
             onClick={() => openWindow("/extensions/new", (message) => actions.toast(message, "error"))}
           />
         )}
       </div>
-      <p className="muted small center">Right-click a button: + keeps it in the dock below, ☆ puts it on the Revit ribbon.</p>
+      <p className="muted small center">Each extension is a folder of buttons. In a folder, right-click a button: + keeps it in the dock below, ☆ puts it on the Revit ribbon.</p>
     </>
   );
 }
