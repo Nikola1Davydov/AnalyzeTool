@@ -8,8 +8,6 @@ import {
   MessageBar,
   MessageBarBody,
   Option,
-  Radio,
-  RadioGroup,
   Text,
   Textarea,
 } from "@fluentui/react-components";
@@ -26,7 +24,6 @@ import {
   type ExtensionSummary,
   type ExtensionTemplate,
   extensionCommands,
-  templateLabels,
 } from "../../api/extensions";
 import { plural } from "../../components/format";
 import { errorText, useNotify } from "../../components/notify";
@@ -67,7 +64,8 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
   const list = useAppQuery<ExtensionList>(extensionCommands.GetExtensions);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [template, setTemplate] = useState<ExtensionTemplate>("Command");
+  // Every new button is a page with its C# command
+  const template: ExtensionTemplate = "CommandWithPage";
   const [panel, setPanel] = useState("");
   const [root, setRoot] = useState<string | null>(null);
   const [id, setId] = useState("");
@@ -157,24 +155,6 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
         />
       </Field>
 
-      <Field label="Template">
-        <RadioGroup value={template} onChange={(_, data) => setTemplate(data.value as ExtensionTemplate)}>
-          {(Object.keys(templateLabels) as ExtensionTemplate[]).map((key) => (
-            <Radio
-              key={key}
-              value={key}
-              label={
-                <span>
-                  <strong>{templateLabels[key].title}</strong>
-                  {key === "Command" && <span className="muted"> (default)</span>}
-                  <br />
-                  <span className="muted small">{templateLabels[key].hint}</span>
-                </span>
-              }
-            />
-          ))}
-        </RadioGroup>
-      </Field>
 
       {!folder && (
       <>

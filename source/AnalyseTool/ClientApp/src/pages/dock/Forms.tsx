@@ -5,17 +5,11 @@ import {
   type AddExtensionButtonRequest,
   type CreateExtensionFolderRequest,
   type ExtensionSummary,
-  type ExtensionTemplate,
   extensionCommands,
 } from "../../api/extensions";
 import type { PaneFolder } from "../../api/pane";
 import { messageOf, useActions } from "./Actions";
 
-const kinds: { value: ExtensionTemplate; label: string; hint: string }[] = [
-  { value: "Command", label: "Runs C#", hint: "A tap runs a command in Revit and shows what it returns." },
-  { value: "CommandWithPage", label: "Page + C#", hint: "A tap opens a page (inputs, a table) whose buttons call your C#." },
-  { value: "Page", label: "Page only", hint: "A tap opens an HTML page, no C#." },
-];
 
 /** After a change of the folders: the pane, the extension lists and the statistics read again. */
 function useRefreshAll() {
@@ -64,13 +58,12 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
   );
 }
 
-/** «+ New button» in a folder: a name, what it does, and what a tap does — C# (and/or a page) added to the folder as a version. */
+/** «+ New button» in a folder: a name and what it does — a page with its C# command, added to the folder as a version. */
 export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onOpenFiles: () => void }) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<ExtensionTemplate>("Command");
   const add = useMutation({
     mutationFn: (request: AddExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.AddExtensionButton, request),
     onSuccess: (_, request) => {
@@ -93,7 +86,7 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim()) add.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, template: kind });
+        if (name.trim()) add.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, template: "CommandWithPage" });
       }}
     >
       <label className="field">
@@ -104,15 +97,7 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
         <span>What it does</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Renumbers the selected sheets from 101." />
       </label>
-      <div className="segmented" role="radiogroup">
-        {kinds.map((option) => (
-          <button type="button" key={option.value} role="radio" aria-checked={kind === option.value} className={kind === option.value ? "on" : ""} onClick={() => setKind(option.value)}>
-            {kind === option.value && <span className="segmented-thumb" />}
-            <span className="segmented-label">{option.label}</span>
-          </button>
-        ))}
-      </div>
-      <p className="muted small">{kinds.find((option) => option.value === kind)?.hint}</p>
+      <p className="muted small">A tap opens its page; the page calls its C# command in Revit. Both start as a small example to edit.</p>
       <button type="submit" disabled={!name.trim() || add.isPending}>
         {add.isPending ? "Adding…" : `Add to ${folder.name}`}
       </button>

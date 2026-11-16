@@ -118,7 +118,7 @@ public sealed record CreateExtensionRequest(
     [property: Description("The text of the ribbon button, e.g. «Count walls».")] string Name,
     [property: Description("What the button does; becomes the tooltip and the command description.")] string? Description = null,
     [property: Description("The id; derived from the name when absent. Letters, digits, '.', '-', '_'.")] string? Id = null,
-    [property: Description("Command (default): a button that runs C#; CommandWithPage: a button that opens an HTML page calling C#; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.Command,
+    [property: Description("CommandWithPage (default): a button that opens an HTML page calling its C# command; Command: a button that runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage,
     [property: Description("The ribbon panel; «Extensions» when absent.")] string? Panel = null,
     [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null);
 
@@ -161,7 +161,7 @@ public sealed record AddExtensionButtonRequest(
     [property: Description("The id of the folder (extension).")] string Id,
     [property: Description("The text of the button, e.g. «Renumber sheets».")] string Name,
     [property: Description("What the button does: its tooltip and the description of its command.")] string? Description = null,
-    [property: Description("Command (default): runs C#; CommandWithPage: opens a page that calls C#; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.Command);
+    [property: Description("CommandWithPage (default): opens a page that calls its C# command; Command: runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage);
 
 /// <summary>Adds a button to a folder.</summary>
 [McpTool(Title = "Add a button to a folder")]
