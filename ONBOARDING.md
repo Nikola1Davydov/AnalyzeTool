@@ -1,7 +1,7 @@
 # Writing AnalyseTool Extensions
 
 AnalyseTool lets you add your own functionality **without rebuilding the host**. You drop a
-folder into your local extensions directory, restart Revit (or hit **Reload**), and your code
+folder into your local extensions directory, and AnalyseTool loads it — no restart, no Reload button — and your code
 shows up — a new command callable from JavaScript, a ribbon button, a UI page, or all three.
 
 This guide is for **extension authors**. It covers the three kinds of extension, the folder
@@ -16,35 +16,34 @@ There are two kinds of extension, and they play different roles:
 
 | Kind | What it ships | What it does | Build needed? |
 | --- | --- | --- | --- |
-| **C# extension** | a `.dll` of command classes | **ADDS** commands to the host's shared command dispatcher | yes |
+| **C# extension** | C# sources in `src\` (the default) — or a `.dll` per Revit year | **ADDS** commands to the host's command pipeline | no for sources (AnalyseTool compiles them), yes for a DLL |
 | **JS / UI extension** | an HTML page (any framework) | **CONSUMES** commands by calling `window.AT.invoke(...)` | no |
 
-> **The one principle:** C# extensions *add* commands to the Core; JS extensions *consume* them.
+> **The one principle:** C# extensions *add* commands; JS extensions *consume* them.
 
 A single extension folder can be any of these, or a combination. The sample
-(`samples/Acme.Sample`) is C# + UI: a `Hello` command plus an `index.html` page with a button
+(`samples/Acme.Sample`) is a C# project + UI: a `Hello` command plus an `index.html` page with a button
 that calls it.
 
-Every command extension is a DLL. You build yours with `dotnet build` (§4). The one exception to
-"you build it" is a command an AI agent saves over MCP: the plugin compiles that one itself, from
-sources kept in the extension's `src\` folder, so the person working with the agent needs no .NET
-SDK (§9.1). The result is the same kind of extension — a DLL in a year folder.
+**Since AnalyseTool 2.0 a new button is C# sources.** «New button» on the ribbon creates a folder with
+`plugin.json` and `src\<Name>.cs`; AnalyseTool compiles the sources itself, with its own Roslyn against
+the running Revit's API — no .NET SDK, no project, no DLL. Save a file and the extension reloads; the
+button runs the new code a moment later. Every extension folder has **its own version history** (git):
+save a version, compare, restore, or pin the button to an older version — from the extension's page in
+AnalyseTool (§6) or over MCP (§9). Build a DLL project (§4) only for what sources cannot do: NuGet
+packages, closed code, XAML/resources.
 
 Every command — built-in or from any C# extension — is reachable through the same channels:
 
 ```
-your page  ──AT.invoke("acme.sample.Hello")──▶  WebView2 transport
-                                                      │
-                                                      ▼
-                                              CommandDispatcher  ──▶  your IRevitTask
-                                                      ▲
-AI client  ─────────────── MCP server ───────────────┘
+your page  ──AT.invoke("acme.sample.Hello")──▶  WebView2 transport ─┐
+ribbon button ─────────────────────────────────────────────────────┼──▶  command pipeline  ──▶  your IRevitTask
+AI client  ──────────── MCP (HTTP, inside Revit) ──────────────────┘
 ```
 
-The dispatcher is **transport-neutral**: the WebView2 bridge and the MCP server (AI clients such
-as Claude Desktop — see §9) both call it. Anything you write as an `IRevitTask` is automatically
-available to both — so **never** touch the WebView, the network, or transport details from inside
-a command. Return a serializable result; the transport delivers it.
+The pipeline is **transport-neutral**: pages, ribbon buttons and AI clients (§9) all call it. Anything
+you write as an `IRevitTask` is available to all of them — so **never** touch the WebView, the network,
+or transport details from inside a command. Return a serializable result; the transport delivers it.
 
 ---
 
@@ -78,7 +77,7 @@ which is the point: the folder you develop in is the folder you zip.
 `ui/` always comes from the root — it is version-independent.
 
 Each extension is isolated: its C# DLL is loaded into its own collectible `AssemblyLoadContext`,
-so two extensions can't collide and a single **Reload** can swap one out.
+so two extensions can't collide and a reload can swap one out.
 
 ### Two zones
 
@@ -122,7 +121,7 @@ Three rules cover every case:
   declaration. If you have an old manifest that still carries one, delete the line.
 
 Then point your build at the new location — set `<OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>`
-as in §4.1, and the DLL lands in the right subfolder by itself. Hit **Reload**; if the extension
+as in §4.1, and the DLL lands in the right subfolder by itself. It reloads by itself; if the extension
 shows **"Not built"**, the DLL is not in `<year>\` or in the root (see §8).
 
 ---
@@ -208,7 +207,7 @@ manifests need no change. When both are present, `ui.buttons` wins.
 | `ui.button.icon` | — | Icon path relative to the folder (must sit beside `plugin.json`; a path that leaves the folder is ignored). If missing, a default icon (colored square with the extension's initial) is drawn automatically. |
 | `ui.button.command` | — | Run this command when the button is clicked, instead of opening `entryHtml`. Use it for a one-shot action that needs no page. |
 
-`ui.tab` / `ui.panel` are honored **live** — change them, hit Reload, and the button moves.
+`ui.tab` / `ui.panel` are honored **live** — change them, save, and the button moves.
 Empty custom tabs/panels are torn down automatically (the built-in "AnalyseTool" tab is never
 touched).
 
@@ -288,7 +287,7 @@ exactly this mode — `-p:UseSdkPackage=true` — so this path stays verified.)
 
 With that `OutDir`, `dotnet build -c Release` already writes into `<project>\<year>\` — so if your
 project folder *is* the extension folder (`plugin.json` beside the `.csproj`), there is nothing to
-copy: build, hit Reload, done. Otherwise copy the whole folder — root files plus the `<year>\`
+copy: build, done — the extension reloads by itself. Otherwise copy the whole folder — root files plus the `<year>\`
 subfolders — to your extensions directory. (Don't worry about the SDK/Revit/Newtonsoft DLLs — the
 host owns them and the extension's load context shares the host's copies, so type identity stays
 intact even if a copy ends up beside your DLL.)
@@ -573,7 +572,7 @@ page:
 You don't have to guess command names or payloads. The host exposes a catalog command:
 
 ```js
-const { commands } = await window.AT.invoke("GetCommands");
+const { commands } = await window.AT.invoke("Host.GetCommands");
 // each: { name, source, description, readOnly, destructive, exposedToMcp, inputSchema }
 console.table(commands.map((c) => ({ name: c.name, source: c.source })));
 ```
@@ -583,7 +582,7 @@ console.table(commands.map((c) => ({ name: c.name, source: c.source })));
 - `inputSchema` — the JSON schema of the payload, so you know which arguments to send.
 
 Every **registered** command is callable from JS — `HiddenFromMcp` only hides a command from the
-AI's tool list, not from `AT.invoke`. So `GetCommands` lists everything you can call, including
+AI's tool list, not from `AT.invoke`. So `Host.GetCommands` lists everything you can call, including
 other extensions' commands.
 
 For a readable, searchable view, open **AnalyseTool tab → Settings → For developers — command reference**: a live table of
@@ -634,7 +633,7 @@ files — full hot reload, `window.AT` injected the same way:
 "ui": { "devUrl": "http://127.0.0.1:5173" }
 ```
 
-Dev loop: set `devUrl` → **Reload** → click the button → edit → HMR. **Remove `devUrl` before
+Dev loop: set `devUrl` → save → click the button → edit → HMR. **Remove `devUrl` before
 release.**
 
 > If you see `Unsafe attempt to load URL ... from frame with URL chrome-error://chromewebdata`,
@@ -644,61 +643,47 @@ release.**
 
 ---
 
-## 6. Build, deploy, reload
+## 6. Build, reload, versions
 
-1. **Build** for the Revit year you want. With the NuGet setup from §4.1 the year is a property:
-   ```
-   dotnet build -c Release                        # the year pinned in the csproj
-   dotnet build -c Release -p:RevitVersion=2027   # another year, no file edit
-   ```
-   In-repo (props imported by path) the year is the configuration instead:
-   ```
-   dotnet build Acme.Sample.csproj -c "Debug R25"
-   ```
-2. **Deploy** — the extension folder, with the year subfolders inside it:
-   ```
-   %LOCALAPPDATA%\AnalyseTool\extensions\acme.sample\
-       plugin.json
-       index.html
-       icon.png
-       2025\Acme.Sample.dll
-       2027\Acme.Sample.dll        (if you built it)
-   ```
-   With `OutDir` set as in §4.1 and `plugin.json` beside the `.csproj`, the build already produced
-   this — there is nothing to copy.
-3. **Load it:**
-   - First time / new button: **restart Revit** (the static ribbon hook runs at startup).
-   - Already-known extension, changed code/manifest: press **Reload** on the ribbon.
-     No restart needed.
+**Source extensions** (the default) need no build: save a `.cs` under `src\` and AnalyseTool compiles it
+and reloads the extension. The build lands in `bin\<year>\` (git-ignored) and is reused while the sources
+do not change. A compile error keeps the last good build running and shows the error with file and line
+on the extension's page. `lib\*.dll` next to `src\` are referenced too. For IntelliSense, open
+`.editor\<id>.csproj` (written by «New button», git-ignored) in Visual Studio, VS Code or Rider — it only
+feeds the editor; AnalyseTool still compiles the sources.
 
-**Reload** does a true live reload: it re-reads the manifests, unloads the old collectible
-`AssemblyLoadContext`, and loads the new DLL bytes. DLLs are **byte-loaded** (read into memory),
-so the file on disk is never locked — you can overwrite the DLL while Revit is running, then
-Reload.
+**DLL extensions** build as before, for the Revit year you want:
+```
+dotnet build -c Release                        # the year pinned in the csproj
+dotnet build -c Release -p:RevitVersion=2027   # another year, no file edit
+```
+and deploy into the extension folder with the year subfolders inside it:
+```
+%LOCALAPPDATA%\AnalyseTool\extensions\acme.sample\
+    plugin.json
+    index.html
+    2025\Acme.Sample.dll
+    2027\Acme.Sample.dll
+```
+DLLs are **byte-loaded**, so the file on disk is never locked: overwrite it while Revit runs.
 
-The **Extensions** window (AnalyseTool tab → Extensions) is the extension manager. It lists **Packages**
-(installed ones first, then catalog entries you do not have yet with an **Install** button, §10)
-and **Your own** folders separately, each row showing the version, a **Status** that only
-speaks up about a problem (not built, failed to compile, no build for this Revit year) or an update,
-an enable/disable switch, edit, **Open folder** and delete. Installed packages with an `updateFeed`
-are checked for updates when the window opens. **Install** takes a `.zip` or a repository, and the
-collapsed **Folders scanned** panel holds the extension paths. New extensions are made with **New**
-on the ribbon, changes are applied with **Reload** beside it.
+**Reload is automatic.** AnalyseTool watches the extension folders: a changed file reloads its extension,
+and ribbon buttons appear, change and disappear without restarting Revit. **Manage buttons** on the
+ribbon (or `/extensions` in the AnalyseTool window) lists every extension with its kind, status, errors
+and compiler diagnostics; there you turn one off, open its folder, remove it (the folder moves to
+`%LOCALAPPDATA%\AnalyseTool\trash\` with its history) and install a `.zip` package.
 
-Every row also has **Edit** (the pencil): the ribbon button's name, tooltip, tab, panel, shape and
-dock setting, plus description, publisher, links and update feed — written back into `plugin.json`
-by merging, so fields the form does not show (`entryAssembly`, `devUrl`, `icon`, a second button)
-stay as they are. The **id is never editable** there: it is the folder, the command namespace and the
-key the enabled state is stored under. Installed packages open read-only — their manifest belongs to
-the publisher.
+**Versions.** Each extension folder is a git repository; the extension's page shows:
 
-Two red tags mean different things, and the difference is the fix:
+| Action | What happens |
+| --- | --- |
+| **Save version** | Saves the current files with your message (a commit). |
+| **History** | The versions, newest first, with author and time; per file too. |
+| **Changes** | The diff of the unsaved files, or of any version against the one before it. |
+| **Restore** | Brings back a version, or one file of it. Unsaved work is saved as a version first, and the restored state becomes a new version — nothing is lost. |
+| **Run this version** | Pins a source extension to a version: the button runs that version's code whatever the files say, until you go back to the current files. The pin is yours (stored in the profile), not part of the folder. |
 
-| Tag | Meaning | What to do |
-| --- | --- | --- |
-| **Not built** | `entryAssembly` is declared but there is no compiled DLL anywhere — no `<year>\` folders, nothing in the root. | Build the project (§4.1), then **Reload**. A freshly scaffolded template shows this until its first build. |
-| **Incompatible** | Builds exist, but not for the Revit you are running. The tooltip names the years it does ship. | Build that year too: `dotnet build -p:RevitVersion=<year>`. |
-| **Error** | The extension loaded but a command threw while registering. | The tooltip carries the message; check the log in `%LOCALAPPDATA%\AnalyseTool\logs`. |
+An installed package gets a version per install, so an update can be rolled back the same way.
 
 ---
 
@@ -725,80 +710,45 @@ Two red tags mean different things, and the difference is the fix:
 | Symptom | Likely cause |
 | --- | --- |
 | Command not found / `is IRevitTask` fails | Output carries its own SDK/Revit/Newtonsoft DLL copy — set those refs to `Private=false` / compile-only. |
-| Button doesn't appear | New button needs a **Revit restart** (not just Reload) the first time. |
+| Button doesn't appear | Check **Manage buttons**: the extension may be off, fail to compile, or have no build for this Revit year. |
 | Extension listed as **Not built** | No compiled DLL was found. It must be at `<extension>\<year>\<entryAssembly>` (or, as a fallback, in the extension root) — not in `bin\`. Set `OutDir` as in §4.1. |
 | Extension listed as **Incompatible** | Builds exist but not for the running Revit; the tooltip names the years present. Build the missing one with `-p:RevitVersion=<year>`. |
 | Worked before, broke after moving to the new layout | The year folder goes **inside** the extension (`<id>\2025\x.dll`), not above it. The old `extensions\<year>\<id>\` still loads — see the migration steps in §2. |
 | Page is blank / assets 404 | Built SPA without `base: "./"` — assets resolve to absolute paths the virtual host can't serve. |
 | Sub-path `entryHtml` won't load | The subfolder wasn't deployed to the extension folder, or (again) absolute asset base. |
 | `chrome-error://chromewebdata` with `devUrl` | Dev server unreachable — pin to `127.0.0.1` + `strictPort`. |
-| DLL "in use" when rebuilding | Shouldn't happen (byte-loading). If it does, you may be holding a handle elsewhere; Reload re-reads fresh bytes. |
+| DLL "in use" when rebuilding | Shouldn't happen (byte-loading). If it does, you may be holding a handle elsewhere; the next reload re-reads fresh bytes. |
 | UI freezes during a command | You did slow I/O *inside* `RunInRevitAsync`. Move it out; marshal only the model touch. |
 
 ---
 
 ## 9. Using your commands from AI (MCP)
 
-Every command — built-in **and** from any C# extension — is also exposed to AI clients (Claude
-Desktop, etc.) over the **Model Context Protocol**, with **no extra work on your part**. The moment
-your command is registered, it shows up as an MCP tool.
+Every command of an extension is also an MCP tool for AI clients (Claude Code, Claude Desktop, Cursor,
+VS Code…), with **no extra work on your part** — unless it says `[RevitCommand(HiddenFromMcp = true)]`.
+The built-in commands are tools when they are marked for it.
 
-How it fits together:
+AnalyseTool 2.0 serves MCP **inside Revit** over Streamable HTTP — no separate exe:
 
-```
-AI client  ──stdio(MCP)──▶  AnalyseTool.Mcp.exe  ──localhost TCP──▶  in-Revit bridge
-                                                                                  │
-                                                                                  ▼
-                                                                          CommandDispatcher
-```
-
-- `AnalyseTool.Mcp.exe` is a tiny stdio server that ships with the plugin (at
-  `<plugin>\mcp\AnalyseTool.Mcp.exe`). The AI client spawns it.
-- It forwards each tool call over a localhost TCP connection to a bridge **inside Revit**, which
-  calls the same `CommandDispatcher` your commands are registered in.
-- It **discovers commands live**: when the AI lists tools, the bridge returns the current command
-  set, so your extension's commands appear as tools automatically (`acme.sample.Hello` →
-  a tool named `acme_sample_Hello`). Tool arguments are passed straight through as your command's
-  JSON payload (the same thing `revitContext.Payload` deserializes).
-
-**To turn it on:** open the **AnalyseTool tab → Settings → Artificial intelligence**, switch on
-**External assistant**, then open **Connection details** and copy the generated **Claude Desktop
-config** snippet into your client's MCP config (the port lives there too). This is the *external*
-assistant — the model picked under **Built-in assistant** does not apply to it; the client brings its own.
-The snippet looks like:
-
-```json
-{
-  "mcpServers": {
-    "analysetool-revit": {
-      "command": "C:\\...\\AnalyseTool\\mcp\\AnalyseTool.Mcp.exe",
-      "args": ["--port", "17890", "--token", "<generated per machine>"]
-    }
-  }
-}
-```
-
-Notes:
-- **Copy the snippet from Settings → Connection details, don't retype it.** The `--token` value is a per-machine secret
-  that authorizes the client against Revit: the bridge listens on 127.0.0.1, which keeps the network
-  out but not other processes running as you, so every request must carry the token. Calls without it
-  are refused.
-- Start Revit (with the MCP server enabled) **before** the AI client lists tools — if Revit is down
-  at that moment the tool list comes back empty until the client refetches.
-- **Not every command is an AI tool.** Commands declared `HiddenFromMcp` (plugin management, the C#
-  code-execution switch) are neither listed nor callable over MCP — the bridge enforces that on the
-  invoke path, not just when building the tool list.
-- Nothing extra is required in your extension. To make a command *useful* to an AI, give it a
-  `Description`, mark it `ReadOnly`/`Destructive`, and declare `InputType = typeof(Args)` **and**
-  `OutputType = typeof(Result)` (see §4.5) — that becomes the tool's description, safety hints, and
-  both schemas automatically. A command that declares neither type is callable but opaque: free-form
-  arguments, free-form answer, and nothing that can be chained or validated.
+- **Turn it on** in AnalyseTool → **Settings** (on by default in Debug builds). It takes effect at the next
+  Revit start.
+- Settings shows the address (`http://localhost:<port>/mcp`), and for Claude Code a ready
+  `claude mcp add …` command with the bearer token; the same details are in
+  `%LOCALAPPDATA%\AnalyseTool\<year>\mcp.json`. Each Revit version has its own port, so several run side
+  by side.
+- Only `localhost`, a bearer token on every request, no request from a web page (`Origin`) — a page in your
+  browser cannot reach the model.
+- **The tool list follows your extensions.** When an extension is added, changed or removed, AnalyseTool
+  sends `tools/list_changed` and the client asks again.
+- To make a command *useful* to an AI, give it a `Description`, mark it `ReadOnly`/`Destructive`, and declare
+  `InputType = typeof(Args)` **and** `OutputType = typeof(Result)` (§4.5) — they become the tool's description,
+  safety hints and schemas.
 
 ### 9.1 The other direction — letting the AI build with you
 
 Everything above is an agent *calling* your commands. It can also help build them: it reads the
 authoring guide over MCP (`GetAuthoringGuide` serves the same
-[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md) this repo ships),
+[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/source/AnalyseTool.Extensions/Authoring/LLM.md) this repo ships),
 tries C# against the open model with `ExecuteRevitCode`, and saves an HTML/CSS/JS page — with the
 ribbon button that opens it — for an extension's commands. There is no MCP command that saves C#:
 code worth keeping goes into a C# project (§4), or, without a .NET SDK, into an extension's `src\`
@@ -816,7 +766,7 @@ Two things worth knowing before you use it:
   land in a different copy.
 
 The mechanics — every command in the loop, the manifest it writes, the recovery paths — are in
-[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/src/LLM.md), which is written to
+[`LLM.md`](https://github.com/Nikola1Davydov/AnalyzeTool/blob/main/source/AnalyseTool.Extensions/Authoring/LLM.md), which is written to
 be pasted into the agent rather than read end-to-end.
 
 ## 10. Publishing your extension
