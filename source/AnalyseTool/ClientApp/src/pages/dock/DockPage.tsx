@@ -458,7 +458,7 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               icon={<FolderIcon buttons={folder.buttons} />}
               className="folder"
               off={hidden}
-              badge={folder.problems.length > 0 ? "error" : null}
+              badge={folder.problems.length > 0 || folder.buttons.some((button) => button.problems?.length) ? "error" : null}
               dim={!folder.enabled}
               onClick={() => onOpen(folder.id)}
             />
@@ -695,7 +695,18 @@ function ButtonTile(props: {
       title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
       off={!onRibbon}
-      badge={folder.problems.length > 0 ? "error" : null}
+      badge={button.problems?.length ? "error" : button.lastFailure ? "failed" : null}
+      onBadge={() =>
+        button.problems?.length
+          ? actions.openSheet(`Errors of ${button.name}`, <ProblemList problems={button.problems} />)
+          : actions.openSheet(
+              `${button.name} failed`,
+              <>
+                <pre className="result error">{button.lastFailure}</pre>
+                {button.lastFailureAt && <p className="muted small">{new Date(button.lastFailureAt).toLocaleString()} · the dot goes away when it runs fine</p>}
+              </>,
+            )
+      }
       busy={actions.isRunning(button.key)}
       dim={!folder.enabled}
       onClick={() => actions.activate(folder, button)}

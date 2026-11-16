@@ -41,7 +41,9 @@ export function Tile(props: {
   label: string;
   icon: ReactNode;
   title?: string;
-  badge?: "error" | "locked" | null;
+  badge?: "error" | "failed" | "locked" | null;
+  /** A tap on the badge: what is wrong (it does not run the button). */
+  onBadge?: () => void;
   busy?: boolean;
   dim?: boolean;
   /** Not on the Revit ribbon: grey, with a struck-through mark — always visible, not only in the edit mode. */
@@ -126,7 +128,33 @@ export function Tile(props: {
         transition={props.editing ? { duration: 0.28, repeat: Infinity, ease: "easeInOut", delay: phase.current } : spring}
       >
         {props.icon}
-        {props.badge === "error" && <span className="tile-badge error">!</span>}
+        {props.badge === "error" && (
+          <span
+            className="tile-badge error"
+            role={props.onBadge ? "button" : undefined}
+            title={props.onBadge ? "What is wrong" : undefined}
+            onPointerDown={(event) => props.onBadge && event.stopPropagation()}
+            onClick={(event) => {
+              if (!props.onBadge) return;
+              event.stopPropagation();
+              props.onBadge();
+            }}
+          >
+            !
+          </span>
+        )}
+        {props.badge === "failed" && (
+          <span
+            className="tile-badge failed"
+            role="button"
+            title="The last run failed"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.onBadge?.();
+            }}
+          />
+        )}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
         {props.off && !props.editing && <span className="tile-off" title="Not on the Revit ribbon" />}

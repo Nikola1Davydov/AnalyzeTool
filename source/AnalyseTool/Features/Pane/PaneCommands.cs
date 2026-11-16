@@ -30,8 +30,12 @@ namespace AnalyseTool.Features.Pane;
 /// <param name="Input">The JSON Schema of the input of its command, when it takes one and the button gives none: the pane builds a form.</param>
 /// <param name="Dockable">Its page is a small interface, shown inside the pane; otherwise a page opens a window.</param>
 /// <param name="HasPage">It opens a page.</param>
+/// <param name="Problems">The compiler errors in the files of this button (its command, the commands its page calls).</param>
+/// <param name="LastFailure">The error of its last run, when that run failed.</param>
+/// <param name="LastFailureAt">When it failed.</param>
 public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null,
-    bool OffRibbon = false, JsonElement? Input = null, bool Dockable = false, bool HasPage = false);
+    bool OffRibbon = false, JsonElement? Input = null, bool Dockable = false, bool HasPage = false, IReadOnlyList<string>? Problems = null, string? LastFailure = null,
+    DateTimeOffset? LastFailureAt = null);
 
 /// <summary>A folder of buttons: AnalyseTool itself, or an extension.</summary>
 /// <param name="Id">The folder id.</param>
@@ -59,42 +63,109 @@ public sealed record PaneOverview(string UserName, string MachineName, string Pr
 
 /// <summary>Returns the buttons of the dock pane.</summary>
 [Command(Description = "Returns every ribbon button for the dock pane, grouped by AnalyseTool and the extensions.")]
-public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, CommandRegistry registry) : ICommand<PaneOverview>
+public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, CommandRegistry registry, ButtonUsageStore? usage = null) : ICommand<PaneOverview>
 {
     private const int MaxImageBytes = 256 * 1024;
 
     /// <inheritdoc />
     public Task<PaneOverview> ExecuteAsync(CommandContext context)
     {
+        var failures = (usage?.Read().Buttons ?? [])
+            .Where(button => button.LastRunFailed)
+            .ToDictionary(button => ButtonUsageStore.Key(button.Extension, button.Button), StringComparer.OrdinalIgnoreCase);
         var folders = catalog.GetSources()
-            .Select(source => new PaneFolder(
-                source.Extension.Id,
-                ButtonCatalog.FolderName(source),
-                source.BuiltIn,
-                source.Shown,
-                Problems(source.State),
-                Buttons(source, registry).ToList(),
-                !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
-                source.Extension.Manifest.Description,
-                source.BuiltIn ? null : source.Extension.Directory,
-                ButtonCatalog.Place(source, new ExtensionButton()).Tab,
-                ButtonCatalog.Place(source, new ExtensionButton()).Panel,
-                ButtonCatalog.Panels(source),
-                !source.BuiltIn && source.Extension.Zone != ExtensionZone.Dev && !string.Equals(ButtonCatalog.Place(source, new ExtensionButton()).Tab, ButtonCatalog.FolderName(source), StringComparison.Ordinal)))
+            .Select(source => Folder(source, failures))
             .ToList();
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
     }
 
-    private static IReadOnlyList<string> Problems(ExtensionState? state)
+    /// <summary>A folder with its buttons; a compiler error goes to the button whose file it is in, the rest stays the folder's.</summary>
+    private PaneFolder Folder(ButtonSource source, IReadOnlyDictionary<string, ButtonUsage> failures)
     {
-        if (state is null)
+        var buttons = Buttons(source, registry).ToList();
+        var errors = source.State?.Diagnostics.Where(diagnostic => diagnostic.Severity == "error").ToList() ?? [];
+        var attributed = new HashSet<AnalyseTool.Extensions.Building.CompileDiagnostic>();
+        if (errors.Count > 0)
         {
-            return [];
+            var files = SourcesByClass(source.Extension);
+            buttons = buttons.Select(button =>
+            {
+                var own = FilesOf(source.Extension, button, files);
+                var mine = errors.Where(error => own.Contains(Normalize(error.File))).ToList();
+                attributed.UnionWith(mine);
+                return mine.Count == 0 ? button : button with { Problems = mine.Select(error => $"{error.File}({error.Line},{error.Column}): {error.Message}").ToList() };
+            }).ToList();
         }
 
-        return state.Errors
-            .Concat(state.Diagnostics.Where(diagnostic => diagnostic.Severity == "error").Select(diagnostic => $"{diagnostic.File}({diagnostic.Line}): {diagnostic.Message}"))
+        buttons = buttons.Select(button => failures.TryGetValue(button.Key, out var failed)
+            ? button with { LastFailure = failed.LastError ?? "Failed", LastFailureAt = failed.LastErrorAt }
+            : button).ToList();
+
+        var problems = (source.State?.Errors ?? [])
+            .Concat(errors.Where(error => !attributed.Contains(error)).Select(error => $"{error.File}({error.Line}): {error.Message}"))
             .ToList();
+        return new PaneFolder(
+            source.Extension.Id,
+            ButtonCatalog.FolderName(source),
+            source.BuiltIn,
+            source.Shown,
+            problems,
+            buttons,
+            !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
+            source.Extension.Manifest.Description,
+            source.BuiltIn ? null : source.Extension.Directory,
+            ButtonCatalog.Place(source, new ExtensionButton()).Tab,
+            ButtonCatalog.Place(source, new ExtensionButton()).Panel,
+            ButtonCatalog.Panels(source),
+            !source.BuiltIn && source.Extension.Zone != ExtensionZone.Dev && !string.Equals(ButtonCatalog.Place(source, new ExtensionButton()).Tab, ButtonCatalog.FolderName(source), StringComparison.Ordinal));
+    }
+
+    private static string Normalize(string path) => path.Replace('\\', '/').TrimStart('.', '/');
+
+    /// <summary>The C# files of a folder by the classes they declare.</summary>
+    private static Dictionary<string, string> SourcesByClass(ExtensionDescriptor extension)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in ExtensionCatalog.GetSourceFiles(extension.Directory))
+        {
+            try
+            {
+                foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(file), @"\bclass\s+(\w+)"))
+                {
+                    result.TryAdd(match.Groups[1].Value, Normalize(Path.GetRelativePath(extension.Directory, file)));
+                }
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>The files of a button: of its command's class, and of the classes its page calls with AT.invoke.</summary>
+    private static HashSet<string> FilesOf(ExtensionDescriptor extension, PaneButton button, IReadOnlyDictionary<string, string> files)
+    {
+        var classes = new List<string>();
+        var prefix = extension.Id + ".";
+        if (button.Command is { } command && command.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            classes.Add(command[prefix.Length..]);
+        }
+
+        if (button.HasPage)
+        {
+            var declared = (extension.Manifest.Ui?.EffectiveButtons() ?? []).SelectMany(item => (item.Items ?? []).Prepend(item))
+                .FirstOrDefault(item => string.Equals(ButtonUsageStore.Key(extension.Id, item.Name), button.Key, StringComparison.OrdinalIgnoreCase));
+            var page = Path.Combine(extension.Directory, declared?.EntryHtml ?? extension.Manifest.Ui?.EntryHtml ?? "index.html");
+            if (File.Exists(page))
+            {
+                classes.AddRange(System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(page), $@"[""'`]{System.Text.RegularExpressions.Regex.Escape(extension.Id)}\.(\w+)[""'`]")
+                    .Select(match => match.Groups[1].Value));
+            }
+        }
+
+        return classes.Where(files.ContainsKey).Select(name => files[name]).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<PaneButton> Buttons(ButtonSource source, CommandRegistry registry)

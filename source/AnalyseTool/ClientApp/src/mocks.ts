@@ -67,8 +67,13 @@ const paneFolders: PaneFolder[] = [
     panel: "Count walls",
     panels: ["Count walls"],
     directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/count-walls",
-    problems: ["src/CountWalls.cs(14): The name 'grup' does not exist in the current context"],
-    buttons: [paneButton("count-walls", "Count walls", g(0xe768), "count-walls.CountWalls", "Counts the walls of the active view by type.")],
+    problems: [],
+    buttons: [
+      {
+        ...paneButton("count-walls", "Count walls", g(0xe768), "count-walls.CountWalls", "Counts the walls of the active view by type."),
+        problems: ["src/CountWalls.cs(14,9): The name 'grup' does not exist in the current context"],
+      },
+    ],
   },
   {
     id: "room-sheets",
@@ -98,7 +103,12 @@ const paneFolders: PaneFolder[] = [
         },
       },
       paneButton("room-sheets", "Purge empty", g(0xe74d), "room-sheets.PurgeEmpty", null, "Tools"),
-      { ...paneButton("room-sheets", "Check numbering", g(0xe73e), "room-sheets.CheckNumbering"), panel: "Checks" },
+      {
+        ...paneButton("room-sheets", "Check numbering", g(0xe73e), "room-sheets.CheckNumbering"),
+        panel: "Checks",
+        lastFailure: "Open a document first: the command reads the sheets of the active document.",
+        lastFailureAt: new Date(Date.now() - 3600_000).toISOString(),
+      },
     ],
   },
   { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], tabFromPackage: true, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },

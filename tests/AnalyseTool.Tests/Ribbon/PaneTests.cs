@@ -3,6 +3,7 @@ using System.Text.Json;
 using AnalyseTool.Extensions.Authoring;
 using AnalyseTool.Extensions.Manifest;
 using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Extensions.Usage;
 using AnalyseTool.Features.Pane;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Infrastructure.Ribbon;
@@ -74,6 +75,35 @@ public sealed class PaneTests
             await Assert.That(list.Input).IsNull();
             await Assert.That(list.HasPage).IsTrue();
             await Assert.That(list.Dockable).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Problems_GoToTheButtonWhoseFileBreaks_AndAFailedRunMarksItsButton()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Check", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.WriteFileAsync("sheets", "src/Renumber.cs", "public sealed class Renumber { int x = grup; }", CancellationToken.None);
+        var usage = new ButtonUsageStore(environment.Paths);
+        usage.RecordClick("sheets", "Check", "sheets.Check");
+        usage.RecordResult("sheets", "Check", false, TimeSpan.FromMilliseconds(5), "Open a document first.");
+
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry, usage).ExecuteAsync(Context(nameof(GetPaneButtons)));
+
+        var folder = overview.Folders.Single(item => item.Id == "sheets");
+        var renumber = folder.Buttons.Single(button => button.Name == "Renumber");
+        var check = folder.Buttons.Single(button => button.Name == "Check");
+        using (Assert.Multiple())
+        {
+            await Assert.That(renumber.Problems).IsNotNull();
+            await Assert.That(renumber.Problems!.Single()).Contains("Renumber.cs(1,");
+            await Assert.That(check.Problems).IsNull();
+            await Assert.That(check.LastFailure).IsEqualTo("Open a document first.");
+            await Assert.That(renumber.LastFailure).IsNull();
+            // Attributed to its button, the error is not the folder's
+            await Assert.That(folder.Problems.Where(problem => problem.Contains("Renumber.cs"))).IsEmpty();
         }
     }
 

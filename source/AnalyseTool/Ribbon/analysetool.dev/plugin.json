@@ -1,6 +1,7 @@
 {
   "schema": 2,
   "id": "analysetool.dev",
+  "name": "AnalyseTool Dev",
   "version": "2.0.0",
   "description": "The Dev buttons of Debug builds: tiles of the pane only.",
   "publisher": "AnalyseTool",

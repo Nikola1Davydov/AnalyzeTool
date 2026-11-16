@@ -33,6 +33,11 @@ export interface PaneButton {
   /** Its page is a small interface, shown inside the pane; otherwise a page opens a window. */
   dockable?: boolean;
   hasPage?: boolean;
+  /** Compiler errors in the files of this button. */
+  problems?: string[] | null;
+  /** The error of its last run, when that failed. */
+  lastFailure?: string | null;
+  lastFailureAt?: string | null;
 }
 
 export interface PaneFolder {

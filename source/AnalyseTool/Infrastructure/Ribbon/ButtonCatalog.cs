@@ -70,12 +70,13 @@ public sealed class ButtonCatalog(ExtensionHost host)
     /// <summary>The name of a folder as the pane and the ribbon show it: <c>name</c>, else <c>description</c>, else the id.</summary>
     public static string FolderName(ButtonSource source)
     {
+        var manifest = source.Extension.Manifest;
         if (source.BuiltIn)
         {
-            return DefaultTab;
+            // AnalyseTool's own: its name, or «AnalyseTool» — the Dev buttons of a Debug build name themselves
+            return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : DefaultTab;
         }
 
-        var manifest = source.Extension.Manifest;
         return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : source.Extension.Id;
     }
 

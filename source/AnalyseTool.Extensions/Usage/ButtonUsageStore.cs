@@ -32,6 +32,9 @@ public sealed record ButtonUsage(
     int TimedRuns,
     IReadOnlyDictionary<string, int> Days)
 {
+    /// <summary>The last run of its command failed (and none succeeded since).</summary>
+    public bool LastRunFailed { get; init; }
+
     /// <summary>The average time of a run; <see langword="null" /> when none was timed.</summary>
     public double? AverageMilliseconds => TimedRuns == 0 ? null : (double)TotalMilliseconds / TimedRuns;
 }
@@ -113,6 +116,7 @@ public sealed class ButtonUsageStore
             var entry = Get(data, extension, button);
             entry.TotalMilliseconds += (long)duration.TotalMilliseconds;
             entry.TimedRuns++;
+            entry.LastRunFailed = !success;
             if (!success)
             {
                 entry.Failures++;
@@ -132,7 +136,10 @@ public sealed class ButtonUsageStore
             var data = Load();
             var buttons = data.Buttons.Values
                 .Select(entry => new ButtonUsage(entry.Extension, entry.Button, entry.Command, entry.Clicks, entry.Failures, entry.FirstClick, entry.LastClick,
-                    entry.LastError, entry.LastErrorAt, entry.TotalMilliseconds, entry.TimedRuns, new SortedDictionary<string, int>(entry.Days, StringComparer.Ordinal)))
+                    entry.LastError, entry.LastErrorAt, entry.TotalMilliseconds, entry.TimedRuns, new SortedDictionary<string, int>(entry.Days, StringComparer.Ordinal))
+                {
+                    LastRunFailed = entry.LastRunFailed
+                })
                 .OrderByDescending(usage => usage.Clicks)
                 .ThenBy(usage => usage.Extension, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(usage => usage.Button, StringComparer.OrdinalIgnoreCase)
@@ -265,6 +272,8 @@ public sealed class ButtonUsageStore
         public long TotalMilliseconds { get; set; }
 
         public int TimedRuns { get; set; }
+
+        public bool LastRunFailed { get; set; }
 
         public Dictionary<string, int> Days { get; set; } = new(StringComparer.Ordinal);
     }

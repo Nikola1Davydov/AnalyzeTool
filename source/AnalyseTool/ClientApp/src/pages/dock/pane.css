@@ -1971,3 +1971,19 @@
 .guide-tile.dim {
   opacity: 0.4;
 }
+
+/* The last run of the button failed: an orange dot, tap it for the error */
+.tile-badge.failed {
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 2px var(--tile-background);
+  cursor: pointer;
+}
+
+.tile-badge.error[role="button"] {
+  cursor: pointer;
+}
