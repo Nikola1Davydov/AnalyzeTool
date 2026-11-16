@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.0] / unreleased
+
+- 🏗️ **AnalyseTool is rebuilt on the davydov-revit template**: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The extension folders, the Sdk and the built-in tools of 1.x carry over.
+- 🧩 **A new button is C# sources, not a DLL.** «New button» creates `src\<Name>.cs` that AnalyseTool compiles itself; DLL extensions still load.
+- ⚡ **Save and it runs.** A changed file reloads its extension, and ribbon buttons appear, change and disappear without a restart or a Reload button.
+- 🕓 **Every button has its own version history.** Save a version, compare, restore a version or a file, or pin the button to an older version — from its page or over MCP.
+- 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
+- 📦 **Installing a package keeps a version per install**, so an update can be rolled back.
+
 ## [1.6.0] / 2026-10-19
 
 - ✋ **Closing a window cancels the commands it started**, so a long one no longer keeps Revit busy for a window that is gone.
