@@ -14,6 +14,8 @@ How the add-in starts, where the code goes and why. The rules an agent must not 
 | `source/AnalyseTool.Hosting.Mcp` | Module: an MCP server inside Revit, the transport of AI clients to the pipeline. No WPF. |
 | `source/AnalyseTool.Hosting.Scripting` | Module: the `ExecuteCode` command — C# compiled with Roslyn and run inside Revit. No WPF. |
 | `source/AnalyseTool.Hosting.Visualization` | Module: `IGeometryOverlay` — geometry drawn over the views with DirectContext3D, nothing added to the model. No WPF. |
+| `source/AnalyseTool.Sdk` | The public contract of extensions (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`), packed to NuGet. |
+| `source/AnalyseTool.Extensions` | Module: the user's buttons — extension folders compiled from C# or loaded as DLLs, reloaded when they change, each with its own git history. No WPF. |
 | `build/` | The build pipeline (ModularPipelines): boundary check, `ClientApp`, compile, `pack`. |
 | `install/` | The `.msi` builder (WixSharp). |
 
@@ -191,3 +193,35 @@ The page polls `GetLogEntries`; the records of that polling are dropped from the
 * a type of the add-in or the modules in the Launcher code.
 
 Comments and strings do not count. Run it alone with `pwsh build/Check-Boundaries.ps1`.
+
+## Extensions: the user's buttons
+
+An extension is a folder under `%LOCALAPPDATA%\AnalyseTool\extensions\` (or any folder the user adds) with a
+`plugin.json` — the format of AnalyseTool 1.x. «New button» creates one with C# sources and no project:
+
+```
+count-walls  .git\            its own history
+  plugin.json      id, buttons (name, icon, command or page), "build": "host"
+  src\CountWalls.cs
+  LLM.md           the authoring guide
+  .editor\         a .csproj for IntelliSense only (git-ignored)
+  bin5\        builds of the host, named by a hash of the sources (git-ignored)
+```
+
+* **Compile.** `ExtensionCompiler` compiles `src\**\*.cs` with Roslyn against what the add-in runs with (the Revit API of
+  the running Revit, `AnalyseTool.Sdk`, Newtonsoft) and `lib\*.dll`; `ExtensionBuilder` writes `bin\<year>\<id>.<hash>.dll`
+  only when the sources changed. A compile error keeps the last good build loaded; the diagnostics carry file and line.
+* **DLLs** (`entryAssembly`, `<year>\X.dll`) load as in 1.x. Both kinds load from bytes into a collectible
+  `ExtensionLoadContext`; the Sdk and Newtonsoft resolve to the add-in's own copies (type identity).
+* **Commands.** `SdkCommands` turns each `IRevitTask` into a `CommandDescriptor` named `<id>.<Name>` with
+  `CommandAnnotations` (MCP exposure, hints, input/output schemas); `ExtensionHost` registers them as the registry group of
+  the extension, so they run through the same pipeline as built-in commands and appear or disappear without a restart.
+* **Live.** `ExtensionWatcher` watches the roots: a saved file reloads its extension a moment later; `ExtensionHost.Changed`
+  rebuilds the ribbon buttons (AdWindows) and MCP announces `tools/list_changed`.
+* **Versions.** `IExtensionHistory` (LibGit2Sharp, in process): save a version, history (of a file), diff, restore (the
+  unsaved state is saved first, the restored state becomes a new version) and pin a source extension to a version — it then
+  compiles the sources of that commit; the pin lives in `extensions-state.json`, not in the folder.
+* **Pages.** A button without `command` opens the extension's HTML in a window or the dock pane under its own virtual host
+  (`<id>.ext.analysetool.local`) with `window.AT.invoke(command, payload)` injected — the API of 1.x.
+* **Packages.** A `.zip` with one extension installs into `extensions-dist\`; an update keeps the folder's history.
+
