@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] / unreleased
+## [2.0.0] / 2026-11-16
 
 AnalyseTool is rebuilt: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The Sdk,
 DLL extensions and the built-in tools of 1.x carry over; the 2.0 installer replaces an installed 1.x.
