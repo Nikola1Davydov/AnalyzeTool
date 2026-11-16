@@ -36,7 +36,8 @@
         loaders of every platform itself, and the publish folder would move to bin\<configuration>\win-x64.
     -->
     <Target Name="RemoveForeignPlatformAssets" AfterTargets="CopyFilesToOutputDirectory" BeforeTargets="PublishAddin">
-        <RemoveDir Directories="$(TargetDir)runtimes\win-x86;$(TargetDir)runtimes\win-arm64;$(TargetDir)runtimes\browser"/>
+        <!-- WebView2: the loaders of other Windows platforms; LibGit2Sharp: libgit2 for Linux and macOS -->
+        <RemoveDir Directories="$(TargetDir)runtimes\win-x86;$(TargetDir)runtimes\win-arm64;$(TargetDir)runtimes\browser;$(TargetDir)runtimes\linux-arm;$(TargetDir)runtimes\linux-arm64;$(TargetDir)runtimes\linux-musl-arm;$(TargetDir)runtimes\linux-musl-arm64;$(TargetDir)runtimes\linux-musl-x64;$(TargetDir)runtimes\linux-ppc64le;$(TargetDir)runtimes\linux-x64;$(TargetDir)runtimes\osx-arm64;$(TargetDir)runtimes\osx-x64"/>
         <ItemGroup>
             <_WebView2Docs Include="$(TargetDir)Microsoft.Web.WebView2.*.xml"/>
         </ItemGroup>
