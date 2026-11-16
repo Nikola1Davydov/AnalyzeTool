@@ -49,6 +49,13 @@ internal sealed class DockPaneContent : ContentControl
         Content = new WebViewHost(_services, page);
     }
 
+    /// <summary>Lets the ClientApp page of the pane show an external page in a frame.</summary>
+    public Task MountAsync(ExternalPage page)
+    {
+        EnsureHost();
+        return Content is WebViewHost { Page: null } host ? host.MountAsync(page) : Task.CompletedTask;
+    }
+
     public void Navigate(string route)
     {
         _route = route;

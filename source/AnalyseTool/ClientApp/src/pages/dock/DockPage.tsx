@@ -4,10 +4,12 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { extensionCommands } from "../../api/extensions";
+import { useRoute } from "../../router";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { AboutScreen } from "./AboutScreen";
+import { PageScreen } from "./PageScreen";
 import { HowItWorks } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
@@ -25,6 +27,7 @@ type Screen =
   | { kind: "packages" }
   | { kind: "mcp" }
   | { kind: "about" }
+  | { kind: "page"; folder: string; title: string; url: string }
   | { kind: "folders" }
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string };
@@ -32,7 +35,7 @@ type Screen =
 const sizes: TileSize[] = ["small", "medium", "large"];
 const sizeLabels: Record<TileSize, string> = { small: "Small buttons", medium: "Medium buttons", large: "Large buttons" };
 
-/** The edit mode: the right mouse button starts it, «Done» or Escape ends it. */
+/** The edit mode: the right mouse button starts it and, clicked again, ends it — as «Done» or Escape do. */
 const EditContext = createContext<{ editing: boolean; start: () => void }>({ editing: false, start: () => {} });
 
 function depth(screen: Screen) {
@@ -47,6 +50,8 @@ function depth(screen: Screen) {
     case "mcp":
     case "folders":
     case "about":
+      return 2;
+    case "page":
       return 2;
     default:
       return 0;
@@ -81,9 +86,7 @@ export function DockPage() {
   const { profile } = useProfile();
   return (
     <MotionConfig reducedMotion={profile.effects ? "user" : "always"}>
-      <ActionsProvider>
-        <Pane />
-      </ActionsProvider>
+      <Pane />
     </MotionConfig>
   );
 }
@@ -137,7 +140,7 @@ function Pane() {
 
   const overview = buttons.data;
   const current = screen ?? { kind: "home" as const };
-  const folderId = current.kind === "folder" || current.kind === "stats" ? current.folder : undefined;
+  const folderId = current.kind === "folder" || current.kind === "stats" || current.kind === "page" ? current.folder : undefined;
   const folder = folderId ? overview.folders.find((candidate) => candidate.id === folderId) : undefined;
 
   const go = (next: Screen) => {
@@ -157,8 +160,16 @@ function Pane() {
 
   const cycleSize = () => update((value) => ({ ...value, size: sizes[(sizes.indexOf(value.size) + 1) % sizes.length] }));
 
+  // A small interface of a button (dockable) opens as a screen of the pane, ‹ back to its folder
+  const openPage = (button: PaneButton, url: string) => {
+    const owner = overview.folders.find((candidate) => candidate.buttons.some((item) => item.key === button.key));
+    go({ kind: "page", folder: owner?.id ?? "", title: button.name, url });
+  };
+
   return (
-    <EditContext.Provider value={{ editing, start: () => setEditing(true) }}>
+    <ActionsProvider onOpenPage={openPage}>
+    <OpenFromRoute overview={overview} />
+    <EditContext.Provider value={{ editing, start: () => setEditing((value) => !value) }}>
       <div className={`pane projects tiles-${profile.size} ${profile.effects ? "" : "no-effects"}`}>
         <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => {
             setRefreshing(true);
@@ -200,6 +211,8 @@ function Pane() {
               />
             ) : current.kind === "about" ? (
               <AboutScreen />
+            ) : current.kind === "page" ? (
+              <PageScreen url={current.url} title={current.title} />
             ) : current.kind === "packages" ? (
               <PackagesScreen />
             ) : current.kind === "mcp" ? (
@@ -220,7 +233,24 @@ function Pane() {
         <Dock overview={overview} />
       </div>
     </EditContext.Provider>
+    </ActionsProvider>
   );
+}
+
+/** A click on the ribbon of a small interface opens the pane with «?page=<key>»: open that button once the pane is there. */
+function OpenFromRoute({ overview }: { overview: PaneOverview }) {
+  const actions = useActions();
+  const { query } = useRoute();
+  const key = query.get("page");
+  const done = useRef<string | null>(null);
+  useEffect(() => {
+    if (!key || done.current === key) return;
+    const found = findButton(overview.folders, key);
+    if (!found) return;
+    done.current = key;
+    actions.activate(found.folder, found.button);
+  }, [key, overview.folders, actions]);
+  return null;
 }
 
 /** The navigation bar of iOS: «‹ back» on the left, the title in the middle, the actions and the avatar on the right. */
@@ -241,7 +271,9 @@ function Header(props: {
   const toastError = (message: string) => actions.toast(message, "error");
 
   const back =
-    screen.kind === "packages" || screen.kind === "mcp" || screen.kind === "folders" || screen.kind === "about"
+    screen.kind === "page"
+      ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
+      : screen.kind === "packages" || screen.kind === "mcp" || screen.kind === "folders" || screen.kind === "about"
       ? { label: "Profile", to: { kind: "profile" } as Screen }
       : screen.kind === "stats"
       ? screen.folder
@@ -255,7 +287,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },
@@ -500,7 +532,7 @@ function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFo
       )}
       {sections.map(({ panel, items }) => (
         <section key={panel} className={`pane-section${edit.editing && movable ? " drop" : ""}`} data-section={panel} data-tile-group="grid">
-          <header className="pane-section-header">
+          <header className={`pane-section-header${sections.length === 1 && panel.toLowerCase() === folder.name.toLowerCase() && !edit.editing ? " quiet" : ""}`}>
             <span>{panel}</span>
             {edit.editing && movable && (
               <button

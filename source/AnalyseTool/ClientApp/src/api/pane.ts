@@ -26,6 +26,11 @@ export interface PaneButton {
   panel?: string | null;
   /** plugin.json keeps it off the ribbon («ribbon»: false); «+» of the pane can still load it. */
   offRibbon?: boolean;
+  /** The JSON Schema of the input of its command: the pane builds a form. */
+  input?: unknown;
+  /** Its page is a small interface, shown inside the pane; otherwise a page opens a window. */
+  dockable?: boolean;
+  hasPage?: boolean;
 }
 
 export interface PaneFolder {
@@ -62,6 +67,8 @@ export interface ButtonRunResult {
   error: string | null;
   elapsedMilliseconds: number;
   openedPage: boolean;
+  /** A small interface: the address the pane shows in a frame. */
+  pageUrl?: string | null;
 }
 
 export interface PaneProfileResult {

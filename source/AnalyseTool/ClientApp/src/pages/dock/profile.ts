@@ -29,6 +29,8 @@ export type Profile = {
   order: Record<string, string[]>;
   /** The folder the pane opens with. */
   lastFolder: string | null;
+  /** The last values of the form of every button: key → values. */
+  inputs: Record<string, Record<string, unknown>>;
   updatedAt: string;
 };
 
@@ -43,6 +45,7 @@ export const defaultProfile: Profile = {
   hiddenButtons: [],
   order: {},
   lastFolder: null,
+  inputs: {},
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -62,6 +65,7 @@ export function normalize(value: unknown): Profile {
     hiddenButtons: Array.isArray(source.hiddenButtons) ? source.hiddenButtons.filter((item): item is string => typeof item === "string") : [],
     order: source.order && typeof source.order === "object" ? source.order : {},
     lastFolder: typeof source.lastFolder === "string" ? source.lastFolder : null,
+    inputs: source.inputs && typeof source.inputs === "object" ? source.inputs : {},
   };
 }
 

@@ -27,8 +27,11 @@ namespace AnalyseTool.Features.Pane;
 /// <param name="Tab">The ribbon tab it goes on.</param>
 /// <param name="Panel">Its section of the folder: the panel of the tab.</param>
 /// <param name="OffRibbon">plugin.json keeps it off the ribbon (<c>"ribbon": false</c>); the «+» of the pane is the profile.</param>
+/// <param name="Input">The JSON Schema of the input of its command, when it takes one and the button gives none: the pane builds a form.</param>
+/// <param name="Dockable">Its page is a small interface, shown inside the pane; otherwise a page opens a window.</param>
+/// <param name="HasPage">It opens a page.</param>
 public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null,
-    bool OffRibbon = false);
+    bool OffRibbon = false, JsonElement? Input = null, bool Dockable = false, bool HasPage = false);
 
 /// <summary>A folder of buttons: AnalyseTool itself, or an extension.</summary>
 /// <param name="Id">The folder id.</param>
@@ -56,7 +59,7 @@ public sealed record PaneOverview(string UserName, string MachineName, string Pr
 
 /// <summary>Returns the buttons of the dock pane.</summary>
 [Command(Description = "Returns every ribbon button for the dock pane, grouped by AnalyseTool and the extensions.")]
-public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) : ICommand<PaneOverview>
+public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, CommandRegistry registry) : ICommand<PaneOverview>
 {
     private const int MaxImageBytes = 256 * 1024;
 
@@ -70,7 +73,7 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
                 source.BuiltIn,
                 source.Shown,
                 Problems(source.State),
-                Buttons(source).ToList(),
+                Buttons(source, registry).ToList(),
                 !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
                 source.Extension.Manifest.Description,
                 source.BuiltIn ? null : source.Extension.Directory,
@@ -94,7 +97,7 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
             .ToList();
     }
 
-    private static IEnumerable<PaneButton> Buttons(ButtonSource source)
+    private static IEnumerable<PaneButton> Buttons(ButtonSource source, CommandRegistry registry)
     {
         var extension = source.Extension;
         // "pane": false — a button of the ribbon only
@@ -104,24 +107,39 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
             {
                 foreach (var child in (button.Items ?? []).Where(child => child.InPane))
                 {
-                    yield return Create(source, child, ButtonUsageStore.Normalize(button.Name), button);
+                    yield return Create(source, child, ButtonUsageStore.Normalize(button.Name), button, registry);
                 }
             }
             else
             {
-                yield return Create(source, button, null, button);
+                yield return Create(source, button, null, button, registry);
             }
         }
     }
 
     /// <param name="placed">The button that sits on the ribbon: the pulldown for its items.</param>
-    private static PaneButton Create(ButtonSource source, ExtensionButton button, string? group, ExtensionButton placed)
+    private static PaneButton Create(ButtonSource source, ExtensionButton button, string? group, ExtensionButton placed, CommandRegistry registry)
     {
         var extension = source.Extension;
         var (glyph, image) = Icon(extension.Directory, button.Icon);
         var (tab, panel) = ButtonCatalog.Place(source, placed);
         return new PaneButton(ButtonUsageStore.Key(extension.Id, button.Name), ButtonUsageStore.Normalize(button.Name), button.Tooltip, glyph, image,
-            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, tab, panel, !button.OnRibbon || !placed.OnRibbon);
+            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, tab, panel, !button.OnRibbon || !placed.OnRibbon,
+            Input(button, registry), ButtonRunner.IsDockable(extension, button), string.IsNullOrWhiteSpace(button.Command));
+    }
+
+    /// <summary>The schema of a form: the command takes properties, and plugin.json gives the button no fixed <c>args</c>.</summary>
+    internal static JsonElement? Input(ExtensionButton button, CommandRegistry registry)
+    {
+        if (string.IsNullOrWhiteSpace(button.Command) || button.Args is not null || registry.Find(button.Command) is not { } descriptor)
+        {
+            return null;
+        }
+
+        return descriptor.Annotations?.InputSchema is { ValueKind: JsonValueKind.Object } schema
+               && schema.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object && properties.EnumerateObject().Any()
+            ? schema
+            : null;
     }
 
     /// <summary>A glyph character, or a PNG of the folder as a data URL — never a file outside the folder.</summary>
@@ -181,7 +199,9 @@ public sealed class RefreshButtons(ExtensionHost host) : ICommand<Empty>
 }
 
 /// <summary>Input of <see cref="RunButton" />.</summary>
-public sealed record RunButtonRequest([property: Description("The key of the button: <extension>/<name>.")] string Key);
+public sealed record RunButtonRequest(
+    [property: Description("The key of the button: <extension>/<name>.")] string Key,
+    [property: Description("The input of its command, from the form of the pane.")] JsonElement? Input = null);
 
 /// <summary>Runs a button from the dock pane: what a click on the ribbon does, the result coming back instead of a dialog.</summary>
 [Command(Description = "Clicks a ribbon button: runs its command with its args, or opens its page, and counts the click.")]
@@ -200,7 +220,7 @@ public sealed class RunButton(ButtonCatalog catalog, ButtonRunner runner) : ICom
         {
             action();
             return true;
-        }));
+        }), request.Input is { ValueKind: JsonValueKind.Object } input ? input : null);
     }
 }
 

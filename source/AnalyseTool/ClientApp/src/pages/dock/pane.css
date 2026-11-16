@@ -1927,3 +1927,28 @@
   padding-left: 18px;
   font-size: 13px;
 }
+
+/* One section named like its folder: the large title says it already */
+.pane-section-header.quiet {
+  display: none;
+}
+
+/* ---- A small interface in the pane: its page in a frame ---- */
+.page-screen {
+  height: calc(100vh - 44px - var(--dock-height, 88px) - 40px);
+  min-height: 240px;
+  margin-top: 8px;
+}
+
+.page-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+  background: var(--tile-background);
+}
+
+/* The label of a yes/no field of a form, in the colour of the text */
+.command-form .switch-row span {
+  color: var(--label);
+}

@@ -54,7 +54,6 @@ const paneFolders: PaneFolder[] = [
     problems: [],
     buttons: [
       { ...paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."), offRibbon: true },
-      paneButton("analysetool", "About", g(0xe946), "OpenWindow"),
     ],
   },
   {
@@ -84,8 +83,20 @@ const paneFolders: PaneFolder[] = [
     directory: "D:/Team/buttons/room-sheets",
     problems: [],
     buttons: [
-      paneButton("room-sheets", "Room sheets", g(0xe8a7), null, "A page that lists rooms and creates sheets for them."),
-      paneButton("room-sheets", "Renumber", g(0xe8ef), "room-sheets.Renumber", null, "Tools"),
+      { ...paneButton("room-sheets", "Room sheets", g(0xe8a7), null, "A small interface in the pane: counts rooms or walls."), dockable: true, hasPage: true },
+      {
+        ...paneButton("room-sheets", "Renumber", g(0xe8ef), "room-sheets.Renumber", "Renumbers the sheets from a start number.", "Tools"),
+        input: {
+          type: "object",
+          properties: {
+            start: { type: "integer", default: 101, description: "The first number." },
+            prefix: { type: ["string", "null"], description: "Put before every number, e.g. A-." },
+            level: { enum: ["All", "Level 1", "Level 2"] },
+            onlySelected: { type: "boolean", description: "Only the sheets selected in the project browser." },
+          },
+          required: ["start"],
+        },
+      },
       paneButton("room-sheets", "Purge empty", g(0xe74d), "room-sheets.PurgeEmpty", null, "Tools"),
       { ...paneButton("room-sheets", "Check numbering", g(0xe73e), "room-sheets.CheckNumbering"), panel: "Checks" },
     ],
@@ -626,6 +637,8 @@ registerMocks({
   RunButton: async (payload): Promise<ButtonRunResult> => {
     const key = (payload as { key: string }).key;
     await delay(600);
+    if (key === "room-sheets/Room sheets") return { ok: true, text: null, error: null, elapsedMilliseconds: 0, openedPage: false, pageUrl: `${location.origin}/mock-ext.html` };
+    if (key === "room-sheets/Renumber") return { ok: true, text: `Renumbered 12 sheets from ${JSON.stringify((payload as { input?: unknown }).input)}`, error: null, elapsedMilliseconds: 240, openedPage: false };
     if (key.startsWith("count-walls")) return { ok: true, text: "Level 1: 42 walls\nLevel 2: 38 walls", error: null, elapsedMilliseconds: 182, openedPage: false };
     if (key === "room-sheets/Purge empty") return { ok: false, text: null, error: "Open a document first.", elapsedMilliseconds: 12, openedPage: false };
     return { ok: true, text: null, error: null, elapsedMilliseconds: 0, openedPage: !key.startsWith("room-sheets/Renumber") };
@@ -687,6 +700,11 @@ registerMocks({
     to.buttons.splice(at < 0 ? to.buttons.length : at, 0, ...moving);
     if (!(to.panels ?? []).includes(panel)) to.panels = [...(to.panels ?? []), panel];
     return { id: to.id, name: to.name };
+  },
+  "room-sheets.Count": async (payload) => {
+    await delay(300);
+    const { category } = payload as { category: string };
+    return { title: "Tower.rvt", count: category === "OST_Rooms" ? 64 : 210 };
   },
   GetRevitTheme: () => ({ theme: window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light" }),
   RefreshButtons: async () => {

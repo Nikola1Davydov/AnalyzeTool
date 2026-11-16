@@ -138,6 +138,8 @@ export interface UpdateExtensionButtonRequest {
   /** Empty: the folder's; absent: keep. */
   tab?: string | null;
   panel?: string | null;
+  /** Its page opens inside the pane; absent: keep. */
+  dockable?: boolean | null;
 }
 
 export interface CreateExtensionRequest {

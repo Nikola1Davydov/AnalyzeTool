@@ -118,6 +118,7 @@ export function EditButtonForm({ folder, folders, button, onOpenFiles }: { folde
   const { update } = useProfile();
   const [name, setName] = useState(button.name);
   const [tooltip, setTooltip] = useState(button.tooltip && button.tooltip !== button.name ? button.tooltip : "");
+  const [dockable, setDockable] = useState(button.dockable === true);
   const save = useMutation({
     mutationFn: (request: UpdateExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionButton, request),
     onSuccess: (_, request) => {
@@ -144,7 +145,7 @@ export function EditButtonForm({ folder, folders, button, onOpenFiles }: { folde
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null });
+        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null, dockable: button.hasPage ? dockable : null });
       }}
     >
       <label className="field">
@@ -157,6 +158,17 @@ export function EditButtonForm({ folder, folders, button, onOpenFiles }: { folde
       </label>
       <p className="muted small">Saved as a version of {folder.name}. The code keeps its file; a new name starts the statistics of the button anew.</p>
       {save.isPending && <p className="muted small">Saving…</p>}
+      {button.hasPage && (
+        <>
+          <label className="switch-row">
+            <span>Opens in the pane</span>
+            <button type="button" role="switch" aria-checked={dockable} className={`switch ${dockable ? "on" : ""}`} onClick={() => setDockable(!dockable)}>
+              <span className="switch-knob" />
+            </button>
+          </label>
+          <p className="muted small">A small interface — a few fields and a button — fits the pane. A big table or a report opens in a window (the default).</p>
+        </>
+      )}
       {!button.group && <MoveTo folder={folder} folders={folders} button={button} />}
       <button type="button" onClick={onOpenFiles}>
         Code, files and versions…

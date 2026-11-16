@@ -136,7 +136,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     ///     Renames a button or changes its tooltip in plugin.json, saved as a version. The command and its file keep their names:
     ///     the button is what the user sees, the code stays where it is.
     /// </summary>
-    public async Task<ExtensionState> UpdateButtonAsync(string id, string button, string name, string? tooltip, string? tab, string? panel, CancellationToken cancellationToken)
+    public async Task<ExtensionState> UpdateButtonAsync(string id, string button, string name, string? tooltip, string? tab, string? panel, CancellationToken cancellationToken, bool? dockable = null)
     {
         var descriptor = Own(id);
         var trimmed = name.Trim();
@@ -168,6 +168,18 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
                     node["tooltip"] = string.IsNullOrWhiteSpace(tooltip) ? trimmed : tooltip.Trim();
                     SetOrRemove(node, "tab", tab);
                     SetOrRemove(node, "panel", panel);
+                    if (dockable is { } small)
+                    {
+                        // A small interface lives in the pane; a window is the default, so «false» needs no field
+                        if (small)
+                        {
+                            node["dockable"] = true;
+                        }
+                        else
+                        {
+                            node.Remove("dockable");
+                        }
+                    }
                 }
             }
         });

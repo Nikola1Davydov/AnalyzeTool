@@ -16,6 +16,12 @@ public sealed record ExternalPage(string Key, string Url)
     /// <summary>Gets the virtual host name the folder is served under, e.g. <c>acme.ext.analysetool.local</c>.</summary>
     public string? HostName { get; init; }
 
+    /// <summary>
+    ///     The script for the page shown as a frame inside another page (the dock pane): run in every frame of that WebView, it
+    ///     must check where it runs.
+    /// </summary>
+    public string? FrameScript { get; init; }
+
     /// <summary>Gets the folder served under <see cref="HostName" />.</summary>
     public string? Folder { get; init; }
 

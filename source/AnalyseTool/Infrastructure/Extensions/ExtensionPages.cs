@@ -61,6 +61,43 @@ public static class ExtensionPages
                                        })();
                                        """;
 
+    /// <summary>
+    ///     <c>AT.invoke</c> for a page shown in a frame of the dock pane: it asks the pane (<c>postMessage</c> to the parent),
+    ///     which runs the command and answers. Runs in every frame of the pane's WebView, so it acts only on a page of an
+    ///     extension inside a frame.
+    /// </summary>
+    public const string FrameBridgeScript = """
+                                            (function () {
+                                              if (window.AT || window.parent === window || !/\.ext\.analysetool\.local$/.test(location.hostname)) return;
+                                              var pending = new Map();
+                                              var seq = 0;
+                                              window.addEventListener('message', function (e) {
+                                                var msg = e.data;
+                                                if (e.source !== window.parent || !msg || msg.type !== 'at-result' || !pending.has(msg.id)) return;
+                                                var call = pending.get(msg.id);
+                                                pending.delete(msg.id);
+                                                if (msg.error) {
+                                                  var error = new Error(msg.error.message || msg.error.code);
+                                                  error.code = msg.error.code;
+                                                  call.reject(error);
+                                                } else {
+                                                  call.resolve(msg.value === undefined ? null : msg.value);
+                                                }
+                                              });
+                                              window.AT = {
+                                                inRevit: true,
+                                                inPane: true,
+                                                invoke: function (command, payload) {
+                                                  return new Promise(function (resolve, reject) {
+                                                    var id = 'at-' + Date.now() + '-' + (++seq);
+                                                    pending.set(id, { resolve: resolve, reject: reject });
+                                                    window.parent.postMessage({ type: 'at-invoke', id: id, command: command, payload: payload == null ? null : payload }, '*');
+                                                  });
+                                                }
+                                              };
+                                            })();
+                                            """;
+
     /// <summary>The page of a button of an extension.</summary>
     /// <param name="extension">The extension.</param>
     /// <param name="button">The button; <see langword="null" /> for the extension's main page.</param>
@@ -72,7 +109,7 @@ public static class ExtensionPages
         var key = extension.Id + "/" + entry;
         if (!string.IsNullOrWhiteSpace(ui?.DevUrl))
         {
-            return new ExternalPage(key, ui!.DevUrl!) { InitScript = BridgeScript };
+            return new ExternalPage(key, ui!.DevUrl!) { InitScript = BridgeScript, FrameScript = FrameBridgeScript };
         }
 
         var host = HostName(extension.Id);
@@ -80,7 +117,8 @@ public static class ExtensionPages
         {
             HostName = host,
             Folder = extension.Directory,
-            InitScript = BridgeScript
+            InitScript = BridgeScript,
+            FrameScript = FrameBridgeScript
         };
     }
 

@@ -16,8 +16,9 @@ namespace AnalyseTool.Infrastructure.Ribbon;
 /// <param name="Text">What the command returned, as text; <see langword="null" /> when there is nothing to show.</param>
 /// <param name="Error">Why it failed.</param>
 /// <param name="ElapsedMilliseconds">How long the command took; 0 for a page.</param>
-/// <param name="OpenedPage">The button opened a page instead of running a command.</param>
-public sealed record ButtonRunResult(bool Ok, string? Text, string? Error, double ElapsedMilliseconds, bool OpenedPage);
+/// <param name="OpenedPage">The button opened a page (a window) instead of running a command.</param>
+/// <param name="PageUrl">A small page (<c>"dockable": true</c>) for the pane to show in a frame: its address.</param>
+public sealed record ButtonRunResult(bool Ok, string? Text, string? Error, double ElapsedMilliseconds, bool OpenedPage, string? PageUrl = null);
 
 /// <summary>
 ///     What a click on any ribbon button does — AnalyseTool's own or an extension's: count it, then run its command through the
@@ -55,17 +56,25 @@ public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageS
     ///     A click from the dock pane: counted like a ribbon click, but the result goes back to the caller (the pane shows it)
     ///     instead of a dialog. Opening a page needs the WPF thread: <paramref name="onUiThread" /> runs it there.
     /// </summary>
-    public async Task<ButtonRunResult> RunAsync(ExtensionDescriptor extension, ExtensionButton button, Func<Action, Task> onUiThread)
+    public async Task<ButtonRunResult> RunAsync(ExtensionDescriptor extension, ExtensionButton button, Func<Action, Task> onUiThread, JsonElement? input = null)
     {
         var command = string.IsNullOrWhiteSpace(button.Command) ? null : button.Command;
         usage.RecordClick(extension.Id, button.Name, command);
         if (command is null)
         {
+            if (IsDockable(extension, button) && ExtensionPages.Exists(extension, button))
+            {
+                // A small interface: the pane shows it in a frame, staying the pane around it
+                var page = ExtensionPages.For(extension, button);
+                await onUiThread(() => _ = windows.MountInDockPaneAsync(page)).ConfigureAwait(false);
+                return new ButtonRunResult(true, null, null, 0, false, page.Url);
+            }
+
             await onUiThread(() => OpenPage(extension, button)).ConfigureAwait(false);
             return new ButtonRunResult(true, null, null, 0, true);
         }
 
-        var (result, elapsed) = await ExecuteAsync(extension.Id, button, command, CommandSources.WebView).ConfigureAwait(false);
+        var (result, elapsed) = await ExecuteAsync(extension.Id, button, command, CommandSources.WebView, input).ConfigureAwait(false);
         return result.Error is null
             ? new ButtonRunResult(true, result.Value is { } value && Describe(value) is { Length: > 0 } text ? text : null, null, elapsed.TotalMilliseconds, false)
             : new ButtonRunResult(false, null, result.Error.Message, elapsed.TotalMilliseconds, false);
@@ -81,9 +90,10 @@ public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageS
         }
 
         var page = ExtensionPages.For(extension, button);
-        if (button?.Dockable ?? extension.Manifest.Ui?.Dockable ?? false)
+        if (button is not null && IsDockable(extension, button))
         {
-            windows.ShowDockPane(page);
+            // A small interface lives in the pane: the pane opens on it, with ‹ back to its folder
+            windows.ShowDockPane("/dock?page=" + Uri.EscapeDataString(ButtonUsageStore.Key(extension.Id, button.Name)));
             return;
         }
 
@@ -110,10 +120,17 @@ public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageS
         }
     }
 
-    private async Task<(CommandResult Result, TimeSpan Elapsed)> ExecuteAsync(string extension, ExtensionButton button, string command, string source)
+    /// <summary>A small interface (<c>"dockable": true</c> of the button, else of the folder) lives in the pane; the rest opens a window.</summary>
+    public static bool IsDockable(ExtensionDescriptor extension, ExtensionButton button)
+    {
+        return button.Dockable ?? extension.Manifest.Ui?.Dockable ?? false;
+    }
+
+    private async Task<(CommandResult Result, TimeSpan Elapsed)> ExecuteAsync(string extension, ExtensionButton button, string command, string source, JsonElement? input = null)
     {
         var stopwatch = Stopwatch.StartNew();
-        var result = await executor.ExecuteAsync(new CommandRequest(command, button.Args ?? default, source)).ConfigureAwait(false);
+        // The input of the form of the pane, else the fixed args of plugin.json
+        var result = await executor.ExecuteAsync(new CommandRequest(command, input ?? button.Args ?? default, source)).ConfigureAwait(false);
         usage.RecordResult(extension, button.Name, result.Error is null, stopwatch.Elapsed, result.Error?.Message);
         return (result, stopwatch.Elapsed);
     }

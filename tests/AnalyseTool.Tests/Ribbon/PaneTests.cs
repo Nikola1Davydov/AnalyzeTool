@@ -20,7 +20,7 @@ public sealed class PaneTests
         using var environment = new ExtensionTestEnvironment();
         await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
-        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths).ExecuteAsync(Context(nameof(GetPaneButtons)));
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry).ExecuteAsync(Context(nameof(GetPaneButtons)));
 
         var builtIn = overview.Folders[0];
         var walls = overview.Folders.Single(folder => folder.Id == "count-walls");
@@ -36,6 +36,44 @@ public sealed class PaneTests
             await Assert.That(walls.Buttons.Single().Key).IsEqualTo("count-walls/Count walls");
             await Assert.That(walls.Buttons.Single().Command).IsEqualTo("count-walls.CountWalls");
             await Assert.That(walls.Problems).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task Buttons_ACommandWithInputGetsAForm_ADockablePageOpensInThePane()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "List", null, ExtensionTemplate.Page, CancellationToken.None);
+        await environment.Manager.WriteFileAsync("sheets", "src/Renumber.cs", """
+            using AnalyseTool.Sdk;
+
+            [RevitCommand(Description = "Renumbers.", InputType = typeof(RenumberInput))]
+            public sealed class Renumber : IRevitTask
+            {
+                public Task<object?> ExecuteAsync(IRevitContext revitContext, CancellationToken cancellationToken) => Task.FromResult<object?>("ok");
+            }
+
+            public sealed class RenumberInput
+            {
+                public int Start { get; set; } = 101;
+            }
+            """, CancellationToken.None);
+        await environment.Manager.UpdateButtonAsync("sheets", "List", "List", null, null, null, CancellationToken.None, dockable: true);
+
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry).ExecuteAsync(Context(nameof(GetPaneButtons)));
+
+        var buttons = overview.Folders.Single(folder => folder.Id == "sheets").Buttons;
+        var renumber = buttons.Single(button => button.Name == "Renumber");
+        var list = buttons.Single(button => button.Name == "List");
+        using (Assert.Multiple())
+        {
+            await Assert.That(renumber.Input).IsNotNull();
+            await Assert.That(renumber.Input!.Value.GetProperty("properties").EnumerateObject().Select(property => property.Name.ToLowerInvariant())).Contains("start");
+            await Assert.That(list.Input).IsNull();
+            await Assert.That(list.HasPage).IsTrue();
+            await Assert.That(list.Dockable).IsTrue();
         }
     }
 

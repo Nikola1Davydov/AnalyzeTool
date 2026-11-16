@@ -30,6 +30,12 @@ public interface IWindows
 
     /// <summary>Shows a page that is not a route of ClientApp in the dock pane.</summary>
     void ShowDockPane(ExternalPage page);
+
+    /// <summary>
+    ///     Lets the ClientApp page of the dock pane show an external page in a frame (its folder and frame script), the pane
+    ///     staying the pane around it.
+    /// </summary>
+    Task MountInDockPaneAsync(ExternalPage page);
 }
 
 /// <summary>One window per route: showing an open route brings its window to the front instead of opening a second one.</summary>
@@ -96,6 +102,16 @@ internal sealed class WindowManager(
 
         dockPane.Show(page);
         RevitContext.UiApplication.GetDockablePane(dockPane.Id).Show();
+    }
+
+    public Task MountInDockPaneAsync(ExternalPage page)
+    {
+        if (dockPane is null)
+        {
+            throw new InvalidOperationException("No dock pane is registered: add it with builder.AddWebView(application, w => w.DockPane(id, title, route)).");
+        }
+
+        return dockPane.MountAsync(page);
     }
 
     public void ShowDockPane(string route)

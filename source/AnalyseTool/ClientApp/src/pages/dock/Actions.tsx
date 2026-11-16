@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { bridge, CommandError } from "revit-bridge";
 import { type ButtonRunResult, type PaneButton, type PaneFolder, paneCommands } from "../../api/pane";
+import { CommandForm } from "./CommandForm";
+import { useProfile } from "./profile";
 import { spring } from "./Tile";
 
 /** A sheet. With `submit` it is a form: «Cancel» on the left, the action on the right — it submits the form with the id
@@ -42,11 +44,12 @@ function duration(milliseconds: number) {
  * The actions of the pane and the layers over the grid: a sheet (a result, errors, a list of actions) and a toast above the
  * dock (the result of a run). Every tile — of the grid and of the dock — goes through `activate`.
  */
-export function ActionsProvider({ children }: { children: ReactNode }) {
+export function ActionsProvider({ children, onOpenPage }: { children: ReactNode; onOpenPage?: (button: PaneButton, url: string) => void }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [toastState, setToast] = useState<Toast | null>(null);
   const [running, setRunning] = useState<Set<string>>(new Set());
   const toastTimer = useRef<number | undefined>(undefined);
+  const { profile, update: updateProfile } = useProfile();
 
   const toast = useCallback((text: string, kind: "ok" | "error" = "ok", detail?: ReactNode) => {
     window.clearTimeout(toastTimer.current);
@@ -55,10 +58,14 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const run = useCallback(
-    async (button: PaneButton) => {
+    async (button: PaneButton, input?: Record<string, unknown>) => {
       setRunning((current) => new Set(current).add(button.key));
       try {
-        const result = await bridge.invoke<ButtonRunResult>(paneCommands.RunButton, { key: button.key });
+        const result = await bridge.invoke<ButtonRunResult>(paneCommands.RunButton, { key: button.key, input: input ?? null });
+        if (result.pageUrl) {
+          onOpenPage?.(button, result.pageUrl);
+          return;
+        }
         if (result.openedPage) return;
         if (!result.ok) {
           const message = result.error ?? "Failed";
@@ -82,7 +89,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [toast],
+    [toast, onOpenPage],
   );
 
   const activate = useCallback(
@@ -92,9 +99,29 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
         return;
       }
       // An extension with compiler errors still runs its last good build: the problems stay one tap away on the folder
+      // A command that takes input: its form, built from the schema — the last values first
+      if (button.input) {
+        setSheet({
+          title: button.name,
+          submit: "Run",
+          body: (
+            <CommandForm
+              schema={button.input}
+              description={button.tooltip}
+              initial={profile.inputs[button.key]}
+              onRun={(values) => {
+                setSheet(null);
+                updateProfile((value) => ({ ...value, inputs: { ...value.inputs, [button.key]: values } }));
+                void run(button, values);
+              }}
+            />
+          ),
+        });
+        return;
+      }
       void run(button);
     },
-    [run],
+    [run, profile.inputs, updateProfile],
   );
 
   const actions = useMemo<Actions>(

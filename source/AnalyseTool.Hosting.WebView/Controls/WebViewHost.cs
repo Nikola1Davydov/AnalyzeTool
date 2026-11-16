@@ -48,6 +48,8 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
     private WebViewTransport? _transport;
     private string _route;
     private ExternalPage? _page;
+    private readonly List<ExternalPage> _mounted = [];
+    private readonly HashSet<string> _frameScripts = new(StringComparer.Ordinal);
     private bool _initializing;
 
     internal WebViewHost(WebViewServices services, string route)
@@ -107,6 +109,11 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
             await webView.EnsureCoreWebView2Async(await _services.Environment.GetAsync());
 
             Configure(webView.CoreWebView2);
+            foreach (var mounted in _mounted.ToList())
+            {
+                await ApplyMountAsync(webView.CoreWebView2, mounted);
+            }
+
             _transport = new WebViewTransport(webView.CoreWebView2, Dispatcher, _services.Executor,
                 // An external page is held to its own origin by the navigation guard; ClientApp by its source
                 _services.Security.RestrictNavigation && _page is null ? _services.Source : null, _services.SerializerOptions.Value, _services.Logger);
@@ -130,6 +137,37 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
         finally
         {
             _initializing = false;
+        }
+    }
+
+    /// <summary>
+    ///     Lets this WebView show an external page in a frame: its folder under its virtual host, and its frame script. The
+    ///     ClientApp page then puts it in an <c>iframe</c>.
+    /// </summary>
+    public async Task MountAsync(ExternalPage page)
+    {
+        if (!_mounted.Any(item => item.Key == page.Key))
+        {
+            _mounted.Add(page);
+        }
+
+        if (_webView?.CoreWebView2 is { } core)
+        {
+            await ApplyMountAsync(core, page);
+        }
+    }
+
+    private async Task ApplyMountAsync(CoreWebView2 core, ExternalPage page)
+    {
+        if (page.HostName is not null && page.Folder is not null)
+        {
+            core.SetVirtualHostNameToFolderMapping(page.HostName, page.Folder, CoreWebView2HostResourceAccessKind.Allow);
+        }
+
+        // Scripts on document creation run in every frame too; once per WebView is enough
+        if (page.FrameScript is not null && _frameScripts.Add(page.FrameScript))
+        {
+            await core.AddScriptToExecuteOnDocumentCreatedAsync(page.FrameScript);
         }
     }
 

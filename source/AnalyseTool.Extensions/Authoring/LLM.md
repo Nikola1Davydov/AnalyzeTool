@@ -207,7 +207,7 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
 | `ui.button.ribbon` / `ui.button.pane` | — | `false` keeps the button off the Revit ribbon (a tile of the AnalyseTool pane only) or out of the pane (ribbon only). Both default to on. Use `"ribbon": false` for buttons used now and then, so the ribbon stays short. |
 | `ui.button.args` | — | The arguments the click passes to `command` — the JSON a page would send with `AT.invoke`, e.g. `{ "category": "OST_Doors" }`. Any pipeline command works, AnalyseTool's own too: `"command": "OpenWindow", "args": { "route": "/statistics" }`. AnalyseTool declares its own ribbon buttons exactly this way. |
-| `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
+| `ui.dockable` | — | `true` = a **small interface**: the page opens inside the AnalyseTool pane (a screen with ‹ back to its folder), in a frame that provides `AT.invoke`. Without it (the default) a page opens in its own window. Rule: a few fields and a button → `dockable: true`; a big table, a report, a comparison → a window. A command that only needs a few values needs no page at all: give it an `InputType` and the pane builds the form from its schema. |
 | `schema` | — | Manifest FORMAT version, not yours. Absent = 1. Set `2` when you use `ui.buttons`. Older schemas keep loading. |
 
 ### 3.1 Several buttons — `ui.buttons`
