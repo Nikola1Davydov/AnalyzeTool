@@ -42,6 +42,8 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "release=$(if ($released) { 'false' } else { 'true' })" >> $env:GITHUB_OUTPUT
           if ($released) { "v$version is released already: nothing to do. Raise Build.Version to release." }
+          # git rev-parse fails for a missing tag; that is the normal case, not a failure of the step
+          exit 0
 
       - name: The changelog has this version
         if: steps.version.outputs.release == 'true'

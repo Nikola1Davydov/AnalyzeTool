@@ -175,6 +175,15 @@ $foreignTypes = "\b(?:$([regex]::Escape($modulesName))|$([regex]::Escape($addinN
 Test-Code (Join-Path $source "$addinName.Launcher") $foreignTypes `
     'the Launcher must not use types of the add-in or the modules: they would load outside its AssemblyLoadContext and bypass the isolation'
 
+# A source file .gitignore hides builds here and is missing on CI (a folder named Packages fell under the NuGet rule)
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    $ignored = git -C $Root ls-files --others --ignored --exclude-standard -- source tests build install samples 2>$null |
+        Where-Object { $_ -match '\.(cs|csproj|props|targets|ts|tsx|ps1)$' -and $_ -notmatch '/(bin|obj|node_modules|dist)/' }
+    foreach ($file in $ignored) {
+        $violations.Add("${file}: ignored by .gitignore, so it is not in the repository — CI and other clones do not have it")
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Host $_ }
     Write-Host "Project boundaries: $($violations.Count) violation(s)"
