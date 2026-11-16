@@ -3,8 +3,9 @@ name: Release
 # A tag vX.Y.Z publishes AnalyseTool X.Y.Z: the whole pipeline with the installers (`build -- pack`), then a GitHub
 # release with both MSIs, the Autodesk bundle and the section of CHANGELOG.md of that version as its notes.
 #   git tag v2.0.0 && git push origin v2.0.0
-# or on GitHub: Releases › Draft a new release › a new tag v2.0.0 on main › Publish — the release gets the files a few
-# minutes later. CHANGELOG.md must have «## [2.0.0] / <date>» (not «unreleased») on that commit, or nothing is published.
+# or a tag made on GitHub (Releases › Choose a tag › create v2.0.0 on main) — the workflow then makes the release itself; a
+# release that already exists for the tag stops it. CHANGELOG.md must have «## [2.0.0] / <date>» (not «unreleased») on
+# that commit, or nothing is published.
 # GitVersion takes the version from the tag. A tag with a suffix (v2.1.0-beta.1) makes a pre-release.
 
 on:
@@ -76,15 +77,6 @@ jobs:
         run: |
           $version = "${{ steps.notes.outputs.version }}"
           $files = @(Get-ChildItem output -Filter "AnalyseTool-$version-*.msi" | ForEach-Object FullName) + "output/AnalyseTool-$version.bundle.zip"
-          $tag = "${{ github.ref_name }}"
-          # A release made on GitHub (Releases › Draft a new release, with a new tag) already exists: it gets the files, and the
-          # changelog as its notes when they were left empty. A tag pushed from git gets a new release.
-          gh release view $tag --json body *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag @files --clobber
-            $body = gh release view $tag --json body --jq .body
-            if ([string]::IsNullOrWhiteSpace($body)) { gh release edit $tag --notes-file release-notes.md }
-          } else {
-            $prerelease = if ($version -match "-") { "--prerelease" } else { "--latest" }
-            gh release create $tag @files --title "AnalyseTool $version" --notes-file release-notes.md $prerelease
-          }
+          # The workflow makes the release; one that exists already (made by hand) stops it here
+          $prerelease = if ($version -match "-") { "--prerelease" } else { "--latest" }
+          gh release create "${{ github.ref_name }}" @files --title "AnalyseTool $version" --notes-file release-notes.md $prerelease

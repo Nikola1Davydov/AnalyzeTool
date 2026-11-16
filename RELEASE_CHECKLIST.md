@@ -66,7 +66,7 @@ the release itself.
 - [ ] `rewrite` (or `dev`) merged into `main`, CHANGELOG dated (`## [X.Y.Z] / <date>`).
 - [ ] Tag `vX.Y.Z` on `main` — `git tag vX.Y.Z && git push origin vX.Y.Z`, or on GitHub Releases › Draft a new release
       with a new tag. `.github/workflows/Release.yml` builds, tests, packs and attaches both MSIs and the bundle, with the
-      changelog of the version as the notes (a release made on GitHub keeps its own notes if it has any). A suffix
+      changelog of the version as the notes; it makes the release itself, and a release that already exists for the tag stops it. A suffix
       (`v2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
 - [ ] **The Sdk package, only if its contract changed**: the release does not push it. Bump its version, take the
       `.nupkg` of a green build, `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`, then
