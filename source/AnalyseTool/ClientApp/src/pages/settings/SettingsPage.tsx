@@ -7,12 +7,6 @@ import {
   Radio,
   Spinner,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   Text,
   Tooltip,
 } from "@fluentui/react-components";
@@ -186,76 +180,56 @@ function FoldersSection() {
       {roots.isPending && <Spinner size="small" />}
       {roots.isError && <Text className="error-text">{errorText(roots.error)}</Text>}
       {roots.data && (
-        <div className="table-scroll">
-          <Table size="small">
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Folder</TableHeaderCell>
-                <TableHeaderCell className="col-kind">Kind</TableHeaderCell>
-                <TableHeaderCell className="col-new">New buttons</TableHeaderCell>
-                <TableHeaderCell className="col-actions" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roots.data.roots.map((root) => {
-                const authoring = root.path === roots.data.authoringRoot;
-                return (
-                  <TableRow key={root.path}>
-                    <TableCell>
-                      <Link className="mono small path" onClick={() => openPath(root.path).catch((error) => notify.failed(error))}>
-                        {root.path}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <span className="badges">
-                        <Badge appearance="outline" size="small" color={root.zone === "Dev" ? "brand" : "informative"}>
-                          {root.zone === "Dev" ? "yours" : "installed"}
+        <div className="list-card">
+          {roots.data.roots.map((root) => {
+            const authoring = root.path === roots.data.authoringRoot;
+            return (
+              <div key={root.path} className="list-item">
+                <div className="list-row">
+                  <div className="list-main">
+                    <Link className="mono small path" onClick={() => openPath(root.path).catch((error) => notify.failed(error))}>
+                      {root.path}
+                    </Link>
+                    <span className="badges list-badges">
+                      <Badge appearance="outline" size="small" color={root.zone === "Dev" ? "brand" : "informative"}>
+                        {root.zone === "Dev" ? "yours" : "installed"}
+                      </Badge>
+                      {root.isDefault && (
+                        <Badge appearance="tint" size="small" color="subtle">
+                          built-in
                         </Badge>
-                        {root.isDefault && (
-                          <Badge appearance="tint" size="small" color="subtle">
-                            built-in
-                          </Badge>
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {root.zone === "Dev" ? (
-                        <Radio
-                          checked={authoring}
-                          label={authoring ? "created here" : undefined}
-                          disabled={setAuthoring.isPending}
-                          onChange={() => setAuthoring.mutate({ path: root.path })}
-                          aria-label="Create new buttons here"
-                        />
-                      ) : (
-                        <span className="muted small">packages</span>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip content="Open in Explorer" relationship="label">
-                        <Button
-                          size="small"
-                          appearance="subtle"
-                          icon={<FolderOpen16Regular />}
-                          onClick={() => openPath(root.path).catch((error) => notify.failed(error))}
-                        />
+                      {root.zone !== "Dev" && <span className="muted small">packages are installed here</span>}
+                    </span>
+                    {root.zone === "Dev" && (
+                      <Radio
+                        className="list-radio"
+                        checked={authoring}
+                        label={authoring ? "New buttons are created here" : "Create new buttons here"}
+                        disabled={setAuthoring.isPending}
+                        onChange={() => setAuthoring.mutate({ path: root.path })}
+                      />
+                    )}
+                  </div>
+                  <div className="list-trailing">
+                    <Tooltip content="Open in Explorer" relationship="label">
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<FolderOpen16Regular />}
+                        onClick={() => openPath(root.path).catch((error) => notify.failed(error))}
+                      />
+                    </Tooltip>
+                    {!root.isDefault && (
+                      <Tooltip content="Stop loading this folder" relationship="label">
+                        <Button size="small" appearance="subtle" icon={<Delete16Regular />} onClick={() => void removeFolder(root.path)} />
                       </Tooltip>
-                      {!root.isDefault && (
-                        <Tooltip content="Stop loading this folder" relationship="label">
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<Delete16Regular />}
-                            onClick={() => void removeFolder(root.path)}
-                          />
-                        </Tooltip>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

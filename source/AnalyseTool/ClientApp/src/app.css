@@ -256,6 +256,9 @@ code.block,
 .section-head h2 {
   margin: 0;
 }
+.section-head > .fui-Button {
+  flex-shrink: 0;
+}
 .key-values {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -343,33 +346,92 @@ code.block,
   border-radius: var(--borderRadiusLarge);
   margin-top: 12px;
 }
-.extensions-table .col-kind {
-  width: 110px;
+/* ---- Lists of the pane: a white card of rows with inset hairlines, instead of a table ---------------- */
+
+/* <div class="list-card">
+     <div class="list-item">                       one entry, separated from the previous by a hairline
+       <div class="list-row">
+         <div class="list-main">…</div>            title, a muted line, text, badges — wraps freely
+         <div class="list-trailing">…</div>        switch, buttons — never shrinks
+       </div>
+       <div class="list-detail">…</div>            optional block under the row (problems, notes)
+     </div>
+   </div> */
+.list-card {
+  background: var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusLarge);
+  margin-top: 12px;
+  overflow: hidden;
 }
-.extensions-table .col-commands {
-  width: 22%;
+.panel .list-card {
+  margin: 8px -4px 0;
+  background: var(--colorNeutralBackground2);
 }
-.col-switch {
-  width: 64px;
+.list-item {
+  position: relative;
+  padding: 10px 12px 10px 16px;
 }
-.col-actions {
-  width: 80px;
+.list-item + .list-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: 1px solid var(--colorNeutralStroke2);
 }
-.col-new {
-  width: 150px;
+.list-item.off .list-main {
+  opacity: 0.65;
 }
-.extensions-table td {
-  vertical-align: top;
-  padding-top: 6px;
-  padding-bottom: 6px;
+.list-row {
+  display: flex;
+  gap: 8px 12px;
+  align-items: flex-start;
 }
-.problems-row td {
-  padding-top: 0;
-  padding-left: 16px;
+.list-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-wrap: anywhere;
 }
-.problems-row:hover,
-.row-with-problems {
-  border-bottom: none;
+.list-title {
+  font-size: 15px;
+  font-weight: var(--fontWeightSemibold);
+  text-align: left;
+}
+.list-meta {
+  overflow-wrap: anywhere;
+}
+.list-badges {
+  margin-top: 2px;
+}
+/* The badge groups (KindBadge, StatusBadges…) flow as one wrapping row */
+.list-badges .badges {
+  display: contents;
+}
+.list-radio {
+  margin: 0 0 -6px -8px;
+}
+.list-trailing {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.list-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.list-detail.problems {
+  background: var(--colorPaletteRedBackground1);
+}
+.list-detail .diagnostics {
+  margin: 0;
 }
 
 .diagnostics {
@@ -1442,11 +1504,42 @@ code.block,
     color: var(--colorNeutralForeground3);
     font-size: 12px;
   }
+  .key-values > :first-child {
+    margin-top: 0;
+  }
   .form-row > .fui-Field {
     min-width: 100%;
   }
   .usage-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .list-item {
+    padding: 10px 8px 10px 12px;
+  }
+  .list-item + .list-item::before {
+    left: 12px;
+  }
+  /* Statistics: the sparkline, the last use and the average leave the table; the last use moves under the name */
+  .usage-table .wide-only {
+    display: none;
+  }
+  .usage-table .col-clicks {
+    width: 96px;
+  }
+  .usage-table .col-number {
+    width: 52px;
+  }
+  .usage-toolbar .fui-Input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+.narrow-only {
+  display: none;
+}
+@media (max-width: 600px) {
+  .narrow-only {
+    display: inline;
   }
 }
 

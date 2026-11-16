@@ -11,12 +11,6 @@ import {
   MessageBarTitle,
   Spinner,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
   Tooltip,
 } from "@fluentui/react-components";
 import {
@@ -125,31 +119,17 @@ export function ExtensionsPage() {
       )}
 
       {extensions.length > 0 && (
-        <div className="table-scroll">
-          <Table size="small" className="extensions-table">
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Extension</TableHeaderCell>
-                <TableHeaderCell className="col-kind">Kind</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="col-commands">Buttons & commands</TableHeaderCell>
-                <TableHeaderCell className="col-switch">On</TableHeaderCell>
-                <TableHeaderCell className="col-actions" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {extensions.map((extension) => (
-                <ExtensionRows key={extension.id} extension={extension} actions={actions} />
-              ))}
-            </TableBody>
-          </Table>
+        <div className="list-card">
+          {extensions.map((extension) => (
+            <ExtensionItem key={extension.id} extension={extension} actions={actions} />
+          ))}
         </div>
       )}
     </Page>
   );
 }
 
-function ExtensionRows({
+function ExtensionItem({
   extension,
   actions,
 }: {
@@ -158,51 +138,44 @@ function ExtensionRows({
 }) {
   const notify = useNotify();
   const detail = `/extensions/${encodeURIComponent(extension.id)}`;
-  const hasProblems = extension.errors.length > 0 || extension.diagnostics.some((d) => d.severity === "error");
+  const hasProblems = extension.errors.length > 0 || extension.diagnostics.length > 0;
 
   return (
-    <>
-      <TableRow className={hasProblems ? "row-with-problems" : undefined}>
-        <TableCell>
-          <div className="cell-stack">
-            <Link href={href(detail)} className="strong">
-              {extension.name}
-            </Link>
-            <span className="muted small">
-              <span className="mono">{extension.id}</span> · v{extension.version}
-              {extension.publisher && <> · {extension.publisher}</>}
-            </span>
-            {extension.description && <span className="small">{extension.description}</span>}
-          </div>
-        </TableCell>
-        <TableCell>
-          <KindBadge extension={extension} />
-        </TableCell>
-        <TableCell>
-          <span className="badges">
+    <div className={extension.enabled ? "list-item" : "list-item off"}>
+      <div className="list-row">
+        <div className="list-main">
+          <Link href={href(detail)} className="list-title">
+            {extension.name}
+          </Link>
+          <span className="muted small list-meta">
+            <span className="mono">{extension.id}</span> · v{extension.version}
+            {extension.publisher && <> · {extension.publisher}</>}
+          </span>
+          {extension.description && <span className="small">{extension.description}</span>}
+          <span className="badges list-badges">
+            <KindBadge extension={extension} />
             <StatusBadges extension={extension} />
             <VersionBadge extension={extension} />
           </span>
-        </TableCell>
-        <TableCell>
-          <div className="cell-stack small">
-            {extension.buttons.length > 0 && <span>{extension.buttons.join(", ")}</span>}
-            {extension.commands.length > 0 && (
-              <Tooltip content={extension.commands.join("\n")} relationship="description">
-                <span className="muted">{plural(extension.commands.length, "command")}</span>
-              </Tooltip>
-            )}
-          </div>
-        </TableCell>
-        <TableCell>
+          {(extension.buttons.length > 0 || extension.commands.length > 0) && (
+            <span className="muted small">
+              {extension.buttons.length > 0 && <>Buttons: {extension.buttons.join(", ")}</>}
+              {extension.buttons.length > 0 && extension.commands.length > 0 && " · "}
+              {extension.commands.length > 0 && (
+                <Tooltip content={extension.commands.join("\n")} relationship="description">
+                  <span>{plural(extension.commands.length, "command")}</span>
+                </Tooltip>
+              )}
+            </span>
+          )}
+        </div>
+        <div className="list-trailing">
           <Switch
             checked={extension.enabled}
             disabled={actions.setEnabled.isPending}
             onChange={(_, data) => actions.setEnabled.mutate({ id: extension.id, enabled: data.checked })}
             aria-label={extension.enabled ? "Turn off" : "Turn on"}
           />
-        </TableCell>
-        <TableCell>
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Button appearance="subtle" size="small" icon={<MoreHorizontal16Regular />} aria-label="More" />
@@ -227,24 +200,22 @@ function ExtensionRows({
               </MenuList>
             </MenuPopover>
           </Menu>
-        </TableCell>
-      </TableRow>
-      {(extension.errors.length > 0 || extension.diagnostics.length > 0) && (
-        <TableRow className="problems-row">
-          <TableCell colSpan={6}>
-            {extension.errors.map((error, index) => (
-              <div key={index} className="error-text small">
-                {error}
-              </div>
-            ))}
-            <DiagnosticsList
-              diagnostics={extension.diagnostics}
-              max={3}
-              onOpen={(diagnostic) => navigate(detail, { tab: "files", file: diagnostic.file, line: diagnostic.line })}
-            />
-          </TableCell>
-        </TableRow>
+        </div>
+      </div>
+      {hasProblems && (
+        <div className="list-detail problems">
+          {extension.errors.map((error, index) => (
+            <div key={index} className="error-text small">
+              {error}
+            </div>
+          ))}
+          <DiagnosticsList
+            diagnostics={extension.diagnostics}
+            max={3}
+            onOpen={(diagnostic) => navigate(detail, { tab: "files", file: diagnostic.file, line: diagnostic.line })}
+          />
+        </div>
       )}
-    </>
+    </div>
   );
 }

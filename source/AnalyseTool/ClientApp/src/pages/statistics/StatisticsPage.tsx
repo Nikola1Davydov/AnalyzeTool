@@ -165,9 +165,9 @@ export function StatisticsPage() {
                   <TableRow>
                     {header("button", "Button")}
                     {header("clicks", "Clicks", "col-clicks")}
-                    <TableHeaderCell className="col-days">Last 30 days</TableHeaderCell>
-                    {header("lastClick", "Last used", "col-time")}
-                    {header("average", "Avg. run", "col-number")}
+                    <TableHeaderCell className="col-days wide-only">Last 30 days</TableHeaderCell>
+                    {header("lastClick", "Last used", "col-time wide-only")}
+                    {header("average", "Avg. run", "col-number wide-only")}
                     {header("failures", "Failed", "col-number")}
                   </TableRow>
                 </TableHeader>
@@ -219,6 +219,7 @@ function StatRow({ button, most }: { button: ButtonStatistic; most: number }) {
           </span>
           <span className="muted small">
             {source} · {button.command ? <span className="mono">{button.command}</span> : "opens a page"}
+            <span className="narrow-only"> · {button.lastClick ? `used ${relativeTime(button.lastClick)}` : "never used"}</span>
           </span>
         </div>
       </TableCell>
@@ -230,10 +231,10 @@ function StatRow({ button, most }: { button: ButtonStatistic; most: number }) {
           </span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="wide-only">
         <Sparkline days={button.last30Days} />
       </TableCell>
-      <TableCell>
+      <TableCell className="wide-only">
         {button.lastClick ? (
           <Tooltip content={fullTime(button.lastClick)} relationship="description">
             <span>{relativeTime(button.lastClick)}</span>
@@ -242,7 +243,7 @@ function StatRow({ button, most }: { button: ButtonStatistic; most: number }) {
           <span className="muted">never</span>
         )}
       </TableCell>
-      <TableCell>{button.averageMilliseconds === null ? <span className="muted">—</span> : duration(button.averageMilliseconds)}</TableCell>
+      <TableCell className="wide-only">{button.averageMilliseconds === null ? <span className="muted">—</span> : duration(button.averageMilliseconds)}</TableCell>
       <TableCell>
         {button.failures > 0 ? (
           <Tooltip
