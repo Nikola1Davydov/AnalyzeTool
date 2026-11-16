@@ -61,6 +61,8 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
 **Buttons** opens the pane, laid out like the home screen of a phone — and it is the map of your ribbon:
 
+<p align="center"><img src="img/Pane.gif" width="860" alt="The pane in Revit: a folder opens, edit mode, ☆ flies a button into the dock, the button is dragged into another folder, a new folder starts with its first button" /></p>
+
 - **A folder is a tab of the Revit ribbon, its sections are the panels.** New folder, New button, + New panel — nothing to
   set by hand.
 - **Right-click to edit**: drag a button between sections; drag it **up** to «into another folder» (the folders show, drop
