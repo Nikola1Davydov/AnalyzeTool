@@ -73,6 +73,7 @@ public static partial class Host
         builder.AddExtensions(application.ControlledApplication.VersionNumber);
         //The ribbon: AnalyseTool's own buttons and the extensions', declared and run the same way, every click counted
         builder.Services.AddSingleton<ButtonCatalog>();
+        builder.Services.AddSingleton<RibbonFavorites>();
         builder.Services.AddSingleton<ButtonRunner>();
         builder.Services.AddSingleton<AppRibbon>();
 

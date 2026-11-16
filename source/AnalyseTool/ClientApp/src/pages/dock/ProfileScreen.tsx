@@ -70,13 +70,15 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
   const file = useRef<HTMLInputElement | null>(null);
 
   const dock = profile.dock.map((key) => ({ key, found: findButton(overview.folders, key) }));
-  const moveDock = (index: number, delta: number) =>
+  const ribbon = profile.ribbon.map((key) => ({ key, found: findButton(overview.folders, key) }));
+  const moveIn = (list: "dock" | "ribbon") => (index: number, delta: number) =>
     update((current) => {
-      const items = [...current.dock];
+      const items = [...current[list]];
       const [item] = items.splice(index, 1);
       items.splice(Math.max(0, Math.min(items.length, index + delta)), 0, item);
-      return { ...current, dock: items };
+      return { ...current, [list]: items };
     });
+  const moveDock = moveIn("dock");
 
   const importFile = async (selected: File | undefined) => {
     if (!selected) return;
@@ -179,6 +181,41 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
             </button>
           </>
         )}
+      </section>
+
+      <section>
+        <h2>On the Revit ribbon</h2>
+        {ribbon.length === 0 && (
+          <p className="muted small">No stars yet. Right-click a button and tap ☆: it goes on the ribbon, in the Favourites panel of the AnalyseTool tab.</p>
+        )}
+        <ul className="dock-list">
+          {ribbon.map(({ key, found }, index) => (
+            <li key={key}>
+              {found ? (
+                <TileIcon glyph={found.button.glyph} image={found.button.image} title={found.button.name} />
+              ) : (
+                <span className="tile-icon letters gone">?</span>
+              )}
+              <span className="dock-name">
+                {found?.button.name ?? key}
+                <span className="muted small"> · {found?.folder.name ?? "gone"}</span>
+              </span>
+              <button className="icon-button" title="Left" disabled={index === 0} onClick={() => moveIn("ribbon")(index, -1)}>
+                ↑
+              </button>
+              <button className="icon-button" title="Right" disabled={index === ribbon.length - 1} onClick={() => moveIn("ribbon")(index, 1)}>
+                ↓
+              </button>
+              <button
+                className="icon-button"
+                title="Remove from the ribbon"
+                onClick={() => update((current) => ({ ...current, ribbon: current.ribbon.filter((item) => item !== key) }))}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section>

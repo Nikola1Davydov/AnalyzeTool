@@ -1507,3 +1507,35 @@
 .tile.editing .tile-badge {
   display: none;
 }
+
+/* The star: on the Revit ribbon. A small mark on the tile; in the edit mode a badge at the bottom right toggles it */
+.tile-star {
+  position: absolute;
+  /* Inside the corner: the face clips what sticks out */
+  left: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1;
+  color: #5c4400;
+  background: #ffcc00;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  pointer-events: none;
+}
+
+.edit-badge.star {
+  top: calc(var(--tile) * 0.72 - 16px);
+  left: auto;
+  right: calc(50% - var(--tile) * 0.36 - 7px);
+  font-size: 13px;
+  background: rgb(120 120 128 / 85%);
+}
+
+.edit-badge.star.on {
+  background: #ffcc00;
+  color: #5c4400;
+}

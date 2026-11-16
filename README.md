@@ -64,7 +64,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 The **AnalyseTool** tab keeps three buttons:
 
-- **AnalyseTool** — the pane: every button (AnalyseTool's own and yours) as a tile, each extension a folder, with a dock of favourites, your own order, tile size and theme, and the statistics. Right-click a tile to pin it to the dock or move it.
+- **AnalyseTool** — the pane: every button (AnalyseTool's own and yours) as a tile, each extension a folder, with a dock of favourites, your own order, tile size and theme, and the statistics. Right-click a tile: **+** keeps it in the dock of the pane, **☆** puts it on the Revit ribbon (a Favourites panel on the AnalyseTool tab); drag to move.
 - **New button** — a button with a C# command (and, if you want, a page), compiled by AnalyseTool, with its first version saved.
 - **Refresh** — reads every extension folder again and rebuilds the buttons (saved files reload by themselves).
 

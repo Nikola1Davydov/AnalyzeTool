@@ -45,6 +45,8 @@ Debug builds); the user's are in their extension folders.
 * `ButtonCatalog` lists the folders: the built-in ones first, then every extension that has buttons.
 * A button says where it shows: `"ribbon": false` makes it a tile of the pane only, `"pane": false` a ribbon button only.
   AnalyseTool's own ribbon is three buttons — the pane, New button, Refresh (`RefreshButtons`); the rest are tiles.
+* Stars of the pane: the `ribbon` array of `pane-profile.json` (`RibbonFavorites`). Starred buttons get a «Favourites»
+  panel right after AnalyseTool's own, whatever their `"ribbon"` says; saving the profile rebuilds the ribbon.
 * `AppRibbon` builds the buttons with AdWindows (the Revit API cannot add or remove buttons after startup), on the
   AnalyseTool tab unless a button names another, and rebuilds them on `ExtensionHost.Changed`.
 * `ButtonRunner` handles every click: it counts it (`ButtonUsageStore`, `%LOCALAPPDATA%\AnalyseToolutton-usage.json`),

@@ -318,7 +318,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
           />
         )}
       </div>
-      <p className="muted small center">Right-click a button to pin it to the dock or move it.</p>
+      <p className="muted small center">Right-click a button: + keeps it in the dock below, ☆ puts it on the Revit ribbon.</p>
     </>
   );
 }
@@ -409,6 +409,8 @@ function ButtonTile(props: {
   const { folder, button } = props;
   const actions = useActions();
   const edit = useContext(EditContext);
+  const { profile, update } = useProfile();
+  const starred = profile.ribbon.includes(button.key);
   return (
     <Tile
       dragKey={props.dragKey}
@@ -422,8 +424,17 @@ function ButtonTile(props: {
           ? null
           : { title: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error")) }
       }
+      star={{
+        on: starred,
+        title: starred ? "Remove from the Revit ribbon" : "Put on the Revit ribbon (Favourites panel)",
+        onClick: () =>
+          update((value) => ({
+            ...value,
+            ribbon: value.ribbon.includes(button.key) ? value.ribbon.filter((item) => item !== button.key) : [...value.ribbon, button.key],
+          })),
+      }}
       label={button.name}
-      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}`}
+      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${starred ? "\n★ On the Revit ribbon" : ""}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
       badge={folder.problems.length > 0 ? "error" : null}
       busy={actions.isRunning(button.key)}

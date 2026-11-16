@@ -30,13 +30,16 @@ namespace AnalyseTool.Infrastructure.Ribbon;
 ///     </para>
 ///     <para>Only buttons, panels and tabs created here are ever removed.</para>
 /// </remarks>
-public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host, ButtonRunner runner, ILogger<AppRibbon> logger)
+public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host, RibbonFavorites favorites, ButtonRunner runner, ILogger<AppRibbon> logger)
 {
     /// <summary>The tab of the add-in.</summary>
     public const string DefaultTab = "AnalyseTool";
 
     /// <summary>The panel of buttons that name none.</summary>
     public const string DefaultPanel = "Extensions";
+
+    /// <summary>The panel of the buttons starred in the pane, right after AnalyseTool's own.</summary>
+    public const string FavoritesPanel = "Favourites";
 
     private const string Separator = "\n";
 
@@ -50,6 +53,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     public void Start()
     {
         host.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
+        favorites.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
         System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
     }
 
@@ -94,7 +98,8 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
                 .ToList();
 
             // Nothing that the ribbon shows changed: a reload of unchanged code keeps the buttons as they are
-            var signature = string.Join("|", extensions.Select(Signature));
+            var starred = Starred();
+            var signature = string.Join("|", extensions.Select(Signature)) + "|*" + string.Join("|", starred.Select(entry => Signature(entry.Extension) + entry.Button.Name));
             if (signature == _signature)
             {
                 return;
@@ -102,7 +107,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             _signature = signature;
             Clear();
-            Build(extensions);
+            Build(extensions, starred);
             RemoveEmptyPanelsAndTabs();
         }
         catch (Exception exception)
@@ -111,7 +116,26 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         }
     }
 
-    private void Build(IReadOnlyList<ExtensionDescriptor> extensions)
+    /// <summary>The starred buttons that exist and are on, each a large button of the Favourites panel, in the user's order.</summary>
+    private List<Entry> Starred()
+    {
+        var result = new List<Entry>();
+        var panelKey = DefaultTab + Separator + FavoritesPanel;
+        foreach (var key in favorites.Keys)
+        {
+            if (catalog.Find(key) is not { Source.Shown: true } found)
+            {
+                continue;
+            }
+
+            var button = found.Button with { Order = result.Count + 1, Kind = null, Items = null, Ribbon = true, Tab = null, Panel = null };
+            result.Add(new Entry(found.Source.Extension, button, panelKey, result.Count, 0, Favorite: true));
+        }
+
+        return result;
+    }
+
+    private void Build(IReadOnlyList<ExtensionDescriptor> extensions, IReadOnlyList<Entry> starred)
     {
         var entries = new List<Entry>();
         for (var sourceIndex = 0; sourceIndex < extensions.Count; sourceIndex++)
@@ -133,6 +157,10 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
             }
         }
 
+        // The Favourites panel comes right after AnalyseTool's own panels: panels are created in the order of their first entry
+        var builtIn = entries.TakeWhile(entry => entry.Source != int.MaxValue).Count();
+        entries.InsertRange(builtIn, starred);
+
         foreach (var panel in entries.GroupBy(entry => entry.PanelKey))
         {
             var source = GetOrCreatePanel(panel.Key);
@@ -150,7 +178,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             foreach (var entry in ordered.Where(entry => entry.Button.ResolvedKind != ButtonKind.Stacked))
             {
-                var item = entry.Button.ResolvedKind == ButtonKind.Pulldown ? MakePulldown(entry) : MakeButton(entry.Extension, entry.Button, small: false);
+                var item = entry.Button.ResolvedKind == ButtonKind.Pulldown ? MakePulldown(entry) : MakeButton(entry.Extension, entry.Button, small: false, entry.Favorite);
                 source.Items.Add(item);
                 items.Add(item);
             }
@@ -200,12 +228,12 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         return pulldown;
     }
 
-    private AdWin.RibbonButton MakeButton(ExtensionDescriptor extension, ExtensionButton button, bool small)
+    private AdWin.RibbonButton MakeButton(ExtensionDescriptor extension, ExtensionButton button, bool small, bool favorite = false)
     {
         var icon = LoadIcon(extension, button);
         return new AdWin.RibbonButton
         {
-            Id = $"AnalyseTool.Ext.{extension.Id}.{button.Name}",
+            Id = $"AnalyseTool.{(favorite ? "Fav" : "Ext")}.{extension.Id}.{button.Name}",
             Text = button.Name,
             ShowText = true,
             ShowImage = true,
@@ -388,7 +416,8 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     private static partial void LogIconFailed(ILogger logger, Exception exception, string id, string icon);
 
     /// <param name="Source">The built-in folders keep their order ahead of the extensions; every extension shares <see cref="int.MaxValue" />.</param>
-    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index, int Source);
+    /// <param name="Favorite">A starred button of the Favourites panel (its own ribbon id: it may also stand on its own panel).</param>
+    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index, int Source, bool Favorite = false);
 
     /// <summary>The WPF command of an AdWindows button.</summary>
     private sealed class ClickCommand(Action execute) : ICommand

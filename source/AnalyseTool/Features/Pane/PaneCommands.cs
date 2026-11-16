@@ -200,8 +200,8 @@ public sealed class GetPaneProfile(ExtensionPaths paths) : ICommand<PaneProfileR
 }
 
 /// <summary>Saves the profile of the pane.</summary>
-[Command(Description = "Saves the profile of the dock pane.")]
-public sealed class SavePaneProfile(ExtensionPaths paths) : ICommand<SavePaneProfileRequest, Empty>
+[Command(Description = "Saves the profile of the dock pane; its starred buttons (\"ribbon\") go on the Revit ribbon.")]
+public sealed class SavePaneProfile(ExtensionPaths paths, RibbonFavorites favorites) : ICommand<SavePaneProfileRequest, Empty>
 {
     /// <inheritdoc />
     public Task<Empty> ExecuteAsync(SavePaneProfileRequest request, CommandContext context)
@@ -212,49 +212,8 @@ public sealed class SavePaneProfile(ExtensionPaths paths) : ICommand<SavePanePro
         }
 
         PaneProfile.Write(paths, request.Profile);
+        // The stars of the profile are buttons of the Revit ribbon: it rebuilds when they change
+        favorites.Update(request.Profile);
         return Task.FromResult(Empty.Value);
-    }
-}
-
-/// <summary>
-///     <c>%LOCALAPPDATA%\AnalyseTool\pane-profile.json</c>: a file, not the browser storage of WebView2, so it is the same in every
-///     Revit version, survives a reset of WebView2 and moves with the rest of the profile folder.
-/// </summary>
-internal static class PaneProfile
-{
-    private static readonly Lock Gate = new();
-
-    public static string FilePath(ExtensionPaths paths)
-    {
-        return Path.Combine(paths.ProfileRoot, "pane-profile.json");
-    }
-
-    public static JsonElement? Read(ExtensionPaths paths)
-    {
-        lock (Gate)
-        {
-            try
-            {
-                var path = FilePath(paths);
-                return File.Exists(path) ? JsonDocument.Parse(File.ReadAllText(path)).RootElement.Clone() : null;
-            }
-            catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
-            {
-                // A broken profile starts the pane with the defaults; the next save writes a good one
-                return null;
-            }
-        }
-    }
-
-    public static void Write(ExtensionPaths paths, JsonElement profile)
-    {
-        lock (Gate)
-        {
-            var path = FilePath(paths);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var temporary = path + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temporary, path, overwrite: true);
-        }
     }
 }

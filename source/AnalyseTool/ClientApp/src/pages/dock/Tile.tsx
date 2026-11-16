@@ -54,6 +54,8 @@ export function Tile(props: {
   editBadge?: { symbol: "−" | "+"; title: string; onClick: () => void } | null;
   /** The round ✎ at the top right in the edit mode: opens the sheet of the button — change it, its file, its versions. */
   onChange?: { title: string; onClick: () => void } | null;
+  /** The star: the button is on the Revit ribbon. A small ★ shows it; in the edit mode a ☆/★ at the bottom right toggles it. */
+  star?: { on: boolean; title: string; onClick: () => void } | null;
   onClick: () => void;
   /** The right mouse button: starts the edit mode. */
   onEdit?: () => void;
@@ -116,6 +118,7 @@ export function Tile(props: {
         {props.badge === "error" && <span className="tile-badge error">!</span>}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
+        {props.star?.on && !props.editing && <span className="tile-star" title="On the Revit ribbon">★</span>}
       </motion.span>
       {props.editing && props.editBadge && (
         <motion.span
@@ -148,6 +151,23 @@ export function Tile(props: {
           }}
         >
           ✎
+        </motion.span>
+      )}
+      {props.editing && props.star && (
+        <motion.span
+          role="button"
+          className={`edit-badge star ${props.star.on ? "on" : ""}`}
+          title={props.star.title}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={spring}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            props.star!.onClick();
+          }}
+        >
+          {props.star.on ? "★" : "☆"}
         </motion.span>
       )}
       <span className="tile-label">{props.label}</span>
