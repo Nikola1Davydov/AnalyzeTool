@@ -2,7 +2,7 @@ name: Release
 
 # The version lives in the code: "Build" › "Version" of build/appsettings.json (local builds and installers carry it too).
 # Runs only by hand (Actions › Release › Run workflow, on main). A version that has no tag yet is published: the whole
-# pipeline with the installers (`build -- pack`), then the tag vX.Y.Z and a GitHub release with both MSIs, the Autodesk
+# pipeline with the installers (`build -- pack`), then the tag X.Y.Z (no «v», as in 1.x) and a GitHub release titled X.Y.Z with both MSIs, the Autodesk
 # bundle and the section of CHANGELOG.md of that version as its notes. A version that is tagged already: nothing happens.
 # To release: raise the version, date its section in CHANGELOG.md («## [X.Y.Z] / <date>»), merge into main, run it.
 # A version with a suffix (2.1.0-beta.1) makes a pre-release.
@@ -34,11 +34,11 @@ jobs:
         run: |
           $version = (Get-Content build/appsettings.json -Raw | ConvertFrom-Json).Build.Version
           if ([string]::IsNullOrWhiteSpace($version)) { throw "build/appsettings.json has no Build.Version." }
-          git rev-parse -q --verify "refs/tags/v$version" *> $null
+          git rev-parse -q --verify "refs/tags/$version" *> $null
           $released = $LASTEXITCODE -eq 0
           "version=$version" >> $env:GITHUB_OUTPUT
           "release=$(if ($released) { 'false' } else { 'true' })" >> $env:GITHUB_OUTPUT
-          if ($released) { "v$version is released already: nothing to do. Raise Build.Version to release." }
+          if ($released) { "$version is released already: nothing to do. Raise Build.Version to release." }
           # git rev-parse fails for a missing tag; that is the normal case, not a failure of the step
           exit 0
 
@@ -89,5 +89,5 @@ jobs:
           if ($installers.Count -ne 2) { throw "Expected AnalyseTool-$version-SingleUser.msi and -MultiUser.msi in output/, found: $((Get-ChildItem output).Name -join ', ')" }
           Copy-Item output/AnalyseTool.bundle.zip "output/AnalyseTool-$version.bundle.zip"
           $prerelease = if ($version -match "-") { "--prerelease" } else { "--latest" }
-          # Makes the tag v<version> on this commit, and the release
-          gh release create "v$version" @installers "output/AnalyseTool-$version.bundle.zip" --target "${{ github.sha }}" --title "AnalyseTool $version" --notes-file release-notes.md $prerelease
+          # Makes the tag <version> on this commit, and the release
+          gh release create "$version" @installers "output/AnalyseTool-$version.bundle.zip" --target "${{ github.sha }}" --title "$version" --notes-file release-notes.md $prerelease

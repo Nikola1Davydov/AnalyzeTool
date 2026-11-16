@@ -65,7 +65,7 @@ the release itself.
       extensions in `%LOCALAPPDATA%\AnalyseTool\extensions\` are still there.
 - [ ] CHANGELOG dated (`## [X.Y.Z] / <date>`), then `rewrite` (or `dev`) merged into `main`. No tag by hand:
       run `.github/workflows/Release.yml` by hand (Actions › Release › Run workflow, on `main`); when the version of
-      `build/appsettings.json` has no tag yet, it builds, tests, packs, makes the tag `vX.Y.Z` and the release with both
+      `build/appsettings.json` has no tag yet, it builds, tests, packs, makes the tag `X.Y.Z` (no «v», as in 1.x) and the release with both
       MSIs, the bundle and the changelog of the version. An undated or missing changelog section stops it. A suffix
       (`2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
 - [ ] **The Sdk package, only if its contract changed**: the release does not push it. Bump its version, take the
