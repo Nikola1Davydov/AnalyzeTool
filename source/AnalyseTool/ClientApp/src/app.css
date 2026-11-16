@@ -1557,3 +1557,22 @@ code.block,
   min-height: 0 !important;
   background: transparent !important;
 }
+
+/* A page that failed: what failed, and a way back */
+.crash {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff1f0;
+  color: #5c1a14;
+  font: 13px "Segoe UI", sans-serif;
+}
+
+.crash pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 11px Consolas, monospace;
+  background: rgb(0 0 0 / 5%);
+  padding: 8px;
+  border-radius: 8px;
+}

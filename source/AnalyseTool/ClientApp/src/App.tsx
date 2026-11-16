@@ -1,6 +1,7 @@
 import { Spinner } from "@fluentui/react-components";
 import { lazy, type ReactNode, Suspense } from "react";
 import { AppFrame } from "./components/AppFrame";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Empty, Page } from "./components/Page";
 import { useRoute } from "./router";
 
@@ -58,8 +59,13 @@ function routePage(path: string, query: URLSearchParams): ReactNode {
 export function App() {
   const { path, query } = useRoute();
   return (
-    <AppFrame>
-      <Suspense fallback={<Spinner className="page-spinner" />}>{routePage(path, query)}</Suspense>
-    </AppFrame>
+    // Inside the frame (the theme around the message) and around it (should the frame itself fail): never a blank page
+    <ErrorBoundary>
+      <AppFrame>
+        <ErrorBoundary>
+          <Suspense fallback={<Spinner className="page-spinner" />}>{routePage(path, query)}</Suspense>
+        </ErrorBoundary>
+      </AppFrame>
+    </ErrorBoundary>
   );
 }
