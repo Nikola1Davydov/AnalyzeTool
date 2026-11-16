@@ -8,6 +8,8 @@ import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } fro
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { HowItWorks } from "./HowItWorks";
+import { PackagesScreen } from "./PackagesScreen";
+import { SettingsScreen } from "./SettingsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
@@ -19,6 +21,8 @@ type Screen =
   | { kind: "home" }
   | { kind: "profile" }
   | { kind: "guide" }
+  | { kind: "packages" }
+  | { kind: "settings" }
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string };
 
@@ -36,6 +40,8 @@ function depth(screen: Screen) {
     case "guide":
       return 1;
     case "stats":
+    case "packages":
+    case "settings":
       return 2;
     default:
       return 0;
@@ -169,7 +175,16 @@ function Pane() {
             transition={spring}
           >
             {current.kind === "profile" ? (
-              <ProfileScreen overview={overview} onStats={() => go({ kind: "stats" })} />
+              <ProfileScreen
+                overview={overview}
+                onStats={() => go({ kind: "stats" })}
+                onPackages={() => go({ kind: "packages" })}
+                onSettings={() => go({ kind: "settings" })}
+              />
+            ) : current.kind === "packages" ? (
+              <PackagesScreen />
+            ) : current.kind === "settings" ? (
+              <SettingsScreen />
             ) : current.kind === "guide" ? (
               <HowItWorks />
             ) : current.kind === "stats" ? (
@@ -204,7 +219,9 @@ function Header(props: {
   const toastError = (message: string) => actions.toast(message, "error");
 
   const back =
-    screen.kind === "stats"
+    screen.kind === "packages" || screen.kind === "settings"
+      ? { label: "Profile", to: { kind: "profile" } as Screen }
+      : screen.kind === "stats"
       ? screen.folder
         ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
         : { label: "Profile", to: { kind: "profile" } as Screen }
@@ -216,7 +233,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "settings" ? "Settings" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },
@@ -228,12 +245,38 @@ function Header(props: {
           ...(folder.builtIn
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
+          ...(folder.canAddButtons
+            ? [
+                {
+                  label: folder.enabled ? "Turn the folder off" : "Turn the folder on",
+                  hint: folder.enabled ? "Its buttons and commands stop until you turn it on" : undefined,
+                  onClick: () =>
+                    void bridge
+                      .invoke(extensionCommands.SetExtensionEnabled, { id: folder.id, enabled: !folder.enabled })
+                      .then(props.onRefresh)
+                      .catch((error: unknown) => toastError(messageOf(error))),
+                },
+                {
+                  label: "Remove the folder…",
+                  hint: "It moves to the AnalyseTool trash with its versions",
+                  onClick: () => {
+                    if (!confirm(`Remove «${folder.name}»? Its tab and buttons go; the folder moves to the AnalyseTool trash with its versions.`)) return;
+                    void bridge
+                      .invoke<{ movedTo: string }>(extensionCommands.RemoveExtension, { id: folder.id })
+                      .then((result) => {
+                        actions.toast(`Removed — the folder is in ${result.movedTo}`);
+                        props.onGo({ kind: "home" });
+                        props.onRefresh();
+                      })
+                      .catch((error: unknown) => toastError(messageOf(error)));
+                  },
+                },
+              ]
+            : []),
         ]
       : [
           { label: "New folder…", onClick: () => actions.openSheet("New folder", <NewFolderForm onCreated={(id) => props.onGo({ kind: "folder", folder: id })} />, "Create") },
-          { label: "Manage buttons", onClick: () => openWindow("/extensions", toastError) },
         ]),
-    { label: "Refresh", onClick: props.onRefresh },
   ];
 
   return (
@@ -256,7 +299,7 @@ function Header(props: {
           </button>
         ) : (
           <>
-            {screen.kind !== "profile" && screen.kind !== "stats" && (
+            {(screen.kind === "home" || screen.kind === "folder") && (
               <button className="icon-button more" title="More" onClick={() => actions.openSheet(folder && screen.kind === "folder" ? folder.name : "AnalyseTool", <ActionList items={menu} />)}>
                 ⋯
               </button>

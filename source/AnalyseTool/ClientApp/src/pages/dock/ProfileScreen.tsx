@@ -63,7 +63,7 @@ const themeOptions: { value: Theme; label: string }[] = [
 ];
 
 /** The profile: every setting of the pane in one place, kept in the AnalyseTool profile folder; export and import move it. */
-export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; onStats: () => void }) {
+export function ProfileScreen({ overview, onStats, onPackages, onSettings }: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onSettings: () => void }) {
   const { profile, update } = useProfile();
   const actions = useActions();
   const [importError, setImportError] = useState<string | null>(null);
@@ -118,15 +118,15 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
       </section>
 
       <section className="link-section">
-        <button className="row-link" onClick={() => openWindow("/extensions")}>
-          <span>🧩 Manage buttons</span>
+        <button className="row-link" onClick={onPackages}>
+          <span>📦 Packages</span>
           <span className="chevron-right">›</span>
         </button>
-        <p className="muted small">Every folder with its state, compiler errors and versions; turn one off, remove it, install a .zip package.</p>
+        <p className="muted small">Extensions someone shared as a .zip: install, update, turn off, remove.</p>
       </section>
 
       <section className="link-section">
-        <button className="row-link" onClick={() => openWindow("/settings")}>
+        <button className="row-link" onClick={onSettings}>
           <span>⚙️ Settings</span>
           <span className="chevron-right">›</span>
         </button>

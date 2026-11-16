@@ -1816,3 +1816,68 @@
   color: #fff;
   background: var(--accent);
 }
+
+/* ---- Packages and Settings in the pane ---- */
+.package-list li.off .dock-name {
+  opacity: 0.55;
+}
+
+.switch.small {
+  transform: scale(0.8);
+}
+
+.key-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.key-list dt {
+  color: var(--secondary-label);
+}
+
+.key-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.link-button.path {
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.root-list .dock-name {
+  min-width: 0;
+}
+
+/* The title of a sheet in the colour of the text — it read dark on dark */
+.sheet-header strong {
+  color: var(--label);
+}
+
+/* A path is a link, not a filled button; the line under it wraps instead of being cut */
+.pane button.link-button,
+.pane button.link-button:hover,
+.pane .profile section button.link-button {
+  background: none !important;
+  border: none;
+  padding: 0;
+  width: auto;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.root-list .dock-name,
+.package-list .dock-name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
