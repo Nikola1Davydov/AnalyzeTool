@@ -92,7 +92,11 @@ public sealed class ButtonCatalog(ExtensionHost host)
             return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : DefaultTab;
         }
 
-        return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : source.Extension.Id;
+        // Never the description: it is a sentence, and the name of a tab on the ribbon
+        var buttons = manifest.Ui?.EffectiveButtons() ?? [];
+        return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name
+            : buttons.Count == 1 && !string.IsNullOrWhiteSpace(buttons[0].Name) ? ButtonUsageName(buttons[0].Name)
+            : source.Extension.Id;
     }
 
     /// <summary>The id of the folder a button source is in for the pane and the profile: its tab (<c>sheets.tab</c>), else its id.</summary>
@@ -104,10 +108,13 @@ public sealed class ButtonCatalog(ExtensionHost host)
     /// <summary>The id of the folder of the pane that holds the user's folders of plugin.json (the 1.x layout).</summary>
     public const string OlderFolderId = "older";
 
-    /// <summary>A folder of the user in the plugin.json layout: not AnalyseTool's, not a package, not in a tab.</summary>
+    /// <summary>
+    ///     A folder of the user in the plugin.json layout with C# sources or a page: not AnalyseTool's, not a package, not in
+    ///     a tab, not a DLL extension (that one is a project of its own, a folder of the pane on its tab).
+    /// </summary>
     public static bool IsOlder(ButtonSource source)
     {
-        return !source.BuiltIn && source.Extension.Tab is null && source.Extension.Zone == ExtensionZone.Dev;
+        return !source.BuiltIn && source.Extension.Tab is null && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll;
     }
 
     /// <summary>The tab of AnalyseTool's own buttons.</summary>
@@ -124,12 +131,14 @@ public sealed class ButtonCatalog(ExtensionHost host)
         var ui = source.Extension.Manifest.Ui;
         var name = FolderName(source);
         var panel = First(button.Panel, ui?.Panel) ?? name;
-        if (source.BuiltIn || source.Extension.Zone != ExtensionZone.Dev)
-        {
-            return (First(button.Tab, ui?.Tab) ?? name, panel);
-        }
+        // A button of a tab: the tab folder; a folder of plugin.json (AnalyseTool's own, a package, an older folder of the
+        // user): the tab it names, else its name
+        return source.Extension.Tab is { } tab ? (tab.Name, panel) : (First(button.Tab, ui?.Tab) ?? name, panel);
+    }
 
-        return (name, panel);
+    private static string ButtonUsageName(string name)
+    {
+        return AnalyseTool.Extensions.Usage.ButtonUsageStore.Normalize(name);
     }
 
     /// <summary>The panels (sections) of a folder in order: those plugin.json lists, then those its buttons name.</summary>

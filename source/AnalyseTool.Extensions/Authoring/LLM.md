@@ -18,7 +18,7 @@ folder has its own version history (git) that the user controls from the Analyse
 | --- | --- | --- | --- |
 | **C# sources** | `.cs` files in a button folder that AnalyseTool compiles (§1.1, §5) | **ADDS** commands | **always — this is the default** |
 | **JS / UI** | an HTML page | **CONSUMES** commands via `AT.invoke(...)` | when the extension needs a page |
-| **C# project** | a `.dll` per Revit year the author builds (§4) | ADDS commands | for NuGet packages, closed source, or XAML/resources |
+| **C# project** | a `.dll` per Revit year the author builds (§4) | ADDS commands | only for NuGet packages with dependencies, native libraries, embedded resources or closed code — decide with §4.1 |
 
 **The principle:** C# extensions *add* commands to a shared pipeline; JS pages *consume* them.
 One folder can be C#-only, UI-only, or both.
@@ -305,7 +305,69 @@ working manifest. Use whichever fits; declaring both is not an error, `ui.button
 
 ---
 
-## 4. C# project setup (NuGet — the easy way)
+## 4. A DLL extension — when sources are not enough
+
+### 4.1 Sources or a DLL? Decide first
+
+"Complex" alone is NOT a reason for a DLL. A button folder (§5) takes many classes and files, a page with its
+own commands (§6), helper code in `_shared\` of the tab, and third-party DLLs in `lib\` — no project, no .NET SDK,
+and every saved edit runs a moment later. Take a DLL extension only when one of these holds:
+
+| Need | Why sources cannot | |
+| --- | --- | --- |
+| A NuGet package with dependencies (ClosedXML, EPPlus, a database driver…) | sources compile against a fixed set; `lib\` takes single DLLs, not a dependency tree | DLL |
+| Native libraries (SQLite, SkiaSharp…) | only a build lays out `runtimes\win-x64\native\` | DLL |
+| Embedded resources, images or data compiled into the assembly | sources have no resources | DLL |
+| Closed code, or a team that builds and tests in Visual Studio / Rider with a debugger | sources are the code itself | DLL |
+| One or two extra libraries without dependencies of their own | — | sources + `lib\*.dll` |
+| Many commands, a big page, shared helpers | — | sources (several classes, `_shared\`) |
+
+Not sure → sources. A DLL extension is a `plugin.json` folder (§3): it is NOT a tab of button folders, it names its
+tab in `ui.tab`, and in the AnalyseTool pane it is a folder of its own.
+
+### 4.2 The folder
+
+The project lives IN the extension folder, next to `plugin.json` — the folder you develop in is the folder you
+ship (`PackExtension`, §7.1):
+
+```
+%LOCALAPPDATA%\AnalyseTool\extensions\acme.doors\
+    plugin.json          id, version, "build": "author", "entryAssembly": "Acme.Doors.dll", ui.tab / ui.panel / ui.buttons
+    Acme.Doors.csproj    the project (§4.3)
+    Commands\*.cs        your code: every IRevitTask class is a command acme.doors.<Class>
+    index.html           optional: a page (§6)
+    icon.png             optional: the icon of a button
+    2025\Acme.Doors.dll  the build for Revit 2025, with its dependencies and Acme.Doors.deps.json
+    2026\…  2027\…       one folder per Revit year you build
+    .git\                its version history (the year folders ARE versioned: the DLLs are the extension)
+```
+
+`plugin.json` of a DLL extension:
+
+```json
+{
+  "schema": 2,
+  "id": "acme.doors",
+  "name": "Doors",
+  "version": "1.0.0",
+  "description": "Door schedules and checks.",
+  "build": "author",
+  "entryAssembly": "Acme.Doors.dll",
+  "ui": {
+    "tab": "Acme",
+    "panel": "Doors",
+    "buttons": [
+      { "name": "Count doors", "tooltip": "Counts the doors of the model.", "icon": "glyph:E8A1", "command": "acme.doors.CountDoors" },
+      { "name": "Door table", "tooltip": "Opens the door table.", "icon": "glyph:E8A5", "entryHtml": "index.html", "dockable": false }
+    ]
+  }
+}
+```
+
+`"build": "author"` says the DLL is yours: AnalyseTool loads `<year>\<entryAssembly>` and never compiles the folder.
+No other project may sit below the folder (its sources would be swept into this one).
+
+### 4.3 The project
 
 ```
 dotnet add package AnalyseTool.Sdk
@@ -323,8 +385,14 @@ shipped inside packages during restore, so the SDK package cannot add them for y
     <TargetFramework Condition="'$(RevitVersion)' &lt; '2027'">net8.0-windows</TargetFramework>
     <TargetFramework Condition="'$(RevitVersion)' &gt;= '2027'">net10.0-windows</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Acme.Doors</RootNamespace>
     <AssemblyName>Acme.Doors</AssemblyName>
+    <!-- REQUIRED as soon as you use a NuGet package: a class library does not copy its packages to the
+         output otherwise. This copies them and writes Acme.Doors.deps.json, which AnalyseTool's loader reads
+         to find them (native ones in runtimes\win-x64\native\ too). Without it: FileNotFoundException in Revit. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
     <!-- Build into <extension>\<year>\ — the layout a package uses, so the folder you develop in is
          the folder you ship, and builds for several Revit years coexist. -->
     <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
@@ -343,6 +411,8 @@ shipped inside packages during restore, so the SDK package cannot add them for y
       <PrivateAssets>all</PrivateAssets>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+    <!-- Your own packages: a normal reference, they are copied (EnableDynamicLoading) -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 </Project>
 ```
@@ -361,7 +431,38 @@ per year you ship.
 
 > **Critical:** the host owns `AnalyseTool.Sdk.dll`, the Revit API, and `Newtonsoft.Json`. The
 > extension's load context shares the host's copies (type identity), so **do not ship copies of those
-> DLLs**. With the NuGet package this is automatic. Deploy only your DLL + `plugin.json` (+ assets).
+> DLLs**. With the NuGet package this is automatic. Deploy only your DLL, its own dependencies, `plugin.json`
+> (+ assets).
+
+### 4.4 Build, load, check
+
+1. Build for the Revit you test in (`dotnet build -c Release -p:RevitVersion=2025`). AnalyseTool watches the folder:
+   a new DLL in `<year>\` reloads the extension by itself — no restart, Revit can stay open (the DLL is loaded from
+   its bytes, never locked).
+2. Check it loaded: `GetExtensions` over MCP (or the folder in the pane): `kind: "Dll"`, its `commands`, and
+   `errors` — "No build for Revit 2026" means no DLL in that year folder; an Sdk error means a newer Sdk than the host.
+3. Run a command: its button, or the command itself over MCP (`acme.doors.CountDoors`).
+4. Save a version (`SaveExtensionVersion`) when it works — the year folders are part of it.
+
+Over MCP there is no tool that creates a DLL extension: write `plugin.json`, the `.csproj` and the code with your own
+file tools into `%LOCALAPPDATA%\AnalyseTool\extensions\<id>\` (or a folder of the user's roots), build with
+`dotnet build`, then `GetExtensions`. `BuildExtension` and `CreateExtension` are for sources only.
+
+### 4.5 What the loader does — and what that means for your code
+
+- **Its own load context per extension**, collectible: a reload replaces it. `AnalyseTool.Sdk` and `Newtonsoft.Json`
+  are always AnalyseTool's copies; the Revit API is Revit's; every other assembly is resolved by `<entry>.deps.json`,
+  then looked up next to your DLL. Native libraries the same way (`runtimes\win-x64\native\`, or next to the DLL) —
+  those are loaded from their file and stay locked until Revit closes.
+- **Loaded from bytes**: `typeof(X).Assembly.Location` is EMPTY. Never find files "next to the DLL" by it — embed
+  them as resources (`<EmbeddedResource Include="Data\*.json" />` + `GetManifestResourceStream`), or put them in the
+  extension folder and let the page or the user pick them.
+- **Static state dies with a reload**: keep caches in memory only for what you can rebuild.
+- **No WPF window of your own on another thread**: a command returns data; for a user interface use a page (§6) —
+  it opens inside the AnalyseTool pane (`dockable: true`) or in a window, and calls your commands with `AT.invoke`.
+  A WPF window in code works on Revit's thread (inside `RunInRevitAsync`), but compiled XAML in a collectible
+  context is untested — prefer a page.
+- Debugging: attach Visual Studio / Rider to `Revit.exe`; the PDB next to the DLL is loaded with it.
 
 ---
 
@@ -496,18 +597,17 @@ duplicates differ, the newest wins — say so. Leave deleting the old folders to
 
 ### 7.0a Releasing from GitHub
 
-A C# extension created by the template ships `.github/workflows/ci.yml`. It builds every Revit year
-and, on a `v*` tag, publishes the packed zip as a GitHub Release — the same zip
-`updateFeed` points at, so tagging IS the release:
+A DLL extension in a GitHub repository can build every Revit year and, on a `v*` tag, publish the packed zip
+as a GitHub Release — the same zip `updateFeed` points at, so tagging IS the release. Add the workflow of §7.1
+as `.github/workflows/release.yml`:
 
 ```
 dotnet build -c Release -t:PackExtension     # the same thing, locally
 git tag v1.0.0 && git push --tags            # and on GitHub, with a Release attached
 ```
 
-The tag must match `version` in `plugin.json`; the workflow fails the build otherwise, because a
-mismatch would leave the update badge in the Extensions window permanently wrong. Delete the workflow if you
-distribute another way — nothing else depends on it.
+The tag must match `version` in `plugin.json`; `PackExtension` fails the build otherwise, because a
+mismatch would leave the update badge permanently wrong.
 
 ### 7.1 Publish (optional)
 
@@ -601,8 +701,10 @@ Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as
 
 ## 8. Rules — ALWAYS / NEVER
 
-- **ALWAYS** write C# sources in the button folder (§5) unless the extension needs NuGet packages, closed code or
-  XAML/resources — then a C# project (§4).
+- **ALWAYS** write C# sources in the button folder (§5) unless §4.1 says a DLL: NuGet packages with dependencies,
+  native libraries, embedded resources, closed code. "Big" or "complex" alone is not a reason.
+- **ALWAYS** set `<EnableDynamicLoading>true</EnableDynamicLoading>` in the project of a DLL extension that uses any
+  NuGet package (§4.3) — else its dependencies are not in `<year>\` and the command fails in Revit.
 - **ALWAYS** touch the Revit model only inside `RunInRevitAsync`. Open transactions there.
 - **ALWAYS** use a lean input record for `InputType` (only the fields the caller sends) and put a
   `[System.ComponentModel.Description("…")]` on each field. Do **not** reuse rich/nested domain models —
@@ -638,9 +740,9 @@ model) in the payload or from your own settings file, and run the call **outside
 
 ## 10. Checklist for a generated extension
 
-- [ ] A button folder `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` with `bundle.json` and its `*.cs` (§1.1, §5); a C# project only for NuGet / closed code / resources.
-- [ ] `plugin.json` with `id` (+ `entryAssembly` for C#, or none for UI-only).
-- [ ] The csproj builds into `<extension>\<year>\` and derives its TFM from `RevitVersion` (§4).
+- [ ] A button folder `<Tab>.tab\<Panel>.panel\<Name>.pushbutton\` with `bundle.json` and its `*.cs` (§1.1, §5); a C# project only when §4.1 says so.
+- [ ] A DLL extension: `plugin.json` with `id`, `"build": "author"`, `entryAssembly`, `ui.tab` (§4.2).
+- [ ] Its csproj builds into `<extension>\<year>\`, derives its TFM from `RevitVersion`, has `EnableDynamicLoading` when it uses NuGet packages, and ships no copy of the Sdk, the Revit API or Newtonsoft (§4.3).
 - [ ] C#: one or more `IRevitTask` classes; model access only in `RunInRevitAsync`.
 - [ ] `[RevitCommand]` with a clear `Description`; `ReadOnly`/`Destructive` set correctly; `InputType`
       for commands that take arguments; `OutputType` for what they return (SDK 1.2+).

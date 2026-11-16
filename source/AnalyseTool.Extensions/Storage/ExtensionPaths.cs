@@ -208,9 +208,6 @@ internal static class JsonFile
     /// <summary>Writes the file through a temp file, so a crash never leaves half a file.</summary>
     public static void Write(string path, JsonNode node)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, node.ToJsonString(Indented));
-        File.Move(temp, path, overwrite: true);
+        AtomicFile.WriteAllText(path, node.ToJsonString(Indented));
     }
 }

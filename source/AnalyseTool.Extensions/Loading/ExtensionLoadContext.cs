@@ -65,4 +65,21 @@ internal sealed class ExtensionLoadContext(string name, string? entryAssemblyPat
         // Unknown here: the default context (the framework) or AnalyseTool's context through the fallback
         return path is not null ? LoadFromFileBytes(path) : null;
     }
+
+    /// <summary>
+    ///     A native library of a NuGet package (SQLite, SkiaSharp, …): where <c>deps.json</c> puts it
+    ///     (<c>runtimes\win-x64\native\</c>), else next to the extension's DLL. It is loaded from its file, so it stays locked
+    ///     until Revit closes.
+    /// </summary>
+    protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+    {
+        var path = _resolver?.ResolveUnmanagedDllToPath(unmanagedDllName);
+        if (path is null && _directory is not null)
+        {
+            var name = unmanagedDllName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? unmanagedDllName : unmanagedDllName + ".dll";
+            path = new[] { Path.Combine(_directory, name), Path.Combine(_directory, "runtimes", "win-x64", "native", name) }.FirstOrDefault(File.Exists);
+        }
+
+        return path is not null ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
+    }
 }

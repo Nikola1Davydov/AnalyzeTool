@@ -175,12 +175,13 @@ public sealed class PaneTests
     }
 
     [Test]
-    public async Task Place_AFolderOfTheUserIsItsTab_APackageKeepsItsAuthorsTab()
+    public async Task Place_AFolderOfPluginJsonGoesOnTheTabItNames_ElseOnItsName()
     {
         using var environment = new ExtensionTestEnvironment();
         await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
         var state = await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None, panel: "Numbers");
-        // A tab left in plugin.json by hand is ignored for a folder of the user
+        var unnamed = new ButtonSource(state.Descriptor, false, true, state);
+        // The tab plugin.json names: an older folder of the user keeps it, as a package does
         ExtensionManifest.Update(state.Descriptor.Directory, manifest => manifest["ui"]!["tab"] = "Somewhere");
         state = (await environment.Host.ReloadAsync("sheets", CancellationToken.None))!;
 
@@ -191,7 +192,8 @@ public sealed class PaneTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(ButtonCatalog.Place(own, button)).IsEqualTo(("Sheets", "Numbers"));
+            await Assert.That(ButtonCatalog.Place(own, button)).IsEqualTo(("Somewhere", "Numbers"));
+            await Assert.That(ButtonCatalog.Place(unnamed, button)).IsEqualTo(("Sheets", "Numbers"));
             await Assert.That(ButtonCatalog.Place(package, button)).IsEqualTo(("Somewhere", "Numbers"));
             await Assert.That(ButtonCatalog.Place(new ButtonSource(builtIn, true, true), builtIn.Manifest.Ui!.EffectiveButtons()[0]).Tab).IsEqualTo("AnalyseTool");
             await Assert.That(ButtonCatalog.Panels(own)).IsEquivalentTo(["Numbers"]);

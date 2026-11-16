@@ -1,17 +1,23 @@
 {
+  "schema": 2,
   "id": "acme.sample",
+  "name": "Acme sample",
   "version": "1.0.0",
   "description": "Sample extension demonstrating the AnalyseTool SDK: a command plus a web UI page.",
   "publisher": "Acme (sample)",
   "website": "https://github.com/Nikola1Davydov/AnalyzeTool",
+  "build": "author",
   "entryAssembly": "Acme.Sample.dll",
   "ui": {
     "entryHtml": "index.html",
-    "tab": "AnalyseTool",
+    "tab": "Acme",
     "panel": "Samples",
-    "button": {
-      "name": "Acme Sample",
-      "tooltip": "Open the Acme Sample extension page"
-    }
+    "buttons": [
+      {
+        "name": "Acme Sample",
+        "tooltip": "Open the Acme Sample extension page",
+        "icon": "glyph:E8A7"
+      }
+    ]
   }
 }

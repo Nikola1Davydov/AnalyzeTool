@@ -220,10 +220,7 @@ public sealed class ButtonUsageStore
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            var temporary = FilePath + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(data, Options));
-            File.Move(temporary, FilePath, overwrite: true);
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

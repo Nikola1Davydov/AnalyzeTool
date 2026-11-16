@@ -522,6 +522,7 @@ function OlderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFol
           <section key={part.id} className="pane-section">
             <header className="pane-section-header">
               <span>{part.name}</span>
+              {part.tab && part.tab !== part.name && <span className="muted small">on the tab «{part.tab}»</span>}
               {part.directory && (
                 <button className="icon-button" title="Open the folder" onClick={() => openFolder(part.directory!, toastError)}>
                   📁

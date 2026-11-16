@@ -264,6 +264,33 @@ public sealed class TabLayoutTests
         }
     }
 
+    [Test]
+    public async Task Pane_ShowsADllExtensionAsAFolderOfItsOwn_OnTheTabItNames_NotInOlderButtons()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var folder = Directory.CreateDirectory(Path.Combine(environment.Paths.DevRoot, "acme.doors", "2025")).Parent!.FullName;
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """
+                                                               { "schema": 2, "id": "acme.doors", "name": "Doors", "version": "1.0.0", "build": "author", "entryAssembly": "Acme.Doors.dll",
+                                                                 "ui": { "tab": "Acme", "panel": "Doors", "buttons": [ { "name": "Count doors", "command": "acme.doors.CountDoors" } ] } }
+                                                               """);
+        var image = AnalyseTool.Extensions.Building.ExtensionCompiler.Compile([("CountDoors.cs", ExtensionTestEnvironment.EchoCommand("CountDoors"))], "Acme.Doors");
+        File.WriteAllBytes(Path.Combine(folder, "2025", "Acme.Doors.dll"), image.Assembly!);
+        await environment.Host.ReloadAllAsync();
+
+        var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry, extensions: environment.Catalog, store: environment.Store)
+            .ExecuteAsync(new CommandContext(null, new CommandRequest(nameof(GetPaneButtons), default, CommandSources.WebView), new NoServices()));
+
+        var doors = overview.Folders.SingleOrDefault(item => item.Id == "acme.doors");
+        using (Assert.Multiple())
+        {
+            await Assert.That(environment.Host.GetState("acme.doors")!.Commands).Contains("acme.doors.CountDoors");
+            await Assert.That(doors).IsNotNull();
+            await Assert.That(doors!.Tab).IsEqualTo("Acme");
+            await Assert.That(doors.Buttons.Single().Panel).IsEqualTo("Doors");
+            await Assert.That(overview.Folders.Select(item => item.Id)).DoesNotContain(ButtonCatalog.OlderFolderId);
+        }
+    }
+
     private sealed class NoServices : IServiceProvider
     {
         public object? GetService(Type serviceType) => null;

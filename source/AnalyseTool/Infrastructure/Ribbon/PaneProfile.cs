@@ -38,11 +38,7 @@ public static class PaneProfile
     {
         lock (Gate)
         {
-            var path = FilePath(paths);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var temporary = path + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temporary, path, overwrite: true);
+            AtomicFile.WriteAllText(FilePath(paths), JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
 }

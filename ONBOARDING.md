@@ -228,6 +228,11 @@ touched).
 
 ### 4.1 Project setup
 
+A DLL extension is for what a button folder cannot do: NuGet packages with dependencies, native libraries,
+embedded resources, closed code. A big tool is not a reason by itself — sources take many classes, a page and
+`lib\*.dll`. The full walk-through (folder, `plugin.json` with `"build": "author"`, project, loading rules) is §4
+of `LLM.md`.
+
 **The easy way — NuGet.** Install the SDK package for the contract, and declare the target
 framework and the Revit API packages yourself (NuGet deliberately ignores build props shipped
 inside packages during restore, so a package **cannot** add those references for you):
@@ -256,6 +261,8 @@ A minimal extension `.csproj`:
     <!-- Build straight into <extension>\<year>\ — the layout the host resolves and a package
          ships, so the project folder IS the deployable extension and years accumulate instead
          of overwriting each other. -->
+    <!-- Required with NuGet packages: copies them to the output and writes the deps.json AnalyseTool loads them by -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
     <OutDir>$(MSBuildProjectDirectory)\$(RevitVersion)\</OutDir>
   </PropertyGroup>
   <ItemGroup>
