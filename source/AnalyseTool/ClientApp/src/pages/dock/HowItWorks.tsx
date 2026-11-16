@@ -22,7 +22,9 @@ export function HowItWorks() {
       <h1 className="large-title">How it works</h1>
       <Step picture={<span className="guide-folder" />} title="A folder is a tab of the Revit ribbon">
         Every folder here is a tab of its own name; AnalyseTool is the AnalyseTool tab. «New folder» makes a new tab. Inside a
-        folder, its sections are the panels of that tab.
+        folder, its sections are the panels of that tab. On disk it is the same, as in pyRevit:{" "}
+        <span className="mono">Sheets.tab\Numbering.panel\Renumber.pushbutton\</span> — one folder per button, with its code, page
+        and versions.
       </Step>
       <Step picture={<span className="guide-section">PANEL</span>} title="Sections are panels">
         Right-click to edit, then drag a button into another section — it moves to that panel of the ribbon. ✎ next to a section

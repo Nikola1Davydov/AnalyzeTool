@@ -102,9 +102,21 @@ export function folderOf(key: string) {
   return slash < 0 ? key : key.slice(0, slash);
 }
 
+/**
+ * The folder of the pane a button key belongs to: the folder of that id, or the tab whose buttons have ids
+ * `<tab>.<button>` (a tab folder `sheets.tab` holds the keys `sheets.renumber/…`).
+ */
+export function ownerOf<T extends { id: string }>(folders: T[], key: string): T | undefined {
+  const id = folderOf(key).toLowerCase();
+  return (
+    folders.find((folder) => folder.id.toLowerCase() === id) ??
+    folders.find((folder) => folder.id.toLowerCase().endsWith(".tab") && id.startsWith(folder.id.toLowerCase().slice(0, -".tab".length) + "."))
+  );
+}
+
 /** Finds a button by its key. */
 export function findButton(folders: PaneFolder[], key: string) {
-  const folder = folders.find((candidate) => same(candidate.id, folderOf(key)));
+  const folder = ownerOf(folders, key);
   const button = folder?.buttons.find((candidate) => same(candidate.key, key));
   return folder && button ? { folder, button } : null;
 }
@@ -116,7 +128,7 @@ export function findButton(folders: PaneFolder[], key: string) {
 export function pruneProfile(profile: Profile, folders: PaneFolder[]): Profile {
   const byId = new Map(folders.map((folder) => [folder.id.toLowerCase(), folder]));
   const buttonExists = (key: string) => {
-    const folder = byId.get(folderOf(key).toLowerCase());
+    const folder = ownerOf(folders, key);
     return !folder || folder.buttons.some((button) => same(button.key, key));
   };
   const order: Record<string, string[]> = {};
@@ -145,8 +157,7 @@ export function pruneProfile(profile: Profile, folders: PaneFolder[]): Profile {
 
 /** The dock keys whose folder is not in the list: removed, renamed or offline. */
 export function missingFolders(profile: Profile, folders: PaneFolder[]): string[] {
-  const ids = new Set(folders.map((folder) => folder.id.toLowerCase()));
-  return [...profile.dock, ...profile.ribbon].filter((key) => !ids.has(folderOf(key).toLowerCase()));
+  return [...profile.dock, ...profile.ribbon].filter((key) => !ownerOf(folders, key));
 }
 
 /** The profile without the entries of folders not in the list. */
@@ -154,8 +165,8 @@ export function withoutMissingFolders(profile: Profile, folders: PaneFolder[]): 
   const ids = new Set(folders.map((folder) => folder.id.toLowerCase()));
   return {
     ...profile,
-    dock: profile.dock.filter((key) => ids.has(folderOf(key).toLowerCase())),
-    ribbon: profile.ribbon.filter((key) => ids.has(folderOf(key).toLowerCase())),
+    dock: profile.dock.filter((key) => ownerOf(folders, key)),
+    ribbon: profile.ribbon.filter((key) => ownerOf(folders, key)),
     order: Object.fromEntries(Object.entries(profile.order).filter(([id]) => id === "home" || ids.has(id.toLowerCase()))),
   };
 }

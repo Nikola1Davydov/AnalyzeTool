@@ -14,7 +14,7 @@ import { HowItWorks } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
 import { ProfileScreen } from "./ProfileScreen";
-import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
+import { applyTheme, findButton, folderOf, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
 import { move, ordered, spring, Tile, TileIcon } from "./Tile";
 import "./pane.css";
@@ -296,7 +296,8 @@ function Header(props: {
           { label: "Statistics of this folder", onClick: () => props.onGo({ kind: "stats", folder: folder.id }) },
           ...(folder.directory ? [{ label: "Open the folder", hint: "Edit its buttons with an AI tool", onClick: () => openFolder(folder.directory!, toastError) }] : []),
           ...(folder.canAddButtons ? [{ label: "Name and description…", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") }] : []),
-          ...(folder.builtIn
+          // A tab has no versions of its own: each of its buttons has (✎ on the button)
+          ...(folder.builtIn || folder.id.toLowerCase().endsWith(".tab")
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
           // Any folder but AnalyseTool's own can be turned off and on, a DLL one or a package too
@@ -619,7 +620,7 @@ function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFo
                     <NewButtonForm
                       folder={folder}
                       panel={panel}
-                      onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError)}
+                      onOpenFiles={(id) => openWindow(`/extensions/${encodeURIComponent(id)}`, toastError)}
                     />,
                     "Add",
                   )
@@ -682,7 +683,7 @@ function ButtonTile(props: {
                     folder={folder}
                     folders={props.folders}
                     button={button}
-                    onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError)}
+                    onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folderOf(button.key))}`, toastError)}
                   />,
                   "Save",
                 ),

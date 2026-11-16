@@ -118,7 +118,7 @@ public sealed class ButtonTests
         using var environment = new ExtensionTestEnvironment();
         var time = new ManualTime(new DateTimeOffset(2026, 11, 16, 10, 0, 0, TimeSpan.Zero));
         var store = new ButtonUsageStore(environment.Paths, time);
-        await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreatePluginFolderAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         store.RecordClick("count-walls", "Count walls", "count-walls.CountWalls");
         store.RecordClick("count-walls", "Count walls", "count-walls.CountWalls");
         store.RecordClick("removed-tool", "Purge", "removed-tool.Purge");

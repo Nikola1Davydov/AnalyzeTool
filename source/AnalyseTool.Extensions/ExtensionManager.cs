@@ -14,7 +14,7 @@ namespace AnalyseTool.Extensions;
 ///     What the pages and AI clients do with extensions: create, edit, version, pin, turn off, remove. The commands in
 ///     <c>Features/</c> are thin wrappers over it.
 /// </summary>
-public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalog, ExtensionPaths paths, ExtensionStateStore store, IExtensionHistory history)
+public sealed partial class ExtensionManager(ExtensionHost host, ExtensionCatalog catalog, ExtensionPaths paths, ExtensionStateStore store, IExtensionHistory history)
 {
     private const long MaxReadBytes = 2 * 1024 * 1024;
 
@@ -36,8 +36,11 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         return host.GetState(id) ?? throw new CommandException(ExtensionErrorCodes.ExtensionNotFound, $"There is no extension '{id}'.");
     }
 
-    /// <summary>Creates a new extension in the authoring root (or <paramref name="root" />), starts its history and loads it.</summary>
-    public async Task<ExtensionState> CreateAsync(string name, string? id, string? description, ExtensionTemplate template, string? panel, string? root, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Creates an extension of the plugin.json layout (1.x, one folder for several buttons) in the authoring root (or
+    ///     <paramref name="root" />), starts its history and loads it. New buttons go to tabs (<see cref="CreateAsync" />).
+    /// </summary>
+    public async Task<ExtensionState> CreatePluginFolderAsync(string name, string? id, string? description, ExtensionTemplate template, string? panel, string? root, CancellationToken cancellationToken)
     {
         var (directory, folderId, trimmed) = NewFolder(name, id, root);
         ExtensionScaffold.Create(directory, folderId, trimmed, description, template, panel, catalog.RevitVersion);
@@ -48,6 +51,23 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
 
         await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
         return Get(folderId);
+    }
+
+    /// <summary>
+    ///     Creates a new button: in the tab <paramref name="tab" /> (an id or a name; made when there is none, named like the
+    ///     button when absent), as a folder of its own with its history started, and loads it.
+    /// </summary>
+    public async Task<ExtensionState> CreateAsync(string name, string? description, ExtensionTemplate template, string? panel, string? root, string? tab, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A name is required.");
+        }
+
+        var tabName = string.IsNullOrWhiteSpace(tab) ? name.Trim() : tab.Trim();
+        var found = catalog.FindTab(IsTab(tabName) ? tabName : ButtonFolder.TabId(tabName))
+                    ?? await CreateTabAsync(IsTab(tabName) ? tabName[..^ButtonFolder.TabSuffix.Length] : tabName, root, cancellationToken).ConfigureAwait(false);
+        return await AddTabButtonAsync(found.Id, name, description, template, panel, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Creates an empty folder of buttons (an extension with no button yet), with its history started.</summary>
@@ -774,12 +794,12 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
 
             if (exists)
             {
-                Directory.Move(target, backup);
+                MoveWithRetry(target, backup);
             }
 
             try
             {
-                Directory.Move(staging, target);
+                MoveWithRetry(staging, target);
             }
             catch
             {
@@ -807,6 +827,26 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
         var state = host.GetState(id);
         return new PackageInstallResult(id, info.Manifest.Version, target, exists, false, state is null ? null : Features.ExtensionSummary.From(state));
+    }
+
+    /// <summary>
+    ///     Moves a folder, trying again for a moment when it is held: an antivirus or the indexer opens the files of a folder
+    ///     that was just written and briefly denies the move.
+    /// </summary>
+    private static void MoveWithRetry(string from, string to)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Move(from, to);
+                return;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException && attempt < 10 && Directory.Exists(from) && !Directory.Exists(to))
+            {
+                Thread.Sleep(100 * attempt);
+            }
+        }
     }
 
     private static void DeleteDirectory(string directory)

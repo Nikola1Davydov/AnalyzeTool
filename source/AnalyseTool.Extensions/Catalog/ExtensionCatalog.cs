@@ -44,6 +44,9 @@ public sealed record ExtensionDescriptor(
     /// <summary>Gets a value indicating whether a button opens the page — the page is then the way in, and its commands its backend.</summary>
     public bool OpensPage => Manifest.Ui?.EffectiveButtons().Any(button => string.IsNullOrWhiteSpace(button.Command)) == true;
 
+    /// <summary>The tab a button folder belongs to; <see langword="null" /> for an extension of plugin.json (1.x).</summary>
+    public ExtensionTab? Tab { get; init; }
+
     /// <summary>Gets a value indicating whether this Revit can load its commands: a DLL extension needs a build for this year.</summary>
     public bool IsCompatible => Kind != ExtensionKind.Dll || EntryAssemblyPath is not null;
 }
@@ -69,6 +72,33 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
         return paths.GetRoots().SelectMany(root => ScanRoot(root, problems)).ToList();
     }
 
+    /// <summary>The tab folders of the user's roots (not of packages), those without a button yet too.</summary>
+    public IReadOnlyList<ExtensionTab> GetTabs()
+    {
+        var result = new List<ExtensionTab>();
+        foreach (var root in paths.GetRoots().Where(root => root.Zone == ExtensionZone.Dev && Directory.Exists(root.Path)))
+        {
+            foreach (var directory in Directory.GetDirectories(root.Path).Where(ButtonFolder.IsTab))
+            {
+                try
+                {
+                    result.Add(ButtonFolder.ReadTab(directory));
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+                {
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Finds a tab of the user by its id (<c>sheets.tab</c>).</summary>
+    public ExtensionTab? FindTab(string id)
+    {
+        return GetTabs().FirstOrDefault(tab => string.Equals(tab.Id, id, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Finds an extension by id.</summary>
     public ExtensionDescriptor? Find(string id)
     {
@@ -90,6 +120,28 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
             // The work folders of an install, even when a crash left them with a plugin.json inside
             if (name.EndsWith(".installing", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".old", StringComparison.OrdinalIgnoreCase) || name.StartsWith('.'))
             {
+                continue;
+            }
+
+            // A tab: every button folder in it is an extension of its own
+            if (name.EndsWith(ButtonFolder.TabSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                ExtensionTab tab;
+                try
+                {
+                    tab = ButtonFolder.ReadTab(directory);
+                }
+                catch (InvalidDataException exception)
+                {
+                    problems?.TryAdd(directory, exception.Message);
+                    continue;
+                }
+
+                foreach (var button in tab.ButtonDirectories)
+                {
+                    Add(result, button, root.Zone, false, problems, tab);
+                }
+
                 continue;
             }
 
@@ -120,9 +172,17 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
         return list.FirstOrDefault();
     }
 
-    /// <summary>The C# sources of a folder, in a stable order, every subfolder of <c>src\</c> included.</summary>
+    /// <summary>
+    ///     The C# sources of a folder, in a stable order: every <c>*.cs</c> of <c>src\</c>; for a button folder, its own <c>*.cs</c>
+    ///     and the <c>_shared\</c> of its tab.
+    /// </summary>
     public static IReadOnlyList<string> GetSourceFiles(string directory)
     {
+        if (ButtonFolder.IsButton(directory))
+        {
+            return ButtonFolder.SourceFiles(directory);
+        }
+
         var source = Path.Combine(directory, SourceFolder);
         return Directory.Exists(source)
             ? Directory.GetFiles(source, "*.cs", SearchOption.AllDirectories)
@@ -156,9 +216,9 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
         return string.IsNullOrWhiteSpace(manifest.EntryAssembly) ? ExtensionKind.Page : ExtensionKind.Dll;
     }
 
-    private void Add(List<ExtensionDescriptor> result, string directory, ExtensionZone zone, bool isLegacy, IDictionary<string, string>? problems)
+    private void Add(List<ExtensionDescriptor> result, string directory, ExtensionZone zone, bool isLegacy, IDictionary<string, string>? problems, ExtensionTab? tab = null)
     {
-        if (!File.Exists(Path.Combine(directory, ExtensionManifest.FileName)))
+        if (!ExtensionManifest.Exists(directory))
         {
             return;
         }
@@ -174,7 +234,10 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
                 isLegacy,
                 kind,
                 kind == ExtensionKind.Dll ? ResolveEntryAssembly(manifest, directory, isLegacy) : null,
-                isLegacy ? [] : GetBinaryYears(directory)));
+                isLegacy ? [] : GetBinaryYears(directory))
+            {
+                Tab = tab ?? (ButtonFolder.IsButton(directory) && ButtonFolder.TabDirectory(directory) is { } parent ? ButtonFolder.ReadTab(parent) : null)
+            });
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {

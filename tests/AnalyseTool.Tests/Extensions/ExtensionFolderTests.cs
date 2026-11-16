@@ -153,7 +153,7 @@ public sealed class ExtensionFolderTests
     public async Task AddButton_WithANameTaken_IsRefused_AndAnOldSingleButtonBecomesAList()
     {
         using var environment = new ExtensionTestEnvironment();
-        var first = await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var first = await environment.Manager.CreatePluginFolderAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         // The 1.x form: one "button" object instead of the list
         ExtensionManifest.Update(first.Descriptor.Directory, manifest =>
         {

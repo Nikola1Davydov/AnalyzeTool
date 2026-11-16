@@ -63,7 +63,8 @@ public sealed record PaneOverview(string UserName, string MachineName, string Pr
 
 /// <summary>Returns the buttons of the dock pane.</summary>
 [Command(Description = "Returns every ribbon button for the dock pane, grouped by AnalyseTool and the extensions.")]
-public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, CommandRegistry registry, ButtonUsageStore? usage = null) : ICommand<PaneOverview>
+public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, CommandRegistry registry, ButtonUsageStore? usage = null, ExtensionCatalog? extensions = null,
+    ExtensionStateStore? store = null) : ICommand<PaneOverview>
 {
     private const int MaxImageBytes = 256 * 1024;
 
@@ -73,10 +74,49 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths, 
         var failures = (usage?.Read().Buttons ?? [])
             .Where(button => button.LastRunFailed)
             .ToDictionary(button => ButtonUsageStore.Key(button.Extension, button.Button), StringComparer.OrdinalIgnoreCase);
-        var folders = catalog.GetSources()
-            .Select(source => Folder(source, failures))
-            .ToList();
+        var sources = catalog.GetSources();
+        var folders = new List<PaneFolder>();
+        var tabs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var source in sources)
+        {
+            if (source.Extension.Tab is not { } tab)
+            {
+                folders.Add(Folder(source, failures));
+            }
+            else if (tabs.Add(tab.Id))
+            {
+                // A tab is one folder of the pane: its buttons are extensions of their own
+                folders.Add(TabFolder(tab, sources.Where(other => string.Equals(other.Extension.Tab?.Id, tab.Id, StringComparison.OrdinalIgnoreCase)), failures));
+            }
+        }
+
+        // A tab with no button yet
+        foreach (var tab in extensions?.GetTabs() ?? [])
+        {
+            if (tabs.Add(tab.Id))
+            {
+                folders.Add(TabFolder(tab, [], failures));
+            }
+        }
+
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
+    }
+
+    /// <summary>A tab of the user: the buttons of its button folders, each with the problems of its own folder.</summary>
+    private PaneFolder TabFolder(ExtensionTab tab, IEnumerable<ButtonSource> members, IReadOnlyDictionary<string, ButtonUsage> failures)
+    {
+        var buttons = new List<PaneButton>();
+        foreach (var member in members)
+        {
+            var folder = Folder(member, failures);
+            buttons.AddRange(folder.Problems.Count == 0
+                ? folder.Buttons
+                : folder.Buttons.Select(button => button with { Problems = (button.Problems ?? []).Concat(folder.Problems).ToList() }));
+        }
+
+        var panels = tab.Panels.Select(panel => panel.Name).ToList();
+        return new PaneFolder(tab.Id, tab.Name, false, store?.IsEnabled(tab.Id) ?? true, [], buttons, true, null, tab.Directory, tab.Name,
+            panels.FirstOrDefault() ?? tab.Name, panels);
     }
 
     /// <summary>A folder with its buttons; a compiler error goes to the button whose file it is in, the rest stays the folder's.</summary>

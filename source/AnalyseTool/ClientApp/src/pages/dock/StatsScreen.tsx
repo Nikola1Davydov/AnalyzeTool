@@ -38,7 +38,14 @@ export function StatsScreen({ overview, folder }: { overview: PaneOverview; fold
   });
 
   const all = useMemo(
-    () => (stats.data?.buttons ?? []).filter((button) => !folder || button.extension.toLowerCase() === folder.toLowerCase()),
+    () =>
+      (stats.data?.buttons ?? []).filter(
+        (button) =>
+          !folder ||
+          button.extension.toLowerCase() === folder.toLowerCase() ||
+          // The buttons of a tab are <tab>.<button>
+          (folder.toLowerCase().endsWith(".tab") && button.extension.toLowerCase().startsWith(folder.toLowerCase().slice(0, -".tab".length) + ".")),
+      ),
     [stats.data, folder],
   );
   const rows = useMemo(() => {

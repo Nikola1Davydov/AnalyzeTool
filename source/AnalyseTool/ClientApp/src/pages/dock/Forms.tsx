@@ -12,7 +12,7 @@ import {
   extensionCommands,
 } from "../../api/extensions";
 import type { PaneButton, PaneFolder } from "../../api/pane";
-import { useProfile } from "./profile";
+import { useProfile, folderOf } from "./profile";
 import { messageOf, SHEET_FORM, useActions } from "./Actions";
 
 
@@ -65,14 +65,14 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
 }
 
 /** «+ New button» in a folder: a name and what it does — a page with its C# command, added to the folder as a version. */
-export function NewButtonForm({ folder, panel, onOpenFiles }: { folder: PaneFolder; panel?: string; onOpenFiles: () => void }) {
+export function NewButtonForm({ folder, panel, onOpenFiles }: { folder: PaneFolder; panel?: string; onOpenFiles: (id: string) => void }) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const add = useMutation({
     mutationFn: (request: AddExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.AddExtensionButton, request),
-    onSuccess: (_, request) => {
+    onSuccess: (created, request) => {
       refresh();
       actions.closeSheet();
       actions.toast(`«${request.name}» added to ${folder.name} — tap here to edit its code`, "ok", (
@@ -81,7 +81,7 @@ export function NewButtonForm({ folder, panel, onOpenFiles }: { folder: PaneFold
             The button runs a small example now. Its code is in the folder <strong>{folder.name}</strong>: edit it in any editor, or let your AI
             client do it — saving reloads the button.
           </p>
-          <button onClick={onOpenFiles}>Open its files and versions</button>
+          <button onClick={() => onOpenFiles(created.id)}>Open its files and versions</button>
         </div>
       ));
     },
@@ -122,7 +122,7 @@ export function EditButtonForm({ folder, folders, button, onOpenFiles }: { folde
   const save = useMutation({
     mutationFn: (request: UpdateExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionButton, request),
     onSuccess: (_, request) => {
-      const newKey = `${folder.id}/${request.name.split(/[\r\n]+/).map((part) => part.trim()).filter(Boolean).join(" ")}`;
+      const newKey = `${folderOf(button.key)}/${request.name.split(/[\r\n]+/).map((part) => part.trim()).filter(Boolean).join(" ")}`;
       if (newKey !== button.key) {
         const rename = (key: string) => (key === button.key ? newKey : key);
         update((profile) => ({
@@ -210,7 +210,11 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
         <span>What its buttons are for</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
-      <p className="muted small">Saved as a version of the folder. Its id ({folder.id}) and its commands stay.</p>
+      <p className="muted small">
+        {folder.id.toLowerCase().endsWith(".tab")
+          ? "The name of the tab on the ribbon. Its folder on disk keeps its name."
+          : `Saved as a version of the folder. Its id (${folder.id}) and its commands stay.`}
+      </p>
       {save.isPending && <p className="muted small">Saving…</p>}
       {save.isError && <p className="error small">{messageOf(save.error)}</p>}
     </form>
@@ -221,7 +225,9 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
 function MoveTo({ folder, folders, button }: { folder: PaneFolder; folders: PaneFolder[]; button: PaneButton }) {
   const actions = useActions();
   const refresh = useRefreshAll();
-  const targets = folders.filter((candidate) => candidate.canAddButtons);
+  // A button moves between tabs (its folder goes along) or between folders of plugin.json, not from one to the other
+  const isTab = (candidate: PaneFolder) => candidate.id.toLowerCase().endsWith(".tab");
+  const targets = folders.filter((candidate) => candidate.canAddButtons && isTab(candidate) === isTab(folder));
   const [to, setTo] = useState(folder.id);
   const target = targets.find((candidate) => candidate.id === to) ?? folder;
   const panels = target.panels?.length ? target.panels : [target.panel ?? target.name];
@@ -267,9 +273,12 @@ function MoveTo({ folder, folders, button }: { folder: PaneFolder; folders: Pane
           ))}
         </select>
       </label>
-      {to !== folder.id && (
-        <p className="muted small">Its C# file and page go along; its command becomes {target.id}.… A version is saved in both folders.</p>
-      )}
+      {to !== folder.id &&
+        (isTab(folder) ? (
+          <p className="muted small">Its folder moves with its code, page and versions.</p>
+        ) : (
+          <p className="muted small">Its C# file and page go along; its command becomes {target.id}.… A version is saved in both folders.</p>
+        ))}
       <button type="button" disabled={same || move.isPending} onClick={() => move.mutate({ id: folder.id, button: button.name, panel, toId: to === folder.id ? null : to })}>
         {move.isPending ? "Moving…" : "Move"}
       </button>

@@ -91,7 +91,10 @@ public sealed record ExtensionManifest
         ExtensionManifest? manifest;
         try
         {
-            manifest = JsonSerializer.Deserialize<ExtensionManifest>(File.ReadAllText(path), ReadOptions);
+            // A button folder of a tab: its button.json, seen as the plugin.json of an extension with one button
+            manifest = ButtonFolder.IsButton(directory) && !File.Exists(path)
+                ? ButtonFolder.ToPluginJson(directory).Deserialize<ExtensionManifest>(ReadOptions)
+                : JsonSerializer.Deserialize<ExtensionManifest>(File.ReadAllText(path), ReadOptions);
         }
         catch (JsonException exception)
         {
@@ -113,10 +116,24 @@ public sealed record ExtensionManifest
     public static void Update(string directory, Action<JsonObject> change)
     {
         var path = Path.Combine(directory, FileName);
+        if (ButtonFolder.IsButton(directory) && !File.Exists(path))
+        {
+            var view = ButtonFolder.ToPluginJson(directory);
+            change(view);
+            ButtonFolder.FromPluginJson(directory, view);
+            return;
+        }
+
         var node = JsonNode.Parse(File.ReadAllText(path), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
                    ?? throw new InvalidDataException($"{FileName} is not a JSON object.");
         change(node);
         File.WriteAllText(path, node.ToJsonString(WriteOptions));
+    }
+
+    /// <summary>Whether a folder has a manifest: plugin.json, or button.json of a button folder.</summary>
+    public static bool Exists(string directory)
+    {
+        return File.Exists(Path.Combine(directory, FileName)) || ButtonFolder.IsButton(directory);
     }
 
     /// <summary>Writes a new manifest.</summary>

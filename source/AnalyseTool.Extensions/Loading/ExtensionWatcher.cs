@@ -133,6 +133,13 @@ public sealed partial class ExtensionWatcher(ExtensionHost host, ExtensionPaths 
             return;
         }
 
+        // A tab: a change in a button folder reloads that button; any other (its _shared\ C#, a bundle.json, a new folder) all
+        if (parts[0].EndsWith(ButtonFolder.TabSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            var button = Array.FindIndex(parts, part => part.EndsWith(ButtonFolder.ButtonSuffix, StringComparison.OrdinalIgnoreCase));
+            depth = button > 0 && button < parts.Length - 1 ? button + 1 : 1;
+        }
+
         var folder = Path.Combine([root, .. parts.Take(depth)]);
         Schedule(folder);
     }
@@ -161,7 +168,7 @@ public sealed partial class ExtensionWatcher(ExtensionHost host, ExtensionPaths 
             {
                 await host.ReloadAsync(id, _stopping).ConfigureAwait(false);
             }
-            else if (File.Exists(Path.Combine(folder, ExtensionManifest.FileName)) || !Directory.Exists(folder))
+            else if (File.Exists(Path.Combine(folder, ExtensionManifest.FileName)) || !Directory.Exists(folder) || ButtonFolder.IsTab(folder) || ButtonFolder.IsButton(folder))
             {
                 // A new folder, or one whose plugin.json was broken before: a full scan finds it
                 await host.ReloadAllAsync(_stopping).ConfigureAwait(false);

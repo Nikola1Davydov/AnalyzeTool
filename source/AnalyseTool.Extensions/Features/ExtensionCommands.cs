@@ -1,3 +1,4 @@
+using AnalyseTool.Extensions.Manifest;
 using AnalyseTool.Extensions.Authoring;
 using AnalyseTool.Extensions.Building;
 using AnalyseTool.Extensions.Catalog;
@@ -44,6 +45,29 @@ public sealed record ExtensionSummary(
     string? LoadedVersion,
     bool UsesOlderBuild)
 {
+    /// <summary>Describes a tab of the user (<c>&lt;Name&gt;.tab</c>): its buttons are extensions of their own.</summary>
+    public static ExtensionSummary From(ExtensionTab tab, ExtensionManager manager)
+    {
+        var buttons = manager.TabButtons(tab);
+        return new ExtensionSummary(
+            tab.Id,
+            tab.Name,
+            tab.Name,
+            "1.0.0",
+            null,
+            tab.Directory,
+            ExtensionZone.Dev,
+            ExtensionKind.Source,
+            manager.IsTabEnabled(tab.Id),
+            true,
+            buttons.SelectMany(state => state.Commands).ToList(),
+            buttons.Select(state => state.Descriptor.Manifest.Name ?? state.Descriptor.Id).ToList(),
+            buttons.SelectMany(state => state.Errors).ToList(),
+            buttons.SelectMany(state => state.Diagnostics).ToList(),
+            null,
+            false);
+    }
+
     /// <summary>Describes a loaded extension.</summary>
     public static ExtensionSummary From(ExtensionState state)
     {
@@ -119,18 +143,19 @@ public sealed record CreateExtensionRequest(
     [property: Description("What the button does; becomes the tooltip and the command description.")] string? Description = null,
     [property: Description("The id; derived from the name when absent. Letters, digits, '.', '-', '_'.")] string? Id = null,
     [property: Description("CommandWithPage (default): a button that opens an HTML page calling its C# command; Command: a button that runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage,
-    [property: Description("The ribbon panel; «Extensions» when absent.")] string? Panel = null,
-    [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null);
+    [property: Description("The panel of the tab; the first panel of the tab, or the tab name, when absent.")] string? Panel = null,
+    [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null,
+    [property: Description("The tab: the id of one (e.g. «sheets.tab») or a name; a tab of that name is made when there is none. The button's name when absent.")] string? Tab = null);
 
 /// <summary>Creates a new extension: C# sources by default, with the first version saved.</summary>
 [McpTool(Title = "Create extension")]
-[Command(Description = "Creates a new ribbon button as an extension: a folder with plugin.json and C# sources in src\\ that AnalyseTool compiles itself (no project, no DLL), AGENTS.md and CLAUDE.md that point to the authoring guide (LLM.md next to the add-in), and the first saved version. Returns the extension with its folder; then edit src\\*.cs with WriteExtensionFile.")]
+[Command(Description = "Creates a new ribbon button: a folder <Tab>.tab\\<Panel>.panel\\<Name>.pushbutton\\ with bundle.json and a C# file that AnalyseTool compiles itself (no project, no DLL), AGENTS.md and CLAUDE.md that point to the authoring guide (LLM.md next to the add-in), and its own first saved version. Returns the button (an extension of its own, id <tab>.<button>) with its folder; then edit its *.cs with WriteExtensionFile.")]
 public sealed class CreateExtension(ExtensionManager manager) : ICommand<CreateExtensionRequest, ExtensionSummary>
 {
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(CreateExtensionRequest request, CommandContext context)
     {
-        var state = await manager.CreateAsync(request.Name, request.Id, request.Description, request.Template, request.Panel, request.Root, context.CancellationToken).ConfigureAwait(false);
+        var state = await manager.CreateAsync(request.Name, request.Description, request.Template, request.Panel, request.Root, request.Tab, context.CancellationToken).ConfigureAwait(false);
         return ExtensionSummary.From(state);
     }
 }
@@ -146,14 +171,19 @@ public sealed record CreateExtensionFolderRequest(
 
 /// <summary>Creates an empty folder of buttons.</summary>
 [McpTool(Title = "Create a folder of buttons")]
-[Command(Description = "Creates an empty folder of buttons (an extension with no button yet): plugin.json, AGENTS.md / CLAUDE.md pointing to the authoring guide, and its version history. Add buttons with AddExtensionButton.")]
+[Command(Description = "Creates an empty folder of buttons — a ribbon tab: <Name>.tab\\ with bundle.json. Its id is «<name>.tab». Add buttons with AddExtensionButton.")]
 public sealed class CreateExtensionFolder(ExtensionManager manager) : ICommand<CreateExtensionFolderRequest, ExtensionSummary>
 {
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(CreateExtensionFolderRequest request, CommandContext context)
     {
-        var state = await manager.CreateFolderAsync(request.Name, request.Id, request.Description, request.Panel, request.Root, context.CancellationToken, request.Tab).ConfigureAwait(false);
-        return ExtensionSummary.From(state);
+        var tab = await manager.CreateTabAsync(request.Name, request.Root, context.CancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(request.Panel))
+        {
+            tab = await manager.SetTabPanelAsync(tab.Id, null, request.Panel, context.CancellationToken).ConfigureAwait(false);
+        }
+
+        return ExtensionSummary.From(tab, manager);
     }
 }
 
@@ -174,7 +204,9 @@ public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddE
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(AddExtensionButtonRequest request, CommandContext context)
     {
-        var state = await manager.AddButtonAsync(request.Id, request.Name, request.Description, request.Template, context.CancellationToken, request.Tab, request.Panel).ConfigureAwait(false);
+        var state = ExtensionManager.IsTab(request.Id)
+            ? await manager.AddTabButtonAsync(request.Id, request.Name, request.Description, request.Template, request.Panel, context.CancellationToken).ConfigureAwait(false)
+            : await manager.AddButtonAsync(request.Id, request.Name, request.Description, request.Template, context.CancellationToken, request.Tab, request.Panel).ConfigureAwait(false);
         return ExtensionSummary.From(state);
     }
 }
@@ -195,6 +227,11 @@ public sealed class UpdateExtensionFolder(ExtensionManager manager) : ICommand<U
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionFolderRequest request, CommandContext context)
     {
+        if (ExtensionManager.IsTab(request.Id))
+        {
+            return ExtensionSummary.From(await manager.RenameTabAsync(request.Id, request.Name, context.CancellationToken).ConfigureAwait(false), manager);
+        }
+
         return ExtensionSummary.From(await manager.UpdateFolderAsync(request.Id, request.Name, request.Description, request.Tab, request.Panel, context.CancellationToken).ConfigureAwait(false));
     }
 }
@@ -217,7 +254,17 @@ public sealed class UpdateExtensionButton(ExtensionManager manager) : ICommand<U
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionButtonRequest request, CommandContext context)
     {
-        return ExtensionSummary.From(await manager.UpdateButtonAsync(request.Id, request.Button, request.Name, request.Tooltip, request.Tab, request.Panel, context.CancellationToken, request.Dockable).ConfigureAwait(false));
+        var id = request.Id;
+        if (ExtensionManager.IsTab(id))
+        {
+            // A button of a tab is an extension of its own
+            var tab = manager.GetTab(id);
+            id = manager.TabButtons(tab).FirstOrDefault(state => (state.Descriptor.Manifest.Ui?.EffectiveButtons() ?? []).SelectMany(button => (button.Items ?? []).Prepend(button))
+                     .Any(button => string.Equals(Usage.ButtonUsageStore.Normalize(button.Name), Usage.ButtonUsageStore.Normalize(request.Button), StringComparison.OrdinalIgnoreCase)))?.Descriptor.Id
+                 ?? throw new CommandException(ExtensionErrorCodes.Invalid, $"The tab «{tab.Name}» has no button «{request.Button}».");
+        }
+
+        return ExtensionSummary.From(await manager.UpdateButtonAsync(id, request.Button, request.Name, request.Tooltip, request.Tab, request.Panel, context.CancellationToken, request.Dockable).ConfigureAwait(false));
     }
 }
 
@@ -235,6 +282,11 @@ public sealed class SetExtensionPanel(ExtensionManager manager) : ICommand<SetEx
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(SetExtensionPanelRequest request, CommandContext context)
     {
+        if (ExtensionManager.IsTab(request.Id))
+        {
+            return ExtensionSummary.From(await manager.SetTabPanelAsync(request.Id, request.Panel, request.Name, context.CancellationToken).ConfigureAwait(false), manager);
+        }
+
         return ExtensionSummary.From(await manager.SetPanelAsync(request.Id, request.Panel, request.Name, context.CancellationToken).ConfigureAwait(false));
     }
 }
@@ -255,6 +307,17 @@ public sealed class MoveExtensionButton(ExtensionManager manager) : ICommand<Mov
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(MoveExtensionButtonRequest request, CommandContext context)
     {
+        var toTab = request.ToId is { Length: > 0 } to && ExtensionManager.IsTab(to);
+        if (ExtensionManager.IsTab(request.Id) != (toTab || (string.IsNullOrWhiteSpace(request.ToId) && ExtensionManager.IsTab(request.Id))))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A button moves between tabs, or between folders of the old layout (plugin.json) — not from one to the other yet.");
+        }
+
+        if (ExtensionManager.IsTab(request.Id))
+        {
+            return ExtensionSummary.From(await manager.MoveTabButtonAsync(request.Id, request.Button, request.Panel, request.Before, request.ToId, context.CancellationToken).ConfigureAwait(false));
+        }
+
         return ExtensionSummary.From(await manager.MoveButtonAsync(request.Id, request.Button, request.Panel, request.Before, request.ToId, context.CancellationToken).ConfigureAwait(false));
     }
 }
@@ -276,6 +339,11 @@ public sealed class SetExtensionEnabled(ExtensionManager manager) : ICommand<Set
     /// <inheritdoc />
     public async Task<ExtensionSummary?> ExecuteAsync(SetExtensionEnabledRequest request, CommandContext context)
     {
+        if (ExtensionManager.IsTab(request.Id))
+        {
+            return ExtensionSummary.From(await manager.SetTabEnabledAsync(request.Id, request.Enabled, context.CancellationToken).ConfigureAwait(false), manager);
+        }
+
         var state = await manager.SetEnabledAsync(request.Id, request.Enabled, context.CancellationToken).ConfigureAwait(false);
         return state is null ? null : ExtensionSummary.From(state);
     }
@@ -292,7 +360,9 @@ public sealed class RemoveExtension(ExtensionManager manager) : ICommand<Extensi
     /// <inheritdoc />
     public async Task<RemoveExtensionResult> ExecuteAsync(ExtensionRequest request, CommandContext context)
     {
-        return new RemoveExtensionResult(await manager.RemoveAsync(request.Id).ConfigureAwait(false));
+        return new RemoveExtensionResult(ExtensionManager.IsTab(request.Id)
+            ? await manager.RemoveTabAsync(request.Id).ConfigureAwait(false)
+            : await manager.RemoveAsync(request.Id).ConfigureAwait(false));
     }
 }
 

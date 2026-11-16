@@ -1,3 +1,4 @@
+using AnalyseTool.Extensions.Manifest;
 using System.IO;
 using AnalyseTool.Extensions.Building;
 using AnalyseTool.Extensions.Catalog;
@@ -211,7 +212,8 @@ public sealed partial class ExtensionHost : IDisposable
     private ExtensionState LoadOne(ExtensionDescriptor descriptor)
     {
         var id = descriptor.Id;
-        var enabled = _store.IsEnabled(id);
+        // A button of a tab that is off does not load either
+        var enabled = _store.IsEnabled(id) && (descriptor.Tab is null || _store.IsEnabled(descriptor.Tab.Id));
         var errors = new List<string>();
         IReadOnlyList<CompileDiagnostic> diagnostics = [];
         string? loadedVersion = null;
@@ -309,8 +311,17 @@ public sealed partial class ExtensionHost : IDisposable
             try
             {
                 var files = _history.GetFiles(descriptor.Directory, pinned, SourceExtensions)
-                    .Where(file => file.Key.StartsWith(ExtensionCatalog.SourceFolder + "/", StringComparison.OrdinalIgnoreCase))
+                    // A button folder keeps its C# beside bundle.json; an extension of plugin.json in src\
+                    .Where(file => ButtonFolder.IsButton(descriptor.Directory)
+                        ? !file.Key.Split('/')[0].Equals("bin", StringComparison.OrdinalIgnoreCase) && !file.Key.StartsWith(".", StringComparison.Ordinal) && !file.Key.StartsWith("obj/", StringComparison.OrdinalIgnoreCase)
+                        : file.Key.StartsWith(ExtensionCatalog.SourceFolder + "/", StringComparison.OrdinalIgnoreCase))
                     .Select(file => (Path: file.Key.Replace('/', Path.DirectorySeparatorChar), Text: file.Value))
+                    // The _shared\ C# of the tab is not in the button's history: as it is now
+                    .Concat(ButtonFolder.IsButton(descriptor.Directory)
+                        ? ButtonFolder.SourceFiles(descriptor.Directory)
+                            .Where(file => !file.StartsWith(descriptor.Directory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                            .Select(file => (Path: Path.GetRelativePath(descriptor.Directory, file), Text: File.ReadAllText(file)))
+                        : [])
                     .ToList();
                 return ExtensionBuilder.Build(descriptor, RevitVersion, files, pinned);
             }

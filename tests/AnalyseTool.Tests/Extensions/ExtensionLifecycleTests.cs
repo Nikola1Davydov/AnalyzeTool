@@ -15,7 +15,7 @@ public sealed class ExtensionLifecycleTests
     {
         using var environment = new ExtensionTestEnvironment();
 
-        var state = await environment.Manager.CreateAsync("Count walls", null, "Counts the walls.", ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Count walls", null, "Counts the walls.", ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         using (Assert.Multiple())
         {
@@ -36,7 +36,7 @@ public sealed class ExtensionLifecycleTests
     {
         using var environment = new ExtensionTestEnvironment();
 
-        var state = await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         var directory = state.Descriptor.Directory;
         using (Assert.Multiple())
@@ -54,9 +54,9 @@ public sealed class ExtensionLifecycleTests
     {
         using var environment = new ExtensionTestEnvironment();
 
-        var command = await environment.Manager.CreateAsync("A", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
-        var withPage = await environment.Manager.CreateAsync("B", null, null, ExtensionTemplate.CommandWithPage, null, null, CancellationToken.None);
-        var page = await environment.Manager.CreateAsync("C", null, null, ExtensionTemplate.Page, null, null, CancellationToken.None);
+        var command = await environment.Manager.CreatePluginFolderAsync("A", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var withPage = await environment.Manager.CreatePluginFolderAsync("B", null, null, ExtensionTemplate.CommandWithPage, null, null, CancellationToken.None);
+        var page = await environment.Manager.CreatePluginFolderAsync("C", null, null, ExtensionTemplate.Page, null, null, CancellationToken.None);
 
         using (Assert.Multiple())
         {
@@ -72,7 +72,7 @@ public sealed class ExtensionLifecycleTests
     public async Task Invoke_SourceCommand_RunsThroughTheSdkContract()
     {
         using var environment = new ExtensionTestEnvironment();
-        var state = await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", ExtensionTestEnvironment.EchoCommand(), CancellationToken.None);
 
         var descriptor = environment.Registry.Find("echo.Echo")!;
@@ -94,7 +94,7 @@ public sealed class ExtensionLifecycleTests
     public async Task WriteFile_BrokenCode_KeepsThePreviousBuildAndReportsTheLine()
     {
         using var environment = new ExtensionTestEnvironment();
-        await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", ExtensionTestEnvironment.EchoCommand(), CancellationToken.None);
 
         var broken = await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", "public sealed class Echo {\n  int x = undefinedName;\n}", CancellationToken.None);
@@ -113,7 +113,7 @@ public sealed class ExtensionLifecycleTests
     public async Task Versions_SaveDiffRestore_NothingIsLost()
     {
         using var environment = new ExtensionTestEnvironment();
-        var state = await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         var folder = state.Descriptor.Directory;
         await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", ExtensionTestEnvironment.EchoCommand(answer: "1"), CancellationToken.None);
         var first = environment.Manager.SaveVersion("echo", "answer 1")!;
@@ -139,7 +139,7 @@ public sealed class ExtensionLifecycleTests
     public async Task Pin_OlderVersion_RunsItsCodeWithoutTouchingTheFiles()
     {
         using var environment = new ExtensionTestEnvironment();
-        var state = await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
         await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", ExtensionTestEnvironment.EchoCommand(answer: "1"), CancellationToken.None);
         var first = environment.Manager.SaveVersion("echo", "answer 1")!;
         await environment.Manager.WriteFileAsync("echo", "src/Echo.cs", ExtensionTestEnvironment.EchoCommand(answer: "2"), CancellationToken.None);
@@ -185,7 +185,7 @@ public sealed class ExtensionLifecycleTests
     public async Task SetEnabled_Off_RemovesTheCommands()
     {
         using var environment = new ExtensionTestEnvironment();
-        await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         var off = await environment.Manager.SetEnabledAsync("echo", false, CancellationToken.None);
 
@@ -197,7 +197,7 @@ public sealed class ExtensionLifecycleTests
     public async Task Remove_MovesTheFolderToTheTrashWithItsHistory()
     {
         using var environment = new ExtensionTestEnvironment();
-        var state = await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        var state = await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         var movedTo = await environment.Manager.RemoveAsync("echo");
 
@@ -214,7 +214,7 @@ public sealed class ExtensionLifecycleTests
     public async Task ReadFile_PathOutsideTheFolder_IsRefused()
     {
         using var environment = new ExtensionTestEnvironment();
-        await environment.Manager.CreateAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreatePluginFolderAsync("Echo", "echo", null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         await Assert.That(() => environment.Manager.ReadFile("echo", "../extensions-state.json")).Throws<CommandException>();
         await Assert.That(() => environment.Manager.ReadFile("echo", ".git/config")).Throws<CommandException>();

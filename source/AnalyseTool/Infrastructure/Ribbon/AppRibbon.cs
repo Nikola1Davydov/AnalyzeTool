@@ -93,7 +93,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             // Shown extensions, minus the folders whose tab the user turned off (AnalyseTool's own is always there)
             var sources = catalog.GetSources()
-                .Where(source => source.Shown && (source.BuiltIn || !visibility.IsFolderHidden(source.Extension.Id)))
+                .Where(source => source.Shown && (source.BuiltIn || !visibility.IsFolderHidden(ButtonCatalog.FolderId(source))))
                 .ToList();
 
             // Nothing that the ribbon shows changed: a reload of unchanged code keeps the buttons as they are
@@ -145,7 +145,8 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
                 var (tab, panel) = ButtonCatalog.Place(source, button);
                 var panelIndex = panels.ToList().FindIndex(name => string.Equals(name, panel, StringComparison.OrdinalIgnoreCase));
-                entries.Add(new Entry(extension, button, tab + Separator + panel, index, source.BuiltIn ? sourceIndex : int.MaxValue, sourceIndex, panelIndex));
+                // A button of a tab keeps the place its folder has (the layouts); other extensions go by id
+                entries.Add(new Entry(extension, button, tab + Separator + panel, index, source.BuiltIn || extension.Tab is not null ? sourceIndex : int.MaxValue, sourceIndex, panelIndex));
             }
         }
 
@@ -167,9 +168,31 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
                 .ToList();
             var items = _items[panel.Key] = [];
 
+            var merged = new HashSet<Entry>();
             foreach (var entry in ordered.Where(entry => entry.Button.ResolvedKind != ButtonKind.Stacked))
             {
-                var item = entry.Button.ResolvedKind == ButtonKind.Pulldown ? MakePulldown(entry) : MakeButton(entry.Extension, entry.Button, small: false);
+                if (!merged.Add(entry))
+                {
+                    continue;
+                }
+
+                AdWin.RibbonItem item;
+                if (entry.Button.ResolvedKind == ButtonKind.Pulldown)
+                {
+                    // The buttons of one <Name>.pulldown folder are extensions of their own: one pulldown on the ribbon
+                    var same = entry.Extension.Tab is null
+                        ? [entry]
+                        : ordered.Where(other => other.Button.ResolvedKind == ButtonKind.Pulldown && other.Extension.Tab is not null
+                                                                                               && string.Equals(other.Button.Name, entry.Button.Name, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                    merged.UnionWith(same);
+                    item = MakePulldown(same);
+                }
+                else
+                {
+                    item = MakeButton(entry.Extension, entry.Button, small: false);
+                }
+
                 source.Items.Add(item);
                 items.Add(item);
             }
@@ -194,8 +217,9 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         }
     }
 
-    private AdWin.RibbonItem MakePulldown(Entry entry)
+    private AdWin.RibbonItem MakePulldown(IReadOnlyList<Entry> entries)
     {
+        var entry = entries[0];
         var pulldown = new AdWin.RibbonSplitButton
         {
             Id = $"AnalyseTool.Ext.{entry.Extension.Id}.{entry.Index}",
@@ -211,9 +235,12 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         var icon = LoadIcon(entry.Extension, entry.Button);
         pulldown.Image = icon;
         pulldown.LargeImage = icon;
-        foreach (var child in (entry.Button.Items ?? []).Where(child => child.OnRibbon))
+        foreach (var part in entries)
         {
-            pulldown.Items.Add(MakeButton(entry.Extension, child, small: true));
+            foreach (var child in (part.Button.Items ?? []).Where(child => child.OnRibbon))
+            {
+                pulldown.Items.Add(MakeButton(part.Extension, child, small: true));
+            }
         }
 
         return pulldown;

@@ -49,8 +49,18 @@ public sealed class ButtonCatalog(ExtensionHost host)
         var sources = _builtIn.Value.Select(descriptor => new ButtonSource(descriptor, true, true)).ToList();
         // An extension with buttons, or a folder of the user that has none yet (new, or built from sources): the pane shows
         // it so buttons can be added to it
-        sources.AddRange(host.GetStates()
+        var states = host.GetStates()
             .Where(state => state.Descriptor.HasButtons || (state.Descriptor.Zone == ExtensionZone.Dev && state.Descriptor.Kind == ExtensionKind.Source))
+            .ToList();
+        // The buttons of a tab together, in its order: panel by panel, as the layouts of bundle.json say
+        var place = states.Select(state => state.Descriptor.Tab).OfType<ExtensionTab>().DistinctBy(tab => tab.Id, StringComparer.OrdinalIgnoreCase)
+            .SelectMany(tab => tab.ButtonDirectories)
+            .Select((directory, index) => (directory, index))
+            .GroupBy(pair => pair.directory, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().index, StringComparer.OrdinalIgnoreCase);
+        sources.AddRange(states
+            .OrderBy(state => state.Descriptor.Tab?.Id ?? state.Descriptor.Id, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(state => place.GetValueOrDefault(state.Descriptor.Directory, int.MaxValue))
             .Select(state => new ButtonSource(state.Descriptor, false, state.Enabled, state)));
         return sources;
     }
@@ -70,6 +80,11 @@ public sealed class ButtonCatalog(ExtensionHost host)
     /// <summary>The name of a folder as the pane and the ribbon show it: <c>name</c>, else <c>description</c>, else the id.</summary>
     public static string FolderName(ButtonSource source)
     {
+        if (source.Extension.Tab is { } tab)
+        {
+            return tab.Name;
+        }
+
         var manifest = source.Extension.Manifest;
         if (source.BuiltIn)
         {
@@ -78,6 +93,12 @@ public sealed class ButtonCatalog(ExtensionHost host)
         }
 
         return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : source.Extension.Id;
+    }
+
+    /// <summary>The id of the folder a button source is in for the pane and the profile: its tab (<c>sheets.tab</c>), else its id.</summary>
+    public static string FolderId(ButtonSource source)
+    {
+        return source.Extension.Tab?.Id ?? source.Extension.Id;
     }
 
     /// <summary>The tab of AnalyseTool's own buttons.</summary>
@@ -106,7 +127,7 @@ public sealed class ButtonCatalog(ExtensionHost host)
     public static IReadOnlyList<string> Panels(ButtonSource source)
     {
         var result = new List<string>();
-        foreach (var panel in source.Extension.Manifest.Ui?.Panels ?? [])
+        foreach (var panel in source.Extension.Tab?.Panels.Select(item => item.Name) ?? source.Extension.Manifest.Ui?.Panels ?? [])
         {
             if (!string.IsNullOrWhiteSpace(panel) && !result.Contains(panel.Trim(), StringComparer.OrdinalIgnoreCase))
             {

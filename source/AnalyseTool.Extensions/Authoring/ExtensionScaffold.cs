@@ -276,6 +276,108 @@ public static partial class ExtensionScaffold
         return files;
     }
 
+    /// <summary>Writes a new tab folder <c>&lt;Name&gt;.tab\</c> with its <c>bundle.json</c>; its panels and buttons come with <see cref="AddPushButton" />.</summary>
+    /// <returns>The tab folder.</returns>
+    public static string CreateTab(string root, string name)
+    {
+        var directory = Path.Combine(root, FolderName(name) + ButtonFolder.TabSuffix);
+        if (Directory.Exists(directory))
+        {
+            throw new IOException($"The folder {directory} exists already.");
+        }
+
+        Directory.CreateDirectory(directory);
+        ButtonFolder.UpdateBundle(directory, json => json["name"] = name.Trim());
+        return directory;
+    }
+
+    /// <summary>
+    ///     Writes a new button into a tab: <c>&lt;Panel&gt;.panel\&lt;Name&gt;.pushbutton\</c> with <c>bundle.json</c>, its C# command
+    ///     (<c>&lt;Class&gt;.cs</c>) and/or its page (<c>index.html</c>), <c>.gitignore</c> and the pointers to the guide. The panel
+    ///     folder is created when it is new; the button goes last in its <c>layout</c>.
+    /// </summary>
+    /// <returns>The button folder.</returns>
+    public static string AddPushButton(string tabDirectory, string panel, string name, string? description, ExtensionTemplate template, string revitVersion)
+    {
+        var panelDirectory = FindChild(tabDirectory, panel, ButtonFolder.PanelSuffix) ?? Path.Combine(tabDirectory, FolderName(panel) + ButtonFolder.PanelSuffix);
+        if (!Directory.Exists(panelDirectory))
+        {
+            Directory.CreateDirectory(panelDirectory);
+            ButtonFolder.UpdateBundle(panelDirectory, json => json["name"] = panel.Trim());
+            ButtonFolder.SetLayout(tabDirectory, ButtonFolder.PanelDirectories(tabDirectory).Where(child => !string.Equals(child, panelDirectory, StringComparison.OrdinalIgnoreCase)).Append(panelDirectory));
+        }
+
+        var directory = Path.Combine(panelDirectory, FolderName(name) + ButtonFolder.ButtonSuffix);
+        if (Directory.Exists(directory))
+        {
+            throw new IOException($"The folder {directory} exists already.");
+        }
+
+        Directory.CreateDirectory(directory);
+        var id = ButtonFolder.ExtensionId(directory);
+        var hasCode = template is ExtensionTemplate.Command or ExtensionTemplate.CommandWithPage;
+        var hasPage = template is ExtensionTemplate.CommandWithPage or ExtensionTemplate.Page;
+        var className = ToClassName(name);
+        var button = new JsonObject
+        {
+            ["name"] = name.Trim(),
+            ["tooltip"] = string.IsNullOrWhiteSpace(description) ? name.Trim() : description.Trim(),
+            ["icon"] = hasPage ? "glyph:E8A7" : "glyph:E768"
+        };
+        if (hasCode)
+        {
+            File.WriteAllText(Path.Combine(directory, className + ".cs"), CommandSource(id, className, description ?? name, hasPage));
+        }
+
+        if (hasPage)
+        {
+            File.WriteAllText(Path.Combine(directory, "index.html"), PageSource(name, hasCode ? $"{id}.{className}" : null));
+            button["page"] = "index.html";
+        }
+        else
+        {
+            button["command"] = className;
+        }
+
+        ButtonFolder.UpdateBundle(directory, json =>
+        {
+            foreach (var (key, value) in button)
+            {
+                json[key] = value?.DeepClone();
+            }
+        });
+        File.WriteAllText(Path.Combine(directory, "AGENTS.md"), AgentsPointer(name.Trim()));
+        File.WriteAllText(Path.Combine(directory, "CLAUDE.md"), ClaudePointer);
+        File.WriteAllText(Path.Combine(directory, ".gitignore"), string.Join("\n", SourceIgnore) + "\n");
+        if (hasCode)
+        {
+            WriteEditorProject(directory, id, revitVersion);
+        }
+
+        // Keep the order the user had; the new button goes last
+        ButtonFolder.SetLayout(panelDirectory, ButtonFolder.Children(panelDirectory).Where(child => !string.Equals(child, directory, StringComparison.OrdinalIgnoreCase)).Append(directory));
+        return directory;
+    }
+
+    /// <summary>A subfolder of <paramref name="directory" /> with the suffix whose name (folder or <c>bundle.json</c>) is <paramref name="name" />.</summary>
+    public static string? FindChild(string directory, string name, string suffix)
+    {
+        return Directory.Exists(directory)
+            ? Directory.GetDirectories(directory)
+                .Where(child => child.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(child => string.Equals(ButtonFolder.NameOf(child), name.Trim(), StringComparison.OrdinalIgnoreCase)
+                                         || string.Equals(ButtonFolder.Bare(child), FolderName(name), StringComparison.OrdinalIgnoreCase))
+            : null;
+    }
+
+    /// <summary>A name as a folder name: what Windows does not allow becomes «-».</summary>
+    public static string FolderName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var result = new string(name.Trim().Select(character => invalid.Contains(character) ? '-' : character).ToArray()).Trim('.', ' ');
+        return result.Length == 0 ? "Button" : result;
+    }
+
     /// <summary>
     ///     Writes <c>.editor\&lt;id&gt;.csproj</c>: a project that only gives an editor IntelliSense over <c>src\</c> — the
     ///     host still compiles the extension, and git ignores the project because its paths are this machine's.
@@ -289,6 +391,10 @@ public static partial class ExtensionScaffold
         var revitApi = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(assembly => assembly.GetName().Name == "RevitAPI" && !string.IsNullOrEmpty(assembly.Location));
         var revitFolder = revitApi is not null ? Path.GetDirectoryName(revitApi.Location)! : $@"C:\Program Files\Autodesk\Revit {revitVersion}";
         var framework = string.CompareOrdinal(revitVersion, "2027") >= 0 ? "net10.0-windows" : "net8.0-windows";
+        // A button folder compiles its own *.cs and the _shared\ of its tab; an extension of plugin.json its src\ folder
+        var compile = ButtonFolder.IsButton(directory)
+            ? @"<Compile Include=""..\**\*.cs"" Exclude=""..\bin\**;..\obj\**;..\.editor\**"" /><Compile Include=""..\..\..\_shared\**\*.cs"" />"
+            : @"<Compile Include=""..\src\**\*.cs"" />";
         var project = $"""
                        <Project Sdk="Microsoft.NET.Sdk">
                          <!-- For the editor only: AnalyseTool compiles src\ itself inside Revit. Not versioned (machine paths). -->
@@ -302,7 +408,7 @@ public static partial class ExtensionScaffold
                            <OutputPath>..\obj\editor\</OutputPath>
                          </PropertyGroup>
                          <ItemGroup>
-                           <Compile Include="..\src\**\*.cs" />
+                           {compile}
                            <Reference Include="AnalyseTool.Sdk" HintPath="{Path.Combine(hostFolder, "AnalyseTool.Sdk.dll")}" Private="false" />
                            <Reference Include="Newtonsoft.Json" HintPath="{Path.Combine(hostFolder, "Newtonsoft.Json.dll")}" Private="false" />
                            <Reference Include="RevitAPI" HintPath="{Path.Combine(revitFolder, "RevitAPI.dll")}" Private="false" />

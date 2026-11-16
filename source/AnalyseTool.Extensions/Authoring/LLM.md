@@ -24,10 +24,42 @@ folder has its own version history (git) that the user controls from the Analyse
 One folder can be C#-only, UI-only, or both.
 
 > **Sources are the default since AnalyseTool 2.0.** «New button» in Revit (or `CreateExtension` over MCP)
-> creates `src\<Name>.cs` and `"build": "host"` in `plugin.json`; AnalyseTool compiles it with its own Roslyn,
+> creates a button folder (§1.1) with `<Class>.cs` in it; AnalyseTool compiles it with its own Roslyn,
 > against the running Revit's API — no .NET SDK, no project, no DLL in the folder. The diff of a version is then
 > real code, one source serves every Revit year, and a saved edit runs a moment later. Ship a DLL only for what
 > sources cannot do: NuGet packages, closed code, XAML/resources.
+
+### 1.1 Where a button lives — tabs, panels, button folders (the default)
+
+New buttons are laid out as pyRevit does it: the folders ARE the ribbon.
+
+```
+%LOCALAPPDATA%\AnalyseTool\extensions\
+    Sheets.tab\                     a ribbon tab (a folder of the AnalyseTool pane)
+        bundle.json                 optional: { "name": "Sheets", "layout": ["Numbering.panel", "Output.panel"] }
+        _shared\*.cs                optional: C# every button of the tab compiles with
+        Numbering.panel\            a panel (a section of the folder in the pane)
+            bundle.json             optional: { "name": "Numbering", "layout": ["Renumber.pushbutton", "More.pulldown"] }
+            Renumber.pushbutton\    ONE button — everything it needs, and nothing else
+                bundle.json         { "name", "tooltip", "icon", "command": "Renumber" | "page": "index.html", "dockable" }
+                Renumber.cs         its C# (any *.cs in the folder, subfolders too)
+                index.html          its page, when it has one
+                AGENTS.md, CLAUDE.md, .gitignore
+                .git\               its own version history
+            More.pulldown\          a pulldown: its buttons are *.pushbutton folders inside
+```
+
+- **A button folder is an extension of its own**: id `<tab>.<button>` (`sheets.renumber`), command
+  `<tab>.<button>.<Class>` (`sheets.renumber.Renumber`) — in `AT.invoke` too. Its own build, its own versions.
+- `bundle.json` of a button is the button entry of §3 with two differences: `command` is the **class name only**, and
+  a page is `"page"` (not `entryHtml`). The tab and the panel are the folders it sits in — never a field.
+- **Order**: `layout` lists folder names (or names); what it does not list follows alphabetically. Without any
+  `bundle.json` the folder names are the names.
+- Moving a button = moving its folder (the pane does it, with its history). Into another tab its id changes, and
+  AnalyseTool rewrites the `AT.invoke` names in its pages.
+- **The 1.x layout stays**: a folder with a `plugin.json` (§3) is read as before, as one folder of the pane with all
+  its buttons. Everything below about `plugin.json`, `src\` and versions applies to it; for a button folder, read
+  «the extension folder» as «the button folder».
 
 ---
 

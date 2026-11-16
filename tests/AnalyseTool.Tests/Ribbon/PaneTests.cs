@@ -19,7 +19,7 @@ public sealed class PaneTests
     public async Task Buttons_ShowAnalyseToolFirst_ThenTheExtensions_WithTheirKeysAndGlyphs()
     {
         using var environment = new ExtensionTestEnvironment();
-        await environment.Manager.CreateAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+        await environment.Manager.CreatePluginFolderAsync("Count walls", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
 
         var overview = await new GetPaneButtons(new ButtonCatalog(environment.Host), environment.Paths, environment.Registry).ExecuteAsync(Context(nameof(GetPaneButtons)));
 

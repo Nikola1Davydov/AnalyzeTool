@@ -15,7 +15,7 @@ How the add-in starts, where the code goes and why. The rules an agent must not 
 | `source/AnalyseTool.Hosting.Scripting` | Module: the `ExecuteCode` command — C# compiled with Roslyn and run inside Revit. No WPF. |
 | `source/AnalyseTool.Hosting.Visualization` | Module: `IGeometryOverlay` — geometry drawn over the views with DirectContext3D, nothing added to the model. No WPF. |
 | `source/AnalyseTool.Sdk` | The public contract of extensions (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`), packed to NuGet. |
-| `source/AnalyseTool.Extensions` | Module: the user's buttons — extension folders compiled from C# or loaded as DLLs, reloaded when they change, each with its own git history. No WPF. |
+| `source/AnalyseTool.Extensions` | Module: the user's buttons — tab folders laid out as the ribbon (`<Tab>.tab\<Panel>.panel\<Button>.pushbutton\`, one extension and one git history per button) and 1.x folders with a `plugin.json`; compiled from C# or loaded as DLLs, reloaded when they change. No WPF. |
 | `build/` | The build pipeline (ModularPipelines): boundary check, `ClientApp`, compile, `pack`. |
 | `install/` | The `.msi` builder (WixSharp). |
 

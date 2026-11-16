@@ -24,7 +24,7 @@ The rules of the template apply: read [AGENTS.md](AGENTS.md) and [ARCHITECTURE.m
 
 Hard rules (beyond AGENTS.md):
 - An extension command is an `IRevitTask` of the Sdk; never make extensions reference `AnalyseTool.Extensions` or the add-in. If they need more, that is an Sdk contract decision (minor = additive).
-- The extension folder format of 1.x stays readable (`plugin.json` schema 1/2, `src\*.cs`, `<year>\*.dll`, legacy `<root>\<year>\<id>`). Write manifests with `ExtensionManifest.Update` so unknown fields survive.
+- New buttons live in tab folders (`<Tab>.tab\<Panel>.panel\<Button>.pushbutton\`, `bundle.json` per level, see `ButtonFolder`): a button folder is an extension of its own, id `<tab>.<button>`. The extension folder format of 1.x stays readable (`plugin.json` schema 1/2, `src\*.cs`, `<year>\*.dll`, legacy `<root>\<year>\<id>`). Write manifests with `ExtensionManifest.Update` so unknown fields survive.
 - Git is hidden behind `IExtensionHistory`: the UI and MCP say version / save / restore / pin, never commit or branch. Nothing is lost: restore first saves unsaved work. Pins live in `extensions-state.json`, never in the folder.
 - Every ribbon button, built-in or not, is a `plugin.json` button running a pipeline command or opening a page; never add an `IExternalCommand` button.
 - Builds go to `bin\` (git-ignored); a failed compile keeps the last good build loaded and reports diagnostics with file/line.
