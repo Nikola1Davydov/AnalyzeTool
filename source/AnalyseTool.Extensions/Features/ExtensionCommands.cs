@@ -141,6 +141,7 @@ public sealed record CreateExtensionFolderRequest(
     [property: Description("What its buttons are for.")] string? Description = null,
     [property: Description("The id; derived from the name when absent. Letters, digits, '.', '-', '_'.")] string? Id = null,
     [property: Description("The ribbon panel of its buttons; «Extensions» when absent.")] string? Panel = null,
+    [property: Description("The ribbon tab of its buttons; the AnalyseTool tab when absent.")] string? Tab = null,
     [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null);
 
 /// <summary>Creates an empty folder of buttons.</summary>
@@ -151,7 +152,7 @@ public sealed class CreateExtensionFolder(ExtensionManager manager) : ICommand<C
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(CreateExtensionFolderRequest request, CommandContext context)
     {
-        var state = await manager.CreateFolderAsync(request.Name, request.Id, request.Description, request.Panel, request.Root, context.CancellationToken).ConfigureAwait(false);
+        var state = await manager.CreateFolderAsync(request.Name, request.Id, request.Description, request.Panel, request.Root, context.CancellationToken, request.Tab).ConfigureAwait(false);
         return ExtensionSummary.From(state);
     }
 }
@@ -161,7 +162,9 @@ public sealed record AddExtensionButtonRequest(
     [property: Description("The id of the folder (extension).")] string Id,
     [property: Description("The text of the button, e.g. «Renumber sheets».")] string Name,
     [property: Description("What the button does: its tooltip and the description of its command.")] string? Description = null,
-    [property: Description("CommandWithPage (default): opens a page that calls its C# command; Command: runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage);
+    [property: Description("CommandWithPage (default): opens a page that calls its C# command; Command: runs C# directly; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.CommandWithPage,
+    [property: Description("Its own ribbon tab; the folder's when absent.")] string? Tab = null,
+    [property: Description("Its own ribbon panel; the folder's when absent.")] string? Panel = null);
 
 /// <summary>Adds a button to a folder.</summary>
 [McpTool(Title = "Add a button to a folder")]
@@ -171,7 +174,7 @@ public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddE
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(AddExtensionButtonRequest request, CommandContext context)
     {
-        var state = await manager.AddButtonAsync(request.Id, request.Name, request.Description, request.Template, context.CancellationToken).ConfigureAwait(false);
+        var state = await manager.AddButtonAsync(request.Id, request.Name, request.Description, request.Template, context.CancellationToken, request.Tab, request.Panel).ConfigureAwait(false);
         return ExtensionSummary.From(state);
     }
 }

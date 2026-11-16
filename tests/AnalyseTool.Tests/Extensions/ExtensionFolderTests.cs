@@ -38,7 +38,7 @@ public sealed class ExtensionFolderTests
 
         await environment.Manager.AddButtonAsync("sheets", "Renumber sheets", "Renumbers.", ExtensionTemplate.Command, CancellationToken.None);
         await environment.Manager.AddButtonAsync("sheets", "Sheet list", null, ExtensionTemplate.CommandWithPage, CancellationToken.None);
-        var state = await environment.Manager.AddButtonAsync("sheets", "Help", null, ExtensionTemplate.Page, CancellationToken.None);
+        var state = await environment.Manager.AddButtonAsync("sheets", "Help", null, ExtensionTemplate.Page, CancellationToken.None, panel: "Help");
 
         var buttons = state.Descriptor.Manifest.Ui!.EffectiveButtons();
         var directory = state.Descriptor.Directory;
@@ -52,6 +52,9 @@ public sealed class ExtensionFolderTests
             // The first page is index.html, a further one is named after its button
             await Assert.That(File.Exists(Path.Combine(directory, "index.html"))).IsTrue();
             await Assert.That(buttons[2].EntryHtml).IsEqualTo("Help.html");
+            // Advanced at creation: a panel of its own; the others follow the folder
+            await Assert.That(buttons[2].Panel).IsEqualTo("Help");
+            await Assert.That(buttons[0].Panel).IsNull();
             await Assert.That(File.Exists(Path.Combine(directory, "Help.html"))).IsTrue();
             await Assert.That(environment.History.GetHistory(directory).Count).IsEqualTo(4);
             await Assert.That(environment.History.GetHistory(directory)[0].Message).IsEqualTo("Added the button «Help»");

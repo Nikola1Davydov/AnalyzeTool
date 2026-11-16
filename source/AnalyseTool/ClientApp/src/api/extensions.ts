@@ -85,6 +85,7 @@ export interface CreateExtensionFolderRequest {
   name: string;
   description?: string | null;
   id?: string | null;
+  tab?: string | null;
   panel?: string | null;
   root?: string | null;
 }
@@ -95,6 +96,9 @@ export interface AddExtensionButtonRequest {
   name: string;
   description?: string | null;
   template?: ExtensionTemplate;
+  /** Its own ribbon tab and panel; the folder's when absent. */
+  tab?: string | null;
+  panel?: string | null;
 }
 
 export interface UpdateExtensionFolderRequest {

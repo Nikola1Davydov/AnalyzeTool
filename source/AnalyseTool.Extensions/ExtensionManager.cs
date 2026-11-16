@@ -51,10 +51,10 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     }
 
     /// <summary>Creates an empty folder of buttons (an extension with no button yet), with its history started.</summary>
-    public async Task<ExtensionState> CreateFolderAsync(string name, string? id, string? description, string? panel, string? root, CancellationToken cancellationToken)
+    public async Task<ExtensionState> CreateFolderAsync(string name, string? id, string? description, string? panel, string? root, CancellationToken cancellationToken, string? tab = null)
     {
         var (directory, folderId, trimmed) = NewFolder(name, id, root);
-        ExtensionScaffold.CreateFolder(directory, folderId, trimmed, description, panel);
+        ExtensionScaffold.CreateFolder(directory, folderId, trimmed, description, panel, tab);
         if (history.IsAvailable)
         {
             history.Init(directory, Author, $"Created the folder «{trimmed}»", ExtensionScaffold.SourceIgnore);
@@ -68,7 +68,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     ///     Adds a button to an existing folder of the user: C# in <c>src\</c> and/or a page, and its entry in <c>plugin.json</c>;
     ///     saved as a version of the folder, then loaded.
     /// </summary>
-    public async Task<ExtensionState> AddButtonAsync(string id, string name, string? description, ExtensionTemplate template, CancellationToken cancellationToken)
+    public async Task<ExtensionState> AddButtonAsync(string id, string name, string? description, ExtensionTemplate template, CancellationToken cancellationToken, string? tab = null, string? panel = null)
     {
         var state = Get(id);
         var descriptor = state.Descriptor;
@@ -95,7 +95,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
             throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The folder '{id}' has a button «{trimmed}» already.");
         }
 
-        ExtensionScaffold.AddButton(descriptor.Directory, id, trimmed, description, template, catalog.RevitVersion);
+        ExtensionScaffold.AddButton(descriptor.Directory, id, trimmed, description, template, catalog.RevitVersion, tab, panel);
         if (history.IsAvailable)
         {
             history.SaveVersion(descriptor.Directory, Author, $"Added the button «{trimmed}»", IgnoreFor(descriptor));

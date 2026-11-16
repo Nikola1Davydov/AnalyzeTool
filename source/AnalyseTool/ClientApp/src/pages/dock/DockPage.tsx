@@ -93,12 +93,16 @@ function Pane() {
 
   useEffect(() => applyTheme(profile.theme), [profile.theme]);
 
-  // Buttons removed from a folder leave the dock and the order of the profile
+  // Buttons removed from a folder leave the dock and the order of the profile. Only when a new list of buttons arrives — not
+  // on every change of the profile: a renamed button is renamed in the profile first and would be pruned against the old list
+  const latestProfile = useRef(profile);
+  latestProfile.current = profile;
   useEffect(() => {
     if (!loaded || !buttons.isSuccess) return;
-    const pruned = pruneProfile(profile, buttons.data.folders);
-    if (JSON.stringify({ ...pruned, updatedAt: "" }) !== JSON.stringify({ ...profile, updatedAt: "" })) update((current) => pruneProfile(current, buttons.data.folders));
-  }, [loaded, buttons.isSuccess, buttons.data, profile, update]);
+    const current = latestProfile.current;
+    const pruned = pruneProfile(current, buttons.data.folders);
+    if (JSON.stringify({ ...pruned, updatedAt: "" }) !== JSON.stringify({ ...current, updatedAt: "" })) update((value) => pruneProfile(value, buttons.data.folders));
+  }, [loaded, buttons.isSuccess, buttons.dataUpdatedAt, buttons.data, update]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && setEditing(false);
@@ -214,13 +218,13 @@ function Header(props: {
       ? [
           { label: "Statistics of this folder", onClick: () => props.onGo({ kind: "stats", folder: folder.id }) },
           ...(folder.directory ? [{ label: "Open the folder", hint: "Edit its buttons with an AI tool", onClick: () => openFolder(folder.directory!, toastError) }] : []),
-          ...(folder.canAddButtons ? [{ label: "Name and description…", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />) }] : []),
+          ...(folder.canAddButtons ? [{ label: "Name and description…", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") }] : []),
           ...(folder.builtIn
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
         ]
       : [
-          { label: "New folder…", onClick: () => actions.openSheet("New folder", <NewFolderForm onCreated={(id) => props.onGo({ kind: "folder", folder: id })} />) },
+          { label: "New folder…", onClick: () => actions.openSheet("New folder", <NewFolderForm onCreated={(id) => props.onGo({ kind: "folder", folder: id })} />, "Create") },
           { label: "Manage buttons", onClick: () => openWindow("/extensions", toastError) },
         ]),
     { label: "Refresh", onClick: props.onRefresh },
@@ -307,7 +311,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
             onMove={(from, to) => update((value) => ({ ...value, order: { ...value.order, home: move(sorted.map((item) => item.id), from, to) } }))}
             editing={edit.editing}
             onEdit={edit.start}
-            onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />) } : null}
+            onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") } : null}
             onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
             label={folder.name}
             title={`${folder.name}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}`}
@@ -324,7 +328,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
             className="add"
             title="A new folder for buttons that belong together, with its own version history"
             icon={<span className="tile-icon add">+</span>}
-            onClick={() => actions.openSheet("New folder", <NewFolderForm onCreated={onOpen} />)}
+            onClick={() => actions.openSheet("New folder", <NewFolderForm onCreated={onOpen} />, "Create")}
           />
         )}
       </div>
@@ -414,6 +418,7 @@ function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: 
                   folder={folder}
                   onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
                 />,
+                "Add",
               )
             }
           />
@@ -460,6 +465,7 @@ function ButtonTile(props: {
                     button={button}
                     onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
                   />,
+                  "Save",
                 ),
             }
           : null

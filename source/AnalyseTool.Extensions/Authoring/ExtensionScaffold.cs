@@ -140,7 +140,7 @@ public static partial class ExtensionScaffold
     ///     the authoring guide and <c>.gitignore</c>. Buttons come with <see cref="AddButton" />.
     /// </summary>
     /// <returns>The files written, relative to the folder.</returns>
-    public static IReadOnlyList<string> CreateFolder(string directory, string id, string name, string? description, string? panel)
+    public static IReadOnlyList<string> CreateFolder(string directory, string id, string name, string? description, string? panel, string? tab = null)
     {
         if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any())
         {
@@ -152,6 +152,11 @@ public static partial class ExtensionScaffold
         if (!string.IsNullOrWhiteSpace(panel))
         {
             ui["panel"] = panel;
+        }
+
+        if (!string.IsNullOrWhiteSpace(tab))
+        {
+            ui["tab"] = tab.Trim();
         }
 
         var manifest = new JsonObject
@@ -177,7 +182,7 @@ public static partial class ExtensionScaffold
     ///     <c>ui.buttons</c> of <c>plugin.json</c> (unknown fields kept). The class and the page get a free name when taken.
     /// </summary>
     /// <returns>The files written or changed, relative to the folder.</returns>
-    public static IReadOnlyList<string> AddButton(string directory, string id, string name, string? description, ExtensionTemplate template, string revitVersion)
+    public static IReadOnlyList<string> AddButton(string directory, string id, string name, string? description, ExtensionTemplate template, string revitVersion, string? tab = null, string? panel = null)
     {
         var files = new List<string>();
         var hasCode = template is ExtensionTemplate.Command or ExtensionTemplate.CommandWithPage;
@@ -211,6 +216,16 @@ public static partial class ExtensionScaffold
             ["tooltip"] = string.IsNullOrWhiteSpace(description) ? name : description,
             ["icon"] = hasPage ? "glyph:E8A7" : "glyph:E768"
         };
+        if (!string.IsNullOrWhiteSpace(tab))
+        {
+            button["tab"] = tab.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(panel))
+        {
+            button["panel"] = panel.Trim();
+        }
+
         if (!hasPage)
         {
             button["command"] = $"{id}.{className}";

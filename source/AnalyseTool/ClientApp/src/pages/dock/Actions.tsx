@@ -4,14 +4,20 @@ import { bridge, CommandError } from "revit-bridge";
 import { type ButtonRunResult, type PaneButton, type PaneFolder, paneCommands } from "../../api/pane";
 import { spring } from "./Tile";
 
-type Sheet = { title: string; body: ReactNode };
+/** A sheet. With `submit` it is a form: «Cancel» on the left, the action on the right — it submits the form with the id
+ * `SHEET_FORM`. Without it, «Done» just closes. */
+type Sheet = { title: string; body: ReactNode; submit?: string };
+
+/** The id of the form in a sheet: the action of the header submits it. */
+export const SHEET_FORM = "sheet-form";
 type Toast = { text: string; kind: "ok" | "error"; detail?: ReactNode; id: number };
 
 type Actions = {
   /** A tap on a button: the same as a click on the ribbon — its command with its args, or its page — and counted. */
   activate: (folder: PaneFolder, button: PaneButton) => void;
   isRunning: (key: string) => boolean;
-  openSheet: (title: string, body: ReactNode) => void;
+  /** Opens a sheet; `submit` names the action of its form («Save», «Create»), shown in the header next to «Cancel». */
+  openSheet: (title: string, body: ReactNode, submit?: string) => void;
   closeSheet: () => void;
   toast: (text: string, kind?: "ok" | "error", detail?: ReactNode) => void;
 };
@@ -95,7 +101,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     () => ({
       activate,
       isRunning: (key) => running.has(key),
-      openSheet: (title, body) => setSheet({ title, body }),
+      openSheet: (title, body, submit) => setSheet({ title, body, submit }),
       closeSheet: () => setSheet(null),
       toast,
     }),
@@ -133,12 +139,24 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
               onClick={(event) => event.stopPropagation()}
             >
               <div className="sheet-grabber" />
-              <div className="sheet-header">
-                <strong>{sheet.title}</strong>
-                <button className="text-button" onClick={() => setSheet(null)}>
-                  Done
-                </button>
-              </div>
+              {sheet.submit ? (
+                <div className="sheet-header with-action">
+                  <button className="text-button" onClick={() => setSheet(null)}>
+                    Cancel
+                  </button>
+                  <strong>{sheet.title}</strong>
+                  <button className="text-button bold" type="submit" form={SHEET_FORM}>
+                    {sheet.submit}
+                  </button>
+                </div>
+              ) : (
+                <div className="sheet-header">
+                  <strong>{sheet.title}</strong>
+                  <button className="text-button" onClick={() => setSheet(null)}>
+                    Done
+                  </button>
+                </div>
+              )}
               {/* Drags in the body scroll it and do not pull the sheet */}
               <div className="sheet-body" onPointerDownCapture={(event) => event.stopPropagation()}>
                 {sheet.body}

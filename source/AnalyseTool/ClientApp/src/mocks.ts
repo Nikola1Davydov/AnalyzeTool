@@ -610,7 +610,7 @@ registerMocks({
   },
   GetPaneButtons: async (): Promise<PaneOverview> => {
     await delay(120);
-    return { userName: "nikolai", machineName: "WS-042", profileFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\pane-profile.json`, folders: paneFolders };
+    return { userName: "nikolai", machineName: "WS-042", profileFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\pane-profile.json`, folders: structuredClone(paneFolders) };
   },
   RunButton: async (payload): Promise<ButtonRunResult> => {
     const key = (payload as { key: string }).key;

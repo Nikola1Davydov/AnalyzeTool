@@ -1562,3 +1562,32 @@
 .sheet-form details.advanced[open] summary {
   margin-bottom: 6px;
 }
+
+/* A form sheet: «Cancel» left, the title in the middle, the action right (bold), as in iOS */
+.sheet-header.with-action {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  padding: 6px 10px 8px;
+}
+
+.sheet-header.with-action > :first-child {
+  justify-self: start;
+}
+
+.sheet-header.with-action > :last-child {
+  justify-self: end;
+}
+
+/* The action of the header is text like «Cancel», only bold — not the filled button of a form */
+.sheet .sheet-header button.text-button,
+.sheet .sheet-header button.text-button:hover {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.sheet .sheet-header button.text-button.bold {
+  font-weight: 600;
+}
