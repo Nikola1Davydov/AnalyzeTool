@@ -70,6 +70,9 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
   ribbon (it stays in the pane, grey), **☆** keeps a button in the dock at the bottom, **✎** renames it, sets its page to
   open in the pane and shows its code, files and versions, **📁** opens its folder for an AI tool. **?** explains it all
   with pictures.
+
+<p align="center"><img src="img/Ribbon.gif" width="860" alt="Edit mode in the AnalyseTool folder: + on Parameters, and the button appears on the Revit ribbon" /></p>
+
 - **A command that needs a few values** gets a form in the pane, built from its input type; a page marked `dockable`
   opens inside the pane, any other in a window.
 - **DLL projects** (built by their author) are boxes marked DLL, with the Revit years they are built for; their buttons
