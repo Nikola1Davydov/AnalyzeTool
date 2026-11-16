@@ -1501,3 +1501,8 @@
   margin: 0;
   font-size: 15px;
 }
+
+/* In the edit mode ✎ takes the top right corner: the error badge steps aside */
+.tile.editing .tile-badge {
+  display: none;
+}
