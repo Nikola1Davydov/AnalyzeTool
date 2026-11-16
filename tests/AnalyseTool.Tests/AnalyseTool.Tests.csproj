@@ -24,6 +24,18 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\source\AnalyseTool\AnalyseTool.csproj"/>
+        <ProjectReference Include="..\..\source\AnalyseTool.Extensions\AnalyseTool.Extensions.csproj"/>
     </ItemGroup>
+
+    <!--
+        The extension compiler needs the Revit API as metadata. In Revit it is loaded; here only its reference assemblies
+        exist, so they go next to the tests (revit-ref) and the tests pass them to the compiler.
+    -->
+    <Target Name="CopyRevitReferenceAssemblies" AfterTargets="ResolveAssemblyReferences">
+        <ItemGroup>
+            <RevitReferenceAssembly Include="@(ReferencePath)" Condition="'%(Filename)' == 'RevitAPI' Or '%(Filename)' == 'RevitAPIUI'"/>
+        </ItemGroup>
+        <Copy SourceFiles="@(RevitReferenceAssembly)" DestinationFolder="$(OutDir)revit-ref" SkipUnchangedFiles="true"/>
+    </Target>
 
 </Project>

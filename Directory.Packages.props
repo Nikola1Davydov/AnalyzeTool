@@ -62,9 +62,6 @@
         <!-- AnalyseTool.Extensions: the version history of every extension folder, in process -->
         <PackageVersion Include="LibGit2Sharp" Version="0.32.0"/>
 
-        <!-- JSON Schemas of the inputs of extension commands for MCP -->
-        <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.5.2"/>
-
         <!-- Compile-time only -->
         <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0"/>
         <PackageVersion Include="Polyfill" Version="11.4.3"/>

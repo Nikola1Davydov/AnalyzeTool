@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using Autodesk.Revit.UI;
+using AnalyseTool.Extensions;
 using AnalyseTool.Infrastructure;
 using AnalyseTool.Services.Documents;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,7 @@ public static partial class Host
         //AnalyseTool.Hosting.Scripting: ExecuteCode runs C# inside Revit — full trust, on in Debug, Scripting:Enabled otherwise
         builder.AddRevitCommands(commands => commands
             .FromAssemblyOf<Application>()
+            .FromAssemblyOf<ExtensionManager>()
             .AddScripting(builder)
             .UseCommandLogging()
             .Use<DocumentCheckMiddleware>());
@@ -65,6 +67,9 @@ public static partial class Host
 
         //AnalyseTool.Hosting.Mcp: AI clients call the commands marked with [McpTool]; on in Debug, Mcp:Enabled otherwise
         builder.AddMcp(application, basePort: 48076);
+
+        //AnalyseTool.Extensions: the user's buttons — C# sources compiled in Revit (or DLLs), each folder with its own git history
+        builder.AddExtensions(application.ControlledApplication.VersionNumber);
 
         //AnalyseTool.Hosting.Visualization: geometry drawn over the views (ShowGeometry), nothing added to the model
         builder.AddVisualization();

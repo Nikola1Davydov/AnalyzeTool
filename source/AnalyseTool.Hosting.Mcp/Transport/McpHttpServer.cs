@@ -546,7 +546,7 @@ internal sealed partial class McpHttpServer(
         public async ValueTask DisposeAsync()
         {
             await closing.CancelAsync().ConfigureAwait(false);
-            await server.DisposeAsync().ConfigureAwait(false);
+            await Server.DisposeAsync().ConfigureAwait(false);
             await Transport.DisposeAsync().ConfigureAwait(false);
             await ObserveAsync(running).ConfigureAwait(false);
             closing.Dispose();

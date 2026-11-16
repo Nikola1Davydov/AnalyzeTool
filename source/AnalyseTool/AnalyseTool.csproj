@@ -42,6 +42,8 @@
         <ProjectReference Include="..\AnalyseTool.Hosting.Mcp\AnalyseTool.Hosting.Mcp.csproj"/>
         <ProjectReference Include="..\AnalyseTool.Hosting.Scripting\AnalyseTool.Hosting.Scripting.csproj"/>
         <ProjectReference Include="..\AnalyseTool.Hosting.Visualization\AnalyseTool.Hosting.Visualization.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Extensions\AnalyseTool.Extensions.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

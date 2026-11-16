@@ -53,6 +53,16 @@ $Rules = [ordered]@{
         Packages = $RevitApi + $Common + @('Microsoft.Extensions.*')
         Headless = $true
     }
+    'AnalyseTool.Sdk' = @{
+        Projects = @()
+        Packages = $RevitApi + @('Newtonsoft.Json')
+        Headless = $true
+    }
+    'AnalyseTool.Extensions' = @{
+        Projects = @('AnalyseTool.Hosting', 'AnalyseTool.Hosting.Mcp', 'AnalyseTool.Sdk')
+        Packages = $RevitApi + $Common + @('Microsoft.CodeAnalysis.*', 'Microsoft.Extensions.*', 'LibGit2Sharp', 'Newtonsoft.Json')
+        Headless = $true
+    }
     'AnalyseTool.ServiceDefaults' = @{
         Projects = @('AnalyseTool.Hosting')
         Packages = $RevitApi + $Common + @('Nice3point.Revit.Toolkit', 'Nice3point.Revit.Logging', 'Microsoft.Extensions.*', 'Serilog.*')
@@ -62,7 +72,7 @@ $Rules = [ordered]@{
         Packages = $RevitApi
     }
     'AnalyseTool' = @{
-        Projects = @('AnalyseTool.ServiceDefaults', 'AnalyseTool.Hosting', 'AnalyseTool.Hosting.WebView', 'AnalyseTool.Hosting.Mcp', 'AnalyseTool.Hosting.Scripting', 'AnalyseTool.Hosting.Visualization')
+        Projects = @('AnalyseTool.ServiceDefaults', 'AnalyseTool.Hosting', 'AnalyseTool.Hosting.WebView', 'AnalyseTool.Hosting.Mcp', 'AnalyseTool.Hosting.Scripting', 'AnalyseTool.Hosting.Visualization', 'AnalyseTool.Extensions', 'AnalyseTool.Sdk')
         Packages = $RevitApi + $Common + @('Nice3point.Revit.Toolkit', 'Nice3point.Revit.Extensions', 'Microsoft.Extensions.*')
     }
 }

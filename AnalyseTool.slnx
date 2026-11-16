@@ -27,6 +27,7 @@
   </Folder>
   <Folder Name="/Modules/">
     <Project Path="source/AnalyseTool.Hosting/AnalyseTool.Hosting.csproj" />
+    <Project Path="source/AnalyseTool.Extensions/AnalyseTool.Extensions.csproj" />
     <Project Path="source/AnalyseTool.Hosting.Mcp/AnalyseTool.Hosting.Mcp.csproj" />
     <Project Path="source/AnalyseTool.Hosting.Scripting/AnalyseTool.Hosting.Scripting.csproj" />
     <Project Path="source/AnalyseTool.Hosting.Visualization/AnalyseTool.Hosting.Visualization.csproj" />
