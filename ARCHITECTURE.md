@@ -228,20 +228,31 @@ Comments and strings do not count. Run it alone with `pwsh build/Check-Boundarie
 
 ## Extensions: the user's buttons
 
-An extension is a folder under `%LOCALAPPDATA%\AnalyseTool\extensions\` (or any folder the user adds) with a
-`plugin.json` — the format of AnalyseTool 1.x. «New button» creates one with C# sources and no project:
+New buttons live in tabs, laid out as the ribbon (`Manifest/ButtonFolder.cs`); every button folder is an extension of
+its own, id `<tab>.<button>`, with its own build and history:
 
 ```
-count-walls  .git\            its own history
-  plugin.json      id, buttons (name, icon, command or page), "build": "host"
-  src\CountWalls.cs
-  AGENTS.md        where the authoring guide is: LLM.md next to the add-in, updated with it
-  CLAUDE.md        @AGENTS.md, for Claude Code
-  .editor\         a .csproj for IntelliSense only (git-ignored)
-  bin\<year>\     builds of the host, named by a hash of the sources (git-ignored)
+Sheets.tab\                bundle.json: name, layout of the panels; _shared\*.cs for every button of the tab
+  Numbering.panel\         bundle.json: name, layout of the buttons
+    Renumber.pushbutton\   .git\ — its own history
+      bundle.json           name, tooltip, icon, "command": "<Class>" | "page", dockable
+      Renumber.cs           its C#
+      AGENTS.md             where the authoring guide is: LLM.md next to the add-in, updated with it
+      CLAUDE.md             @AGENTS.md, for Claude Code
+      .editor\              a .csproj for IntelliSense only (git-ignored)
 ```
 
-* **Compile.** `ExtensionCompiler` compiles `src\**\*.cs` with Roslyn against what the add-in runs with (the Revit API of
+`ButtonFolder.ToPluginJson` reads a button folder as a one-button `plugin.json`, so build, load, history, statistics and
+MCP treat it like any extension. A folder with a `plugin.json` is the other form: DLL projects, packages, AnalyseTool's
+own buttons, and folders of 1.x (in the pane «Older buttons», moved into tabs with `MoveToTabAsync`):
+
+```
+acme.sample  .git\
+  plugin.json      id, "build": "author", entryAssembly, ui.tab / ui.buttons
+  2025\Acme.Sample.dll   its build per Revit year (versioned: the DLLs are the extension)
+```
+
+* **Compile.** `ExtensionCompiler` compiles the `*.cs` of a button folder and `_shared\` of its tab (a `plugin.json` folder: `src\**\*.cs`) with Roslyn against what the add-in runs with (the Revit API of
   the running Revit, `AnalyseTool.Sdk`, Newtonsoft) and `lib\*.dll`; `ExtensionBuilder` writes `bin\<year>\<id>.<hash>.dll`
   only when the sources changed. A compile error keeps the last good build loaded; the diagnostics carry file and line.
 * **DLLs** (`entryAssembly`, `<year>\X.dll`) load as in 1.x. Both kinds load from bytes into a collectible

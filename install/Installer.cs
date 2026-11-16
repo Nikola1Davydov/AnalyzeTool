@@ -17,7 +17,9 @@ var project = new Project
     Name = productName,
     Platform = Platform.x64,
     UI = WUI.WixUI_FeatureTree,
-    // Until the first tag every build is 0.0.1 for MSI (it keeps only X.Y.Z), so a test build must replace the previous one
+    // Until the first tag every build is 0.0.1 for MSI (it keeps only X.Y.Z), so a test build must replace the previous one.
+    // The UpgradeCode is the one of the 1.x installer (build\appsettings.json): installing 2.0 removes an installed 1.x of the
+    // same scope (per user or per machine), its add-in folder and its .addin, which would clash with 2.0 in Revit
     MajorUpgrade = new MajorUpgrade
     {
         AllowSameVersionUpgrades = true,

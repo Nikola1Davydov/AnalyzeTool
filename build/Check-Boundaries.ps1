@@ -96,7 +96,7 @@ function Get-Code([string] $Line) {
 function Test-Code([string] $Folder, [string] $Pattern, [string] $Message, [scriptblock] $Allow = { $false }) {
     if (-not (Test-Path $Folder)) { return }
 
-    Get-ChildItem $Folder -Recurse -Filter *.cs -File |
+    Get-ChildItem $Folder -Recurse -Filter *.cs -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
         ForEach-Object {
             $file = $_
@@ -110,8 +110,8 @@ function Test-Code([string] $Folder, [string] $Pattern, [string] $Message, [scri
         }
 }
 
-# References
-$projects = Get-ChildItem (Join-Path $Root 'source') -Recurse -Filter *.csproj -File |
+# References — bin\ and obj\ are skipped anyway; a build cleaning them meanwhile must not fail the check
+$projects = Get-ChildItem (Join-Path $Root 'source') -Recurse -Filter *.csproj -File -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj|node_modules)[\\/]' }
 
 foreach ($project in $projects) {

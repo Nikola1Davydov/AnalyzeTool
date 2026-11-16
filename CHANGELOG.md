@@ -2,36 +2,23 @@
 
 ## [2.0.0] / unreleased
 
-- 🏗️ **AnalyseTool is rebuilt on the davydov-revit template**: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The extension folders, the Sdk and the built-in tools of 1.x carry over.
-- 🧩 **A new button is C# sources, not a DLL.** «New button» creates `src\<Name>.cs` that AnalyseTool compiles itself; DLL extensions still load.
-- ⚡ **Save and it runs.** A changed file reloads its extension, and ribbon buttons appear, change and disappear without a restart or a Reload button.
-- 🕓 **Every button has its own version history.** Save a version, compare, restore a version or a file, or pin the button to an older version — from its page or over MCP.
-- 🌗 **The pane and the windows follow the theme of Revit** (or Windows, light, dark — in the profile).
-- 🔌 **Connect Codex, Cursor, VS Code, Claude Desktop or Gemini CLI** from the pane: pick the client, copy what to paste where.
-- 🧩 **A plugin for Claude Code and Codex ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings a skill for writing buttons (`new-button`).
-- 🔀 **One MCP address for every Revit version.** The first Revit you open answers; a tool call with `"revit": "2026"` runs in that version, without it in the Revit you used last.
-- 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
-- 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
-- 🎯 **The ribbon keeps one button: Buttons (the pane).** Refresh is ↻ in its header, About is in its profile. Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
-- 🧾 **A command with an input type gets a form in the pane** — built from its schema, no HTML; a page marked `dockable` opens inside the pane, any other in a window.
-- 🗃️ **Buttons are laid out on disk as on the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button with its code, page and versions. Folders with a `plugin.json` keep loading as they are.
-- ✂️ **A button's C# is full classes only.** A file of bare statements is no longer wrapped into a `Script` command; for a quick snippet there is `ExecuteCode`. The authoring guide explains how to move older buttons into tabs.
-- 🫳 **Drag a button out of its folder in the edit mode**: up to «into another folder», which shows the folders to drop it on, or down to the trash. A folder of yours goes to the trash the same way. 📁 on a button opens its own folder.
-- 🧯 **A transaction left open at the end of `RunInRevitAsync` is reported with what to do**, and the authoring guide no longer advises a TransactionGroup across several calls — Revit rolls those back.
-- 🧪 **`RunCommand` over MCP runs a command by its name**, also one a button got a moment ago that the AI client's tool list does not show yet.
-- 🔤 **The guide says which names a page gets back** (the C# names, as written), and a new button's command returns a named result its page reads that way.
-- 🪵 **The log keeps what matters**: the pages' routine calls and unchanged reloads of extensions are no longer written to the file.
-- 📦 **A DLL project is a box of its own in the pane**, with the Revit years it is built for: its buttons run there, its author edits it. It loads its NuGet packages and their native libraries, and the authoring guide says when a DLL is worth it and how to build one.
-- 🏷️ **An older folder with a `plugin.json` goes on the tab it names**, not on a tab called after its description.
-- 🗄️ **Your folders with a `plugin.json` are together in «Older buttons»** in the pane, one section each; on the ribbon they keep their tabs. ✎ › Move to… turns such a button into a button folder of a tab; an old folder left empty goes to the trash.
-- 🗂️ **A folder of the pane is a tab of the ribbon, its sections are the panels.** Buttons drag between sections or move to another folder with their code; no tab or panel to set by hand.
-- ✏️ **In the pane, ✎ renames a button or a folder**; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
-- 📁 **Buttons live in folders.** The pane creates an empty folder and adds buttons to it one by one, each addition a version of the folder.
-- ⭐ **In the pane, ☆ keeps a button in the dock; −/+ keeps a folder's tab or a button off the ribbon** — it stays in the pane, grey.
-- 🧲 **The Buttons pane shows every button as a tile**, with a dock of favourites, your own order, tile size, theme and statistics. The profile is kept in `pane-profile.json` and is the same in every Revit version.
-- 📊 **Statistics** on the ribbon: how often every button is clicked, its last 30 days, run time and failures — counted on this machine only.
-- 🧱 **Every button is built the same way.** AnalyseTool's own buttons are declared in a `plugin.json` like an extension's and run a command or open a page; Revit keyboard shortcuts no longer bind to them.
-- 📦 **Installing a package keeps a version per install**, so an update can be rolled back.
+AnalyseTool is rebuilt: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The Sdk,
+DLL extensions and the built-in tools of 1.x carry over; the 2.0 installer replaces an installed 1.x.
+
+- 🧲 **One button on the ribbon: Buttons.** It opens a pane laid out like the home screen of a phone — every button a tile, a dock of favourites, your own order, tile size, a theme that follows Revit. A folder of the pane is a tab of the ribbon, its sections are the panels; −/+ keeps a tab or a button off the ribbon.
+- 🗃️ **A button is a folder, laid out as the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button — its C#, its page, its versions. Code several buttons share goes to `_shared\` of the tab.
+- 🧩 **A new button is C# that AnalyseTool compiles itself** — no .NET SDK, no project, no DLL. Save a file and the button runs the new code; a compile error keeps the last good build and shows file and line on the tile.
+- 🕓 **Every button has its own version history**: save a version, compare, restore a version or a file, or pin the button to an older one.
+- 🫳 **Right-click to edit, drag to arrange**: between sections, up into another folder, down to the trash — a whole folder too. ✎ renames a button and shows its code, files and versions; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
+- 🧾 **A command that needs a few values gets a form in the pane**, built from its input type; a page marked `dockable` opens inside the pane, any other in a window.
+- 📦 **DLL projects are boxes of their own**, with the Revit years they are built for; they load their NuGet packages and native libraries. Folders with a `plugin.json` from 1.x are together in **Older buttons** and move into tabs with ✎ › Move to….
+- 🤖 **MCP runs inside Revit on one address for every Revit version** (`localhost:48075`): a call with `"revit": "2026"` runs in that version, without it in the Revit you used last. AI clients create, edit, build, run (`RunCommand`) and version buttons.
+- 🔌 **A plugin for Claude Code and Codex ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings the skills `revit` and `new-button`. Cursor, VS Code, Claude Desktop and Gemini CLI get a snippet in the pane.
+- 🧭 **The authoring guide `LLM.md` ships next to the add-in and updates with it**; every button folder has an `AGENTS.md` / `CLAUDE.md` that points AI agents there. It covers transactions (one undo step = one `RunInRevitAsync`), the names a page gets back, DLL projects and migrating older folders.
+- 🧯 **A transaction left open at the end of `RunInRevitAsync` is reported with what to do** instead of failing later with a riddle.
+- 📊 **Statistics** in the profile: how often every button is clicked, its last 30 days, run time and failures — on this machine only.
+- 🪵 **The log keeps what matters**: the pages' routine calls and unchanged reloads are not written to the file.
+- 🚧 **Not in 2.0 yet**: sharing a tab or a button as a package, and update checks and the catalog of packages from 1.x.
 
 ## [1.6.0] / 2026-10-19
 
