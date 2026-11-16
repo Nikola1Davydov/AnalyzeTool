@@ -38,6 +38,7 @@
   <Folder Name="/Tests/">
     <Project Path="tests/AnalyseTool.Hosting.Tests/AnalyseTool.Hosting.Tests.csproj" />
     <Project Path="tests/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj" />
+    <Project Path="tests/AnalyseTool.Tests/AnalyseTool.Tests.csproj" />
   </Folder>
   <Project Path="source/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj" />
   <Project Path="source/AnalyseTool.ServiceDefaults/AnalyseTool.ServiceDefaults.csproj" />

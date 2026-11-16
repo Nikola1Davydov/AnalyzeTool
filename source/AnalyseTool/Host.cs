@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using Autodesk.Revit.UI;
+using AnalyseTool.Infrastructure;
 using AnalyseTool.Services.Documents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -48,6 +49,8 @@ public static partial class Host
 
         //Commands and their pipeline; the document rule is the add-in's own (ActiveDocument, DocumentCheckMiddleware)
         builder.Services.AddScoped<ActiveDocument>();
+        //The built-in feature slices: Elements, Actions, SharedParameters
+        builder.Services.AddTools();
         //AnalyseTool.Hosting.Scripting: ExecuteCode runs C# inside Revit — full trust, on in Debug, Scripting:Enabled otherwise
         builder.AddRevitCommands(commands => commands
             .FromAssemblyOf<Application>()
