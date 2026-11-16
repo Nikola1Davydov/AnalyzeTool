@@ -12,7 +12,7 @@ AnalyseTool is a free Revit add-in. It brings shared parameters and a printable 
 own tools: a button is a folder with a C# file (and, if you like, a page); save the file and the button runs the new code.
 Claude Code, Codex, Cursor or any MCP client can read and change the model through AnalyseTool — and write buttons with you.
 
-<p align="center"><img src="img/Overview.png" width="860" alt="AnalyseTool" /></p>
+<p align="center"><img src="img/Overview.png" width="860" alt="Revit with the AnalyseTool ribbon tab — one button, Buttons — and the Buttons pane on the right: the folders AnalyseTool and test, New folder, the dock below" /></p>
 
 ---
 
@@ -58,8 +58,6 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
 ---
 
 ## The pane
-
-<p align="center"><img src="img/ribbon.png" width="680" alt="AnalyseTool ribbon" /></p>
 
 **Buttons** opens the pane, laid out like the home screen of a phone — and it is the map of your ribbon:
 
