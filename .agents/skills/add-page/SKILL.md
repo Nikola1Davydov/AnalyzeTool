@@ -37,16 +37,14 @@ TanStack Query state.
 
 ## Step 3: Show the page
 
-From a ribbon button (see add-ribbon-button):
+From a ribbon button (see add-ribbon-button) — an entry in `Ribbon/analysetool/plugin.json`:
 
-```csharp
-Host.GetService<IWindows>().Open("/families", options =>
-{
-    options.Title = "Families";
-    options.Width = 900;
-    options.Height = 640;
-});
+```json
+{ "name": "Families", "command": "OpenWindow", "args": { "route": "/families" } }
 ```
+
+Give the route its title and size in `AppWindows.Open` (`Infrastructure/App/AppCommands.cs`). From C#:
+`Host.GetService<IWindows>().Open("/families", options => …)`.
 
 * One window per route: a second `Open` of the same route brings the window to the front.
 * The dock pane is one per add-in and registered in `Host.cs` (`AddWebView(..., w => w.DockPane(id, title, route))`);

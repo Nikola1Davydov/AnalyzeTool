@@ -168,10 +168,12 @@ public sealed class BrowseFile : ICommand<BrowseFileRequest, BrowseResult>
 }
 
 /// <summary>Input of <see cref="OpenWindow" />.</summary>
-public sealed record OpenWindowRequest([property: Description("The route of the page, e.g. /extensions/count-walls.")] string Route);
+public sealed record OpenWindowRequest(
+    [property: Description("The route of the page, e.g. /extensions/count-walls.")] string Route,
+    [property: Description("Show it in the dock pane instead of a window.")] bool Dock = false);
 
-/// <summary>Opens a page of AnalyseTool in its own window — from the dock pane, for example.</summary>
-[Command(Description = "Opens a page of AnalyseTool in its own window.")]
+/// <summary>Opens a page of AnalyseTool in its own window or the dock pane — from a ribbon button or the dock pane, for example.</summary>
+[Command(Description = "Opens a page of AnalyseTool in its own window, or in the dock pane.")]
 public sealed class OpenWindow(IWindows windows) : ICommand<OpenWindowRequest, Empty>
 {
     /// <inheritdoc />
@@ -179,10 +181,38 @@ public sealed class OpenWindow(IWindows windows) : ICommand<OpenWindowRequest, E
     {
         await Ui.InvokeAsync(() =>
         {
-            AppWindows.Open(windows, request.Route);
+            if (request.Dock)
+            {
+                windows.ShowDockPane(request.Route);
+            }
+            else
+            {
+                AppWindows.Open(windows, request.Route);
+            }
+
             return true;
         });
         return Empty.Value;
+    }
+}
+
+/// <summary>Input of <see cref="OpenUrl" />.</summary>
+public sealed record OpenUrlRequest([property: Description("An http or https address.")] string Url);
+
+/// <summary>Opens a web address in the default browser.</summary>
+[Command(Description = "Opens an http or https address in the default browser.")]
+public sealed class OpenUrl : ICommand<OpenUrlRequest, Empty>
+{
+    /// <inheritdoc />
+    public Task<Empty> ExecuteAsync(OpenUrlRequest request, CommandContext context)
+    {
+        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            throw new CommandException(CommandErrorCodes.BadRequest, $"Not a web address: {request.Url}");
+        }
+
+        Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        return Task.FromResult(Empty.Value);
     }
 }
 
@@ -199,6 +229,7 @@ public static class AppWindows
             "/extensions/new" => ("AnalyseTool — New button", 720d, 760d),
             "/settings" => ("AnalyseTool — Settings", 880d, 720d),
             "/about" => ("AnalyseTool — About", 760d, 760d),
+            "/statistics" => ("AnalyseTool — Statistics", 1100d, 760d),
             _ when route.StartsWith("/extensions/", StringComparison.Ordinal) => ($"AnalyseTool — {route["/extensions/".Length..]}", 1200d, 800d),
             _ => ("AnalyseTool", 1000d, 700d)
         };

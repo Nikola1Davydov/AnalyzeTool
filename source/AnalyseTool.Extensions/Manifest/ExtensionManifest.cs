@@ -188,6 +188,10 @@ public sealed record ExtensionButton
     [JsonPropertyName("command")]
     public string? Command { get; init; }
 
+    /// <summary>Gets the arguments the click passes to <see cref="Command" />, e.g. <c>{ "route": "/settings" }</c> for <c>OpenWindow</c>.</summary>
+    [JsonPropertyName("args")]
+    public JsonElement? Args { get; init; }
+
     /// <summary>Gets the page of this button, overriding <see cref="ExtensionUi.EntryHtml" />.</summary>
     [JsonPropertyName("entryHtml")]
     public string? EntryHtml { get; init; }

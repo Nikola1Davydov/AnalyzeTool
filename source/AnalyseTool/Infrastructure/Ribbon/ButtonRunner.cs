@@ -1,15 +1,21 @@
+using System.Diagnostics;
 using System.Text.Json;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Manifest;
+using AnalyseTool.Extensions.Usage;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Notifications;
 using AnalyseTool.Hosting.WebView.Controls;
+using AnalyseTool.Infrastructure.Extensions;
 using Microsoft.Extensions.Logging;
 
-namespace AnalyseTool.Infrastructure.Extensions;
+namespace AnalyseTool.Infrastructure.Ribbon;
 
-/// <summary>What a click on an extension button does: runs its command and shows the result, or opens its page.</summary>
-public sealed partial class ExtensionButtonRunner(ICommandExecutor executor, IUserNotifier notifier, IWindows windows, ILogger<ExtensionButtonRunner> logger)
+/// <summary>
+///     What a click on any ribbon button does — AnalyseTool's own or an extension's: count it, then run its command through the
+///     pipeline (with the button's <c>args</c>) and show what it returned, or open its page.
+/// </summary>
+public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageStore usage, IUserNotifier notifier, IWindows windows, ILogger<ButtonRunner> logger)
 {
     private const int MaxResultLength = 4000;
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
@@ -19,13 +25,15 @@ public sealed partial class ExtensionButtonRunner(ICommandExecutor executor, IUs
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(button.Command))
+            var command = string.IsNullOrWhiteSpace(button.Command) ? null : button.Command;
+            usage.RecordClick(extension.Id, button.Name, command);
+            if (command is null)
             {
                 OpenPage(extension, button);
             }
             else
             {
-                _ = RunAsync(button.Command!, button.Name);
+                _ = RunAsync(extension.Id, button, command);
             }
         }
         catch (Exception exception)
@@ -53,38 +61,44 @@ public sealed partial class ExtensionButtonRunner(ICommandExecutor executor, IUs
 
         windows.OpenPage(page, options =>
         {
-            options.Title = button?.Name ?? extension.Id;
+            options.Title = ButtonUsageStore.Normalize(button?.Name ?? extension.Id);
             options.Width = 900;
             options.Height = 700;
         });
     }
 
     /// <summary>
-    ///     Runs the command with no arguments and shows what it returned. Not awaited by the click: the command reaches Revit
-    ///     through the dispatcher, which needs the click handler to return first.
+    ///     Runs the command and shows what it returned. Not awaited by the click: the command reaches Revit through the
+    ///     dispatcher, which needs the click handler to return first.
     /// </summary>
-    private async Task RunAsync(string command, string title)
+    private async Task RunAsync(string extension, ExtensionButton button, string command)
     {
-        var result = await executor.ExecuteAsync(new CommandRequest(command, default, CommandSources.Ribbon)).ConfigureAwait(false);
+        var stopwatch = Stopwatch.StartNew();
+        var result = await executor.ExecuteAsync(new CommandRequest(command, button.Args ?? default, CommandSources.Ribbon)).ConfigureAwait(false);
+        usage.RecordResult(extension, button.Name, result.Error is null, stopwatch.Elapsed, result.Error?.Message);
+
         // A failure was shown by the pipeline already (ribbon source)
         if (result.Error is null && result.Value is { } value && Describe(value) is { Length: > 0 } text)
         {
-            notifier.Info(title, text.Length <= MaxResultLength ? text : text[..MaxResultLength] + "\n…");
+            notifier.Info(ButtonUsageStore.Normalize(button.Name), text.Length <= MaxResultLength ? text : text[..MaxResultLength] + "\n…");
         }
     }
 
-    private static string Describe(object value)
+    /// <summary>The text a result is shown as; empty for nothing worth a dialog (<see cref="Empty" />, <c>null</c>, <c>{}</c>).</summary>
+    internal static string Describe(object value)
     {
         return value switch
         {
+            Empty => "",
             JsonElement { ValueKind: JsonValueKind.String } element => element.GetString() ?? "",
             JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined } => "",
+            JsonElement { ValueKind: JsonValueKind.Object } element when !element.EnumerateObject().Any() => "",
             JsonElement element => JsonSerializer.Serialize(element, Indented),
             string text => text,
-            _ => JsonSerializer.Serialize(value, value.GetType(), Indented)
+            _ => JsonSerializer.Serialize(value, value.GetType(), Indented) is var json && json != "{}" ? json : ""
         };
     }
 
-    [LoggerMessage(LogLevel.Error, "A click on a button of extension {Id} failed")]
+    [LoggerMessage(LogLevel.Error, "A click on a button of {Id} failed")]
     private static partial void LogClickFailed(ILogger logger, Exception exception, string id);
 }

@@ -1,97 +1,58 @@
 ---
 name: add-ribbon-button
 description: >
-  Add a ribbon button to the add-in: the button class, its proxy in the Launcher, its icon and availability.
-  USE FOR: a new button or panel, enabling a button only with an open document or project, a button icon, a Debug-only button.
-  DO NOT USE FOR: the work behind the button that reads or changes the model (add-command); a page the button opens (add-page).
+  Add a ribbon button of AnalyseTool itself: one entry in Ribbon\analysetool\plugin.json — the same format as an extension's button.
+  USE FOR: a new button or panel of the add-in, its icon, a Debug-only button, what a click runs.
+  DO NOT USE FOR: the work behind the button that reads or changes the model (add-command); a page the button opens (add-page);
+  a button of the user's extensions (they write their own plugin.json; see source/AnalyseTool.Extensions/Authoring/LLM.md).
 ---
 
 # Add a ribbon button
 
-Revit creates the class of a button from the assembly path of the button. The add-in lives in the Launcher's
-`AssemblyLoadContext`, so a button points to a same-named proxy in the Launcher, and the proxy forwards the click into
-the add-in. A button therefore always has two parts: the class in the add-in and one proxy line in the Launcher.
+Every ribbon button — AnalyseTool's own and every extension's — is declared the same way: an entry of `ui.buttons` in a
+`plugin.json`. One piece of code (`Infrastructure/Ribbon/AppRibbon.cs`, AdWindows) builds them all, and one piece
+(`ButtonRunner`) handles every click: it counts the click for the Statistics page, then runs the button's pipeline
+command with its `args`, or opens its page. There is no button class, no proxy in the Launcher and no Revit API ribbon code.
 
-## Step 1: Write the button class in `Commands/`
+## Step 1: Write the command behind it (if it is new)
 
-```csharp
-using Autodesk.Revit.Attributes;
-using AnalyseTool.Hosting.Commands;
-using Nice3point.Revit.Toolkit.External;
+A button runs a pipeline command — see add-command. Opening a page needs no new command: `OpenWindow` does it.
 
-namespace AnalyseTool.Commands;
+## Step 2: Declare the button
 
-/// <summary>
-///     Renames the selected families.
-/// </summary>
-[UsedImplicitly]
-[Transaction(TransactionMode.Manual)]
-public class RenameFamiliesCommand : ExternalCommand
+In `source/AnalyseTool/Ribbon/analysetool/plugin.json` (Debug-only buttons: `Ribbon/analysetool.dev/plugin.json`, copied
+only in Debug configurations):
+
+```json
 {
-    /// <inheritdoc />
-    public override void Execute()
-    {
-        Host.GetService<ICommandSender>().Send<RenameFamilies>();
-    }
+  "name": "Rename\nfamilies",
+  "panel": "Families",
+  "icon": "glyph:E8AC",
+  "tooltip": "Renames the selected families.",
+  "command": "RenameFamilies",
+  "args": { "prefix": "FAM_" }
 }
 ```
 
-* Keep the button thin: send a pipeline command (`ICommandSender.Send<T>()`, see add-command) or open a page
-  (`Host.GetService<IWindows>().Open("/route")`, see add-page).
-* `Execute` runs on the Revit thread, so a short direct use of the Revit API is allowed here. `ActiveUIDocument` is
-  allowed in a button: the click belongs to the active document.
-* A button cannot take constructor dependencies — Revit creates it — so it resolves services with `Host.GetService<T>()`.
-* The class name and namespace are the internal name of the button. Revit binds keyboard shortcuts and the Quick Access
-  Toolbar to it: never rename or move a released button.
+* `command` — any pipeline command by name; `args` is its request (the JSON a page would send). The result, when it is
+  text or an object, is shown after the click; `Empty` and `{}` show nothing.
+* A page of the add-in: `"command": "OpenWindow", "args": { "route": "/families" }` — add `"dock": true` for the dock pane.
+  The window title and size of a route are in `AppWindows.Open` (`Infrastructure/App/AppCommands.cs`).
+* A web address: `"command": "OpenUrl", "args": { "url": "https://…" }`.
+* `panel` / `tab` — where it goes; the panels appear in the order of their first button, before the panels of extensions.
+* `kind` — `push` (large, the default), `stacked` (small, three per column) or `pulldown` (with `items`).
+* `icon` — `glyph:XXXX` (a Segoe MDL2 Assets code point, crisp at any DPI) or a PNG next to the `plugin.json`.
+* `\n` in the name breaks the label; statistics show it as a space. The name (with the folder id) is the key of the
+  button's statistics: renaming a button starts its counts anew.
 
-## Step 2: Add the proxy to the Launcher
+## Step 3: Check
 
-One line in `source/AnalyseTool.Launcher/Proxies.cs`, with the same simple class name:
+`tests/AnalyseTool.Tests/Ribbon/ButtonTests.cs` checks that every built-in button runs a command that exists. Build
+`Debug.R2x` and start Revit: the button is on the tab, the click works, and it shows up on the Statistics page.
 
-```csharp
-[Transaction(TransactionMode.Manual)] public sealed class RenameFamiliesCommand : ProxyCommand;
-```
+## What this model cannot do
 
-The proxy name must be unique among the button classes of the add-in. If the proxy is missing, the add-in fails at
-startup with «The Launcher has no proxy for '…'. Add this line to Proxies.cs …».
-
-## Step 3: Put the button on the ribbon
-
-In `Application.CreateRibbon` (`source/AnalyseTool/Application.cs`):
-
-```csharp
-panel.AddButton<RenameFamiliesCommand>("Rename\nfamilies")
-    .SetAvailability<ProjectAvailability>()
-    .WithIcons("RenameFamilies");
-```
-
-* `AddButton<T>` and `SetAvailability<T>` come from `Infrastructure/Ribbon`; never use `AddPushButton<T>` of
-  Nice3point.Revit.Extensions — it points the button to the add-in assembly and bypasses the isolation.
-* A new panel: `Application.CreatePanel("Panel name", "AnalyseTool")`.
-* `\n` in the text breaks the label into two lines.
-
-## Step 4: Availability (optional)
-
-* `DocumentAvailability` — enabled while a document is open; `ProjectAvailability` — while a project (not a family) is
-  open. Both are in `Infrastructure/Ribbon/Availability.cs` and already have proxies.
-* A custom rule: a class implementing `IExternalCommandAvailability` in the add-in, plus a proxy line in `Proxies.cs`:
-
-```csharp
-public sealed class SelectionAvailability : ProxyAvailability;
-```
-
-Revit asks availability very often: keep the check trivial. An exception in it counts as «unavailable».
-
-## Step 5: Icon (optional)
-
-Two PNG files in `source/AnalyseTool/Resources/Icons/`: `<Name>16.png` (16×16) and `<Name>32.png` (32×32). They are
-embedded resources (`Resources\Icons\*.png`), so nothing else is needed; `WithIcons("<Name>")` sets both.
-
-## Debug-only buttons
-
-Wrap the button class and its `AddButton` call in `#if DEBUG`. Keep the proxy line without `#if`: a proxy without a
-button does no harm.
-
-## Check
-
-Build `Debug.R2x` and start Revit: the button is on the tab, the click works, availability follows the document.
+AdWindows buttons are not Revit commands: Revit cannot bind a keyboard shortcut to them, and there is no availability
+class — a command that needs a document says so itself (`ActiveDocument` fails with a clear message). If a button truly
+needs a Revit keyboard shortcut, it would have to be an `IExternalCommand` with a proxy in the Launcher's `Proxies.cs`
+(the comment there shows the line) — ask before adding one, it breaks the one-model rule.

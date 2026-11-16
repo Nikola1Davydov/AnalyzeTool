@@ -13,22 +13,24 @@ using Color = System.Windows.Media.Color;
 using FormattedText = System.Windows.Media.FormattedText;
 using Point = System.Windows.Point;
 
-namespace AnalyseTool.Infrastructure.Extensions;
+namespace AnalyseTool.Infrastructure.Ribbon;
 
 /// <summary>
-///     The ribbon buttons of the extensions: built with the AdWindows API, because the Revit API cannot add or remove buttons
+///     The whole ribbon of AnalyseTool — its own buttons and the extensions' — built one way, from the <c>plugin.json</c>
+///     declarations of <see cref="ButtonCatalog" />, with the AdWindows API, because the Revit API cannot add or remove buttons
 ///     after startup. A new extension gets its buttons at once; a removed one loses them; a changed one is rebuilt — whenever
-///     <see cref="ExtensionHost.Changed" /> says so.
+///     <see cref="ExtensionHost.Changed" /> says so. Every click goes to <see cref="ButtonRunner" />.
 /// </summary>
 /// <remarks>
-///     <para>Placement: <c>tab</c> and <c>panel</c> of the button, then of <c>ui</c>, then the AnalyseTool tab and its «Extensions» panel.</para>
+///     <para>Placement: <c>tab</c> and <c>panel</c> of the button, then of <c>ui</c>, then the AnalyseTool tab and its «Extensions» panel.
+///     The built-in buttons come first, so their panels lead the tab.</para>
 ///     <para>
 ///         Small (<c>stacked</c>) buttons of every extension on one panel are laid out together in columns of three; large
 ///         ones come first. Within a panel: <c>order</c> (0 last), then the id, then the declaration.
 ///     </para>
 ///     <para>Only buttons, panels and tabs created here are ever removed.</para>
 /// </remarks>
-public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonRunner runner, ILogger<ExtensionRibbon> logger)
+public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host, ButtonRunner runner, ILogger<AppRibbon> logger)
 {
     /// <summary>The tab of the add-in.</summary>
     public const string DefaultTab = "AnalyseTool";
@@ -42,12 +44,37 @@ public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonR
     private readonly Dictionary<string, List<AdWin.RibbonItem>> _items = new(StringComparer.Ordinal);
     private readonly HashSet<string> _createdTabs = new(StringComparer.Ordinal);
     private string _signature = "";
+    private bool _waitingForRibbon;
 
     /// <summary>Builds the buttons now and follows every change of the extensions.</summary>
     public void Start()
     {
         host.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
         System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
+    }
+
+    /// <summary>The AdWindows ribbon is created after the add-ins start: build once it is there.</summary>
+    private void WaitForRibbon()
+    {
+        if (_waitingForRibbon)
+        {
+            return;
+        }
+
+        _waitingForRibbon = true;
+        AdWin.ComponentManager.ItemInitialized += OnItemInitialized;
+    }
+
+    private void OnItemInitialized(object? sender, AdWin.RibbonItemEventArgs e)
+    {
+        if (AdWin.ComponentManager.Ribbon is null)
+        {
+            return;
+        }
+
+        AdWin.ComponentManager.ItemInitialized -= OnItemInitialized;
+        _waitingForRibbon = false;
+        Refresh();
     }
 
     /// <summary>Brings the ribbon in line with the loaded extensions. Runs on the WPF thread of Revit.</summary>
@@ -57,12 +84,13 @@ public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonR
         {
             if (AdWin.ComponentManager.Ribbon is null)
             {
+                WaitForRibbon();
                 return;
             }
 
-            var extensions = host.GetStates()
-                .Where(state => state.Enabled && state.Descriptor.HasButtons)
-                .Select(state => state.Descriptor)
+            var extensions = catalog.GetSources()
+                .Where(source => source.Shown)
+                .Select(source => source.Extension)
                 .ToList();
 
             // Nothing that the ribbon shows changed: a reload of unchanged code keeps the buttons as they are
@@ -86,15 +114,16 @@ public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonR
     private void Build(IReadOnlyList<ExtensionDescriptor> extensions)
     {
         var entries = new List<Entry>();
-        foreach (var extension in extensions)
+        for (var sourceIndex = 0; sourceIndex < extensions.Count; sourceIndex++)
         {
+            var extension = extensions[sourceIndex];
             var ui = extension.Manifest.Ui!;
             var buttons = ui.EffectiveButtons();
             for (var index = 0; index < buttons.Count; index++)
             {
                 var button = buttons[index];
                 var panelKey = Coalesce(button.Tab, ui.Tab, DefaultTab) + Separator + Coalesce(button.Panel, ui.Panel, DefaultPanel);
-                entries.Add(new Entry(extension, button, panelKey, index));
+                entries.Add(new Entry(extension, button, panelKey, index, extension.Directory.StartsWith(ButtonCatalog.DefaultFolder, StringComparison.OrdinalIgnoreCase) ? sourceIndex : int.MaxValue));
             }
         }
 
@@ -107,6 +136,7 @@ public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonR
             }
 
             var ordered = panel.OrderBy(entry => entry.Button.Order == 0 ? int.MaxValue : entry.Button.Order)
+                .ThenBy(entry => entry.Source)
                 .ThenBy(entry => entry.Extension.Id, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.Index)
                 .ToList();
@@ -345,13 +375,14 @@ public sealed partial class ExtensionRibbon(ExtensionHost host, ExtensionButtonR
         return bitmap;
     }
 
-    [LoggerMessage(LogLevel.Error, "The ribbon buttons of the extensions could not be refreshed")]
+    [LoggerMessage(LogLevel.Error, "The ribbon buttons could not be refreshed")]
     private static partial void LogRefreshFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(LogLevel.Warning, "Extension {Id}: the icon {Icon} could not be loaded")]
     private static partial void LogIconFailed(ILogger logger, Exception exception, string id, string icon);
 
-    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index);
+    /// <param name="Source">The built-in folders keep their order ahead of the extensions; every extension shares <see cref="int.MaxValue" />.</param>
+    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index, int Source);
 
     /// <summary>The WPF command of an AdWindows button.</summary>
     private sealed class ClickCommand(Action execute) : ICommand

@@ -68,6 +68,7 @@ Open the **AnalyseTool** tab:
 - **Buttons pane** — your buttons in the dock pane.
 - **New button** — a ribbon button with a C# command (and, if you want, a page), compiled by AnalyseTool, with its first version saved.
 - **Manage buttons** — your buttons and installed packages: status, compiler errors, versions, install a `.zip`.
+- **Statistics** — how often every button is clicked (AnalyseTool's own and yours), the last 30 days, run times and failures. Counted on your machine only.
 - **Settings** — the AI connection (MCP) and the folders of your buttons.
 - **About** — versions, what's new and links to the source.
 - **Report a bug** — opens the GitHub issues page.

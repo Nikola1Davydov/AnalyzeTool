@@ -117,10 +117,12 @@ rename.mutate({ ids, prefix: "FAM_" });   // rename.progress, rename.cancel()
 
 Add a mock answer to `ClientApp/src/mocks.ts` so the page works in a normal browser with `npm run dev`.
 
-From a ribbon button — fire and forget, failures are shown to the user:
+From a ribbon button — an entry in `Ribbon/analysetool/plugin.json` names it (see add-ribbon-button); failures are
+shown to the user:
 
-```csharp
-Host.GetService<ICommandSender>().Send<RenameFamilies>(new RenameFamiliesRequest(ids, "FAM_"));
+```json
+{ "name": "Rename
+families", "command": "RenameFamilies", "args": { "prefix": "FAM_" } }
 ```
 
 From an AI client (Claude Code, Cursor, VS Code) — mark the class with `[McpTool]` of `AnalyseTool.Hosting.Mcp`:

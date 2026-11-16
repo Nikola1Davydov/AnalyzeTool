@@ -205,6 +205,7 @@ Call it from JS as `AT.invoke("acme.doors.CountDoors")`.
 | `ui.tab` / `ui.panel` | — | Ribbon placement. Default tab `"AnalyseTool"`, panel `"Extensions"`. |
 | `ui.button.name` | — | Button label (also the display name). |
 | `ui.button.command` | — | If set, clicking the button **runs this command** (shows the result in a dialog) instead of opening the HTML page. Use for command-only extensions that want a button. |
+| `ui.button.args` | — | The arguments the click passes to `command` — the JSON a page would send with `AT.invoke`, e.g. `{ "category": "OST_Doors" }`. Any pipeline command works, AnalyseTool's own too: `"command": "OpenWindow", "args": { "route": "/statistics" }`. AnalyseTool declares its own ribbon buttons exactly this way. |
 | `ui.dockable` | — | `true` = the button shows the page inside AnalyseTool's shared **dockable pane** (docks like the Project Browser; click again = hide, another dockable button = switch content) instead of a separate window. |
 | `schema` | — | Manifest FORMAT version, not yours. Absent = 1. Set `2` when you use `ui.buttons`. Older schemas keep loading. |
 
@@ -239,7 +240,7 @@ properties of the SURFACE, not of the extension:
 | `order` | Sort order in the panel: lower first; equal values keep declaration order; 0 (unset) goes after every stated value. Applies to large and small buttons alike, across extensions. |
 | `kind` | `push` (default) · `stacked` · `pulldown`. Unknown values fall back to `push`. |
 | `items` | Entries of a `pulldown`. Ignored for other kinds. |
-| `name` / `tooltip` / `icon` / `command` | As in the single-button form. |
+| `name` / `tooltip` / `icon` / `command` / `args` | As in the single-button form. Every click is counted for the Statistics page by extension id and button name. |
 
 **`stacked`** — a small button. The host lays ALL small buttons of a panel into columns of three, the
 shape Revit's own stacked items make — across extensions, ordered by `order`, then extension id,

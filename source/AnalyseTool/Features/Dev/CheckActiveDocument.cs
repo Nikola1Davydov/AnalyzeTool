@@ -1,7 +1,6 @@
 #if DEBUG
 using AnalyseTool.Services.Documents;
 using AnalyseTool.Hosting.Commands;
-using AnalyseTool.Hosting.Notifications;
 
 namespace AnalyseTool.Features.Dev;
 
@@ -10,7 +9,7 @@ namespace AnalyseTool.Features.Dev;
 ///     apart. Switch documents in between to see the change check of <see cref="ActiveDocument" /> (docs/manual-tests.md).
 /// </summary>
 [Command(Description = "Reads the active document twice, 5 seconds apart, and shows it.")]
-public sealed class CheckActiveDocument(ActiveDocument document, IUserNotifier notifier) : ICommand<ActiveDocumentInfo>
+public sealed class CheckActiveDocument(ActiveDocument document) : ICommand<ActiveDocumentInfo>
 {
     private static readonly TimeSpan Pause = TimeSpan.FromSeconds(5);
 
@@ -24,9 +23,8 @@ public sealed class CheckActiveDocument(ActiveDocument document, IUserNotifier n
             revitDocument => new FilteredElementCollector(revitDocument).WhereElementIsNotElementType().GetElementCount(),
             context.CancellationToken);
 
-        var info = new ActiveDocumentInfo(document.Key!, title, elementCount);
-        notifier.Info("AnalyseTool", $"Active document: {info.Title}\nKey: {info.Key}\nElements: {info.ElementCount}");
-        return info;
+        // The button shows what it returns
+        return new ActiveDocumentInfo(document.Key!, title, elementCount);
     }
 }
 

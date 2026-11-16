@@ -1258,3 +1258,77 @@ code.block,
     margin: 14mm;
   }
 }
+
+/* ---- Statistics ---- */
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 8px;
+  background: var(--colorNeutralBackground2);
+}
+.stat-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.stat-table .col-clicks {
+  width: 180px;
+}
+.stat-table .col-days {
+  width: 140px;
+}
+.stat-table .col-time {
+  width: 130px;
+}
+.stat-table .col-number {
+  width: 90px;
+}
+.stat-clicks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat-clicks-number {
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.stat-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--colorNeutralBackground4);
+  overflow: hidden;
+}
+.stat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--colorBrandBackground);
+}
+.sparkline {
+  display: block;
+}
+.sparkline-bar {
+  fill: var(--colorBrandBackground);
+}
+.sparkline-empty {
+  fill: var(--colorNeutralStroke2);
+}
+.stat-gone {
+  opacity: 0.6;
+}

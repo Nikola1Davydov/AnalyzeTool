@@ -2,6 +2,7 @@ using AnalyseTool.Extensions;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Loading;
 using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Extensions.Usage;
 using AnalyseTool.Extensions.Versions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -35,6 +36,7 @@ public static class ExtensionsRegistration
             builder.Services.TryAddSingleton<ExtensionHost>();
             builder.Services.TryAddSingleton<ExtensionManager>();
             builder.Services.TryAddSingleton<ExtensionWatcher>();
+            builder.Services.TryAddSingleton(services => new ButtonUsageStore(services.GetRequiredService<ExtensionPaths>()));
             builder.Services.AddHostedService(services => services.GetRequiredService<ExtensionWatcher>());
             return builder;
         }

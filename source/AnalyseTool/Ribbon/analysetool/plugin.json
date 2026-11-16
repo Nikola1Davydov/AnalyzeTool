@@ -1,0 +1,79 @@
+{
+  "schema": 2,
+  "id": "analysetool",
+  "version": "2.0.0",
+  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code.",
+  "publisher": "AnalyseTool",
+  "ui": {
+    "tab": "AnalyseTool",
+    "buttons": [
+      {
+        "name": "AnalyseTool",
+        "panel": "AnalyseTool",
+        "icon": "analysetool.png",
+        "tooltip": "The parameter report, the elements and the shared parameters.",
+        "command": "OpenWindow",
+        "args": { "route": "/" }
+      },
+      {
+        "name": "Buttons\npane",
+        "panel": "AnalyseTool",
+        "icon": "glyph:E8A0",
+        "tooltip": "The dock pane: your buttons at hand.",
+        "command": "OpenWindow",
+        "args": { "route": "/dock", "dock": true }
+      },
+      {
+        "name": "New\nbutton",
+        "panel": "Buttons",
+        "icon": "glyph:ECC8",
+        "tooltip": "A new button: C# that AnalyseTool compiles, with its own version history.",
+        "command": "OpenWindow",
+        "args": { "route": "/extensions/new" }
+      },
+      {
+        "name": "Manage\nbuttons",
+        "panel": "Buttons",
+        "icon": "glyph:EA86",
+        "tooltip": "Your buttons: their versions, errors and folders.",
+        "command": "OpenWindow",
+        "args": { "route": "/extensions" }
+      },
+      {
+        "name": "Statistics",
+        "panel": "Buttons",
+        "icon": "glyph:E9D2",
+        "tooltip": "How often every button is clicked, how long it runs and how often it fails.",
+        "command": "OpenWindow",
+        "args": { "route": "/statistics" }
+      },
+      {
+        "name": "Settings",
+        "panel": "Help",
+        "kind": "stacked",
+        "icon": "glyph:E713",
+        "tooltip": "MCP for AI clients and the folders of your buttons.",
+        "command": "OpenWindow",
+        "args": { "route": "/settings" }
+      },
+      {
+        "name": "About",
+        "panel": "Help",
+        "kind": "stacked",
+        "icon": "glyph:E946",
+        "tooltip": "The version and what is new.",
+        "command": "OpenWindow",
+        "args": { "route": "/about" }
+      },
+      {
+        "name": "Report a bug",
+        "panel": "Help",
+        "kind": "stacked",
+        "icon": "glyph:EBE8",
+        "tooltip": "Opens the issues of AnalyseTool on GitHub.",
+        "command": "OpenUrl",
+        "args": { "url": "https://github.com/Nikola1Davydov/AnalyzeTool/issues" }
+      }
+    ]
+  }
+}

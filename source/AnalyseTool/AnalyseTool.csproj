@@ -33,10 +33,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Embedded, not WPF resources: pack URIs resolve assemblies by name and could load a second copy outside the isolated context -->
-        <EmbeddedResource Include="Resources\Icons\*.png"/>
         <!-- The About page shows it -->
         <None Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest"/>
+        <!-- The buttons of AnalyseTool itself: plugin.json folders like an extension's, built by the same ribbon code -->
+        <None Include="Ribbon\analysetool\**" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="Ribbon\analysetool.dev\**" CopyToOutputDirectory="PreserveNewest" Condition="$(Configuration.StartsWith('Debug'))"/>
     </ItemGroup>
 
     <ItemGroup>

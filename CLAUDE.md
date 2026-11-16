@@ -19,13 +19,14 @@ The rules of the template apply: read [AGENTS.md](AGENTS.md) and [ARCHITECTURE.m
 | `source/AnalyseTool.Hosting.WebView` | Hosting | WebView2 windows, dock pane, transport; `ExternalPage` for extension pages (own virtual host, init script). |
 | `source/AnalyseTool.Hosting.Scripting` / `.Visualization` | Hosting(, Mcp) | Template modules: `ExecuteCode`/`DescribeApi`; geometry overlay. Headless. |
 | `source/AnalyseTool.Extensions` | Hosting, Hosting.Mcp, Sdk | The user's buttons: catalog of extension folders (1.x layout), Roslyn compiler + cached builds (`bin\<year>\`), collectible load contexts, `SdkCommands` (IRevitTask → pipeline), `ExtensionHost` (load/reload, one registry group per extension), `ExtensionWatcher` (a saved file reloads its extension), git history (`LibGit2ExtensionHistory`), pinning, packages, and the commands in `Features/`. Headless. |
-| `source/AnalyseTool` | all of the above | The add-in: `Application` (ribbon), `Host.cs`, built-in commands in `Features/<Slice>/` + services in `Services/<Slice>/` (Elements, Actions, SharedParameters, Parameters), ribbon of extensions (`Infrastructure/Extensions`, AdWindows), app commands of the pages (`Infrastructure/App`), React app in `ClientApp/`. |
-| `source/AnalyseTool.Launcher` | add-in (build order) | Thin Revit entry, isolation in an ALC, ribbon proxies (`Proxies.cs`: one line per button class in `Commands/`). |
+| `source/AnalyseTool` | all of the above | The add-in: `Application`, `Host.cs`, the ribbon (`Ribbon/analysetool/plugin.json` — its own buttons in the extension format; `Infrastructure/Ribbon`: one builder, one click runner, statistics), built-in commands in `Features/<Slice>/` + services in `Services/<Slice>/` (Elements, Actions, SharedParameters, Parameters), app commands of the pages (`Infrastructure/App`), React app in `ClientApp/`. |
+| `source/AnalyseTool.Launcher` | add-in (build order) | Thin Revit entry, isolation in an ALC. No ribbon proxies: every button is a `plugin.json` entry built by the add-in. |
 
 Hard rules (beyond AGENTS.md):
 - An extension command is an `IRevitTask` of the Sdk; never make extensions reference `AnalyseTool.Extensions` or the add-in. If they need more, that is an Sdk contract decision (minor = additive).
 - The extension folder format of 1.x stays readable (`plugin.json` schema 1/2, `src\*.cs`, `<year>\*.dll`, legacy `<root>\<year>\<id>`). Write manifests with `ExtensionManifest.Update` so unknown fields survive.
 - Git is hidden behind `IExtensionHistory`: the UI and MCP say version / save / restore / pin, never commit or branch. Nothing is lost: restore first saves unsaved work. Pins live in `extensions-state.json`, never in the folder.
+- Every ribbon button, built-in or not, is a `plugin.json` button running a pipeline command or opening a page; never add an `IExternalCommand` button.
 - Builds go to `bin\` (git-ignored); a failed compile keeps the last good build loaded and reports diagnostics with file/line.
 - Profile: `%LOCALAPPDATA%\AnalyseTool\` (`extensions\`, `extensions-dist\`, `extensions.json`, `extensions-state.json`, `trash\`) — the same places as 1.x.
 

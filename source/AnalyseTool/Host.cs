@@ -3,7 +3,7 @@ using System.Reflection;
 using Autodesk.Revit.UI;
 using AnalyseTool.Extensions;
 using AnalyseTool.Infrastructure;
-using AnalyseTool.Infrastructure.Extensions;
+using AnalyseTool.Infrastructure.Ribbon;
 using AnalyseTool.Services.Documents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -71,8 +71,10 @@ public static partial class Host
 
         //AnalyseTool.Extensions: the user's buttons — C# sources compiled in Revit (or DLLs), each folder with its own git history
         builder.AddExtensions(application.ControlledApplication.VersionNumber);
-        builder.Services.AddSingleton<ExtensionButtonRunner>();
-        builder.Services.AddSingleton<ExtensionRibbon>();
+        //The ribbon: AnalyseTool's own buttons and the extensions', declared and run the same way, every click counted
+        builder.Services.AddSingleton<ButtonCatalog>();
+        builder.Services.AddSingleton<ButtonRunner>();
+        builder.Services.AddSingleton<AppRibbon>();
 
         //AnalyseTool.Hosting.Visualization: geometry drawn over the views (ShowGeometry), nothing added to the model
         builder.AddVisualization();
@@ -112,8 +114,8 @@ public static partial class Host
     /// <returns>The service instance.</returns>
     /// <exception cref="System.InvalidOperationException">No service of type <typeparamref name="T" /> is registered.</exception>
     /// <remarks>
-    ///     Only for ribbon buttons: Revit creates <c>ExternalCommand</c> classes itself, so they cannot take
-    ///     constructor dependencies. Everything else uses constructor injection.
+    ///     Only for the entry point (<see cref="Application" />), which Revit creates itself. Everything else uses
+    ///     constructor injection.
     /// </remarks>
     public static T GetService<T>() where T : class
     {

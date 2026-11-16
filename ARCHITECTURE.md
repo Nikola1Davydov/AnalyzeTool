@@ -6,8 +6,8 @@ How the add-in starts, where the code goes and why. The rules an agent must not 
 
 | Project | Role |
 | --- | --- |
-| `source/AnalyseTool.Launcher` | The only assembly Revit loads. Starts the add-in in its own `AssemblyLoadContext`; holds the proxies of the ribbon buttons. References nothing but the Revit API. |
-| `source/AnalyseTool` | The add-in: `Application`, `Host`, buttons (`Commands/`), commands (`Features/`), services (`Services/`), the React app (`ClientApp/`), plumbing (`Infrastructure/`). |
+| `source/AnalyseTool.Launcher` | The only assembly Revit loads. Starts the add-in in its own `AssemblyLoadContext`; holds no button: the ribbon is built by the add-in. References nothing but the Revit API. |
+| `source/AnalyseTool` | The add-in: `Application`, `Host`, buttons (`Ribbon/analysetool/plugin.json`), commands (`Features/`), services (`Services/`), the React app (`ClientApp/`), plumbing (`Infrastructure/`). |
 | `source/AnalyseTool.ServiceDefaults` | Logging, configuration layers, JSON options, DI validation. |
 | `source/AnalyseTool.Hosting` | Module: the command pipeline, `IRevitDispatcher`, Revit lifetime, user settings, notifications. No WPF. |
 | `source/AnalyseTool.Hosting.WebView` | Module: WebView2 windows, the dock pane, the transport to the pipeline and `revit-bridge` for the pages. |
@@ -31,15 +31,28 @@ the pipeline can run without the UI.
    other versions of them cannot clash. The Revit API and the shared framework come from Revit's own context.
 3. The Launcher publishes its path and the namespace of its proxies through `AppContext` (keys end with the add-in name)
    and creates `AnalyseTool.Application` by name — the single reflection call into the add-in.
-4. `Application` builds and starts the `Host` (`Host.cs`), then the ribbon.
+4. `Application` builds and starts the `Host` (`Host.cs`), then the ribbon (`AppRibbon`).
 
 If any step fails, the Launcher writes the exception to `%LOCALAPPDATA%\AnalyseTool\logs\<year>\startup-error.txt`
 and rethrows it; Revit reports the failed external application itself.
 
-Revit creates the class of a ribbon button from the assembly path of the button. A button that pointed to the add-in
-assembly would load it a second time, outside the isolation, so every button points to a same-named proxy in the
-Launcher (`Proxies.cs`), and the proxy forwards the click into the add-in's context. `AddButton<T>` checks at startup
-that the proxy exists.
+## Ribbon
+
+Every button is declared one way — an entry of `ui.buttons` in a `plugin.json` — and built one way. AnalyseTool's own
+buttons are in `Ribbonnalysetool\plugin.json` next to the add-in (`Ribbonnalysetool.dev\` adds the Dev panel in
+Debug builds); the user's are in their extension folders.
+
+* `ButtonCatalog` lists the folders: the built-in ones first, then every extension that has buttons.
+* `AppRibbon` builds the buttons with AdWindows (the Revit API cannot add or remove buttons after startup), on the
+  AnalyseTool tab unless a button names another, and rebuilds them on `ExtensionHost.Changed`.
+* `ButtonRunner` handles every click: it counts it (`ButtonUsageStore`, `%LOCALAPPDATA%\AnalyseToolutton-usage.json`),
+  then runs the button's pipeline command with its `args` (source `ribbon`: a failure is shown to the user) and shows
+  the result, or opens the button's page. The built-in buttons open their pages with `OpenWindow { route, dock? }`.
+* The Statistics page (`/statistics`, `GetButtonStatistics`) joins the catalog with the counts: every button, clicked or
+  not, and the buttons of removed extensions until a reset.
+
+Since no button is a Revit `IExternalCommand`, Revit never creates a class of ours, and the Launcher's `Proxies.cs` is
+empty. The price: Revit keyboard shortcuts cannot be bound to these buttons.
 
 ## Host
 
@@ -53,7 +66,7 @@ that the proxy exists.
 * `commands.AddScripting(builder)` inside `AddRevitCommands` — the `ExecuteCode` command, when scripting is on.
 * `AddVisualization()` — `IGeometryOverlay`, geometry drawn over the views.
 
-Classes get their dependencies through the constructor. Only ribbon buttons, which Revit creates itself, resolve
+Classes get their dependencies through the constructor. Only `Application`, which Revit creates itself, resolves
 services with `Host.GetService<T>()`.
 
 ## Commands and the pipeline

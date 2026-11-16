@@ -9,7 +9,7 @@ Read the skill before the task it covers:
 
 | Task | Skill |
 | --- | --- |
-| A ribbon button, its availability or icon | [.agents/skills/add-ribbon-button/SKILL.md](.agents/skills/add-ribbon-button/SKILL.md) |
+| A ribbon button of the add-in (its plugin.json entry, icon, command) | [.agents/skills/add-ribbon-button/SKILL.md](.agents/skills/add-ribbon-button/SKILL.md) |
 | A command the pages or a button call: reading or changing the model | [.agents/skills/add-command/SKILL.md](.agents/skills/add-command/SKILL.md) |
 | A page, a window or the dock pane | [.agents/skills/add-page/SKILL.md](.agents/skills/add-page/SKILL.md) |
 | Checking a change in a running Revit: call commands, see the view, read the log | [.agents/skills/verify-in-revit/SKILL.md](.agents/skills/verify-in-revit/SKILL.md) |
@@ -17,7 +17,7 @@ Read the skill before the task it covers:
 ## Non-negotiables
 
 * The Revit API is used only on the Revit thread. A command runs on the thread pool and reaches the model only through
-  `ActiveDocument` or `IRevitDispatcher`; a ribbon button (`ExternalCommand.Execute`) already runs on the Revit thread.
+  `ActiveDocument` or `IRevitDispatcher`; a ribbon button only names a command, so the same rule holds for its click.
 * A command takes the document from `ActiveDocument`, never from `ActiveUIDocument`: the user may switch documents
   while the command runs, and `ActiveDocument` then fails with `document_changed` instead of touching another model.
   `build/Check-Boundaries.ps1` rejects `ActiveUIDocument` in `Features/` and `Services/`; a line that really needs it is
@@ -31,8 +31,10 @@ Read the skill before the task it covers:
 * An AI client (MCP) sees only commands marked with `[McpTool]`: open a command to it deliberately, never by default.
 * `ExecuteCode` runs any C# with the user's rights. It exists only where scripting is on — Debug, or `Scripting:Enabled`;
   never turn it on by default in Release.
-* A ribbon button is a class in `Commands/` and a same-named proxy line in the Launcher's `Proxies.cs`. A button class
-  keeps its name and namespace: Revit binds keyboard shortcuts and the Quick Access Toolbar to them.
+* Every ribbon button — the add-in's own and the extensions' — is an entry of `ui.buttons` in a `plugin.json`: the
+  add-in's are in `source/AnalyseTool/Ribbon/analysetool/plugin.json`. A button runs a pipeline command (`command` +
+  `args`) or opens a page; `AppRibbon` builds them all with AdWindows and `ButtonRunner` handles and counts every click.
+  No button classes, no proxies, no Revit API ribbon code.
 * Logging goes through source-generated `[LoggerMessage]` methods, not the `Log*` extension methods of `ILogger`.
 * A project reference or a package reference goes into the table of `build/Check-Boundaries.ps1` first; the pipeline
   fails on a reference the table does not allow.
@@ -44,8 +46,9 @@ Read the skill before the task it covers:
   join the pipeline as a registry group named after the extension id (`<id>.<Command>`).
 * Every extension folder has its own git history behind `IExtensionHistory`; versions are saved, compared, restored and
   pinned from the pages (`/extensions/<id>`) and over MCP. Pins live in `extensions-state.json`.
-* The ribbon buttons of extensions are AdWindows items (`Infrastructure/Extensions/ExtensionRibbon.cs`) that follow
-  `ExtensionHost.Changed`; the add-in's own buttons are template buttons with proxies.
+* The ribbon is rebuilt from `ButtonCatalog` (built-in folders first, then the extensions) whenever
+  `ExtensionHost.Changed` says so. Clicks are counted in `button-usage.json` of the profile (`ButtonUsageStore`) for the
+  Statistics page (`GetButtonStatistics`).
 * AI clients also see the commands of extensions, unless `[RevitCommand(HiddenFromMcp = true)]` — as in 1.x.
 * `AnalyseTool.Extensions` stays headless and never references the add-in.
 

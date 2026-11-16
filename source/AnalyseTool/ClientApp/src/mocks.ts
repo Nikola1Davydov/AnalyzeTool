@@ -1,5 +1,6 @@
 import { CommandError, registerMocks } from "revit-bridge";
 import type { AppInfo, McpInfo } from "./api/app";
+import type { ButtonStatistic, ButtonStatisticsResult } from "./api/statistics";
 import type {
   CompileDiagnostic,
   ExtensionFileDiff,
@@ -25,6 +26,62 @@ const fail = (message: string, code = "bad_request") => {
   throw new CommandError({ code, message });
 };
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+// ---- Statistics: a few weeks of clicks
+const statDays = (seed: number, scale: number) =>
+  Array.from({ length: 30 }, (_, index) => {
+    const value = Math.round(Math.max(0, Math.sin(index * 0.7 + seed) * scale + scale * 0.6 - (index % 7 > 4 ? scale : 0)));
+    return value;
+  });
+const stat = (
+  extension: string,
+  extensionName: string,
+  button: string,
+  command: string | null,
+  builtIn: boolean,
+  seed: number,
+  scale: number,
+  extra: Partial<ButtonStatistic> = {},
+): ButtonStatistic => {
+  const last30Days = scale ? statDays(seed, scale) : Array<number>(30).fill(0);
+  const clicks = last30Days.reduce((sum, value) => sum + value, 0) + Math.round(scale * 3);
+  return {
+    extension,
+    extensionName,
+    button,
+    command,
+    builtIn,
+    onRibbon: true,
+    clicks,
+    failures: 0,
+    firstClick: clicks ? ago(60 * 24 * 40) : null,
+    lastClick: clicks ? ago(seed * 47) : null,
+    lastError: null,
+    lastErrorAt: null,
+    averageMilliseconds: clicks && command ? 40 + seed * 37 : null,
+    last30Days,
+    ...extra,
+  };
+};
+let statistics: ButtonStatistic[] = [
+  stat("analysetool", "AnalyseTool", "AnalyseTool", "OpenWindow", true, 1, 6),
+  stat("analysetool", "AnalyseTool", "Buttons pane", "OpenWindow", true, 2, 2),
+  stat("analysetool", "AnalyseTool", "New button", "OpenWindow", true, 3, 1),
+  stat("analysetool", "AnalyseTool", "Manage buttons", "OpenWindow", true, 4, 1.5),
+  stat("analysetool", "AnalyseTool", "Statistics", "OpenWindow", true, 5, 0.6),
+  stat("analysetool", "AnalyseTool", "Settings", "OpenWindow", true, 6, 0.3),
+  stat("analysetool", "AnalyseTool", "About", "OpenWindow", true, 7, 0),
+  stat("analysetool", "AnalyseTool", "Report a bug", "OpenUrl", true, 8, 0),
+  stat("count-walls", "Count walls", "Count walls", "count-walls.CountWalls", false, 9, 8, {
+    failures: 3,
+    lastError: "Open a document first.",
+    lastErrorAt: ago(300),
+    averageMilliseconds: 182,
+  }),
+  stat("room-sheets", "Room sheets", "Room sheets", null, false, 10, 3),
+  stat("Acme.Sample", "Acme sample", "Hello", "Acme.Sample.Hello", false, 11, 0.5),
+  stat("old-tool", "old-tool", "Purge views", "old-tool.PurgeViews", false, 12, 0, { clicks: 14, onRibbon: false, lastClick: ago(60 * 24 * 50) }),
+];
 
 let logSequence = 0;
 const levels = ["Debug", "Information", "Information", "Warning"] as const;
@@ -491,6 +548,22 @@ registerMocks({
   OpenPath: (payload) => {
     console.info("OpenPath", (payload as { path: string }).path);
     return null;
+  },
+  GetButtonStatistics: async (): Promise<ButtonStatisticsResult> => {
+    await delay(150);
+    return { since: statistics.some((item) => item.clicks) ? ago(60 * 24 * 40) : null, totalClicks: statistics.reduce((sum, item) => sum + item.clicks, 0), buttons: [...statistics].sort((a, b) => b.clicks - a.clicks) };
+  },
+  ResetButtonStatistics: (payload) => {
+    const extension = (payload as { extension?: string } | null)?.extension;
+    let removed = 0;
+    statistics = statistics
+      .filter((item) => item.onRibbon || (extension && item.extension !== extension))
+      .map((item) => {
+        if (extension && item.extension !== extension) return item;
+        if (item.clicks) removed++;
+        return { ...item, clicks: 0, failures: 0, firstClick: null, lastClick: null, lastError: null, lastErrorAt: null, averageMilliseconds: null, last30Days: Array<number>(30).fill(0) };
+      });
+    return { removed };
   },
   OpenWindow: (payload) => {
     window.open(`#${(payload as { route: string }).route}`, "_blank");

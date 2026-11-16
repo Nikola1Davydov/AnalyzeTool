@@ -1,0 +1,16 @@
+{
+  "schema": 2,
+  "id": "analysetool.dev",
+  "version": "2.0.0",
+  "description": "The Dev panel of Debug builds.",
+  "publisher": "AnalyseTool",
+  "ui": {
+    "tab": "AnalyseTool",
+    "panel": "Dev",
+    "buttons": [
+      { "name": "Status", "icon": "glyph:E9D9", "tooltip": "Revit, the environment and the load context.", "command": "GetStatus" },
+      { "name": "Active\ndocument", "icon": "glyph:E8A5", "tooltip": "The active document as the pipeline sees it.", "command": "CheckActiveDocument" },
+      { "name": "Dev\npage", "icon": "glyph:E943", "tooltip": "The Dev page in the dock pane: the log and the pipeline.", "command": "OpenWindow", "args": { "route": "/dev", "dock": true } }
+    ]
+  }
+}
