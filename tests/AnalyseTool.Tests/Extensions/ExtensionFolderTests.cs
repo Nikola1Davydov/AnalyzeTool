@@ -60,6 +60,34 @@ public sealed class ExtensionFolderTests
     }
 
     [Test]
+    public async Task Rename_FolderAndButton_ChangesPluginJsonOnly_AsVersions()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Check", null, ExtensionTemplate.Command, CancellationToken.None);
+
+        await environment.Manager.UpdateFolderAsync("sheets", "Sheet tools", "Everything about sheets.", CancellationToken.None);
+        var state = await environment.Manager.UpdateButtonAsync("sheets", "Renumber", "Renumber sheets", "From 101 up.", CancellationToken.None);
+        var taken = await Assert.That(async () => await environment.Manager.UpdateButtonAsync("sheets", "Renumber sheets", "Check", null, CancellationToken.None))
+            .Throws<CommandException>();
+
+        var renamed = state.Descriptor.Manifest.Ui!.EffectiveButtons()[0];
+        using (Assert.Multiple())
+        {
+            await Assert.That(state.Descriptor.Manifest.Name).IsEqualTo("Sheet tools");
+            await Assert.That(state.Descriptor.Manifest.Description).IsEqualTo("Everything about sheets.");
+            await Assert.That(renamed.Name).IsEqualTo("Renumber sheets");
+            await Assert.That(renamed.Tooltip).IsEqualTo("From 101 up.");
+            // The code keeps its file and its command
+            await Assert.That(renamed.Command).IsEqualTo("sheets.Renumber");
+            await Assert.That(state.Commands).Contains("sheets.Renumber");
+            await Assert.That(taken).IsNotNull();
+            await Assert.That(environment.History.GetHistory(state.Descriptor.Directory)[0].Message).IsEqualTo("Renamed «Renumber» to «Renumber sheets»");
+        }
+    }
+
+    [Test]
     public async Task AddButton_WithANameTaken_IsRefused_AndAnOldSingleButtonBecomesAList()
     {
         using var environment = new ExtensionTestEnvironment();

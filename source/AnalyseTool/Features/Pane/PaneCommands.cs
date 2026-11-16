@@ -34,7 +34,10 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="Problems">Load errors and compiler errors, as <c>file(line): message</c>.</param>
 /// <param name="Buttons">Its clickable buttons.</param>
 /// <param name="CanAddButtons">One of the user's folders: «+ New button» adds C# or a page to it (not AnalyseTool, not a package, not a DLL).</param>
-public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons);
+/// <param name="Description">What its buttons are for.</param>
+/// <param name="Directory">The folder on disk, to open in Explorer or an AI tool; <see langword="null" /> for AnalyseTool's own.</param>
+public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
+    string? Description = null, string? Directory = null);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -60,7 +63,9 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
                 source.Shown,
                 Problems(source.State),
                 Buttons(source.Extension).ToList(),
-                !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll))
+                !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
+                source.Extension.Manifest.Description,
+                source.BuiltIn ? null : source.Extension.Directory))
             .ToList();
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
     }

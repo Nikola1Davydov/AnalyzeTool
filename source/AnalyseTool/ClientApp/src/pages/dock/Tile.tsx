@@ -54,6 +54,8 @@ export function Tile(props: {
   editBadge?: { symbol: "−" | "+"; title: string; onClick: () => void } | null;
   /** The round ✎ at the top right in the edit mode: opens the sheet of the button — change it, its file, its versions. */
   onChange?: { title: string; onClick: () => void } | null;
+  /** 📁 at the bottom left in the edit mode: opens the folder of the button in Explorer — to edit it with an AI tool. */
+  onOpenFolder?: { title: string; onClick: () => void } | null;
   /** The star: the button is on the Revit ribbon. A small ★ shows it; in the edit mode a ☆/★ at the bottom right toggles it. */
   star?: { on: boolean; title: string; onClick: () => void } | null;
   onClick: () => void;
@@ -151,6 +153,25 @@ export function Tile(props: {
           }}
         >
           ✎
+        </motion.span>
+      )}
+      {props.editing && props.onOpenFolder && (
+        <motion.span
+          role="button"
+          className="edit-badge open-folder"
+          title={props.onOpenFolder.title}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={spring}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            props.onOpenFolder!.onClick();
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+            <path fill="currentColor" d="M1.5 3A1.5 1.5 0 0 1 3 1.5h3.1c.4 0 .78.16 1.06.44L8.62 3.4H13A1.5 1.5 0 0 1 14.5 4.9v7.6A1.5 1.5 0 0 1 13 14H3a1.5 1.5 0 0 1-1.5-1.5Z" />
+          </svg>
         </motion.span>
       )}
       {props.editing && props.star && (

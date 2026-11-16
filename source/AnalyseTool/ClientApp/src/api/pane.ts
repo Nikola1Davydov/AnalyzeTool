@@ -30,8 +30,11 @@ export interface PaneFolder {
   enabled: boolean;
   problems: string[];
   buttons: PaneButton[];
-  /** One of the user's folders: «+ New button» adds to it. */
+  /** One of the user's folders: «+ New button» adds to it, ✎ renames it and its buttons. */
   canAddButtons: boolean;
+  description: string | null;
+  /** The folder on disk; null for AnalyseTool's own. */
+  directory: string | null;
 }
 
 export interface PaneOverview {

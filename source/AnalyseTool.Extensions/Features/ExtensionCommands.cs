@@ -176,6 +176,43 @@ public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddE
     }
 }
 
+/// <summary>Input of <see cref="UpdateExtensionFolder" />.</summary>
+public sealed record UpdateExtensionFolderRequest(
+    [property: Description("The id of the folder (extension).")] string Id,
+    [property: Description("Its new name.")] string Name,
+    [property: Description("What its buttons are for.")] string? Description = null);
+
+/// <summary>Renames a folder.</summary>
+[McpTool(Title = "Rename a folder of buttons")]
+[Command(Description = "Changes the name and description of one of the user's folders (plugin.json), saved as a version. The id stays.")]
+public sealed class UpdateExtensionFolder(ExtensionManager manager) : ICommand<UpdateExtensionFolderRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionFolderRequest request, CommandContext context)
+    {
+        return ExtensionSummary.From(await manager.UpdateFolderAsync(request.Id, request.Name, request.Description, context.CancellationToken).ConfigureAwait(false));
+    }
+}
+
+/// <summary>Input of <see cref="UpdateExtensionButton" />.</summary>
+public sealed record UpdateExtensionButtonRequest(
+    [property: Description("The id of the folder (extension).")] string Id,
+    [property: Description("The current text of the button.")] string Button,
+    [property: Description("Its new text.")] string Name,
+    [property: Description("Its tooltip: what it does.")] string? Tooltip = null);
+
+/// <summary>Renames a button.</summary>
+[McpTool(Title = "Rename a button")]
+[Command(Description = "Changes the text and tooltip of a button in plugin.json, saved as a version. Its command and code keep their names.")]
+public sealed class UpdateExtensionButton(ExtensionManager manager) : ICommand<UpdateExtensionButtonRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(UpdateExtensionButtonRequest request, CommandContext context)
+    {
+        return ExtensionSummary.From(await manager.UpdateButtonAsync(request.Id, request.Button, request.Name, request.Tooltip, context.CancellationToken).ConfigureAwait(false));
+    }
+}
+
 /// <summary>Input of commands that act on one extension.</summary>
 /// <param name="Id">The id of the extension.</param>
 public sealed record ExtensionRequest([property: Description("The id of the extension.")] string Id);

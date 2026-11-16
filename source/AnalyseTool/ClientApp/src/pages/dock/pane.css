@@ -1539,3 +1539,9 @@
   background: #ffcc00;
   color: #5c4400;
 }
+
+/* 📁 — open the folder of the button: the last free corner, bottom left */
+.edit-badge.open-folder {
+  top: calc(var(--tile) * 0.72 - 16px);
+  background: var(--orange);
+}

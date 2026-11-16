@@ -7,6 +7,8 @@ export const extensionCommands = {
   CreateExtension: "CreateExtension",
   CreateExtensionFolder: "CreateExtensionFolder",
   AddExtensionButton: "AddExtensionButton",
+  UpdateExtensionFolder: "UpdateExtensionFolder",
+  UpdateExtensionButton: "UpdateExtensionButton",
   SetExtensionEnabled: "SetExtensionEnabled",
   RemoveExtension: "RemoveExtension",
   BuildExtension: "BuildExtension",
@@ -93,6 +95,20 @@ export interface AddExtensionButtonRequest {
   name: string;
   description?: string | null;
   template?: ExtensionTemplate;
+}
+
+export interface UpdateExtensionFolderRequest {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface UpdateExtensionButtonRequest {
+  id: string;
+  /** The current text of the button. */
+  button: string;
+  name: string;
+  tooltip?: string | null;
 }
 
 export interface CreateExtensionRequest {

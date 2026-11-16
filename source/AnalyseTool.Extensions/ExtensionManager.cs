@@ -104,6 +104,120 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
         return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
     }
 
+    /// <summary>Renames a folder or changes its description (plugin.json <c>name</c> / <c>description</c>), saved as a version.</summary>
+    public async Task<ExtensionState> UpdateFolderAsync(string id, string name, string? description, CancellationToken cancellationToken)
+    {
+        var descriptor = Own(id);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A name is required.");
+        }
+
+        ExtensionManifest.Update(descriptor.Directory, manifest =>
+        {
+            manifest["name"] = name.Trim();
+            manifest["description"] = string.IsNullOrWhiteSpace(description) ? name.Trim() : description.Trim();
+        });
+        SaveChange(descriptor, $"Renamed the folder to «{name.Trim()}»");
+        return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
+    }
+
+    /// <summary>
+    ///     Renames a button or changes its tooltip in plugin.json, saved as a version. The command and its file keep their names:
+    ///     the button is what the user sees, the code stays where it is.
+    /// </summary>
+    public async Task<ExtensionState> UpdateButtonAsync(string id, string button, string name, string? tooltip, CancellationToken cancellationToken)
+    {
+        var descriptor = Own(id);
+        var trimmed = name.Trim();
+        if (trimmed.Length == 0)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A name is required.");
+        }
+
+        var key = Usage.ButtonUsageStore.Normalize(button);
+        var newKey = Usage.ButtonUsageStore.Normalize(trimmed);
+        var all = descriptor.Manifest.Ui?.EffectiveButtons().SelectMany(item => (item.Items ?? []).Prepend(item)).ToList() ?? [];
+        if (!all.Any(item => Same(item.Name, key)))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"The folder '{id}' has no button «{button}».");
+        }
+
+        if (!Same(key, newKey) && all.Any(item => Same(item.Name, newKey)))
+        {
+            throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The folder '{id}' has a button «{trimmed}» already.");
+        }
+
+        ExtensionManifest.Update(descriptor.Directory, manifest =>
+        {
+            foreach (var node in ButtonNodes(manifest["ui"] as System.Text.Json.Nodes.JsonObject))
+            {
+                if (node["name"]?.GetValue<string>() is { } current && Same(current, key))
+                {
+                    node["name"] = trimmed;
+                    node["tooltip"] = string.IsNullOrWhiteSpace(tooltip) ? trimmed : tooltip.Trim();
+                }
+            }
+        });
+        SaveChange(descriptor, Same(key, newKey) ? $"Changed the description of «{trimmed}»" : $"Renamed «{key}» to «{trimmed}»");
+        return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
+
+        static bool Same(string left, string right) =>
+            string.Equals(Usage.ButtonUsageStore.Normalize(left), Usage.ButtonUsageStore.Normalize(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The button objects of <c>ui</c>: <c>button</c>, <c>buttons</c> and the <c>items</c> of pulldowns.</summary>
+    private static IEnumerable<System.Text.Json.Nodes.JsonObject> ButtonNodes(System.Text.Json.Nodes.JsonObject? ui)
+    {
+        if (ui is null)
+        {
+            yield break;
+        }
+
+        var top = new List<System.Text.Json.Nodes.JsonObject>();
+        if (ui["button"] is System.Text.Json.Nodes.JsonObject single)
+        {
+            top.Add(single);
+        }
+
+        if (ui["buttons"] is System.Text.Json.Nodes.JsonArray list)
+        {
+            top.AddRange(list.OfType<System.Text.Json.Nodes.JsonObject>());
+        }
+
+        foreach (var button in top)
+        {
+            yield return button;
+            if (button["items"] is System.Text.Json.Nodes.JsonArray items)
+            {
+                foreach (var item in items.OfType<System.Text.Json.Nodes.JsonObject>())
+                {
+                    yield return item;
+                }
+            }
+        }
+    }
+
+    /// <summary>An extension of the user's own folders: not a package, so its plugin.json is theirs to change.</summary>
+    private ExtensionDescriptor Own(string id)
+    {
+        var descriptor = Get(id).Descriptor;
+        if (descriptor.Zone != ExtensionZone.Dev)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"'{id}' is an installed package: its next update would undo the change.");
+        }
+
+        return descriptor;
+    }
+
+    private void SaveChange(ExtensionDescriptor descriptor, string message)
+    {
+        if (history.IsAvailable)
+        {
+            history.SaveVersion(descriptor.Directory, Author, message, IgnoreFor(descriptor));
+        }
+    }
+
     /// <summary>Checks a new folder's name and id and finds where it goes.</summary>
     private (string Directory, string Id, string Name) NewFolder(string name, string? id, string? root)
     {

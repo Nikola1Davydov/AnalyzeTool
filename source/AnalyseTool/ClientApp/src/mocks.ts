@@ -46,6 +46,8 @@ const paneFolders: PaneFolder[] = [
     builtIn: true,
     enabled: true,
     canAddButtons: false,
+    description: null,
+    directory: null,
     problems: [],
     buttons: [
       paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."),
@@ -59,6 +61,8 @@ const paneFolders: PaneFolder[] = [
     builtIn: false,
     enabled: true,
     canAddButtons: true,
+    description: "Counts walls.",
+    directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/count-walls",
     problems: ["src/CountWalls.cs(14): The name 'grup' does not exist in the current context"],
     buttons: [paneButton("count-walls", "Count walls", g(0xe768), "count-walls.CountWalls", "Counts the walls of the active view by type.")],
   },
@@ -68,6 +72,8 @@ const paneFolders: PaneFolder[] = [
     builtIn: false,
     enabled: true,
     canAddButtons: true,
+    description: "Rooms and their sheets.",
+    directory: "D:/Team/buttons/room-sheets",
     problems: [],
     buttons: [
       paneButton("room-sheets", "Room sheets", g(0xe8a7), null, "A page that lists rooms and creates sheets for them."),
@@ -75,7 +81,7 @@ const paneFolders: PaneFolder[] = [
       paneButton("room-sheets", "Purge empty", g(0xe74d), "room-sheets.PurgeEmpty", null, "Tools"),
     ],
   },
-  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
+  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
 ];
 let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/Parameters"] };
 
@@ -618,7 +624,7 @@ registerMocks({
     const { name } = payload as { name: string };
     const id = name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
     if (paneFolders.some((folder) => folder.id === id)) fail(`An extension with the id '${id}' exists already.`, "exists");
-    paneFolders.push({ id, name: name.trim(), builtIn: false, enabled: true, canAddButtons: true, problems: [], buttons: [] });
+    paneFolders.push({ id, name: name.trim(), builtIn: false, enabled: true, canAddButtons: true, description: null, directory: `C:/Users/you/AppData/Local/AnalyseTool/extensions/${id}`, problems: [], buttons: [] });
     return { id, name: name.trim() };
   },
   AddExtensionButton: async (payload) => {
@@ -626,6 +632,22 @@ registerMocks({
     const { id, name, template } = payload as { id: string; name: string; template?: string };
     const folder = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
     folder.buttons.push(paneButton(id, name.trim(), template === "Command" || !template ? g(0xe768) : g(0xe8a7), template === "Command" || !template ? `${id}.${name.replace(/\W/g, "")}` : null));
+    return { id, name: folder.name };
+  },
+  UpdateExtensionFolder: (payload) => {
+    const { id, name, description } = payload as { id: string; name: string; description?: string | null };
+    const folder = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
+    folder.name = name.trim();
+    folder.description = description ?? null;
+    return { id, name: folder.name };
+  },
+  UpdateExtensionButton: (payload) => {
+    const { id, button, name, tooltip } = payload as { id: string; button: string; name: string; tooltip?: string | null };
+    const folder = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
+    const found = folder.buttons.find((candidate) => candidate.name === button) ?? fail(`No button «${button}».`, "not_found");
+    found.name = name.trim();
+    found.key = `${id}/${found.name}`;
+    found.tooltip = tooltip ?? null;
     return { id, name: folder.name };
   },
   RefreshButtons: async () => {

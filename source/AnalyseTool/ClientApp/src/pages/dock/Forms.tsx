@@ -5,9 +5,12 @@ import {
   type AddExtensionButtonRequest,
   type CreateExtensionFolderRequest,
   type ExtensionSummary,
+  type UpdateExtensionButtonRequest,
+  type UpdateExtensionFolderRequest,
   extensionCommands,
 } from "../../api/extensions";
-import type { PaneFolder } from "../../api/pane";
+import type { PaneButton, PaneFolder } from "../../api/pane";
+import { useProfile } from "./profile";
 import { messageOf, useActions } from "./Actions";
 
 
@@ -102,6 +105,100 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
         {add.isPending ? "Adding…" : `Add to ${folder.name}`}
       </button>
       {add.isError && <p className="error small">{messageOf(add.error)}</p>}
+    </form>
+  );
+}
+
+/** ✎ on a button: its text and what it does. A new text is a new key — the dock, the stars and the order follow it. */
+export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFolder; button: PaneButton; onOpenFiles: () => void }) {
+  const actions = useActions();
+  const refresh = useRefreshAll();
+  const { update } = useProfile();
+  const [name, setName] = useState(button.name);
+  const [tooltip, setTooltip] = useState(button.tooltip && button.tooltip !== button.name ? button.tooltip : "");
+  const save = useMutation({
+    mutationFn: (request: UpdateExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionButton, request),
+    onSuccess: (_, request) => {
+      const newKey = `${folder.id}/${request.name.split(/[\r\n]+/).map((part) => part.trim()).filter(Boolean).join(" ")}`;
+      if (newKey !== button.key) {
+        const rename = (key: string) => (key === button.key ? newKey : key);
+        update((profile) => ({
+          ...profile,
+          dock: profile.dock.map(rename),
+          ribbon: profile.ribbon.map(rename),
+          order: Object.fromEntries(Object.entries(profile.order).map(([id, keys]) => [id, keys.map((key) => (key === `btn:${button.key}` ? `btn:${newKey}` : key))])),
+        }));
+      }
+      refresh();
+      actions.closeSheet();
+      actions.toast(`«${request.name}» saved`);
+    },
+  });
+
+  return (
+    <form
+      className="sheet-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim()) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null });
+      }}
+    >
+      <label className="field">
+        <span>Name</span>
+        <input autoFocus value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <label className="field">
+        <span>What it does</span>
+        <textarea rows={3} value={tooltip} onChange={(event) => setTooltip(event.target.value)} placeholder="The tooltip of the button" />
+      </label>
+      <p className="muted small">Saved as a version of {folder.name}. The code keeps its file; a new name starts the statistics of the button anew.</p>
+      <button type="submit" disabled={!name.trim() || save.isPending}>
+        {save.isPending ? "Saving…" : "Save"}
+      </button>
+      <button type="button" onClick={onOpenFiles}>
+        Code, files and versions…
+      </button>
+      {save.isError && <p className="error small">{messageOf(save.error)}</p>}
+    </form>
+  );
+}
+
+/** ✎ on a folder: its name and what its buttons are for. */
+export function EditFolderForm({ folder }: { folder: PaneFolder }) {
+  const actions = useActions();
+  const refresh = useRefreshAll();
+  const [name, setName] = useState(folder.name);
+  const [description, setDescription] = useState(folder.description && folder.description !== folder.name ? folder.description : "");
+  const save = useMutation({
+    mutationFn: (request: UpdateExtensionFolderRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionFolder, request),
+    onSuccess: (_, request) => {
+      refresh();
+      actions.closeSheet();
+      actions.toast(`Folder «${request.name}» saved`);
+    },
+  });
+
+  return (
+    <form
+      className="sheet-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim()) save.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null });
+      }}
+    >
+      <label className="field">
+        <span>Name</span>
+        <input autoFocus value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <label className="field">
+        <span>What its buttons are for</span>
+        <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+      </label>
+      <p className="muted small">Saved as a version of the folder. Its id ({folder.id}) and its commands stay.</p>
+      <button type="submit" disabled={!name.trim() || save.isPending}>
+        {save.isPending ? "Saving…" : "Save"}
+      </button>
+      {save.isError && <p className="error small">{messageOf(save.error)}</p>}
     </form>
   );
 }

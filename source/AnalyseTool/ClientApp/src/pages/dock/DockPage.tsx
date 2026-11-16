@@ -5,7 +5,7 @@ import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
-import { NewButtonForm, NewFolderForm } from "./Forms";
+import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm } from "./Forms";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
@@ -49,6 +49,11 @@ function screenEnter(forward: boolean, origin: string) {
 
 function openWindow(route: string, onError: (message: string) => void) {
   void bridge.invoke(appCommands.OpenWindow, { route }).catch((error: unknown) => onError(messageOf(error)));
+}
+
+/** Opens the folder of an extension in Explorer — where an AI tool (Claude Code, Cursor) edits its buttons. */
+function openFolder(directory: string, onError: (message: string) => void) {
+  void bridge.invoke(appCommands.OpenPath, { path: directory }).catch((error: unknown) => onError(messageOf(error)));
 }
 
 /**
@@ -208,6 +213,8 @@ function Header(props: {
     ...(folder && screen.kind === "folder"
       ? [
           { label: "Statistics of this folder", onClick: () => props.onGo({ kind: "stats", folder: folder.id }) },
+          ...(folder.directory ? [{ label: "Open the folder", hint: "Edit its buttons with an AI tool", onClick: () => openFolder(folder.directory!, toastError) }] : []),
+          ...(folder.canAddButtons ? [{ label: "Name and description…", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />) }] : []),
           ...(folder.builtIn
             ? []
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
@@ -300,6 +307,8 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
             onMove={(from, to) => update((value) => ({ ...value, order: { ...value.order, home: move(sorted.map((item) => item.id), from, to) } }))}
             editing={edit.editing}
             onEdit={edit.start}
+            onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />) } : null}
+            onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
             label={folder.name}
             title={`${folder.name}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}`}
             icon={<FolderIcon folder={folder} />}
@@ -440,10 +449,22 @@ function ButtonTile(props: {
       onEdit={edit.start}
       editBadge={props.editBadge}
       onChange={
-        folder.builtIn
-          ? null
-          : { title: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error")) }
+        folder.canAddButtons
+          ? {
+              title: "Name and description",
+              onClick: () =>
+                actions.openSheet(
+                  button.name,
+                  <EditButtonForm
+                    folder={folder}
+                    button={button}
+                    onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
+                  />,
+                ),
+            }
+          : null
       }
+      onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
       star={{
         on: starred,
         title: starred ? "Remove from the Revit ribbon" : "Put on the Revit ribbon (Favourites panel)",
