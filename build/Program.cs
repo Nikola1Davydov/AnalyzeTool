@@ -18,6 +18,8 @@ builder.Services.AddOptions<VendorOptions>().Bind(builder.Configuration.GetSecti
 builder.Services.AddModule<CheckBoundariesModule>();
 builder.Services.AddModule<CompileClientAppModule>();
 builder.Services.AddModule<CompileProjectModule>();
+builder.Services.AddModule<TestProjectModule>();
+builder.Services.AddModule<TestRevitBridgeModule>();
 
 if (args.Contains("pack"))
 {
