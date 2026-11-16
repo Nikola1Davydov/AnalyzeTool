@@ -1,0 +1,45 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug.R25" />
+    <BuildType Name="Debug.R26" />
+    <BuildType Name="Debug.R27" />
+    <BuildType Name="Release.R25" />
+    <BuildType Name="Release.R26" />
+    <BuildType Name="Release.R27" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+    <File Path="build/appsettings.json" />
+  </Folder>
+  <Folder Name="/Automation/">
+    <Project Path="build/Build.csproj">
+      <BuildType Project="Debug" />
+      <Build Project="false" />
+    </Project>
+    <Project Path="install/Installer.csproj">
+      <BuildType Project="Debug" />
+      <Build Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/Modules/">
+    <Project Path="source/AnalyseTool.Hosting/AnalyseTool.Hosting.csproj" />
+    <Project Path="source/AnalyseTool.Extensions/AnalyseTool.Extensions.csproj" />
+    <Project Path="source/AnalyseTool.Hosting.Mcp/AnalyseTool.Hosting.Mcp.csproj" />
+    <Project Path="source/AnalyseTool.Hosting.Scripting/AnalyseTool.Hosting.Scripting.csproj" />
+    <Project Path="source/AnalyseTool.Hosting.Visualization/AnalyseTool.Hosting.Visualization.csproj" />
+    <Project Path="source/AnalyseTool.Hosting.WebView/AnalyseTool.Hosting.WebView.csproj" />
+    <Project Path="source/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/AnalyseTool.Hosting.Tests/AnalyseTool.Hosting.Tests.csproj" />
+    <Project Path="tests/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj" />
+    <Project Path="tests/AnalyseTool.Tests/AnalyseTool.Tests.csproj" />
+  </Folder>
+  <Project Path="source/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj" />
+  <Project Path="source/AnalyseTool.ServiceDefaults/AnalyseTool.ServiceDefaults.csproj" />
+  <Project Path="source/AnalyseTool/AnalyseTool.csproj" />
+</Solution>

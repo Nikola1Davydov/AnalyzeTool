@@ -1,0 +1,18 @@
+{
+  "name": "revit-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The page side of AnalyseTool.Hosting.WebView: calls commands of the Revit add-in over WebView2 messaging.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

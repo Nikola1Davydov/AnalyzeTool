@@ -1,0 +1,23 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <PropertyGroup>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Toolkit"/>
+        <PackageReference Include="Nice3point.Revit.Logging"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="Serilog.Extensions.Logging"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+        <PackageReference Include="Polyfill" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Hosting\AnalyseTool.Hosting.csproj"/>
+    </ItemGroup>
+
+</Project>

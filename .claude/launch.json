@@ -4,8 +4,8 @@
     {
       "name": "clientapp",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "src/clientapp", "run", "dev"],
-      "port": 22524
+      "runtimeArgs": ["--prefix", "source/AnalyseTool/ClientApp", "run", "dev"],
+      "port": 5173
     }
   ]
 }

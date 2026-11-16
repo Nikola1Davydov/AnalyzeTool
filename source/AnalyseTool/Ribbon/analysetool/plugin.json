@@ -1,0 +1,108 @@
+{
+  "schema": 2,
+  "id": "analysetool",
+  "version": "2.0.0",
+  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code. The ribbon keeps one — Buttons, the pane; everything else lives in the pane (its tiles, its header, its profile).",
+  "publisher": "AnalyseTool",
+  "ui": {
+    "tab": "AnalyseTool",
+    "panel": "AnalyseTool",
+    "buttons": [
+      {
+        "name": "Buttons",
+        "icon": "analysetool.png",
+        "tooltip": "The AnalyseTool pane: your buttons in folders, your dock of favourites, the statistics and settings.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/dock",
+          "dock": true
+        },
+        "pane": false
+      },
+      {
+        "name": "About",
+        "icon": "glyph:E946",
+        "tooltip": "The version and what is new.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/about"
+        },
+        "ribbon": false,
+        "pane": false
+      },
+      {
+        "name": "New\nbutton",
+        "icon": "glyph:ECC8",
+        "tooltip": "A new button: C# that AnalyseTool compiles, with its own version history.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/extensions/new"
+        },
+        "pane": false,
+        "ribbon": false
+      },
+      {
+        "name": "Refresh",
+        "icon": "glyph:E72C",
+        "tooltip": "Reads every extension folder again, compiles what changed and rebuilds the buttons.",
+        "command": "RefreshButtons",
+        "pane": false,
+        "ribbon": false
+      },
+      {
+        "name": "Parameters",
+        "icon": "glyph:E9F9",
+        "tooltip": "The parameter report, the elements and the shared parameters.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/"
+        },
+        "ribbon": false
+      },
+      {
+        "name": "Manage buttons",
+        "icon": "glyph:EA86",
+        "tooltip": "Your buttons: their versions, errors and folders.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/extensions"
+        },
+        "ribbon": false,
+        "pane": false
+      },
+      {
+        "name": "Statistics",
+        "icon": "glyph:E9D2",
+        "tooltip": "How often every button is clicked, how long it runs and how often it fails.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/statistics"
+        },
+        "ribbon": false,
+        "pane": false
+      },
+      {
+        "name": "Settings",
+        "icon": "glyph:E713",
+        "tooltip": "MCP for AI clients and the folders of your buttons.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/settings"
+        },
+        "ribbon": false,
+        "pane": false
+      },
+      {
+        "name": "Report a bug",
+        "icon": "glyph:EBE8",
+        "tooltip": "Opens the issues of AnalyseTool on GitHub.",
+        "command": "OpenUrl",
+        "args": {
+          "url": "https://github.com/Nikola1Davydov/AnalyzeTool/issues"
+        },
+        "ribbon": false,
+        "pane": false
+      }
+    ]
+  }
+}
