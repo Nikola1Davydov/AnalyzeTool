@@ -143,6 +143,27 @@ public sealed class ExtensionLifecycleTests
     }
 
     [Test]
+    public async Task Load_DllExtensionOf1x_RegistersItsCommandsWithTheIdPrefix()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var folder = Directory.CreateDirectory(Path.Combine(environment.Paths.DevRoot, "acme.sample", "2025")).Parent!.FullName;
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """{ "id": "acme.sample", "version": "1.0.0", "entryAssembly": "Acme.Sample.dll", "ui": { "button": { "name": "Hello", "command": "acme.sample.Hello" } } }""");
+        var image = AnalyseTool.Extensions.Building.ExtensionCompiler.Compile([("Hello.cs", ExtensionTestEnvironment.EchoCommand("Hello"))], "Acme.Sample");
+        File.WriteAllBytes(Path.Combine(folder, "2025", "Acme.Sample.dll"), image.Assembly!);
+
+        await environment.Host.ReloadAllAsync();
+        var state = environment.Host.GetState("acme.sample")!;
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(state.Descriptor.Kind).IsEqualTo(ExtensionKind.Dll);
+            await Assert.That(state.Errors).IsEmpty();
+            await Assert.That(state.Commands).IsEquivalentTo(["acme.sample.Hello"]);
+            await Assert.That(await InvokeAsync(environment, "acme.sample.Hello")).IsEqualTo(42);
+        }
+    }
+
+    [Test]
     public async Task SetEnabled_Off_RemovesTheCommands()
     {
         using var environment = new ExtensionTestEnvironment();
