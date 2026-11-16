@@ -55,7 +55,6 @@ const paneFolders: PaneFolder[] = [
     buttons: [
       { ...paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."), offRibbon: true },
       paneButton("analysetool", "About", g(0xe946), "OpenWindow"),
-      { ...paneButton("analysetool", "Report a bug", g(0xebe8), "OpenUrl"), offRibbon: true },
     ],
   },
   {

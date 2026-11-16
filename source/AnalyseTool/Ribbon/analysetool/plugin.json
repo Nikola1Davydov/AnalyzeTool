@@ -100,7 +100,8 @@
         "args": {
           "url": "https://github.com/Nikola1Davydov/AnalyzeTool/issues"
         },
-        "ribbon": false
+        "ribbon": false,
+        "pane": false
       }
     ]
   }

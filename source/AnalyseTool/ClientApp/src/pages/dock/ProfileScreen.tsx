@@ -144,6 +144,17 @@ export function ProfileScreen(props: { overview: PaneOverview; onStats: () => vo
       </section>
 
       <section className="link-section">
+        <button
+          className="row-link"
+          onClick={() => void bridge.invoke(appCommands.OpenUrl, { url: "https://github.com/Nikola1Davydov/AnalyzeTool/issues" }).catch((error: unknown) => actions.toast(messageOf(error), "error"))}
+        >
+          <span>🐞 Report a bug</span>
+          <span className="chevron-right">›</span>
+        </button>
+        <p className="muted small">Something broke or could be better? Open an issue on GitHub — attach the latest log from the profile folder (About).</p>
+      </section>
+
+      <section className="link-section">
         <button className="row-link" onClick={props.onAbout}>
           <span>ℹ️ About</span>
           <span className="chevron-right">›</span>
