@@ -9,9 +9,9 @@
     "panel": "AnalyseTool",
     "buttons": [
       {
-        "name": "AnalyseTool",
+        "name": "Buttons",
         "icon": "analysetool.png",
-        "tooltip": "The AnalyseTool pane: every button as a tile, your dock of favourites, the statistics.",
+        "tooltip": "The AnalyseTool pane: your buttons in folders, your dock of favourites, the statistics and settings.",
         "command": "OpenWindow",
         "args": {
           "route": "/dock",

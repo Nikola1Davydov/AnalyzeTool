@@ -35,7 +35,7 @@ public sealed class ButtonTests
 
             // Since the pane, the ribbon keeps only the pane, About and Refresh
             await Assert.That(buttons.Where(button => button.OnRibbon).Select(button => ButtonUsageStore.Normalize(button.Name)))
-                .IsEquivalentTo(["AnalyseTool", "About", "Refresh"]);
+                .IsEquivalentTo(["Buttons", "About", "Refresh"]);
 
             var statistics = buttons.Single(button => button.Name == "Statistics");
             await Assert.That(statistics.Args!.Value.GetProperty("route").GetString()).IsEqualTo("/statistics");

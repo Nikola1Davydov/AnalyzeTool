@@ -28,7 +28,7 @@ public sealed class PaneTests
             await Assert.That(builtIn.BuiltIn).IsTrue();
             // "ribbon": false buttons are tiles; "pane": false ones (the pane itself, refresh, new button) are not
             await Assert.That(builtIn.Buttons.Select(button => button.Key)).Contains("analysetool/Parameters");
-            await Assert.That(builtIn.Buttons.Select(button => button.Key)).DoesNotContain("analysetool/AnalyseTool");
+            await Assert.That(builtIn.Buttons.Select(button => button.Key)).DoesNotContain("analysetool/Buttons");
             await Assert.That(builtIn.Buttons.Select(button => button.Key)).DoesNotContain("analysetool/Refresh");
             await Assert.That(builtIn.Buttons.Single(button => button.Name == "About").Glyph).IsEqualTo("");
             await Assert.That(walls.Buttons.Single().Key).IsEqualTo("count-walls/Count walls");

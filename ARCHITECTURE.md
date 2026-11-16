@@ -44,7 +44,7 @@ Debug builds); the user's are in their extension folders.
 
 * `ButtonCatalog` lists the folders: the built-in ones first, then every extension that has buttons.
 * A button says where it shows: `"ribbon": false` makes it a tile of the pane only, `"pane": false` a ribbon button only.
-  AnalyseTool's own ribbon is three buttons — the pane, About, Refresh (`RefreshButtons`); the rest are tiles or links of
+  AnalyseTool's own ribbon is three buttons — Buttons (the pane), About, Refresh (`RefreshButtons`); the rest are tiles or links of
   the pane's profile. A folder (extension) is created empty (`CreateExtensionFolder`) and gets buttons one by one
   (`AddExtensionButton`: C# in `src\` and/or a page, the entry in `plugin.json`, a version each).
 * Stars of the pane: the `ribbon` array of `pane-profile.json` (`RibbonFavorites`). Starred buttons get a «Favourites»
