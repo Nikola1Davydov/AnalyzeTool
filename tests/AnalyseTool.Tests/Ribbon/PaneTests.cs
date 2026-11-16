@@ -32,7 +32,7 @@ public sealed class PaneTests
             await Assert.That(builtIn.Buttons.Select(button => button.Key)).Contains("analysetool/Parameters");
             await Assert.That(builtIn.Buttons.Select(button => button.Key)).DoesNotContain("analysetool/Buttons");
             await Assert.That(builtIn.Buttons.Select(button => button.Key)).DoesNotContain("analysetool/Refresh");
-            await Assert.That(builtIn.Buttons.Single(button => button.Name == "About").Glyph).IsEqualTo("");
+            await Assert.That(builtIn.Buttons.Single(button => button.Name == "Report a bug").Glyph).IsEqualTo("\uEBE8");
             await Assert.That(walls.Buttons.Single().Key).IsEqualTo("count-walls/Count walls");
             await Assert.That(walls.Buttons.Single().Command).IsEqualTo("count-walls.CountWalls");
             await Assert.That(walls.Problems).IsEmpty();

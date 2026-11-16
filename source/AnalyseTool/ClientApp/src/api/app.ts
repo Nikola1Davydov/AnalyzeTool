@@ -9,6 +9,7 @@ export const appCommands = {
   BrowseFolder: "BrowseFolder",
   BrowseFile: "BrowseFile",
   OpenWindow: "OpenWindow",
+  OpenUrl: "OpenUrl",
   GetRevitTheme: "GetRevitTheme",
 } as const;
 

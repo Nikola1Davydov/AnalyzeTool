@@ -7,6 +7,7 @@ import { extensionCommands } from "../../api/extensions";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
+import { AboutScreen } from "./AboutScreen";
 import { HowItWorks } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
@@ -23,6 +24,7 @@ type Screen =
   | { kind: "guide" }
   | { kind: "packages" }
   | { kind: "mcp" }
+  | { kind: "about" }
   | { kind: "folders" }
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string };
@@ -44,6 +46,7 @@ function depth(screen: Screen) {
     case "packages":
     case "mcp":
     case "folders":
+    case "about":
       return 2;
     default:
       return 0;
@@ -99,6 +102,7 @@ function Pane() {
   const { profile, loaded, update } = useProfile();
   const [screen, setScreen] = useState<Screen | null>(null);
   const [editing, setEditing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [transition, setTransition] = useState({ forward: true, origin: "50% 50%" });
   const main = useRef<HTMLElement | null>(null);
   const openedFrom = useRef<DOMRect | null>(null);
@@ -156,7 +160,17 @@ function Pane() {
   return (
     <EditContext.Provider value={{ editing, start: () => setEditing(true) }}>
       <div className={`pane projects tiles-${profile.size} ${profile.effects ? "" : "no-effects"}`}>
-        <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => void bridge.invoke(paneCommands.RefreshButtons, null).finally(() => void buttons.refetch())} />
+        <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => {
+            setRefreshing(true);
+            void bridge
+              .invoke(paneCommands.RefreshButtons, null)
+              .catch(() => undefined)
+              .finally(() => {
+                setRefreshing(false);
+                void buttons.refetch();
+              });
+          }}
+          refreshing={refreshing} />
         <main
           className="pane-main"
           ref={main}
@@ -182,7 +196,10 @@ function Pane() {
                 onPackages={() => go({ kind: "packages" })}
                 onMcp={() => go({ kind: "mcp" })}
                 onFolders={() => go({ kind: "folders" })}
+                onAbout={() => go({ kind: "about" })}
               />
+            ) : current.kind === "about" ? (
+              <AboutScreen />
             ) : current.kind === "packages" ? (
               <PackagesScreen />
             ) : current.kind === "mcp" ? (
@@ -217,13 +234,14 @@ function Header(props: {
   onSize: () => void;
   onDone: () => void;
   onRefresh: () => void;
+  refreshing?: boolean;
 }) {
   const { screen, folder } = props;
   const actions = useActions();
   const toastError = (message: string) => actions.toast(message, "error");
 
   const back =
-    screen.kind === "packages" || screen.kind === "mcp" || screen.kind === "folders"
+    screen.kind === "packages" || screen.kind === "mcp" || screen.kind === "folders" || screen.kind === "about"
       ? { label: "Profile", to: { kind: "profile" } as Screen }
       : screen.kind === "stats"
       ? screen.folder
@@ -237,7 +255,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },
@@ -303,6 +321,16 @@ function Header(props: {
           </button>
         ) : (
           <>
+            {(screen.kind === "home" || screen.kind === "folder") && (
+              <button
+                className={`icon-button refresh${props.refreshing ? " spinning" : ""}`}
+                title="Refresh: read every folder again, compile what changed, rebuild the ribbon"
+                disabled={props.refreshing}
+                onClick={props.onRefresh}
+              >
+                ↻
+              </button>
+            )}
             {(screen.kind === "home" || screen.kind === "folder") && (
               <button className="icon-button more" title="More" onClick={() => actions.openSheet(folder && screen.kind === "folder" ? folder.name : "AnalyseTool", <ActionList items={menu} />)}>
                 ⋯

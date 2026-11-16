@@ -62,13 +62,11 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 <p align="center"><img src="img/ribbon.png" width="680" alt="AnalyseTool ribbon" /></p>
 
-The **AnalyseTool** tab keeps three buttons:
+The **AnalyseTool** tab keeps one button:
 
 - **Buttons** — the pane, and the map of the ribbon: every **folder** is a tab of the Revit ribbon, its **sections** are the panels of that tab — the structure of the pane *is* the ribbon, nothing to set by hand. **New folder** makes a tab, **New button** in a section writes C# and a page that AnalyseTool compiles, each change a version. Right-click to edit: drag buttons between sections, **−/+** keeps a folder's tab or a single button off the ribbon (it stays in the pane, grey), **☆** keeps a button in the dock of the pane, **✎** renames or moves it to another folder, **📁** opens its folder for an AI tool. **?** explains it all with pictures.
-- **About** — versions, what's new and links to the source.
-- **Refresh** — reads every folder again and rebuilds the buttons (saved files reload by themselves).
 
-In the pane, the **AnalyseTool** folder holds **Parameters** (the main window: the shared parameters of your file and project in one table, and a printable A4 report of how well the chosen ones are filled) and **Report a bug**. The profile (your initials, top right) holds **Statistics** (how often every button is clicked, run times, failures — on your machine only), **Manage buttons** (state, compiler errors, versions, `.zip` packages) and **Settings** (MCP for AI clients, the folders of your buttons).
+In the pane, the **AnalyseTool** folder holds **Parameters** (the main window: the shared parameters of your file and project in one table, and a printable A4 report of how well the chosen ones are filled) and **Report a bug**. **↻** in its header reads every folder again and rebuilds the ribbon (saved files reload by themselves). The profile (your initials, top right) holds **Statistics** (how often every button is clicked, run times, failures — on your machine only), **Packages** (`.zip` extensions others shared), **AI clients** (what to paste into Claude Code, Codex, Cursor, VS Code, Claude Desktop or Gemini CLI), **Folders of buttons** and **About**.
 
 Buttons of installed packages and of your extensions appear on the ribbon and in the pane, and change and disappear live. A button with `"ribbon": false` in its `plugin.json` is a tile of the pane only.
 

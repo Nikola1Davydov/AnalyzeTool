@@ -715,6 +715,10 @@ registerMocks({
       });
     return { removed };
   },
+  OpenUrl: (payload) => {
+    window.open((payload as { url: string }).url, "_blank");
+    return null;
+  },
   OpenWindow: (payload) => {
     window.open(`#${(payload as { route: string }).route}`, "_blank");
     return null;

@@ -1905,3 +1905,25 @@
   background: var(--accent);
   color: #fff;
 }
+
+/* ↻ — refresh the folders; it turns while Revit works */
+.icon-button.refresh {
+  font-size: 18px;
+}
+
+.icon-button.refresh.spinning {
+  animation: pane-spin 0.8s linear infinite;
+}
+
+.about-logo {
+  background: linear-gradient(160deg, #34c759, #0a84ff);
+}
+
+.release summary {
+  font-weight: 600;
+}
+
+.release ul {
+  padding-left: 18px;
+  font-size: 13px;
+}

@@ -64,7 +64,7 @@ const themeOptions: { value: Theme; label: string }[] = [
 ];
 
 /** The profile: every setting of the pane in one place, kept in the AnalyseTool profile folder; export and import move it. */
-export function ProfileScreen(props: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onMcp: () => void; onFolders: () => void }) {
+export function ProfileScreen(props: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onMcp: () => void; onFolders: () => void; onAbout: () => void }) {
   const { overview, onStats, onPackages } = props;
   const { profile, update } = useProfile();
   const actions = useActions();
@@ -141,6 +141,14 @@ export function ProfileScreen(props: { overview: PaneOverview; onStats: () => vo
           <span className="chevron-right">›</span>
         </button>
         <p className="muted small">Where your folders live: yours, a network share or a git checkout shared with your team.</p>
+      </section>
+
+      <section className="link-section">
+        <button className="row-link" onClick={props.onAbout}>
+          <span>ℹ️ About</span>
+          <span className="chevron-right">›</span>
+        </button>
+        <p className="muted small">The version, what is new, the source and where to report a bug.</p>
       </section>
 
       <section>

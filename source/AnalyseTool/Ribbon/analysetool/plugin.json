@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "analysetool",
   "version": "2.0.0",
-  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code. The ribbon keeps three — the pane, About, Refresh; the rest are tiles of the pane (\"ribbon\": false); New button, Manage buttons, Statistics and Settings are reached from the pane (\"pane\": false too).",
+  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code. The ribbon keeps one — Buttons, the pane; everything else lives in the pane (its tiles, its header, its profile).",
   "publisher": "AnalyseTool",
   "ui": {
     "tab": "AnalyseTool",
@@ -26,7 +26,9 @@
         "command": "OpenWindow",
         "args": {
           "route": "/about"
-        }
+        },
+        "ribbon": false,
+        "pane": false
       },
       {
         "name": "New\nbutton",
@@ -44,7 +46,8 @@
         "icon": "glyph:E72C",
         "tooltip": "Reads every extension folder again, compiles what changed and rebuilds the buttons.",
         "command": "RefreshButtons",
-        "pane": false
+        "pane": false,
+        "ribbon": false
       },
       {
         "name": "Parameters",

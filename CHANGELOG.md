@@ -10,7 +10,7 @@
 - 🔌 **Connect Codex, Cursor, VS Code, Claude Desktop or Gemini CLI** from the pane: pick the client, copy what to paste where.
 - 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
 - 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
-- 🎯 **The ribbon keeps three buttons: Buttons (the pane), About and Refresh.** Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
+- 🎯 **The ribbon keeps one button: Buttons (the pane).** Refresh is ↻ in its header, About is in its profile. Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.
 - 🗂️ **A folder of the pane is a tab of the ribbon, its sections are the panels.** Buttons drag between sections or move to another folder with their code; no tab or panel to set by hand.
 - ✏️ **In the pane, ✎ renames a button or a folder**; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
 - 📁 **Buttons live in folders.** The pane creates an empty folder and adds buttons to it one by one, each addition a version of the folder.
