@@ -1,8 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TileIcon } from "./Tile";
 
-/** A button picked up in the edit mode: where it comes from and what may happen to it. */
+/** A button — or a whole folder — picked up in the edit mode: where it comes from and what may happen to it. */
 export interface CarryItem {
+  /** A folder only goes to the trash; a button also into another folder. */
+  kind?: "button" | "folder";
+  /** A folder: how many buttons go with it. */
+  buttons?: number;
   key: string;
   name: string;
   /** The folder of the pane it sits in: a tab (<name>.tab), or a folder of plugin.json. */
@@ -144,7 +148,7 @@ export function CarryProvider(props: {
 function CarryLayer({ state }: { state: CarryState }) {
   return (
     <>
-      {state.phase === "drag" ? (
+      {state.item.kind === "folder" ? null : state.phase === "drag" ? (
         <div className="drop-zone top" data-drop-zone="folders">
           ↑ Into another folder
         </div>
@@ -153,7 +157,7 @@ function CarryLayer({ state }: { state: CarryState }) {
       )}
       {state.item.canRemove && (
         <div className={`drop-zone trash${state.zone === "trash" ? " over" : ""}`} data-drop-zone="trash">
-          🗑 Remove the button
+          🗑 Remove the {state.item.kind === "folder" ? "folder" : "button"}
         </div>
       )}
       {state.phase === "carry" && (

@@ -267,12 +267,18 @@ function MoveAndRemove(props: { overview: PaneOverview; onToFolders: () => void;
           .catch((error: unknown) => actions.toast(messageOf(error), "error"));
       }}
       onRemove={(item) => {
-        if (!confirm(`Remove «${item.name}»? Its folder — code, page and versions — moves to the AnalyseTool trash.`)) return;
+        const question =
+          item.kind === "folder"
+            ? item.buttons
+              ? `Remove the folder «${item.name}» with its ${item.buttons} button(s)? It moves to the AnalyseTool trash, with the versions of every button.`
+              : `Remove the empty folder «${item.name}»?`
+            : `Remove «${item.name}»? Its folder — code, page and versions — moves to the AnalyseTool trash.`;
+        if (!confirm(question)) return;
         void bridge
           .invoke<{ movedTo: string }>(extensionCommands.RemoveExtension, { id: item.extensionId })
           .then((result) => {
             void refresh();
-            actions.toast(`Removed — the folder is in ${result.movedTo}`);
+            actions.toast(item.kind === "folder" && !item.buttons ? `«${item.name}» removed` : `Removed — the folder is in ${result.movedTo}`);
           })
           .catch((error: unknown) => actions.toast(messageOf(error), "error"));
       }}
@@ -454,7 +460,8 @@ function ActionList({ items }: { items: ActionItem[] }) {
  * takes it off (it stays here); a folder off the ribbon is grey.
  */
 function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onOpen: (id: string) => void; onGuide: () => void }) {
-  const carryState = useCarry().state;
+  const carry = useCarry();
+  const carryState = carry.state;
   const carried = carryState?.phase === "carry" ? carryState.item : null;
   const actions = useActions();
   const edit = useContext(EditContext);
@@ -504,6 +511,23 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
               label={folder.name}
               title={`${folder.name} — ${folder.parts ? "folders of plugin.json, each on its own tab" : `the tab «${folder.tab ?? folder.name}»`}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
               icon={<FolderIcon buttons={folder.buttons} />}
+              // A tab of the user can be dragged to the trash (not AnalyseTool's, not a DLL project, not «Older buttons»)
+              onDragStart={
+                folder.canAddButtons && folder.id.toLowerCase().endsWith(".tab")
+                  ? () =>
+                      carry.begin({
+                        kind: "folder",
+                        key: folder.id,
+                        name: folder.name,
+                        folderId: folder.id,
+                        extensionId: folder.id,
+                        buttons: folder.buttons.length,
+                        canRemove: true,
+                      })
+                  : undefined
+              }
+              onDragMove={carry.move}
+              onDropped={carry.drop}
               className={`${folder.dllBuilds ? "folder dll" : "folder"}${carried ? (canTake(folder, carried) ? " drop-ok" : " drop-no") : ""}`}
               off={hidden}
               badge={folder.problems.length > 0 || folder.buttons.some((button) => button.problems?.length) ? "error" : null}

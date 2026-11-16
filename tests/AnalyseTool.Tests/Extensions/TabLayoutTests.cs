@@ -296,6 +296,29 @@ public sealed class TabLayoutTests
         }
     }
 
+    [Test]
+    public async Task RemoveTab_MovesTheFolderWithItsButtonsToTheTrash()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var empty = await environment.Manager.CreateTabAsync("Empty", null, CancellationToken.None);
+        var full = await environment.Manager.CreateTabAsync("Full", null, CancellationToken.None);
+        await environment.Manager.AddTabButtonAsync(full.Id, "One", null, ExtensionTemplate.Command, null, CancellationToken.None);
+
+        var emptyTrash = await environment.Manager.RemoveTabAsync(empty.Id);
+        var fullTrash = await environment.Manager.RemoveTabAsync(full.Id);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(Directory.Exists(empty.Directory)).IsFalse();
+            await Assert.That(Directory.Exists(full.Directory)).IsFalse();
+            await Assert.That(Directory.Exists(emptyTrash)).IsTrue();
+            // The button and its history go along
+            await Assert.That(Directory.Exists(Path.Combine(fullTrash, "Full.panel", "One.pushbutton", ".git"))).IsTrue();
+            await Assert.That(environment.Host.GetState("full.one")).IsNull();
+            await Assert.That(environment.Catalog.GetTabs()).IsEmpty();
+        }
+    }
+
     private sealed class NoServices : IServiceProvider
     {
         public object? GetService(Type serviceType) => null;

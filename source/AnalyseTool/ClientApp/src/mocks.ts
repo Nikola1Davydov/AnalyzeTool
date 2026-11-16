@@ -834,7 +834,14 @@ registerMocks({
     return extension.summary;
   },
   RemoveExtension: (payload) => {
-    const extension = find((payload as { id: string }).id);
+    const id = (payload as { id: string }).id;
+    // A tab of the pane, or a button of one: gone from the pane
+    const tab = paneFolders.findIndex((folder) => folder.id === id);
+    const owner = paneFolders.find((folder) => folder.buttons.some((button) => button.key.startsWith(id + "/")));
+    if (tab >= 0) paneFolders.splice(tab, 1);
+    else if (owner) owner.buttons = owner.buttons.filter((button) => !button.key.startsWith(id + "/"));
+    if (tab >= 0 || owner) return { movedTo: `C:/Users/you/AppData/Local/AnalyseTool/trash/${id}-20261116` };
+    const extension = find(id);
     extensions.splice(extensions.indexOf(extension), 1);
     return { movedTo: String.raw`C:\Users\you\AppData\Local\AnalyseTool\trash\${extension.summary.id}-20261116` };
   },
