@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Loading;
 using AnalyseTool.Extensions.Manifest;
+using AnalyseTool.Extensions.Usage;
 using Microsoft.Extensions.Logging;
 using AdWin = Autodesk.Windows;
 using Color = System.Windows.Media.Color;
@@ -30,7 +31,7 @@ namespace AnalyseTool.Infrastructure.Ribbon;
 ///     </para>
 ///     <para>Only buttons, panels and tabs created here are ever removed.</para>
 /// </remarks>
-public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host, RibbonFavorites favorites, ButtonRunner runner, ILogger<AppRibbon> logger)
+public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host, RibbonVisibility visibility, ButtonRunner runner, ILogger<AppRibbon> logger)
 {
     /// <summary>The tab of the add-in.</summary>
     public const string DefaultTab = "AnalyseTool";
@@ -38,8 +39,6 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     /// <summary>The panel of buttons that name none.</summary>
     public const string DefaultPanel = "Extensions";
 
-    /// <summary>The panel of the buttons starred in the pane, right after AnalyseTool's own.</summary>
-    public const string FavoritesPanel = "Favourites";
 
     private const string Separator = "\n";
 
@@ -53,7 +52,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     public void Start()
     {
         host.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
-        favorites.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
+        visibility.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
         System.Windows.Application.Current?.Dispatcher.InvokeAsync(Refresh);
     }
 
@@ -92,14 +91,13 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
                 return;
             }
 
-            var extensions = catalog.GetSources()
-                .Where(source => source.Shown)
-                .Select(source => source.Extension)
+            // Shown extensions, minus the folders whose tab the user turned off (AnalyseTool's own is always there)
+            var sources = catalog.GetSources()
+                .Where(source => source.Shown && (source.BuiltIn || !visibility.IsFolderHidden(source.Extension.Id)))
                 .ToList();
 
             // Nothing that the ribbon shows changed: a reload of unchanged code keeps the buttons as they are
-            var starred = Starred();
-            var signature = string.Join("|", extensions.Select(Signature)) + "|*" + string.Join("|", starred.Select(entry => Signature(entry.Extension) + entry.Button.Name));
+            var signature = string.Join("|", sources.Select(source => Signature(source.Extension) + ButtonCatalog.FolderName(source))) + "|" + visibility.Signature();
             if (signature == _signature)
             {
                 return;
@@ -107,7 +105,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             _signature = signature;
             Clear();
-            Build(extensions, starred);
+            Build(sources);
             RemoveEmptyPanelsAndTabs();
         }
         catch (Exception exception)
@@ -116,50 +114,43 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         }
     }
 
-    /// <summary>The starred buttons that exist and are on, each a large button of the Favourites panel, in the user's order.</summary>
-    private List<Entry> Starred()
-    {
-        var result = new List<Entry>();
-        var panelKey = DefaultTab + Separator + FavoritesPanel;
-        foreach (var key in favorites.Keys)
-        {
-            if (catalog.Find(key) is not { Source.Shown: true } found)
-            {
-                continue;
-            }
-
-            var button = found.Button with { Order = result.Count + 1, Kind = null, Items = null, Ribbon = true, Tab = null, Panel = null };
-            result.Add(new Entry(found.Source.Extension, button, panelKey, result.Count, 0, Favorite: true));
-        }
-
-        return result;
-    }
-
-    private void Build(IReadOnlyList<ExtensionDescriptor> extensions, IReadOnlyList<Entry> starred)
+    private void Build(IReadOnlyList<ButtonSource> sources)
     {
         var entries = new List<Entry>();
-        for (var sourceIndex = 0; sourceIndex < extensions.Count; sourceIndex++)
+        for (var sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
         {
-            var extension = extensions[sourceIndex];
-            var ui = extension.Manifest.Ui ?? new ExtensionUi();
-            var buttons = ui.EffectiveButtons();
+            var source = sources[sourceIndex];
+            var extension = source.Extension;
+            var buttons = extension.Manifest.Ui?.EffectiveButtons() ?? [];
+            var panels = ButtonCatalog.Panels(source);
             for (var index = 0; index < buttons.Count; index++)
             {
                 var button = buttons[index];
-                // "ribbon": false — a tile of the dock pane only
-                if (!button.OnRibbon || (button.ResolvedKind == ButtonKind.Pulldown && !(button.Items ?? []).Any(child => child.OnRibbon)))
+                // "ribbon": false in plugin.json, or «+» of the pane off: a tile of the pane only
+                if (!visibility.IsButtonLoaded(ButtonUsageStore.Key(extension.Id, button.Name), button.OnRibbon))
                 {
                     continue;
                 }
 
-                var panelKey = Coalesce(button.Tab, ui.Tab, DefaultTab) + Separator + Coalesce(button.Panel, ui.Panel, DefaultPanel);
-                entries.Add(new Entry(extension, button, panelKey, index, extension.Directory.StartsWith(ButtonCatalog.DefaultFolder, StringComparison.OrdinalIgnoreCase) ? sourceIndex : int.MaxValue));
+                if (button.ResolvedKind == ButtonKind.Pulldown)
+                {
+                    var items = (button.Items ?? []).Where(child => visibility.IsButtonLoaded(ButtonUsageStore.Key(extension.Id, child.Name), child.OnRibbon)).ToList();
+                    if (items.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    button = button with { Items = items };
+                }
+
+                var (tab, panel) = ButtonCatalog.Place(source, button);
+                var panelIndex = panels.ToList().FindIndex(name => string.Equals(name, panel, StringComparison.OrdinalIgnoreCase));
+                entries.Add(new Entry(extension, button, tab + Separator + panel, index, source.BuiltIn ? sourceIndex : int.MaxValue, sourceIndex, panelIndex));
             }
         }
 
-        // The Favourites panel comes right after AnalyseTool's own panels: panels are created in the order of their first entry
-        var builtIn = entries.TakeWhile(entry => entry.Source != int.MaxValue).Count();
-        entries.InsertRange(builtIn, starred);
+        // Panels are created in the order of their first entry: AnalyseTool's own first, then folder by folder, section by section
+        entries = entries.OrderBy(entry => entry.SourceIndex).ThenBy(entry => entry.PanelIndex).ThenBy(entry => entry.Index).ToList();
 
         foreach (var panel in entries.GroupBy(entry => entry.PanelKey))
         {
@@ -178,7 +169,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
 
             foreach (var entry in ordered.Where(entry => entry.Button.ResolvedKind != ButtonKind.Stacked))
             {
-                var item = entry.Button.ResolvedKind == ButtonKind.Pulldown ? MakePulldown(entry) : MakeButton(entry.Extension, entry.Button, small: false, entry.Favorite);
+                var item = entry.Button.ResolvedKind == ButtonKind.Pulldown ? MakePulldown(entry) : MakeButton(entry.Extension, entry.Button, small: false);
                 source.Items.Add(item);
                 items.Add(item);
             }
@@ -228,12 +219,12 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         return pulldown;
     }
 
-    private AdWin.RibbonButton MakeButton(ExtensionDescriptor extension, ExtensionButton button, bool small, bool favorite = false)
+    private AdWin.RibbonButton MakeButton(ExtensionDescriptor extension, ExtensionButton button, bool small)
     {
         var icon = LoadIcon(extension, button);
         return new AdWin.RibbonButton
         {
-            Id = $"AnalyseTool.{(favorite ? "Fav" : "Ext")}.{extension.Id}.{button.Name}",
+            Id = $"AnalyseTool.Ext.{extension.Id}.{button.Name}",
             Text = button.Name,
             ShowText = true,
             ShowImage = true,
@@ -416,8 +407,9 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     private static partial void LogIconFailed(ILogger logger, Exception exception, string id, string icon);
 
     /// <param name="Source">The built-in folders keep their order ahead of the extensions; every extension shares <see cref="int.MaxValue" />.</param>
-    /// <param name="Favorite">A starred button of the Favourites panel (its own ribbon id: it may also stand on its own panel).</param>
-    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index, int Source, bool Favorite = false);
+    /// <param name="SourceIndex">The place of its folder: AnalyseTool's own first.</param>
+    /// <param name="PanelIndex">The place of its panel among the sections of the folder.</param>
+    private sealed record Entry(ExtensionDescriptor Extension, ExtensionButton Button, string PanelKey, int Index, int Source, int SourceIndex = 0, int PanelIndex = 0);
 
     /// <summary>The WPF command of an AdWindows button.</summary>
     private sealed class ClickCommand(Action execute) : ICommand

@@ -17,8 +17,12 @@ export type Profile = {
   effects: boolean;
   /** The favourite buttons in the dock: button keys (`extension/name`), in order. */
   dock: string[];
-  /** The starred buttons: on the Revit ribbon, in the «Favourites» panel of the AnalyseTool tab, in order. */
+  /** Buttons loaded on the Revit ribbon although their plugin.json keeps them off («+» of the pane). */
   ribbon: string[];
+  /** Folders whose tab is off the Revit ribbon («−» on a folder): they stay in the pane. */
+  hiddenFolders: string[];
+  /** Buttons not loaded on the Revit ribbon («−» on a button). */
+  hiddenButtons: string[];
   /** The order of the tiles per folder: `btn:<key>` and `group:<name>`; `home` holds the order of the folders. */
   order: Record<string, string[]>;
   /** The folder the pane opens with. */
@@ -33,6 +37,8 @@ export const defaultProfile: Profile = {
   effects: true,
   dock: [],
   ribbon: [],
+  hiddenFolders: [],
+  hiddenButtons: [],
   order: {},
   lastFolder: null,
   updatedAt: new Date(0).toISOString(),
@@ -50,6 +56,8 @@ export function normalize(value: unknown): Profile {
     effects: typeof source.effects === "boolean" ? source.effects : defaultProfile.effects,
     dock: Array.isArray(source.dock) ? source.dock.filter((item): item is string => typeof item === "string") : [],
     ribbon: Array.isArray(source.ribbon) ? source.ribbon.filter((item): item is string => typeof item === "string") : [],
+    hiddenFolders: Array.isArray(source.hiddenFolders) ? source.hiddenFolders.filter((item): item is string => typeof item === "string") : [],
+    hiddenButtons: Array.isArray(source.hiddenButtons) ? source.hiddenButtons.filter((item): item is string => typeof item === "string") : [],
     order: source.order && typeof source.order === "object" ? source.order : {},
     lastFolder: typeof source.lastFolder === "string" ? source.lastFolder : null,
   };
@@ -123,6 +131,7 @@ export function pruneProfile(profile: Profile, folders: PaneFolder[]): Profile {
     ...profile,
     dock: profile.dock.filter(buttonExists),
     ribbon: profile.ribbon.filter(buttonExists),
+    hiddenButtons: profile.hiddenButtons.filter(buttonExists),
     order,
     lastFolder: profile.lastFolder && (byId.has(profile.lastFolder.toLowerCase()) || folders.length === 0) ? profile.lastFolder : null,
   };

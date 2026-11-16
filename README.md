@@ -64,7 +64,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 The **AnalyseTool** tab keeps three buttons:
 
-- **Buttons** — the pane: your buttons in **folders** (one folder per extension), a dock of favourites, your own order, tile size and theme. **New folder** and, inside a folder, **New button** create C# that AnalyseTool compiles, each change a version of the folder. Right-click a tile: **☆** keeps it in the dock of the pane (quick access), **+** puts it on the Revit ribbon (a Favourites panel), drag to move.
+- **Buttons** — the pane, and the map of the ribbon: every **folder** is a tab of the Revit ribbon, its **sections** are the panels of that tab — the structure of the pane *is* the ribbon, nothing to set by hand. **New folder** makes a tab, **New button** in a section writes C# and a page that AnalyseTool compiles, each change a version. Right-click to edit: drag buttons between sections, **−/+** keeps a folder's tab or a single button off the ribbon (it stays in the pane, grey), **☆** keeps a button in the dock of the pane, **✎** renames or moves it to another folder, **📁** opens its folder for an AI tool. **?** explains it all with pictures.
 - **About** — versions, what's new and links to the source.
 - **Refresh** — reads every folder again and rebuilds the buttons (saved files reload by themselves).
 

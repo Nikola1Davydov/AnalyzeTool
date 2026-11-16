@@ -48,11 +48,14 @@ const paneFolders: PaneFolder[] = [
     canAddButtons: false,
     description: null,
     directory: null,
+    tab: "AnalyseTool",
+    panel: "AnalyseTool",
+    panels: ["AnalyseTool"],
     problems: [],
     buttons: [
-      paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."),
+      { ...paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."), offRibbon: true },
       paneButton("analysetool", "About", g(0xe946), "OpenWindow"),
-      paneButton("analysetool", "Report a bug", g(0xebe8), "OpenUrl"),
+      { ...paneButton("analysetool", "Report a bug", g(0xebe8), "OpenUrl"), offRibbon: true },
     ],
   },
   {
@@ -62,6 +65,9 @@ const paneFolders: PaneFolder[] = [
     enabled: true,
     canAddButtons: true,
     description: "Counts walls.",
+    tab: "Count walls",
+    panel: "Count walls",
+    panels: ["Count walls"],
     directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions/count-walls",
     problems: ["src/CountWalls.cs(14): The name 'grup' does not exist in the current context"],
     buttons: [paneButton("count-walls", "Count walls", g(0xe768), "count-walls.CountWalls", "Counts the walls of the active view by type.")],
@@ -73,15 +79,19 @@ const paneFolders: PaneFolder[] = [
     enabled: true,
     canAddButtons: true,
     description: "Rooms and their sheets.",
+    tab: "Room sheets",
+    panel: "Rooms",
+    panels: ["Rooms", "Checks"],
     directory: "D:/Team/buttons/room-sheets",
     problems: [],
     buttons: [
       paneButton("room-sheets", "Room sheets", g(0xe8a7), null, "A page that lists rooms and creates sheets for them."),
       paneButton("room-sheets", "Renumber", g(0xe8ef), "room-sheets.Renumber", null, "Tools"),
       paneButton("room-sheets", "Purge empty", g(0xe74d), "room-sheets.PurgeEmpty", null, "Tools"),
+      { ...paneButton("room-sheets", "Check numbering", g(0xe73e), "room-sheets.CheckNumbering"), panel: "Checks" },
     ],
   },
-  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
+  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, canAddButtons: false, description: null, directory: "C:/Users/you/AppData/Local/AnalyseTool/extensions-dist/Acme.Sample", tab: "Acme", panel: "Samples", panels: ["Samples"], tabFromPackage: true, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
 ];
 let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/Parameters"] };
 
@@ -624,14 +634,14 @@ registerMocks({
     const { name } = payload as { name: string };
     const id = name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
     if (paneFolders.some((folder) => folder.id === id)) fail(`An extension with the id '${id}' exists already.`, "exists");
-    paneFolders.push({ id, name: name.trim(), builtIn: false, enabled: true, canAddButtons: true, description: null, directory: `C:/Users/you/AppData/Local/AnalyseTool/extensions/${id}`, problems: [], buttons: [] });
+    paneFolders.push({ id, name: name.trim(), builtIn: false, enabled: true, canAddButtons: true, description: null, directory: `C:/Users/you/AppData/Local/AnalyseTool/extensions/${id}`, tab: name.trim(), panel: name.trim(), panels: [name.trim()], problems: [], buttons: [] });
     return { id, name: name.trim() };
   },
   AddExtensionButton: async (payload) => {
     await delay(400);
-    const { id, name, template } = payload as { id: string; name: string; template?: string };
+    const { id, name, template, panel } = payload as { id: string; name: string; template?: string; panel?: string | null };
     const folder = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
-    folder.buttons.push(paneButton(id, name.trim(), template === "Command" || !template ? g(0xe768) : g(0xe8a7), template === "Command" || !template ? `${id}.${name.replace(/\W/g, "")}` : null));
+    folder.buttons.push({ ...paneButton(id, name.trim(), template === "Command" ? g(0xe768) : g(0xe8a7), template === "Command" ? `${id}.${name.replace(/\W/g, "")}` : null), panel: panel ?? folder.panel ?? folder.name });
     return { id, name: folder.name };
   },
   UpdateExtensionFolder: (payload) => {
@@ -649,6 +659,33 @@ registerMocks({
     found.key = `${id}/${found.name}`;
     found.tooltip = tooltip ?? null;
     return { id, name: folder.name };
+  },
+  SetExtensionPanel: (payload) => {
+    const { id, panel, name } = payload as { id: string; panel: string | null; name: string };
+    const folder = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
+    const panels = folder.panels ?? [];
+    if (panel === null) folder.panels = [...panels, name];
+    else {
+      folder.panels = panels.map((item) => (item === panel ? name : item));
+      for (const button of folder.buttons) if ((button.panel ?? folder.panel) === panel) button.panel = name;
+    }
+    return { id, name: folder.name };
+  },
+  MoveExtensionButton: (payload) => {
+    const { id, button, panel, before, toId } = payload as { id: string; button: string; panel: string; before?: string | null; toId?: string | null };
+    const from = paneFolders.find((candidate) => candidate.id === id) ?? fail(`No folder '${id}'.`, "not_found");
+    const to = paneFolders.find((candidate) => candidate.id === (toId ?? id)) ?? fail(`No folder '${toId}'.`, "not_found");
+    const moving = from.buttons.filter((candidate) => candidate.name === button || candidate.group === button);
+    if (!moving.length) fail(`No button «${button}».`, "not_found");
+    from.buttons = from.buttons.filter((candidate) => !moving.includes(candidate));
+    for (const item of moving) {
+      item.panel = panel;
+      item.key = `${to.id}/${item.name}`;
+    }
+    const at = before ? to.buttons.findIndex((candidate) => candidate.name === before || candidate.group === before) : -1;
+    to.buttons.splice(at < 0 ? to.buttons.length : at, 0, ...moving);
+    if (!(to.panels ?? []).includes(panel)) to.panels = [...(to.panels ?? []), panel];
+    return { id: to.id, name: to.name };
   },
   RefreshButtons: async () => {
     await delay(400);

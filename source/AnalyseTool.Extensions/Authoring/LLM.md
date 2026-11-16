@@ -546,6 +546,7 @@ Connected over MCP you run the whole loop yourself — AnalyseTool exposes it as
 | See what exists | `GetExtensions` | Every extension: id, folder, kind (`Source`/`Dll`/`Page`), commands, load errors, compiler diagnostics, pinned version. |
 | Start a folder | `CreateExtensionFolder { name, description?, panel? }` | An empty folder (extension) with its history; buttons come next. |
 | Add a button | `AddExtensionButton { id, name, description?, template? }` | `src\<Name>.cs` (and/or a page) and the entry in `plugin.json`, saved as a version. |
+| Organise | `SetExtensionPanel { id, panel?, name }` (add or rename a panel), `MoveExtensionButton { id, button, panel, before?, toId? }` (another panel, or another folder — its C# file and page go along, the command is renamed) | A folder of the user is a tab of the ribbon named after it, its panels are the sections of the pane: `tab` in plugin.json is not used for it. |
 | Rename | `UpdateExtensionFolder { id, name, description?, tab?, panel? }`, `UpdateExtensionButton { id, button, name, tooltip?, tab?, panel? }` | plugin.json only — the code keeps its file and command; a version each. |
 | Start a button | `CreateExtension { name, description?, template?, panel? }` | The new extension with its folder; `src\<Name>.cs` compiles, the first version is saved, the ribbon button is there. |
 | Read / write code | `ListExtensionFiles`, `ReadExtensionFile`, `WriteExtensionFile { id, path, content }` | Writing reloads at once; the answer carries the compiler diagnostics. |

@@ -220,6 +220,44 @@ public sealed class UpdateExtensionButton(ExtensionManager manager) : ICommand<U
     }
 }
 
+/// <summary>Input of <see cref="SetExtensionPanel" />.</summary>
+public sealed record SetExtensionPanelRequest(
+    [property: Description("The id of the folder (extension).")] string Id,
+    [property: Description("The panel to rename; absent to add a new panel.")] string? Panel,
+    [property: Description("The (new) name of the panel.")] string Name);
+
+/// <summary>Adds or renames a panel of a folder.</summary>
+[McpTool(Title = "Add or rename a panel of a folder")]
+[Command(Description = "Adds a panel (a section of the folder, a panel of its ribbon tab) or renames one — its buttons follow. Saved as a version.")]
+public sealed class SetExtensionPanel(ExtensionManager manager) : ICommand<SetExtensionPanelRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(SetExtensionPanelRequest request, CommandContext context)
+    {
+        return ExtensionSummary.From(await manager.SetPanelAsync(request.Id, request.Panel, request.Name, context.CancellationToken).ConfigureAwait(false));
+    }
+}
+
+/// <summary>Input of <see cref="MoveExtensionButton" />.</summary>
+public sealed record MoveExtensionButtonRequest(
+    [property: Description("The id of the folder the button is in.")] string Id,
+    [property: Description("The text of the button.")] string Button,
+    [property: Description("The panel it goes to.")] string Panel,
+    [property: Description("The button it goes before; the end of the panel when absent.")] string? Before = null,
+    [property: Description("Another folder of the user it moves to; the same folder when absent.")] string? ToId = null);
+
+/// <summary>Moves a button to another panel or folder.</summary>
+[McpTool(Title = "Move a button")]
+[Command(Description = "Moves a button to another panel of its folder, or to another folder of the user — its C# file and page go along and its command is renamed to the new folder. Saved as versions.")]
+public sealed class MoveExtensionButton(ExtensionManager manager) : ICommand<MoveExtensionButtonRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(MoveExtensionButtonRequest request, CommandContext context)
+    {
+        return ExtensionSummary.From(await manager.MoveButtonAsync(request.Id, request.Button, request.Panel, request.Before, request.ToId, context.CancellationToken).ConfigureAwait(false));
+    }
+}
+
 /// <summary>Input of commands that act on one extension.</summary>
 /// <param name="Id">The id of the extension.</param>
 public sealed record ExtensionRequest([property: Description("The id of the extension.")] string Id);

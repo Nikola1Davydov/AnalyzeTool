@@ -67,6 +67,69 @@ public sealed class ButtonCatalog(ExtensionHost host)
         return GetSources().SelectMany(source => Flatten(source.Extension.Manifest.Ui?.EffectiveButtons() ?? []).Select(button => new RibbonButtonEntry(source, button))).ToList();
     }
 
+    /// <summary>The name of a folder as the pane and the ribbon show it: <c>name</c>, else <c>description</c>, else the id.</summary>
+    public static string FolderName(ButtonSource source)
+    {
+        if (source.BuiltIn)
+        {
+            return DefaultTab;
+        }
+
+        var manifest = source.Extension.Manifest;
+        return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : source.Extension.Id;
+    }
+
+    /// <summary>The tab of AnalyseTool's own buttons.</summary>
+    public const string DefaultTab = "AnalyseTool";
+
+    /// <summary>
+    ///     Where a button goes on the ribbon. A folder of the user is a tab of its own name, and its sections are the panels —
+    ///     the structure of the pane is the ribbon, nothing to set by hand (a <c>tab</c> left in plugin.json is ignored). An
+    ///     installed package keeps the tab its author chose (an update would undo any change), else its name; AnalyseTool's own
+    ///     buttons go where their plugin.json says.
+    /// </summary>
+    public static (string Tab, string Panel) Place(ButtonSource source, ExtensionButton button)
+    {
+        var ui = source.Extension.Manifest.Ui;
+        var name = FolderName(source);
+        var panel = First(button.Panel, ui?.Panel) ?? name;
+        if (source.BuiltIn || source.Extension.Zone != ExtensionZone.Dev)
+        {
+            return (First(button.Tab, ui?.Tab) ?? name, panel);
+        }
+
+        return (name, panel);
+    }
+
+    /// <summary>The panels (sections) of a folder in order: those plugin.json lists, then those its buttons name.</summary>
+    public static IReadOnlyList<string> Panels(ButtonSource source)
+    {
+        var result = new List<string>();
+        foreach (var panel in source.Extension.Manifest.Ui?.Panels ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(panel) && !result.Contains(panel.Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                result.Add(panel.Trim());
+            }
+        }
+
+        foreach (var button in source.Extension.Manifest.Ui?.EffectiveButtons() ?? [])
+        {
+            var panel = Place(source, button).Panel;
+            if (!result.Contains(panel, StringComparer.OrdinalIgnoreCase))
+            {
+                result.Add(panel);
+            }
+        }
+
+        return result;
+    }
+
+    private static string? First(params string?[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
+    }
+
     /// <summary>Reads the built-in button folders: <c>analysetool</c>, and <c>analysetool.dev</c> when asked.</summary>
     /// <exception cref="InvalidDataException">A built-in <c>plugin.json</c> is broken — a bug of the build, not of the user.</exception>
     public static IReadOnlyList<ExtensionDescriptor> LoadBuiltIn(string folder, bool includeDev)

@@ -47,8 +47,13 @@ Debug builds); the user's are in their extension folders.
   AnalyseTool's own ribbon is three buttons — Buttons (the pane), About, Refresh (`RefreshButtons`); the rest are tiles or links of
   the pane's profile. A folder (extension) is created empty (`CreateExtensionFolder`) and gets buttons one by one
   (`AddExtensionButton`: C# in `src\` and/or a page, the entry in `plugin.json`, a version each).
-* «+» of the pane: the `ribbon` array of `pane-profile.json` (`RibbonFavorites`); ☆ is the `dock` array. Those buttons get a «Favourites»
-  panel right after AnalyseTool's own, whatever their `"ribbon"` says; saving the profile rebuilds the ribbon.
+* The structure of the pane is the ribbon (`ButtonCatalog.Place`): a folder of the user is a tab of its name, its sections
+  (`panel` of a button, ordered by `ui.panels`) are the panels; a package keeps the tab its author chose; AnalyseTool's own
+  buttons go where their plugin.json says. Moving a button is `MoveExtensionButton` (another panel, or another folder with
+  its C# file and page — the command is renamed), a panel is `SetExtensionPanel`.
+* What the ribbon loads is the user's (`RibbonVisibility`, from `pane-profile.json`): `hiddenFolders` (a folder's tab off),
+  `hiddenButtons` (a button off), `ribbon` (a button on although plugin.json says `"ribbon": false`). ☆ is the `dock` array,
+  for the pane only. Saving the profile rebuilds the ribbon.
 * `AppRibbon` builds the buttons with AdWindows (the Revit API cannot add or remove buttons after startup), on the
   AnalyseTool tab unless a button names another, and rebuilds them on `ExtensionHost.Changed`.
 * `ButtonRunner` handles every click: it counts it (`ButtonUsageStore`, `%LOCALAPPDATA%\AnalyseToolutton-usage.json`),

@@ -44,6 +44,8 @@ export function Tile(props: {
   badge?: "error" | "locked" | null;
   busy?: boolean;
   dim?: boolean;
+  /** Not on the Revit ribbon: grey, with a struck-through mark — always visible, not only in the edit mode. */
+  off?: boolean;
   className?: string;
   /** The key of the tile among its neighbours: makes it draggable in the edit mode and animates its moves. */
   dragKey?: string;
@@ -68,13 +70,20 @@ export function Tile(props: {
   const element = useRef<HTMLButtonElement | null>(null);
   const draggable = props.editing && props.dragKey && props.onMove;
 
-  // In the edit mode a tile follows the pointer and lands on the place of the tile it is dropped on
+  // In the edit mode a tile follows the pointer and lands on the place of the tile it is dropped on — or at the end of the
+  // section (a panel of the ribbon) it is dropped on
   const dropOn = (x: number, y: number) => {
-    const target = document
-      .elementsFromPoint(x, y)
+    // Not the tile itself: it still sits in the section it came from
+    const under = document.elementsFromPoint(x, y).filter((candidate) => !element.current?.contains(candidate));
+    const target = under
       .map((candidate) => candidate.closest<HTMLElement>("[data-tile-key]"))
       .find((candidate) => candidate && candidate.dataset.tileKey !== props.dragKey && candidate.dataset.tileGroup === props.dragGroup);
-    if (target?.dataset.tileKey) props.onMove!(props.dragKey!, target.dataset.tileKey);
+    if (target?.dataset.tileKey) {
+      props.onMove!(props.dragKey!, target.dataset.tileKey);
+      return;
+    }
+    const section = under.map((candidate) => candidate.closest<HTMLElement>("[data-section]")).find((candidate) => candidate && candidate.dataset.tileGroup === props.dragGroup);
+    if (section?.dataset.section !== undefined) props.onMove!(props.dragKey!, `section:${section.dataset.section}`);
   };
 
   // A wiggle of its own per tile, so they do not move in step
@@ -99,7 +108,7 @@ export function Tile(props: {
       }}
       data-tile-key={props.dragKey}
       data-tile-group={props.dragGroup}
-      className={`tile ${props.dim ? "dim" : ""} ${props.editing ? "editing" : ""} ${props.className ?? ""}`}
+      className={`tile ${props.dim ? "dim" : ""} ${props.off ? "off" : ""} ${props.editing ? "editing" : ""} ${props.className ?? ""}`}
       title={props.title ?? props.label}
       onClick={() => {
         if (props.editing) return;
@@ -120,6 +129,7 @@ export function Tile(props: {
         {props.badge === "error" && <span className="tile-badge error">!</span>}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
+        {props.off && !props.editing && <span className="tile-off" title="Not on the Revit ribbon" />}
         {props.star?.on && !props.editing && <span className="tile-star" title="In the dock">★</span>}
       </motion.span>
       {props.editing && props.editBadge && (

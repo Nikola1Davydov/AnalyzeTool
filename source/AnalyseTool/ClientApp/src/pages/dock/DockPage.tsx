@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, MotionConfig } from "motion/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
+import { extensionCommands } from "../../api/extensions";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
-import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm } from "./Forms";
+import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
+import { HowItWorks } from "./HowItWorks";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
@@ -16,6 +18,7 @@ import "./pane.css";
 type Screen =
   | { kind: "home" }
   | { kind: "profile" }
+  | { kind: "guide" }
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string };
 
@@ -30,6 +33,7 @@ function depth(screen: Screen) {
     case "folder":
       return screen.group === undefined ? 1 : 2;
     case "profile":
+    case "guide":
       return 1;
     case "stats":
       return 2;
@@ -166,12 +170,14 @@ function Pane() {
           >
             {current.kind === "profile" ? (
               <ProfileScreen overview={overview} onStats={() => go({ kind: "stats" })} />
+            ) : current.kind === "guide" ? (
+              <HowItWorks />
             ) : current.kind === "stats" ? (
               <StatsScreen overview={overview} folder={current.folder} />
             ) : current.kind === "home" || !folder ? (
-              <HomeScreen overview={overview} onOpen={(id) => go({ kind: "folder", folder: id })} />
+              <HomeScreen overview={overview} onOpen={(id) => go({ kind: "folder", folder: id })} onGuide={() => go({ kind: "guide" })} />
             ) : (
-              <FolderScreen folder={folder} group={current.group} onOpenGroup={(group) => go({ kind: "folder", folder: folder.id, group })} />
+              <FolderScreen folder={folder} folders={overview.folders} />
             )}
           </motion.div>
         </main>
@@ -202,7 +208,7 @@ function Header(props: {
       ? screen.folder
         ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
         : { label: "Profile", to: { kind: "profile" } as Screen }
-      : screen.kind === "profile"
+      : screen.kind === "profile" || screen.kind === "guide"
         ? { label: "Folders", to: { kind: "home" } as Screen }
         : screen.kind === "folder" && screen.group !== undefined
           ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
@@ -210,7 +216,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "profile" ? "Profile" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },
@@ -289,8 +295,11 @@ function ActionList({ items }: { items: ActionItem[] }) {
   );
 }
 
-/** The first screen: AnalyseTool and every extension with buttons as a tile, and «+» for a new button. */
-function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id: string) => void }) {
+/**
+ * The first screen: the folders — each one a tab of the Revit ribbon. In the edit mode «+»/«−» puts its tab on the ribbon or
+ * takes it off (it stays here); a folder off the ribbon is grey.
+ */
+function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onOpen: (id: string) => void; onGuide: () => void }) {
   const actions = useActions();
   const edit = useContext(EditContext);
   const { profile, update } = useProfile();
@@ -301,150 +310,223 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
       <h1 className="large-title">
         Folders
         {!bridge.inRevit && <span className="badge">mock</span>}
+        <button className="help-button" title="How it works" onClick={onGuide}>
+          ?
+        </button>
       </h1>
       <div className="grid">
-        {sorted.map((folder) => (
-          <Tile
-            key={folder.id}
-            dragKey={folder.id}
-            dragGroup="home"
-            onMove={(from, to) => update((value) => ({ ...value, order: { ...value.order, home: move(sorted.map((item) => item.id), from, to) } }))}
-            editing={edit.editing}
-            onEdit={edit.start}
-            onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") } : null}
-            onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
-            label={folder.name}
-            title={`${folder.name}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}`}
-            icon={<FolderIcon folder={folder} />}
-            className="folder"
-            badge={folder.problems.length > 0 ? "error" : null}
-            dim={!folder.enabled}
-            onClick={() => onOpen(folder.id)}
-          />
-        ))}
+        {sorted.map((folder) => {
+          const hidden = !folder.builtIn && profile.hiddenFolders.includes(folder.id);
+          return (
+            <Tile
+              key={folder.id}
+              dragKey={folder.id}
+              dragGroup="home"
+              onMove={(from, to) => update((value) => ({ ...value, order: { ...value.order, home: move(sorted.map((item) => item.id), from, to) } }))}
+              editing={edit.editing}
+              onEdit={edit.start}
+              editBadge={
+                folder.builtIn
+                  ? null
+                  : hidden
+                    ? { symbol: "+", title: "Put its tab on the Revit ribbon", onClick: () => toggleIn(update, "hiddenFolders", folder.id) }
+                    : { symbol: "−", title: "Take its tab off the Revit ribbon (it stays here)", onClick: () => toggleIn(update, "hiddenFolders", folder.id) }
+              }
+              onChange={folder.canAddButtons ? { title: "Name and description", onClick: () => actions.openSheet(`Folder ${folder.name}`, <EditFolderForm folder={folder} />, "Save") } : null}
+              onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
+              label={folder.name}
+              title={`${folder.name} — the tab «${folder.tab ?? folder.name}»\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}${hidden ? "\nNot on the Revit ribbon" : ""}`}
+              icon={<FolderIcon buttons={folder.buttons} />}
+              className="folder"
+              off={hidden}
+              badge={folder.problems.length > 0 ? "error" : null}
+              dim={!folder.enabled}
+              onClick={() => onOpen(folder.id)}
+            />
+          );
+        })}
         {!edit.editing && (
           <Tile
             label="New folder"
             className="add"
-            title="A new folder for buttons that belong together, with its own version history"
+            title="A new folder — a new tab of the ribbon — with its own version history"
             icon={<span className="tile-icon add">+</span>}
             onClick={() => actions.openSheet("New folder", <NewFolderForm onCreated={onOpen} />, "Create")}
           />
         )}
       </div>
-      <p className="muted small center">Each extension is a folder of buttons. In a folder, right-click a button: ☆ keeps it in the dock below, + puts it on the Revit ribbon.</p>
+      <p className="muted small center">
+        Each folder is a tab of the Revit ribbon, its sections are the panels. Right-click to edit: ☆ keeps a button in the dock below, + / −
+        puts a folder or a button on the ribbon or takes it off, drag to move.
+      </p>
     </>
   );
 }
 
-/** A folder: its buttons and its pulldowns (as folders), in the order the user put them. */
-function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: (group: string) => void }) {
-  const { folder, group } = props;
+/** Adds a value to a list of the profile, or takes it out. */
+function toggleIn(update: ReturnType<typeof useProfile>["update"], list: "hiddenFolders" | "hiddenButtons" | "ribbon" | "dock", value: string) {
+  update((profile) => ({
+    ...profile,
+    [list]: profile[list].includes(value) ? profile[list].filter((item) => item !== value) : [...profile[list], value],
+  }));
+}
+
+/**
+ * A folder: its sections — the panels of its tab — each with its buttons and pulldowns (▾). In the edit mode the buttons drag
+ * between sections (of a folder of the user), a section is renamed with ✎, «+ New panel» adds one.
+ */
+function FolderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFolder[] }) {
   const actions = useActions();
   const edit = useContext(EditContext);
-  const { profile, update } = useProfile();
+  const refresh = useQueryClient();
+  const movable = folder.canAddButtons;
+  const toastError = (message: string) => actions.toast(message, "error");
 
-  type Item = { key: string; group?: string; button?: PaneButton };
-  const groups = [...new Set(folder.buttons.flatMap((button) => (button.group ? [button.group] : [])))];
-  const items: Item[] =
-    group === undefined
-      ? [
-          ...folder.buttons.filter((button) => !button.group).map((button) => ({ key: `btn:${button.key}`, button })),
-          ...groups.map((name) => ({ key: `group:${name}`, group: name })),
-        ]
-      : folder.buttons.filter((button) => button.group === group).map((button) => ({ key: `btn:${button.key}`, button }));
-  const order = profile.order[folder.id];
-  const sorted = ordered(items, (item) => item.key, order);
+  type Item = { key: string; name: string; button?: PaneButton; group?: PaneButton[] };
+  const sections = (folder.panels?.length ? folder.panels : [folder.panel ?? folder.name]).map((panel) => {
+    const items: Item[] = [];
+    for (const button of folder.buttons) {
+      if ((button.panel ?? folder.panel ?? folder.name).toLowerCase() !== panel.toLowerCase()) continue;
+      if (!button.group) items.push({ key: `btn:${button.key}`, name: button.name, button });
+      else if (!items.some((item) => item.group && item.name === button.group))
+        items.push({ key: `group:${button.group}`, name: button.group, group: folder.buttons.filter((other) => other.group === button.group) });
+    }
+    return { panel, items };
+  });
 
+  // A drop: on a tile — before it, in its section; on a section — at its end
   const onMove = (from: string, to: string) => {
-    const keys = move(sorted.map((item) => item.key), from, to);
-    const rest = (order ?? []).filter((key) => !keys.includes(key));
-    update((value) => ({ ...value, order: { ...value.order, [folder.id]: [...keys, ...rest] } }));
+    const name = sections.flatMap((section) => section.items).find((item) => item.key === from)?.name;
+    if (!name) return;
+    let panel: string | undefined;
+    let before: string | undefined;
+    if (to.startsWith("section:")) panel = to.slice("section:".length);
+    else {
+      const section = sections.find((candidate) => candidate.items.some((item) => item.key === to));
+      panel = section?.panel;
+      before = section?.items.find((item) => item.key === to)?.name;
+    }
+    if (!panel) return;
+    void bridge
+      .invoke(extensionCommands.MoveExtensionButton, { id: folder.id, button: name, panel, before: before ?? null })
+      .then(() => refresh.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "paneProfile" }))
+      .catch((error: unknown) => toastError(messageOf(error)));
   };
 
   return (
     <>
-      <h1 className="large-title">{group ?? folder.name}</h1>
+      <h1 className="large-title">{folder.name}</h1>
+      {folder.tabFromPackage && <p className="muted small">On the tab «{folder.tab}» — its author chose it.</p>}
       {!folder.enabled && <div className="banner">This extension is turned off — turn it on in Manage buttons.</div>}
       {folder.problems.length > 0 && (
         <button className="banner error" onClick={() => actions.openSheet(`Problems of ${folder.name}`, <ProblemList problems={folder.problems} />)}>
           {folder.problems.length} problem(s) — the last good build still runs. Tap for details.
         </button>
       )}
-      <div className="grid">
-        {sorted.map((item) =>
-          item.button ? (
-            <ButtonTile
-              key={item.key}
-              folder={folder}
-              button={item.button}
-              dragKey={item.key}
-              dragGroup="grid"
-              onMove={onMove}
-            />
-          ) : (
-            <Tile
-              key={item.key}
-              dragKey={item.key}
-              dragGroup="grid"
-              onMove={onMove}
-              editing={edit.editing}
-              onEdit={edit.start}
-              className="folder"
-              label={item.group!}
-              icon={<FolderIcon folder={{ ...folder, buttons: folder.buttons.filter((button) => button.group === item.group) }} />}
-              onClick={() => props.onOpenGroup(item.group!)}
-            />
-          ),
-        )}
-        {folder.canAddButtons && group === undefined && !edit.editing && (
-          <Tile
-            label="New button"
-            className="add"
-            title={`A new button in ${folder.name}: C# that AnalyseTool compiles, saved as a version of the folder`}
-            icon={<span className="tile-icon add">+</span>}
-            onClick={() =>
-              actions.openSheet(
-                `New button in ${folder.name}`,
-                <NewButtonForm
+      {sections.map(({ panel, items }) => (
+        <section key={panel} className={`pane-section${edit.editing && movable ? " drop" : ""}`} data-section={panel} data-tile-group="grid">
+          <header className="pane-section-header">
+            <span>{panel}</span>
+            {edit.editing && movable && (
+              <button
+                className="icon-button"
+                title="Rename the panel"
+                onClick={() => actions.openSheet("Panel", <PanelForm folder={folder} panel={panel} />, "Save")}
+              >
+                ✎
+              </button>
+            )}
+          </header>
+          <div className="grid">
+            {items.map((item) =>
+              item.button ? (
+                <ButtonTile
+                  key={item.key}
                   folder={folder}
-                  onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
-                />,
-                "Add",
-              )
-            }
-          />
-        )}
-      </div>
-      {sorted.length === 0 && (
-        <p className="muted small center">{folder.canAddButtons ? "No buttons yet — tap + to add the first one." : "No buttons here."}</p>
+                  folders={folders}
+                  button={item.button}
+                  dragKey={movable ? item.key : undefined}
+                  dragGroup="grid"
+                  onMove={onMove}
+                />
+              ) : (
+                <Tile
+                  key={item.key}
+                  dragKey={movable ? item.key : undefined}
+                  dragGroup="grid"
+                  onMove={onMove}
+                  editing={edit.editing}
+                  onEdit={edit.start}
+                  className="pulldown"
+                  label={item.name}
+                  title={`${item.name} ▾ — a pulldown of ${item.group!.length} button(s)`}
+                  icon={<FolderIcon buttons={item.group!} />}
+                  onClick={() =>
+                    actions.openSheet(
+                      `${item.name} ▾`,
+                      <div className="grid pulldown-list">
+                        {item.group!.map((button) => (
+                          <ButtonTile key={button.key} folder={folder} folders={folders} button={button} />
+                        ))}
+                      </div>,
+                    )
+                  }
+                />
+              ),
+            )}
+            {items.length === 0 && edit.editing && movable && <p className="muted small drop-hint">Drop buttons here</p>}
+            {movable && !edit.editing && (
+              <Tile
+                label="New button"
+                className="add"
+                title={`A new button in the panel «${panel}»`}
+                icon={<span className="tile-icon add">+</span>}
+                onClick={() =>
+                  actions.openSheet(
+                    `New button in ${panel}`,
+                    <NewButtonForm
+                      folder={folder}
+                      panel={panel}
+                      onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError)}
+                    />,
+                    "Add",
+                  )
+                }
+              />
+            )}
+          </div>
+        </section>
+      ))}
+      {movable && (
+        <button className="text-button new-panel" onClick={() => actions.openSheet("New panel", <PanelForm folder={folder} />, "Add")}>
+          + New panel
+        </button>
       )}
     </>
   );
 }
 
 /**
- * A button as a tile: a tap runs it. In the edit mode its four corners: ☆/★ keeps it in the dock below (quick access in the
- * pane), +/− puts it on the Revit ribbon, ✎ its name and description, 📁 its folder.
+ * A button as a tile: a tap runs it. In the edit mode its four corners: −/+ loads it on the Revit ribbon or not, ✎ its name,
+ * description and «Move to…», ☆/★ the dock below, 📁 its folder. A button that is not on the ribbon is grey.
  */
 function ButtonTile(props: {
   folder: PaneFolder;
+  folders: PaneFolder[];
   button: PaneButton;
-  dragKey: string;
-  dragGroup: string;
-  onMove: (from: string, to: string) => void;
+  dragKey?: string;
+  dragGroup?: string;
+  onMove?: (from: string, to: string) => void;
 }) {
   const { folder, button } = props;
   const actions = useActions();
   const edit = useContext(EditContext);
   const { profile, update } = useProfile();
   const inDock = profile.dock.includes(button.key);
-  const onRibbon = profile.ribbon.includes(button.key);
-  const toggle = (list: "dock" | "ribbon") =>
-    update((value) => ({
-      ...value,
-      [list]: value[list].includes(button.key) ? value[list].filter((item) => item !== button.key) : [...value[list], button.key],
-    }));
+  const folderHidden = !folder.builtIn && profile.hiddenFolders.includes(folder.id);
+  const loaded = button.offRibbon ? profile.ribbon.includes(button.key) : !profile.hiddenButtons.includes(button.key);
+  const onRibbon = loaded && !folderHidden;
+  const toastError = (message: string) => actions.toast(message, "error");
   return (
     <Tile
       dragKey={props.dragKey}
@@ -453,36 +535,34 @@ function ButtonTile(props: {
       editing={edit.editing}
       onEdit={edit.start}
       editBadge={
-        onRibbon
-          ? { symbol: "−", title: "Remove from the Revit ribbon", onClick: () => toggle("ribbon") }
-          : { symbol: "+", title: "Put on the Revit ribbon (Favourites panel)", onClick: () => toggle("ribbon") }
+        loaded
+          ? { symbol: "−", title: "Do not load it on the Revit ribbon (it stays here)", onClick: () => toggleIn(update, button.offRibbon ? "ribbon" : "hiddenButtons", button.key) }
+          : { symbol: "+", title: "Load it on the Revit ribbon", onClick: () => toggleIn(update, button.offRibbon ? "ribbon" : "hiddenButtons", button.key) }
       }
       onChange={
         folder.canAddButtons
           ? {
-              title: "Name and description",
+              title: "Name, description, move",
               onClick: () =>
                 actions.openSheet(
                   button.name,
                   <EditButtonForm
                     folder={folder}
+                    folders={props.folders}
                     button={button}
-                    onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
+                    onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError)}
                   />,
                   "Save",
                 ),
             }
           : null
       }
-      onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, (message) => actions.toast(message, "error")) } : null}
-      star={{
-        on: inDock,
-        title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)",
-        onClick: () => toggle("dock"),
-      }}
+      onOpenFolder={folder.directory ? { title: "Open the folder (edit with an AI tool)", onClick: () => openFolder(folder.directory!, toastError) } : null}
+      star={{ on: inDock, title: inDock ? "Remove from the dock" : "Keep in the dock (quick access)", onClick: () => toggleIn(update, "dock", button.key) }}
       label={button.name}
-      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "\nOn the Revit ribbon" : ""}`}
+      title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
+      off={!onRibbon}
       badge={folder.problems.length > 0 ? "error" : null}
       busy={actions.isRunning(button.key)}
       dim={!folder.enabled}
@@ -491,11 +571,11 @@ function ButtonTile(props: {
   );
 }
 
-/** A folder shows the first icons of its buttons, like a folder of apps — also with one button: a folder is never a button. */
-function FolderIcon({ folder }: { folder: PaneFolder }) {
+/** A folder or a pulldown shows the first icons of its buttons, like a folder of apps. */
+function FolderIcon({ buttons }: { buttons: PaneButton[] }) {
   return (
     <span className="tile-icon folder-icon">
-      {folder.buttons.slice(0, 4).map((button) => (
+      {buttons.slice(0, 4).map((button) => (
         <TileIcon key={button.key} glyph={button.glyph} image={button.image} title={button.name} />
       ))}
     </span>
@@ -527,6 +607,7 @@ function Dock({ overview }: { overview: PaneOverview }) {
         <ButtonTile
           key={key}
           folder={folder}
+          folders={overview.folders}
           button={button}
           dragKey={key}
           dragGroup="dock"

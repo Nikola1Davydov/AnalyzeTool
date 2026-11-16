@@ -5,6 +5,8 @@ import {
   type AddExtensionButtonRequest,
   type CreateExtensionFolderRequest,
   type ExtensionSummary,
+  type MoveExtensionButtonRequest,
+  type SetExtensionPanelRequest,
   type UpdateExtensionButtonRequest,
   type UpdateExtensionFolderRequest,
   extensionCommands,
@@ -28,8 +30,6 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [tab, setTab] = useState("");
-  const [panel, setPanel] = useState("");
   const create = useMutation({
     mutationFn: (request: CreateExtensionFolderRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.CreateExtensionFolder, request),
     onSuccess: (folder) => {
@@ -46,7 +46,7 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !create.isPending) create.mutate({ name: name.trim(), description: description.trim() || null, tab: tab.trim() || null, panel: panel.trim() || null });
+        if (name.trim() && !create.isPending) create.mutate({ name: name.trim(), description: description.trim() || null });
       }}
     >
       <label className="field">
@@ -57,15 +57,6 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
         <span>What its buttons are for</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Create, renumber and check sheets." />
       </label>
-      <RibbonPlace
-        hint="Where the buttons of this folder go on the Revit ribbon:"
-        tab={tab}
-        panel={panel}
-        tabDefault="AnalyseTool"
-        panelDefault="Extensions"
-        onTab={setTab}
-        onPanel={setPanel}
-      />
       <p className="muted small">A folder of buttons that belong together, with its own version history.</p>
       {create.isPending && <p className="muted small">Creating…</p>}
       {create.isError && <p className="error small">{messageOf(create.error)}</p>}
@@ -74,13 +65,11 @@ export function NewFolderForm({ onCreated }: { onCreated: (id: string) => void }
 }
 
 /** «+ New button» in a folder: a name and what it does — a page with its C# command, added to the folder as a version. */
-export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onOpenFiles: () => void }) {
+export function NewButtonForm({ folder, panel, onOpenFiles }: { folder: PaneFolder; panel?: string; onOpenFiles: () => void }) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [tab, setTab] = useState("");
-  const [panel, setPanel] = useState("");
   const add = useMutation({
     mutationFn: (request: AddExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.AddExtensionButton, request),
     onSuccess: (_, request) => {
@@ -104,7 +93,7 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !add.isPending) add.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, template: "CommandWithPage", tab: tab.trim() || null, panel: panel.trim() || null });
+        if (name.trim() && !add.isPending) add.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, template: "CommandWithPage", panel: panel ?? null });
       }}
     >
       <label className="field">
@@ -115,15 +104,6 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
         <span>What it does</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Renumbers the selected sheets from 101." />
       </label>
-      <RibbonPlace
-        hint="By default the button sits where its folder puts it. Give it a tab or a panel of its own:"
-        tab={tab}
-        panel={panel}
-        tabDefault={folder.tab || "AnalyseTool"}
-        panelDefault={folder.panel || "Extensions"}
-        onTab={setTab}
-        onPanel={setPanel}
-      />
       <p className="muted small">A tap opens its page; the page calls its C# command in Revit. Both start as a small example to edit.</p>
       {add.isPending && <p className="muted small">Adding…</p>}
       {add.isError && <p className="error small">{messageOf(add.error)}</p>}
@@ -132,14 +112,12 @@ export function NewButtonForm({ folder, onOpenFiles }: { folder: PaneFolder; onO
 }
 
 /** ✎ on a button: its text and what it does. A new text is a new key — the dock, the stars and the order follow it. */
-export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFolder; button: PaneButton; onOpenFiles: () => void }) {
+export function EditButtonForm({ folder, folders, button, onOpenFiles }: { folder: PaneFolder; folders: PaneFolder[]; button: PaneButton; onOpenFiles: () => void }) {
   const actions = useActions();
   const refresh = useRefreshAll();
   const { update } = useProfile();
   const [name, setName] = useState(button.name);
   const [tooltip, setTooltip] = useState(button.tooltip && button.tooltip !== button.name ? button.tooltip : "");
-  const [tab, setTab] = useState(button.tab ?? "");
-  const [panel, setPanel] = useState(button.panel ?? "");
   const save = useMutation({
     mutationFn: (request: UpdateExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionButton, request),
     onSuccess: (_, request) => {
@@ -150,6 +128,7 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
           ...profile,
           dock: profile.dock.map(rename),
           ribbon: profile.ribbon.map(rename),
+          hiddenButtons: profile.hiddenButtons.map(rename),
           order: Object.fromEntries(Object.entries(profile.order).map(([id, keys]) => [id, keys.map((key) => (key === `btn:${button.key}` ? `btn:${newKey}` : key))])),
         }));
       }
@@ -165,7 +144,7 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null, tab: tab.trim(), panel: panel.trim() });
+        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, button: button.name, name: name.trim(), tooltip: tooltip.trim() || null });
       }}
     >
       <label className="field">
@@ -176,17 +155,9 @@ export function EditButtonForm({ folder, button, onOpenFiles }: { folder: PaneFo
         <span>What it does</span>
         <textarea rows={3} value={tooltip} onChange={(event) => setTooltip(event.target.value)} placeholder="The tooltip of the button" />
       </label>
-      <RibbonPlace
-        hint="By default the button sits where its folder puts it. Give it a tab or a panel of its own:"
-        tab={tab}
-        panel={panel}
-        tabDefault={folder.tab || "AnalyseTool"}
-        panelDefault={folder.panel || "Extensions"}
-        onTab={setTab}
-        onPanel={setPanel}
-      />
       <p className="muted small">Saved as a version of {folder.name}. The code keeps its file; a new name starts the statistics of the button anew.</p>
       {save.isPending && <p className="muted small">Saving…</p>}
+      {!button.group && <MoveTo folder={folder} folders={folders} button={button} />}
       <button type="button" onClick={onOpenFiles}>
         Code, files and versions…
       </button>
@@ -201,8 +172,6 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
   const refresh = useRefreshAll();
   const [name, setName] = useState(folder.name);
   const [description, setDescription] = useState(folder.description && folder.description !== folder.name ? folder.description : "");
-  const [tab, setTab] = useState(folder.tab ?? "");
-  const [panel, setPanel] = useState(folder.panel ?? "");
   const save = useMutation({
     mutationFn: (request: UpdateExtensionFolderRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.UpdateExtensionFolder, request),
     onSuccess: (_, request) => {
@@ -218,7 +187,7 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
       className="sheet-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null, tab: tab.trim(), panel: panel.trim() });
+        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, name: name.trim(), description: description.trim() || null });
       }}
     >
       <label className="field">
@@ -229,15 +198,6 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
         <span>What its buttons are for</span>
         <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
-      <RibbonPlace
-        hint="Where the buttons of this folder go on the Revit ribbon:"
-        tab={tab}
-        panel={panel}
-        tabDefault="AnalyseTool"
-        panelDefault="Extensions"
-        onTab={setTab}
-        onPanel={setPanel}
-      />
       <p className="muted small">Saved as a version of the folder. Its id ({folder.id}) and its commands stay.</p>
       {save.isPending && <p className="muted small">Saving…</p>}
       {save.isError && <p className="error small">{messageOf(save.error)}</p>}
@@ -245,29 +205,97 @@ export function EditFolderForm({ folder }: { folder: PaneFolder }) {
   );
 }
 
-/** «Advanced»: the ribbon tab and panel. Closed by default — the defaults are fine; who knows the ribbon sets them. */
-function RibbonPlace(props: {
-  hint: string;
-  tab: string;
-  panel: string;
-  tabDefault: string;
-  panelDefault: string;
-  onTab: (value: string) => void;
-  onPanel: (value: string) => void;
-}) {
+/** «Move to…»: another panel of the folder, or a panel of another folder of the user. */
+function MoveTo({ folder, folders, button }: { folder: PaneFolder; folders: PaneFolder[]; button: PaneButton }) {
+  const actions = useActions();
+  const refresh = useRefreshAll();
+  const targets = folders.filter((candidate) => candidate.canAddButtons);
+  const [to, setTo] = useState(folder.id);
+  const target = targets.find((candidate) => candidate.id === to) ?? folder;
+  const panels = target.panels?.length ? target.panels : [target.panel ?? target.name];
+  const current = button.panel ?? folder.panel ?? folder.name;
+  const [panel, setPanel] = useState(current);
+  const move = useMutation({
+    mutationFn: (request: MoveExtensionButtonRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.MoveExtensionButton, request),
+    onSuccess: () => {
+      refresh();
+      actions.closeSheet();
+      actions.toast(`«${button.name}» moved to ${target.name} › ${panel}`);
+    },
+  });
+  const same = to === folder.id && panel.toLowerCase() === current.toLowerCase();
+
   return (
-    <details className="advanced" open={!!(props.tab || props.panel)}>
-      <summary>Advanced: ribbon tab and panel</summary>
-      <p className="muted small">{props.hint}</p>
+    <details className="advanced">
+      <summary>Move to…</summary>
       <label className="field">
-        <span>Tab</span>
-        <input value={props.tab} onChange={(event) => props.onTab(event.target.value)} placeholder={props.tabDefault} />
+        <span>Folder (tab)</span>
+        <select
+          value={to}
+          onChange={(event) => {
+            setTo(event.target.value);
+            const next = targets.find((candidate) => candidate.id === event.target.value);
+            setPanel(next?.panels?.[0] ?? next?.name ?? "");
+          }}
+        >
+          {targets.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.name}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="field">
         <span>Panel</span>
-        <input value={props.panel} onChange={(event) => props.onPanel(event.target.value)} placeholder={props.panelDefault} />
+        <select value={panel} onChange={(event) => setPanel(event.target.value)}>
+          {panels.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
       </label>
-      <p className="muted small">Empty: {props.tabDefault} › {props.panelDefault}. A tab that does not exist yet is created.</p>
+      {to !== folder.id && (
+        <p className="muted small">Its C# file and page go along; its command becomes {target.id}.… A version is saved in both folders.</p>
+      )}
+      <button type="button" disabled={same || move.isPending} onClick={() => move.mutate({ id: folder.id, button: button.name, panel, toId: to === folder.id ? null : to })}>
+        {move.isPending ? "Moving…" : "Move"}
+      </button>
+      {move.isError && <p className="error small">{messageOf(move.error)}</p>}
     </details>
+  );
+}
+
+/** A panel of a folder: a new one, or a new name for one — its buttons follow. */
+export function PanelForm({ folder, panel }: { folder: PaneFolder; panel?: string }) {
+  const actions = useActions();
+  const refresh = useRefreshAll();
+  const [name, setName] = useState(panel ?? "");
+  const save = useMutation({
+    mutationFn: (request: SetExtensionPanelRequest) => bridge.invoke<ExtensionSummary>(extensionCommands.SetExtensionPanel, request),
+    onSuccess: (_, request) => {
+      refresh();
+      actions.closeSheet();
+      actions.toast(panel ? `Panel «${request.name}» saved` : `Panel «${request.name}» added — drag buttons into it`);
+    },
+  });
+
+  return (
+    <form
+      id={SHEET_FORM}
+      className="sheet-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim() && !save.isPending) save.mutate({ id: folder.id, panel: panel ?? null, name: name.trim() });
+      }}
+    >
+      <label className="field">
+        <span>Name</span>
+        <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Checks" />
+      </label>
+      <p className="muted small">A section of {folder.name} — a panel of its tab on the Revit ribbon.</p>
+      {save.isPending && <p className="muted small">Saving…</p>}
+      {save.isError && <p className="error small">{messageOf(save.error)}</p>}
+    </form>
   );
 }

@@ -323,7 +323,8 @@
   position: relative;
   overflow: auto;
   overflow-x: hidden;
-  padding: 0 12px 100px;
+  /* The last row stays above the dock, whatever its height */
+  padding: 0 12px calc(var(--dock-height, 88px) + 28px);
 }
 
 .screen {
@@ -1590,4 +1591,228 @@
 
 .sheet .sheet-header button.text-button.bold {
   font-weight: 600;
+}
+
+/* ---- Not on the Revit ribbon: grey and struck through — at a glance, not only in the edit mode ---- */
+.tile.off .tile-face > .tile-icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.tile.off .tile-label {
+  color: var(--secondary-label);
+}
+
+/* A diagonal stroke across the icon, like a crossed-out item */
+.tile-off {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1.5px),
+    color-mix(in srgb, var(--secondary-label) 80%, transparent) calc(50% - 1.5px),
+    color-mix(in srgb, var(--secondary-label) 80%, transparent) calc(50% + 1.5px),
+    transparent calc(50% + 1.5px)
+  );
+}
+
+/* ---- Sections of a folder: the panels of its ribbon tab ---- */
+.pane-section {
+  margin: 4px 0 14px;
+  padding: 8px 0 2px;
+  border-radius: 16px;
+}
+
+.pane-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--secondary-label);
+  border-bottom: 0.5px solid var(--separator);
+  margin-bottom: 8px;
+}
+
+/* In the edit mode the sections show as drop areas — an empty one too */
+.pane-section.drop {
+  background: var(--fill);
+  padding: 8px 6px 2px;
+  min-height: calc(var(--tile) + 52px);
+}
+
+.drop-hint {
+  grid-column: 1 / -1;
+  align-self: center;
+  text-align: center;
+  margin: 18px 0;
+}
+
+.new-panel {
+  display: block;
+  margin: 4px auto 16px;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+/* ---- A pulldown (▾): a button with a list, not a folder — a wide rounded shape with a chevron ---- */
+.tile.pulldown .tile-face {
+  border-radius: 14px;
+  outline: 1.5px dashed var(--separator);
+  outline-offset: 2px;
+}
+
+.tile.pulldown .tile-face::after {
+  content: "▾";
+  position: absolute;
+  /* Inside the corner: the face clips what sticks out */
+  right: 3px;
+  bottom: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #fff;
+  background: var(--accent);
+}
+
+.pulldown-list {
+  padding: 4px 0 8px;
+}
+
+.sheet-form select {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: none;
+  background: var(--fill);
+  color: var(--label);
+}
+
+/* ---- «How it works» ---- */
+.help-button {
+  margin-left: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--fill);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.guide-step {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.guide-step p {
+  margin: 2px 0 0;
+}
+
+.guide-picture {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+}
+
+.guide-tile,
+.guide-folder {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 23%;
+  background: linear-gradient(160deg, hsl(210 70% 58%), hsl(235 65% 42%));
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 22px;
+}
+
+.guide-folder {
+  background: var(--fill-strong);
+  box-shadow: inset 0 0 0 6px var(--fill), inset 0 0 0 7px var(--separator);
+}
+
+.guide-tile.off {
+  filter: grayscale(1);
+  opacity: 0.45;
+  background-image: linear-gradient(to top right, transparent 48%, #555 48%, #555 52%, transparent 52%), linear-gradient(160deg, hsl(210 70% 58%), hsl(235 65% 42%));
+}
+
+.guide-tile.pulldown::after {
+  content: "▾";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+}
+
+.guide-tile.add {
+  background: var(--fill);
+  color: var(--accent);
+}
+
+.guide-tile.corners .guide-badge {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+
+.guide-tile.corners .guide-badge.remove { top: -6px; left: -6px; }
+.guide-tile.corners .guide-badge.change { top: -6px; right: -6px; left: auto; }
+.guide-tile.corners .guide-badge.open-folder { bottom: -6px; left: -6px; top: auto; font-size: 9px; }
+.guide-tile.corners .guide-badge.star { bottom: -6px; right: -6px; top: auto; left: auto; }
+
+.guide-section {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--secondary-label);
+  padding: 14px 8px 4px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.guide-dock {
+  width: 56px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--glass);
+  box-shadow: var(--shadow);
+}
+
+.guide-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
 }

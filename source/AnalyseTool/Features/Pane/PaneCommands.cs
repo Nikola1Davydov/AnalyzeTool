@@ -24,9 +24,11 @@ namespace AnalyseTool.Features.Pane;
 /// <param name="Image">A PNG icon of the folder as a data URL.</param>
 /// <param name="Command">The command it runs; <see langword="null" /> when it opens a page.</param>
 /// <param name="Group">The pulldown it sits in on the ribbon: a folder in the pane.</param>
-/// <param name="Tab">Its own ribbon tab (plugin.json), when it has one.</param>
-/// <param name="Panel">Its own ribbon panel, when it has one.</param>
-public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null);
+/// <param name="Tab">The ribbon tab it goes on.</param>
+/// <param name="Panel">Its section of the folder: the panel of the tab.</param>
+/// <param name="OffRibbon">plugin.json keeps it off the ribbon (<c>"ribbon": false</c>); the «+» of the pane is the profile.</param>
+public sealed record PaneButton(string Key, string Name, string? Tooltip, string? Glyph, string? Image, string? Command, string? Group, string? Tab = null, string? Panel = null,
+    bool OffRibbon = false);
 
 /// <summary>A folder of buttons: AnalyseTool itself, or an extension.</summary>
 /// <param name="Id">The folder id.</param>
@@ -38,10 +40,12 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="CanAddButtons">One of the user's folders: «+ New button» adds C# or a page to it (not AnalyseTool, not a package, not a DLL).</param>
 /// <param name="Description">What its buttons are for.</param>
 /// <param name="Directory">The folder on disk, to open in Explorer or an AI tool; <see langword="null" /> for AnalyseTool's own.</param>
-/// <param name="Tab">The ribbon tab of its buttons (plugin.json <c>ui.tab</c>); the AnalyseTool tab when absent.</param>
-/// <param name="Panel">The ribbon panel of its buttons (<c>ui.panel</c>); «Extensions» when absent.</param>
+/// <param name="Tab">The ribbon tab of its buttons: its name for a folder of the user, the author's for a package.</param>
+/// <param name="Panel">The default panel of its buttons (<c>ui.panel</c>, else the name of the folder).</param>
+/// <param name="Panels">Its sections in order: the panels of its tab.</param>
+/// <param name="TabFromPackage">The tab is the package author's, not the folder name.</param>
 public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons,
-    string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null);
+    string? Description = null, string? Directory = null, string? Tab = null, string? Panel = null, IReadOnlyList<string>? Panels = null, bool TabFromPackage = false);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -62,25 +66,20 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
         var folders = catalog.GetSources()
             .Select(source => new PaneFolder(
                 source.Extension.Id,
-                source.BuiltIn ? "AnalyseTool" : FolderName(source.Extension),
+                ButtonCatalog.FolderName(source),
                 source.BuiltIn,
                 source.Shown,
                 Problems(source.State),
-                Buttons(source.Extension).ToList(),
+                Buttons(source).ToList(),
                 !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll,
                 source.Extension.Manifest.Description,
                 source.BuiltIn ? null : source.Extension.Directory,
-                source.Extension.Manifest.Ui?.Tab,
-                source.Extension.Manifest.Ui?.Panel))
+                ButtonCatalog.Place(source, new ExtensionButton()).Tab,
+                ButtonCatalog.Place(source, new ExtensionButton()).Panel,
+                ButtonCatalog.Panels(source),
+                !source.BuiltIn && source.Extension.Zone != ExtensionZone.Dev && !string.Equals(ButtonCatalog.Place(source, new ExtensionButton()).Tab, ButtonCatalog.FolderName(source), StringComparison.Ordinal)))
             .ToList();
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
-    }
-
-    /// <summary>The name of a folder: its <c>name</c>, else its description, else its id.</summary>
-    internal static string FolderName(ExtensionDescriptor extension)
-    {
-        var manifest = extension.Manifest;
-        return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : extension.Id;
     }
 
     private static IReadOnlyList<string> Problems(ExtensionState? state)
@@ -95,8 +94,9 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
             .ToList();
     }
 
-    private static IEnumerable<PaneButton> Buttons(ExtensionDescriptor extension)
+    private static IEnumerable<PaneButton> Buttons(ButtonSource source)
     {
+        var extension = source.Extension;
         // "pane": false — a button of the ribbon only
         foreach (var button in (extension.Manifest.Ui?.EffectiveButtons() ?? []).Where(button => button.InPane))
         {
@@ -104,21 +104,24 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
             {
                 foreach (var child in (button.Items ?? []).Where(child => child.InPane))
                 {
-                    yield return Create(extension, child, ButtonUsageStore.Normalize(button.Name));
+                    yield return Create(source, child, ButtonUsageStore.Normalize(button.Name), button);
                 }
             }
             else
             {
-                yield return Create(extension, button, null);
+                yield return Create(source, button, null, button);
             }
         }
     }
 
-    private static PaneButton Create(ExtensionDescriptor extension, ExtensionButton button, string? group)
+    /// <param name="placed">The button that sits on the ribbon: the pulldown for its items.</param>
+    private static PaneButton Create(ButtonSource source, ExtensionButton button, string? group, ExtensionButton placed)
     {
+        var extension = source.Extension;
         var (glyph, image) = Icon(extension.Directory, button.Icon);
+        var (tab, panel) = ButtonCatalog.Place(source, placed);
         return new PaneButton(ButtonUsageStore.Key(extension.Id, button.Name), ButtonUsageStore.Normalize(button.Name), button.Tooltip, glyph, image,
-            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, button.Tab, button.Panel);
+            string.IsNullOrWhiteSpace(button.Command) ? null : button.Command, group, tab, panel, !button.OnRibbon || !placed.OnRibbon);
     }
 
     /// <summary>A glyph character, or a PNG of the folder as a data URL — never a file outside the folder.</summary>
@@ -220,8 +223,8 @@ public sealed class GetPaneProfile(ExtensionPaths paths) : ICommand<PaneProfileR
 }
 
 /// <summary>Saves the profile of the pane.</summary>
-[Command(Description = "Saves the profile of the dock pane; its starred buttons (\"ribbon\") go on the Revit ribbon.")]
-public sealed class SavePaneProfile(ExtensionPaths paths, RibbonFavorites favorites) : ICommand<SavePaneProfileRequest, Empty>
+[Command(Description = "Saves the profile of the dock pane; its hidden folders and buttons leave the Revit ribbon.")]
+public sealed class SavePaneProfile(ExtensionPaths paths, RibbonVisibility visibility) : ICommand<SavePaneProfileRequest, Empty>
 {
     /// <inheritdoc />
     public Task<Empty> ExecuteAsync(SavePaneProfileRequest request, CommandContext context)
@@ -232,8 +235,8 @@ public sealed class SavePaneProfile(ExtensionPaths paths, RibbonFavorites favori
         }
 
         PaneProfile.Write(paths, request.Profile);
-        // The stars of the profile are buttons of the Revit ribbon: it rebuilds when they change
-        favorites.Update(request.Profile);
+        // The «+» of the pane decides what the Revit ribbon loads: it rebuilds when that changes
+        visibility.Update(request.Profile);
         return Task.FromResult(Empty.Value);
     }
 }

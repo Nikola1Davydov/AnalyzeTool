@@ -1,6 +1,8 @@
 using System.IO;
 using System.Text.Json;
 using AnalyseTool.Extensions.Authoring;
+using AnalyseTool.Extensions.Manifest;
+using AnalyseTool.Extensions.Storage;
 using AnalyseTool.Features.Pane;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Infrastructure.Ribbon;
@@ -61,7 +63,7 @@ public sealed class PaneTests
         var profile = JsonDocument.Parse("""{ "size": "large", "dock": ["analysetool/Statistics"] }""").RootElement;
 
         var before = await new GetPaneProfile(environment.Paths).ExecuteAsync(Context(nameof(GetPaneProfile)));
-        await new SavePaneProfile(environment.Paths, new RibbonFavorites(environment.Paths)).ExecuteAsync(new SavePaneProfileRequest(profile), Context(nameof(SavePaneProfile)));
+        await new SavePaneProfile(environment.Paths, new RibbonVisibility(environment.Paths)).ExecuteAsync(new SavePaneProfileRequest(profile), Context(nameof(SavePaneProfile)));
         var after = await new GetPaneProfile(environment.Paths).ExecuteAsync(Context(nameof(GetPaneProfile)));
         await File.WriteAllTextAsync(Path.Combine(environment.Paths.ProfileRoot, "pane-profile.json"), "{ broken");
         var broken = await new GetPaneProfile(environment.Paths).ExecuteAsync(Context(nameof(GetPaneProfile)));
@@ -72,30 +74,59 @@ public sealed class PaneTests
             await Assert.That(after.Profile!.Value.GetProperty("size").GetString()).IsEqualTo("large");
             await Assert.That(after.Profile!.Value.GetProperty("dock")[0].GetString()).IsEqualTo("analysetool/Statistics");
             await Assert.That(broken.Profile).IsNull();
-            await Assert.That(async () => await new SavePaneProfile(environment.Paths, new RibbonFavorites(environment.Paths)).ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse("[]").RootElement), Context(nameof(SavePaneProfile))))
+            await Assert.That(async () => await new SavePaneProfile(environment.Paths, new RibbonVisibility(environment.Paths)).ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse("[]").RootElement), Context(nameof(SavePaneProfile))))
                 .Throws<CommandException>();
         }
     }
 
     [Test]
-    public async Task Stars_OfASavedProfile_GoToTheRibbon_AndRebuildItOnlyWhenTheyChange()
+    public async Task Visibility_OfASavedProfile_DecidesWhatTheRibbonLoads_AndRebuildsOnlyOnAChange()
     {
         using var environment = new ExtensionTestEnvironment();
-        var favorites = new RibbonFavorites(environment.Paths);
+        var visibility = new RibbonVisibility(environment.Paths);
         var changes = 0;
-        favorites.Changed += (_, _) => changes++;
-        var save = new SavePaneProfile(environment.Paths, favorites);
+        visibility.Changed += (_, _) => changes++;
+        var save = new SavePaneProfile(environment.Paths, visibility);
+        const string profile = """{ "hiddenFolders": ["old-tools"], "hiddenButtons": ["sheets/Renumber", 5], "ribbon": ["analysetool/Parameters"] }""";
 
-        await save.ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse("""{ "ribbon": ["analysetool/Statistics", "count-walls/Count walls", "analysetool/Statistics", 5] }""").RootElement), Context(nameof(SavePaneProfile)));
-        await save.ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse("""{ "size": "large", "ribbon": ["analysetool/Statistics", "count-walls/Count walls"] }""").RootElement), Context(nameof(SavePaneProfile)));
+        await save.ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse(profile).RootElement), Context(nameof(SavePaneProfile)));
+        await save.ExecuteAsync(new SavePaneProfileRequest(JsonDocument.Parse(profile).RootElement), Context(nameof(SavePaneProfile)));
 
         using (Assert.Multiple())
         {
-            await Assert.That(favorites.Keys).IsEquivalentTo(["analysetool/Statistics", "count-walls/Count walls"]);
             await Assert.That(changes).IsEqualTo(1);
+            await Assert.That(visibility.IsFolderHidden("OLD-TOOLS")).IsTrue();
+            // A button is loaded as its plugin.json says, unless «+»/«−» of the pane says otherwise
+            await Assert.That(visibility.IsButtonLoaded("sheets/Renumber", onRibbonByDefault: true)).IsFalse();
+            await Assert.That(visibility.IsButtonLoaded("sheets/Check", onRibbonByDefault: true)).IsTrue();
+            await Assert.That(visibility.IsButtonLoaded("analysetool/Parameters", onRibbonByDefault: false)).IsTrue();
+            await Assert.That(visibility.IsButtonLoaded("analysetool/About", onRibbonByDefault: false)).IsFalse();
             // A new start of Revit reads them from the file
-            await Assert.That(new RibbonFavorites(environment.Paths).Keys.Count).IsEqualTo(2);
-            await Assert.That(RibbonFavorites.Parse(null)).IsEmpty();
+            await Assert.That(new RibbonVisibility(environment.Paths).IsFolderHidden("old-tools")).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Place_AFolderOfTheUserIsItsTab_APackageKeepsItsAuthorsTab()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        var state = await environment.Manager.AddButtonAsync("sheets", "Renumber", null, ExtensionTemplate.Command, CancellationToken.None, panel: "Numbers");
+        // A tab left in plugin.json by hand is ignored for a folder of the user
+        ExtensionManifest.Update(state.Descriptor.Directory, manifest => manifest["ui"]!["tab"] = "Somewhere");
+        state = (await environment.Host.ReloadAsync("sheets", CancellationToken.None))!;
+
+        var own = new ButtonSource(state.Descriptor, false, true, state);
+        var package = own with { Extension = state.Descriptor with { Zone = ExtensionZone.Managed } };
+        var builtIn = ButtonCatalog.LoadBuiltIn(Path.Combine(AppContext.BaseDirectory, ButtonCatalog.RibbonFolder), includeDev: false)[0];
+        var button = state.Descriptor.Manifest.Ui!.EffectiveButtons()[0];
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(ButtonCatalog.Place(own, button)).IsEqualTo(("Sheets", "Numbers"));
+            await Assert.That(ButtonCatalog.Place(package, button)).IsEqualTo(("Somewhere", "Numbers"));
+            await Assert.That(ButtonCatalog.Place(new ButtonSource(builtIn, true, true), builtIn.Manifest.Ui!.EffectiveButtons()[0]).Tab).IsEqualTo("AnalyseTool");
+            await Assert.That(ButtonCatalog.Panels(own)).IsEquivalentTo(["Numbers"]);
         }
     }
 

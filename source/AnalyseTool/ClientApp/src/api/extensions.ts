@@ -9,6 +9,8 @@ export const extensionCommands = {
   AddExtensionButton: "AddExtensionButton",
   UpdateExtensionFolder: "UpdateExtensionFolder",
   UpdateExtensionButton: "UpdateExtensionButton",
+  SetExtensionPanel: "SetExtensionPanel",
+  MoveExtensionButton: "MoveExtensionButton",
   SetExtensionEnabled: "SetExtensionEnabled",
   RemoveExtension: "RemoveExtension",
   BuildExtension: "BuildExtension",
@@ -99,6 +101,23 @@ export interface AddExtensionButtonRequest {
   /** Its own ribbon tab and panel; the folder's when absent. */
   tab?: string | null;
   panel?: string | null;
+}
+
+export interface SetExtensionPanelRequest {
+  id: string;
+  /** The panel to rename; null adds a new one. */
+  panel: string | null;
+  name: string;
+}
+
+export interface MoveExtensionButtonRequest {
+  id: string;
+  button: string;
+  panel: string;
+  /** The button it goes before; the end of the panel when null. */
+  before?: string | null;
+  /** Another folder; the same one when null. */
+  toId?: string | null;
 }
 
 export interface UpdateExtensionFolderRequest {

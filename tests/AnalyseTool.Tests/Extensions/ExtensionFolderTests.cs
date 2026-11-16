@@ -95,6 +95,61 @@ public sealed class ExtensionFolderTests
     }
 
     [Test]
+    public async Task Panels_AddRenameAndMoveWithinAFolder_KeepTheOrder()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "One", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Two", null, ExtensionTemplate.Command, CancellationToken.None);
+
+        await environment.Manager.SetPanelAsync("sheets", null, "Checks", CancellationToken.None);
+        await environment.Manager.MoveButtonAsync("sheets", "Two", "Checks", null, null, CancellationToken.None);
+        var state = await environment.Manager.SetPanelAsync("sheets", "Checks", "Audit", CancellationToken.None);
+        state = await environment.Manager.MoveButtonAsync("sheets", "Two", "Sheets", "One", null, CancellationToken.None);
+
+        var ui = state.Descriptor.Manifest.Ui!;
+        using (Assert.Multiple())
+        {
+            await Assert.That(ui.Panels!).IsEquivalentTo(["Sheets", "Audit"]);
+            // Before «One» in the panel «Sheets»
+            await Assert.That(ui.EffectiveButtons().Select(button => button.Name)).IsEquivalentTo(["Two", "One"]);
+            await Assert.That(ui.EffectiveButtons()[0].Panel).IsEqualTo("Sheets");
+            await Assert.That(environment.History.GetChanges(state.Descriptor.Directory)).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task MoveButton_ToAnotherFolder_CarriesItsCodeAndPage_AndRenamesItsCommand()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        await environment.Manager.CreateFolderAsync("Sheets", null, null, null, null, CancellationToken.None);
+        await environment.Manager.CreateFolderAsync("Rooms", null, null, null, null, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "Keep", null, ExtensionTemplate.Command, CancellationToken.None);
+        await environment.Manager.AddButtonAsync("sheets", "List rooms", null, ExtensionTemplate.CommandWithPage, CancellationToken.None);
+
+        var rooms = await environment.Manager.MoveButtonAsync("sheets", "List rooms", "Rooms", null, "rooms", CancellationToken.None);
+        var sheets = environment.Manager.Get("sheets");
+
+        var moved = rooms.Descriptor.Manifest.Ui!.EffectiveButtons().Single();
+        using (Assert.Multiple())
+        {
+            await Assert.That(rooms.Errors).IsEmpty();
+            await Assert.That(rooms.Commands).Contains("rooms.ListRooms");
+            await Assert.That(sheets.Commands).DoesNotContain("sheets.ListRooms");
+            await Assert.That(sheets.Commands).Contains("sheets.Keep");
+            await Assert.That(File.Exists(Path.Combine(rooms.Descriptor.Directory, "src", "ListRooms.cs"))).IsTrue();
+            await Assert.That(File.Exists(Path.Combine(sheets.Descriptor.Directory, "src", "ListRooms.cs"))).IsFalse();
+            // Its page calls the command by its new name
+            var page = await File.ReadAllTextAsync(Path.Combine(rooms.Descriptor.Directory, moved.EntryHtml ?? "index.html"));
+            await Assert.That(page).Contains("rooms.ListRooms");
+            await Assert.That(page).DoesNotContain("sheets.ListRooms");
+            await Assert.That(environment.History.GetHistory(rooms.Descriptor.Directory)[0].Message).IsEqualTo("Took «List rooms» from Sheets");
+            await Assert.That(environment.History.GetHistory(sheets.Descriptor.Directory)[0].Message).IsEqualTo("Moved «List rooms» to Rooms");
+            await Assert.That(environment.History.GetChanges(sheets.Descriptor.Directory)).IsEmpty();
+        }
+    }
+
+    [Test]
     public async Task AddButton_WithANameTaken_IsRefused_AndAnOldSingleButtonBecomesAList()
     {
         using var environment = new ExtensionTestEnvironment();

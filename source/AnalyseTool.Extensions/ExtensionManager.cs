@@ -178,6 +178,305 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
             string.Equals(Usage.ButtonUsageStore.Normalize(left), Usage.ButtonUsageStore.Normalize(right), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    ///     Adds a panel (section) to a folder, or renames one: <c>ui.panels</c> keeps the order of the sections, and every button
+    ///     of the old panel moves to the new name. Saved as a version.
+    /// </summary>
+    public async Task<ExtensionState> SetPanelAsync(string id, string? panel, string name, CancellationToken cancellationToken)
+    {
+        var descriptor = Own(id);
+        var trimmed = name.Trim();
+        if (trimmed.Length == 0)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A panel needs a name.");
+        }
+
+        ExtensionManifest.Update(descriptor.Directory, manifest =>
+        {
+            var ui = Ui(manifest);
+            var panels = PanelList(ui, descriptor);
+            if (panel is null)
+            {
+                if (!panels.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                {
+                    panels.Add(trimmed);
+                }
+            }
+            else
+            {
+                var at = panels.FindIndex(item => string.Equals(item, panel, StringComparison.OrdinalIgnoreCase));
+                if (at < 0)
+                {
+                    throw new CommandException(ExtensionErrorCodes.Invalid, $"The folder '{id}' has no panel «{panel}».");
+                }
+
+                panels[at] = trimmed;
+                foreach (var node in ButtonNodes(ui))
+                {
+                    if (string.Equals(PanelOf(node, ui, descriptor), panel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        node["panel"] = trimmed;
+                    }
+                }
+            }
+
+            ui["panels"] = new System.Text.Json.Nodes.JsonArray(panels.Select(item => (System.Text.Json.Nodes.JsonNode?)item).ToArray());
+        });
+        SaveChange(descriptor, panel is null ? $"Added the panel «{trimmed}»" : $"Renamed the panel «{panel}» to «{trimmed}»");
+        return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
+    }
+
+    /// <summary>
+    ///     Moves a button to another panel of its folder — before another button, or to the end — or to another folder of the
+    ///     user. A move between folders carries its C# file and its page along, renames its command to the new folder
+    ///     (<c>&lt;new id&gt;.&lt;Class&gt;</c>, also in the <c>AT.invoke</c> calls of its page) and is a version in both folders.
+    /// </summary>
+    public async Task<ExtensionState> MoveButtonAsync(string id, string button, string panel, string? before, string? toId, CancellationToken cancellationToken)
+    {
+        var source = Own(id);
+        var target = string.IsNullOrWhiteSpace(toId) || string.Equals(toId, id, StringComparison.OrdinalIgnoreCase) ? source : Own(toId);
+        var key = Usage.ButtonUsageStore.Normalize(button);
+        var panelName = panel.Trim();
+        if (panelName.Length == 0)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A panel is required.");
+        }
+
+        if (ReferenceEquals(target, source))
+        {
+            ExtensionManifest.Update(source.Directory, manifest =>
+            {
+                var ui = Ui(manifest);
+                var node = TakeTopButton(ui, key) ?? throw new CommandException(ExtensionErrorCodes.Invalid, $"The folder '{id}' has no button «{button}» on a panel.");
+                node["panel"] = panelName;
+                Insert(ui, node, before);
+                AddPanel(ui, source, panelName);
+            });
+            SaveChange(source, $"Moved «{key}» to the panel «{panelName}»");
+            return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
+        }
+
+        if (target.Kind == ExtensionKind.Dll)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"'{target.Id}' is built as a DLL: its commands live in its project.");
+        }
+
+        var entry = (source.Manifest.Ui?.EffectiveButtons() ?? []).FirstOrDefault(item => Same(item.Name, key))
+                    ?? throw new CommandException(ExtensionErrorCodes.Invalid, $"The folder '{id}' has no button «{button}» on a panel.");
+        if ((target.Manifest.Ui?.EffectiveButtons() ?? []).SelectMany(item => (item.Items ?? []).Prepend(item)).Any(item => Same(item.Name, key)))
+        {
+            throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"'{target.Id}' has a button «{key}» already.");
+        }
+
+        // The files of the button: its page, and the C# files of its command and of the commands its page calls
+        string? page = null;
+        if (string.IsNullOrWhiteSpace(entry.Command))
+        {
+            page = !string.IsNullOrWhiteSpace(entry.EntryHtml) ? entry.EntryHtml : source.Manifest.Ui?.EntryHtml ?? "index.html";
+        }
+        else if (!string.IsNullOrWhiteSpace(entry.EntryHtml))
+        {
+            page = entry.EntryHtml;
+        }
+
+        var classes = new List<string>();
+        string? newCommand = null;
+        if (entry.Command is { } command && command.StartsWith(id + ".", StringComparison.OrdinalIgnoreCase))
+        {
+            classes.Add(command[(id.Length + 1)..]);
+            newCommand = $"{target.Id}.{command[(id.Length + 1)..]}";
+        }
+
+        if (page is not null && File.Exists(Path.Combine(source.Directory, page)))
+        {
+            var calls = System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(Path.Combine(source.Directory, page)), $@"[""'`]{System.Text.RegularExpressions.Regex.Escape(id)}\.(\w+)[""'`]");
+            classes.AddRange(calls.Select(match => match.Groups[1].Value));
+        }
+
+        var moves = new List<(string From, string To)>();
+        var sources = ExtensionCatalog.GetSourceFiles(source.Directory);
+        foreach (var className in classes.Distinct(StringComparer.Ordinal))
+        {
+            var file = sources.FirstOrDefault(path => System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(path), $@"\bclass\s+{System.Text.RegularExpressions.Regex.Escape(className)}\b"));
+            if (file is null || moves.Any(move => string.Equals(move.From, file, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var relative = Path.GetRelativePath(source.Directory, file);
+            if (File.Exists(Path.Combine(target.Directory, relative)))
+            {
+                throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"'{target.Id}' has a file {relative} already.");
+            }
+
+            moves.Add((file, Path.Combine(target.Directory, relative)));
+        }
+
+        string? newPage = null;
+        if (page is not null && File.Exists(Path.Combine(source.Directory, page)))
+        {
+            newPage = File.Exists(Path.Combine(target.Directory, page)) ? Path.GetFileNameWithoutExtension(page) + "-" + ExtensionScaffold.ToId(key) + ".html" : page;
+            moves.Add((Path.Combine(source.Directory, page), Path.Combine(target.Directory, newPage)));
+        }
+
+        // Save the unsaved work of both folders first: the move is then exactly one version in each
+        SaveChange(source, $"Before moving «{key}» to {FolderTitle(target)}");
+        SaveChange(target, $"Before taking «{key}» from {FolderTitle(source)}");
+        foreach (var (from, to) in moves)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Move(from, to);
+            if (to.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                // The page calls the commands of its folder by their full names
+                File.WriteAllText(to, File.ReadAllText(to).Replace($"'{id}.", $"'{target.Id}.").Replace($"\"{id}.", $"\"{target.Id}."));
+            }
+        }
+
+        System.Text.Json.Nodes.JsonObject? moved = null;
+        ExtensionManifest.Update(source.Directory, manifest =>
+        {
+            var ui = Ui(manifest);
+            moved = TakeTopButton(ui, key);
+            // A page that is gone is no longer the entry of the folder
+            if (page is not null && string.Equals(ui["entryHtml"]?.GetValue<string>(), page, StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.Combine(source.Directory, page)))
+            {
+                ui.Remove("entryHtml");
+            }
+        });
+        ExtensionManifest.Update(target.Directory, manifest =>
+        {
+            var ui = Ui(manifest);
+            var node = moved!;
+            node["panel"] = panelName;
+            if (newCommand is not null)
+            {
+                node["command"] = newCommand;
+            }
+
+            if (newPage is not null)
+            {
+                node["entryHtml"] = newPage;
+            }
+
+            Insert(ui, node, before);
+            AddPanel(ui, target, panelName);
+            if (newCommand is not null && manifest["build"] is null && manifest["entryAssembly"] is null)
+            {
+                manifest["build"] = "host";
+            }
+        });
+        SaveChange(source, $"Moved «{key}» to {FolderTitle(target)}");
+        SaveChange(target, $"Took «{key}» from {FolderTitle(source)}");
+        await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false);
+        return await host.ReloadAsync(target.Id, cancellationToken).ConfigureAwait(false) ?? Get(target.Id);
+
+        static bool Same(string left, string right) =>
+            string.Equals(Usage.ButtonUsageStore.Normalize(left), Usage.ButtonUsageStore.Normalize(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FolderTitle(ExtensionDescriptor descriptor)
+    {
+        return !string.IsNullOrWhiteSpace(descriptor.Manifest.Name) ? descriptor.Manifest.Name : descriptor.Id;
+    }
+
+    private static System.Text.Json.Nodes.JsonObject Ui(System.Text.Json.Nodes.JsonObject manifest)
+    {
+        if (manifest["ui"] is not System.Text.Json.Nodes.JsonObject ui)
+        {
+            manifest["ui"] = ui = new System.Text.Json.Nodes.JsonObject();
+        }
+
+        if (ui["buttons"] is not System.Text.Json.Nodes.JsonArray)
+        {
+            var buttons = new System.Text.Json.Nodes.JsonArray();
+            if (ui["button"] is System.Text.Json.Nodes.JsonObject single)
+            {
+                ui.Remove("button");
+                buttons.Add(single);
+            }
+
+            ui["buttons"] = buttons;
+        }
+
+        return ui;
+    }
+
+    /// <summary>The name of the folder: what its panel is when a button names none.</summary>
+    private static string DefaultPanel(System.Text.Json.Nodes.JsonObject ui, ExtensionDescriptor descriptor)
+    {
+        return ui["panel"]?.GetValue<string>() is { Length: > 0 } panel ? panel : FolderTitle(descriptor);
+    }
+
+    private static string PanelOf(System.Text.Json.Nodes.JsonObject node, System.Text.Json.Nodes.JsonObject ui, ExtensionDescriptor descriptor)
+    {
+        return node["panel"]?.GetValue<string>() is { Length: > 0 } panel ? panel : DefaultPanel(ui, descriptor);
+    }
+
+    /// <summary>The sections in order: <c>ui.panels</c>, then the panels the buttons name.</summary>
+    private static List<string> PanelList(System.Text.Json.Nodes.JsonObject ui, ExtensionDescriptor descriptor)
+    {
+        var panels = (ui["panels"] as System.Text.Json.Nodes.JsonArray)?.Select(item => item?.GetValue<string>()).OfType<string>().ToList() ?? [];
+        foreach (var node in ((System.Text.Json.Nodes.JsonArray)ui["buttons"]!).OfType<System.Text.Json.Nodes.JsonObject>())
+        {
+            var panel = PanelOf(node, ui, descriptor);
+            if (!panels.Contains(panel, StringComparer.OrdinalIgnoreCase))
+            {
+                panels.Add(panel);
+            }
+        }
+
+        return panels;
+    }
+
+    private static void AddPanel(System.Text.Json.Nodes.JsonObject ui, ExtensionDescriptor descriptor, string panel)
+    {
+        var panels = PanelList(ui, descriptor);
+        if (!panels.Contains(panel, StringComparer.OrdinalIgnoreCase))
+        {
+            panels.Add(panel);
+        }
+
+        ui["panels"] = new System.Text.Json.Nodes.JsonArray(panels.Select(item => (System.Text.Json.Nodes.JsonNode?)item).ToArray());
+    }
+
+    /// <summary>Takes a button (or a pulldown) of the top level out of <c>ui.buttons</c>.</summary>
+    private static System.Text.Json.Nodes.JsonObject? TakeTopButton(System.Text.Json.Nodes.JsonObject ui, string key)
+    {
+        var buttons = (System.Text.Json.Nodes.JsonArray)ui["buttons"]!;
+        var node = buttons.OfType<System.Text.Json.Nodes.JsonObject>()
+            .FirstOrDefault(item => string.Equals(Usage.ButtonUsageStore.Normalize(item["name"]?.GetValue<string>() ?? ""), key, StringComparison.OrdinalIgnoreCase));
+        if (node is not null)
+        {
+            buttons.Remove(node);
+        }
+
+        return node;
+    }
+
+    /// <summary>Puts a button before another one of <c>ui.buttons</c>, or at the end.</summary>
+    private static void Insert(System.Text.Json.Nodes.JsonObject ui, System.Text.Json.Nodes.JsonObject node, string? before)
+    {
+        var buttons = (System.Text.Json.Nodes.JsonArray)ui["buttons"]!;
+        var at = before is null
+            ? -1
+            : buttons.Select((item, index) => (item, index))
+                .Where(pair => string.Equals(Usage.ButtonUsageStore.Normalize(pair.item?["name"]?.GetValue<string>() ?? ""), Usage.ButtonUsageStore.Normalize(before), StringComparison.OrdinalIgnoreCase))
+                .Select(pair => pair.index)
+                .DefaultIfEmpty(-1)
+                .First();
+        // An «order» of plugin.json would win over the position: the place the user chose is the place
+        node.Remove("order");
+        if (at < 0)
+        {
+            buttons.Add(node);
+        }
+        else
+        {
+            buttons.Insert(at, node);
+        }
+    }
+
     /// <summary>The button objects of <c>ui</c>: <c>button</c>, <c>buttons</c> and the <c>items</c> of pulldowns.</summary>
     private static IEnumerable<System.Text.Json.Nodes.JsonObject> ButtonNodes(System.Text.Json.Nodes.JsonObject? ui)
     {

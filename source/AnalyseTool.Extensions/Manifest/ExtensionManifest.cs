@@ -157,6 +157,13 @@ public sealed record ExtensionUi
     [JsonPropertyName("buttons")]
     public IReadOnlyList<ExtensionButton>? Buttons { get; init; }
 
+    /// <summary>
+    ///     Gets the panels of the folder in their order — the sections of the pane, the panels of its tab. A panel named here
+    ///     exists even with no button yet; one a button names and this list does not comes after them.
+    /// </summary>
+    [JsonPropertyName("panels")]
+    public IReadOnlyList<string>? Panels { get; init; }
+
     /// <summary>The buttons to build, from either form, by <see cref="ExtensionButton.Order" /> then declaration; 0 goes last.</summary>
     public IReadOnlyList<ExtensionButton> EffectiveButtons()
     {

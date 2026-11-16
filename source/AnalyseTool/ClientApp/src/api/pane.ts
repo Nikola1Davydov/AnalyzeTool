@@ -21,9 +21,11 @@ export interface PaneButton {
   command: string | null;
   /** The pulldown it sits in on the ribbon: a folder in the pane. */
   group: string | null;
-  /** Its own ribbon tab and panel, when plugin.json gives them. */
+  /** The ribbon tab it goes on, and its panel — its section of the folder. */
   tab?: string | null;
   panel?: string | null;
+  /** plugin.json keeps it off the ribbon («ribbon»: false); «+» of the pane can still load it. */
+  offRibbon?: boolean;
 }
 
 export interface PaneFolder {
@@ -38,9 +40,13 @@ export interface PaneFolder {
   description: string | null;
   /** The folder on disk; null for AnalyseTool's own. */
   directory: string | null;
-  /** The ribbon tab and panel of its buttons; the AnalyseTool tab and «Extensions» when absent. */
+  /** The ribbon tab of its buttons (its name for a folder of the user) and its default panel. */
   tab?: string | null;
   panel?: string | null;
+  /** Its sections in order: the panels of its tab. */
+  panels?: string[] | null;
+  /** The tab is the one the package author chose, not the folder name. */
+  tabFromPackage?: boolean;
 }
 
 export interface PaneOverview {

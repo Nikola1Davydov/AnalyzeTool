@@ -71,7 +71,7 @@ public sealed class GetButtonStatistics(ButtonCatalog catalog, ButtonUsageStore 
 
             recorded.TryGetValue(key, out var used);
             var command = string.IsNullOrWhiteSpace(entry.Button.Command) ? null : entry.Button.Command;
-            result.Add(Create(extension.Id, (entry.Source.BuiltIn ? "AnalyseTool" : Pane.GetPaneButtons.FolderName(extension)), ButtonUsageStore.Normalize(entry.Button.Name), command, entry.Source.BuiltIn, entry.Source.Shown, used, today));
+            result.Add(Create(extension.Id, ButtonCatalog.FolderName(entry.Source), ButtonUsageStore.Normalize(entry.Button.Name), command, entry.Source.BuiltIn, entry.Source.Shown, used, today));
         }
 
         // Clicked once, gone now: a removed extension or a renamed button keeps its history until a reset
