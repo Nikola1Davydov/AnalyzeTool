@@ -5,6 +5,7 @@ import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
 import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
+import { NewButtonForm, NewFolderForm } from "./Forms";
 import { ProfileScreen } from "./ProfileScreen";
 import { applyTheme, findButton, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
@@ -212,7 +213,7 @@ function Header(props: {
             : [{ label: "Versions and files", onClick: () => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, toastError) }]),
         ]
       : [
-          { label: "New folder…", onClick: () => openWindow("/extensions/new", toastError) },
+          { label: "New folder…", onClick: () => actions.openSheet("New folder", <NewFolderForm onCreated={(id) => props.onGo({ kind: "folder", folder: id })} />) },
           { label: "Manage buttons", onClick: () => openWindow("/extensions", toastError) },
         ]),
     { label: "Refresh", onClick: props.onRefresh },
@@ -312,9 +313,9 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
           <Tile
             label="New folder"
             className="add"
-            title="A new folder with its first button: C# that AnalyseTool compiles, with its own versions"
+            title="A new folder for buttons that belong together, with its own version history"
             icon={<span className="tile-icon add">+</span>}
-            onClick={() => openWindow("/extensions/new", (message) => actions.toast(message, "error"))}
+            onClick={() => actions.openSheet("New folder", <NewFolderForm onCreated={onOpen} />)}
           />
         )}
       </div>
@@ -391,8 +392,27 @@ function FolderScreen(props: { folder: PaneFolder; group?: string; onOpenGroup: 
             />
           ),
         )}
+        {folder.canAddButtons && group === undefined && !edit.editing && (
+          <Tile
+            label="New button"
+            className="add"
+            title={`A new button in ${folder.name}: C# that AnalyseTool compiles, saved as a version of the folder`}
+            icon={<span className="tile-icon add">+</span>}
+            onClick={() =>
+              actions.openSheet(
+                `New button in ${folder.name}`,
+                <NewButtonForm
+                  folder={folder}
+                  onOpenFiles={() => openWindow(`/extensions/${encodeURIComponent(folder.id)}`, (message) => actions.toast(message, "error"))}
+                />,
+              )
+            }
+          />
+        )}
       </div>
-      {sorted.length === 0 && <p className="muted small center">No buttons here.</p>}
+      {sorted.length === 0 && (
+        <p className="muted small center">{folder.canAddButtons ? "No buttons yet — tap + to add the first one." : "No buttons here."}</p>
+      )}
     </>
   );
 }

@@ -33,7 +33,8 @@ public sealed record PaneButton(string Key, string Name, string? Tooltip, string
 /// <param name="Enabled">The extension is on (its buttons work).</param>
 /// <param name="Problems">Load errors and compiler errors, as <c>file(line): message</c>.</param>
 /// <param name="Buttons">Its clickable buttons.</param>
-public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons);
+/// <param name="CanAddButtons">One of the user's folders: «+ New button» adds C# or a page to it (not AnalyseTool, not a package, not a DLL).</param>
+public sealed record PaneFolder(string Id, string Name, bool BuiltIn, bool Enabled, IReadOnlyList<string> Problems, IReadOnlyList<PaneButton> Buttons, bool CanAddButtons);
 
 /// <summary>Everything the pane shows.</summary>
 /// <param name="UserName">The Windows user, for the profile.</param>
@@ -54,13 +55,21 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
         var folders = catalog.GetSources()
             .Select(source => new PaneFolder(
                 source.Extension.Id,
-                source.BuiltIn ? "AnalyseTool" : source.Extension.Manifest.Description ?? source.Extension.Id,
+                source.BuiltIn ? "AnalyseTool" : FolderName(source.Extension),
                 source.BuiltIn,
                 source.Shown,
                 Problems(source.State),
-                Buttons(source.Extension).ToList()))
+                Buttons(source.Extension).ToList(),
+                !source.BuiltIn && source.Extension.Zone == ExtensionZone.Dev && source.Extension.Kind != ExtensionKind.Dll))
             .ToList();
         return Task.FromResult(new PaneOverview(Environment.UserName, Environment.MachineName, PaneProfile.FilePath(paths), folders));
+    }
+
+    /// <summary>The name of a folder: its <c>name</c>, else its description, else its id.</summary>
+    internal static string FolderName(ExtensionDescriptor extension)
+    {
+        var manifest = extension.Manifest;
+        return !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : !string.IsNullOrWhiteSpace(manifest.Description) ? manifest.Description : extension.Id;
     }
 
     private static IReadOnlyList<string> Problems(ExtensionState? state)
@@ -78,7 +87,7 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
     private static IEnumerable<PaneButton> Buttons(ExtensionDescriptor extension)
     {
         // "pane": false — a button of the ribbon only
-        foreach (var button in extension.Manifest.Ui!.EffectiveButtons().Where(button => button.InPane))
+        foreach (var button in (extension.Manifest.Ui?.EffectiveButtons() ?? []).Where(button => button.InPane))
         {
             if (button.ResolvedKind == ButtonKind.Pulldown)
             {

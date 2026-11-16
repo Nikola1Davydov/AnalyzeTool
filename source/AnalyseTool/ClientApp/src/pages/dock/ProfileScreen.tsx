@@ -119,11 +119,19 @@ export function ProfileScreen({ overview, onStats }: { overview: PaneOverview; o
       </section>
 
       <section className="link-section">
-        <button className="row-link" onClick={() => openWindow("/settings")}>
-          <span>🤖 AI and folders</span>
+        <button className="row-link" onClick={() => openWindow("/extensions")}>
+          <span>🧩 Manage buttons</span>
           <span className="chevron-right">›</span>
         </button>
-        <p className="muted small">Connect an AI client over MCP, and choose the folders of your buttons.</p>
+        <p className="muted small">Every folder with its state, compiler errors and versions; turn one off, remove it, install a .zip package.</p>
+      </section>
+
+      <section className="link-section">
+        <button className="row-link" onClick={() => openWindow("/settings")}>
+          <span>⚙️ Settings</span>
+          <span className="chevron-right">›</span>
+        </button>
+        <p className="muted small">Connect an AI client over MCP, and choose where your folders of buttons live.</p>
       </section>
 
       <section>

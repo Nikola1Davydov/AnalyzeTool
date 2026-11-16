@@ -120,9 +120,27 @@ public static partial class ExtensionScaffold
         return id.Length is > 0 and <= 80 && ValidId().IsMatch(id);
     }
 
-    /// <summary>Writes the files of a new extension into <paramref name="directory" />, which must not exist.</summary>
+    /// <summary>Writes the files of a new extension with its first button into <paramref name="directory" />, which must not exist.</summary>
     /// <returns>The files written, relative to the folder.</returns>
     public static IReadOnlyList<string> Create(string directory, string id, string name, string? description, ExtensionTemplate template, string? panel, string revitVersion)
+    {
+        var files = CreateFolder(directory, id, name, description, panel).ToList();
+        if (template == ExtensionTemplate.Page)
+        {
+            // No C#: the folder is a page extension (as in 1.x) until a button with code comes
+            ExtensionManifest.Update(directory, manifest => manifest.Remove("build"));
+        }
+
+        files.AddRange(AddButton(directory, id, name, description, template, revitVersion));
+        return files.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>
+    ///     Writes a new, empty folder of buttons: <c>plugin.json</c> with no buttons yet (<c>"build": "host"</c>), the pointers to
+    ///     the authoring guide and <c>.gitignore</c>. Buttons come with <see cref="AddButton" />.
+    /// </summary>
+    /// <returns>The files written, relative to the folder.</returns>
+    public static IReadOnlyList<string> CreateFolder(string directory, string id, string name, string? description, string? panel)
     {
         if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any())
         {
@@ -130,10 +148,62 @@ public static partial class ExtensionScaffold
         }
 
         Directory.CreateDirectory(directory);
+        var ui = new JsonObject { ["buttons"] = new JsonArray() };
+        if (!string.IsNullOrWhiteSpace(panel))
+        {
+            ui["panel"] = panel;
+        }
+
+        var manifest = new JsonObject
+        {
+            ["schema"] = 2,
+            ["id"] = id,
+            ["name"] = name,
+            ["version"] = "1.0.0",
+            ["description"] = description ?? name,
+            ["publisher"] = Environment.UserName,
+            ["build"] = "host",
+            ["ui"] = ui
+        };
+        ExtensionManifest.Write(directory, manifest);
+        File.WriteAllText(Path.Combine(directory, "AGENTS.md"), AgentsPointer(name));
+        File.WriteAllText(Path.Combine(directory, "CLAUDE.md"), ClaudePointer);
+        File.WriteAllText(Path.Combine(directory, ".gitignore"), string.Join("\n", SourceIgnore) + "\n");
+        return [ExtensionManifest.FileName, "AGENTS.md", "CLAUDE.md", ".gitignore"];
+    }
+
+    /// <summary>
+    ///     Adds a button to an existing folder: its C# command in <c>src\&lt;Name&gt;.cs</c> and/or its page, and its entry in
+    ///     <c>ui.buttons</c> of <c>plugin.json</c> (unknown fields kept). The class and the page get a free name when taken.
+    /// </summary>
+    /// <returns>The files written or changed, relative to the folder.</returns>
+    public static IReadOnlyList<string> AddButton(string directory, string id, string name, string? description, ExtensionTemplate template, string revitVersion)
+    {
         var files = new List<string>();
-        var className = ToClassName(name);
         var hasCode = template is ExtensionTemplate.Command or ExtensionTemplate.CommandWithPage;
         var hasPage = template is ExtensionTemplate.CommandWithPage or ExtensionTemplate.Page;
+        var className = ToClassName(name);
+        for (var number = 2; File.Exists(Path.Combine(directory, ExtensionCatalog.SourceFolder, className + ".cs")); number++)
+        {
+            className = ToClassName(name) + number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (hasCode)
+        {
+            Directory.CreateDirectory(Path.Combine(directory, ExtensionCatalog.SourceFolder));
+            var file = Path.Combine(ExtensionCatalog.SourceFolder, className + ".cs");
+            File.WriteAllText(Path.Combine(directory, file), CommandSource(id, className, description ?? name, hasPage));
+            files.Add(file);
+        }
+
+        string? page = null;
+        if (hasPage)
+        {
+            // The first page of the folder is index.html (the 1.x entry); every further one is named after its button
+            page = File.Exists(Path.Combine(directory, "index.html")) ? className + ".html" : "index.html";
+            File.WriteAllText(Path.Combine(directory, page), PageSource(name, hasCode ? $"{id}.{className}" : null));
+            files.Add(page);
+        }
 
         var button = new JsonObject
         {
@@ -145,54 +215,45 @@ public static partial class ExtensionScaffold
         {
             button["command"] = $"{id}.{className}";
         }
-
-        var ui = new JsonObject { ["buttons"] = new JsonArray(button) };
-        if (!string.IsNullOrWhiteSpace(panel))
+        else if (page != "index.html")
         {
-            ui["panel"] = panel;
+            button["entryHtml"] = page;
         }
 
-        if (hasPage)
+        ExtensionManifest.Update(directory, manifest =>
         {
-            ui["entryHtml"] = "index.html";
-        }
+            if (manifest["ui"] is not JsonObject ui)
+            {
+                manifest["ui"] = ui = new JsonObject();
+            }
 
-        var manifest = new JsonObject
-        {
-            ["schema"] = 2,
-            ["id"] = id,
-            ["version"] = "1.0.0",
-            ["description"] = description ?? name,
-            ["publisher"] = Environment.UserName,
-            ["build"] = hasCode ? "host" : "author",
-            ["ui"] = ui
-        };
-        ExtensionManifest.Write(directory, manifest);
+            if (ui["buttons"] is not JsonArray buttons)
+            {
+                buttons = new JsonArray();
+                // The single-button form of 1.x becomes the first entry of the list
+                if (ui["button"] is JsonObject single)
+                {
+                    ui.Remove("button");
+                    buttons.Add(single);
+                }
+
+                ui["buttons"] = buttons;
+            }
+
+            buttons.Add(button);
+            if (hasPage && page == "index.html" && ui["entryHtml"] is null)
+            {
+                ui["entryHtml"] = "index.html";
+            }
+
+            if (hasCode && manifest["entryAssembly"] is null && manifest["build"]?.GetValue<string>() is null or "author")
+            {
+                manifest["build"] = "host";
+            }
+        });
         files.Add(ExtensionManifest.FileName);
 
-        if (hasCode)
-        {
-            var source = Path.Combine(directory, ExtensionCatalog.SourceFolder);
-            Directory.CreateDirectory(source);
-            var file = Path.Combine(ExtensionCatalog.SourceFolder, className + ".cs");
-            File.WriteAllText(Path.Combine(directory, file), CommandSource(id, className, description ?? name, hasPage));
-            files.Add(file);
-        }
-
-        if (hasPage)
-        {
-            File.WriteAllText(Path.Combine(directory, "index.html"), PageSource(name, hasCode ? $"{id}.{className}" : null));
-            files.Add("index.html");
-        }
-
-        File.WriteAllText(Path.Combine(directory, "AGENTS.md"), AgentsPointer(name));
-        files.Add("AGENTS.md");
-        File.WriteAllText(Path.Combine(directory, "CLAUDE.md"), ClaudePointer);
-        files.Add("CLAUDE.md");
-        File.WriteAllText(Path.Combine(directory, ".gitignore"), string.Join("\n", SourceIgnore) + "\n");
-        files.Add(".gitignore");
-
-        if (hasCode)
+        if (hasCode && !Directory.Exists(Path.Combine(directory, ".editor")))
         {
             WriteEditorProject(directory, id, revitVersion);
         }

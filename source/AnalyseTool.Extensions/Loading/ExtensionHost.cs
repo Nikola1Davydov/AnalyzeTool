@@ -226,6 +226,9 @@ public sealed partial class ExtensionHost : IDisposable
                 string? assemblyPath = null;
                 switch (descriptor.Kind)
                 {
+                    // A new folder before its first button: nothing to compile, nothing wrong
+                    case ExtensionKind.Source when ExtensionCatalog.GetSourceFiles(descriptor.Directory).Count == 0 && _store.GetPinnedVersion(id) is null:
+                        break;
                     case ExtensionKind.Source:
                     {
                         var build = BuildSources(descriptor, errors);

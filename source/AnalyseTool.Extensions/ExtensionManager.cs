@@ -39,6 +39,74 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
     /// <summary>Creates a new extension in the authoring root (or <paramref name="root" />), starts its history and loads it.</summary>
     public async Task<ExtensionState> CreateAsync(string name, string? id, string? description, ExtensionTemplate template, string? panel, string? root, CancellationToken cancellationToken)
     {
+        var (directory, folderId, trimmed) = NewFolder(name, id, root);
+        ExtensionScaffold.Create(directory, folderId, trimmed, description, template, panel, catalog.RevitVersion);
+        if (history.IsAvailable)
+        {
+            history.Init(directory, Author, $"Created «{trimmed}»", ExtensionScaffold.SourceIgnore);
+        }
+
+        await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
+        return Get(folderId);
+    }
+
+    /// <summary>Creates an empty folder of buttons (an extension with no button yet), with its history started.</summary>
+    public async Task<ExtensionState> CreateFolderAsync(string name, string? id, string? description, string? panel, string? root, CancellationToken cancellationToken)
+    {
+        var (directory, folderId, trimmed) = NewFolder(name, id, root);
+        ExtensionScaffold.CreateFolder(directory, folderId, trimmed, description, panel);
+        if (history.IsAvailable)
+        {
+            history.Init(directory, Author, $"Created the folder «{trimmed}»", ExtensionScaffold.SourceIgnore);
+        }
+
+        await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
+        return Get(folderId);
+    }
+
+    /// <summary>
+    ///     Adds a button to an existing folder of the user: C# in <c>src\</c> and/or a page, and its entry in <c>plugin.json</c>;
+    ///     saved as a version of the folder, then loaded.
+    /// </summary>
+    public async Task<ExtensionState> AddButtonAsync(string id, string name, string? description, ExtensionTemplate template, CancellationToken cancellationToken)
+    {
+        var state = Get(id);
+        var descriptor = state.Descriptor;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, "A name is required.");
+        }
+
+        if (descriptor.Zone != ExtensionZone.Dev)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"'{id}' is an installed package: its buttons come with its updates. Add buttons to your own folders.");
+        }
+
+        if (descriptor.Kind == ExtensionKind.Dll && template != ExtensionTemplate.Page)
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid, $"'{id}' is built as a DLL by its author: add the command to its project. A page-only button can still be added here.");
+        }
+
+        var trimmed = name.Trim();
+        var key = Usage.ButtonUsageStore.Normalize(trimmed);
+        if (descriptor.Manifest.Ui?.EffectiveButtons().SelectMany(button => (button.Items ?? []).Prepend(button))
+                .Any(button => string.Equals(Usage.ButtonUsageStore.Normalize(button.Name), key, StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The folder '{id}' has a button «{trimmed}» already.");
+        }
+
+        ExtensionScaffold.AddButton(descriptor.Directory, id, trimmed, description, template, catalog.RevitVersion);
+        if (history.IsAvailable)
+        {
+            history.SaveVersion(descriptor.Directory, Author, $"Added the button «{trimmed}»", IgnoreFor(descriptor));
+        }
+
+        return await host.ReloadAsync(id, cancellationToken).ConfigureAwait(false) ?? Get(id);
+    }
+
+    /// <summary>Checks a new folder's name and id and finds where it goes.</summary>
+    private (string Directory, string Id, string Name) NewFolder(string name, string? id, string? root)
+    {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new CommandException(ExtensionErrorCodes.Invalid, "A name is required.");
@@ -63,14 +131,7 @@ public sealed class ExtensionManager(ExtensionHost host, ExtensionCatalog catalo
             throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The folder {directory} exists already.");
         }
 
-        ExtensionScaffold.Create(directory, id, name.Trim(), description, template, panel, catalog.RevitVersion);
-        if (history.IsAvailable)
-        {
-            history.Init(directory, Author, $"Created «{name.Trim()}»", ExtensionScaffold.SourceIgnore);
-        }
-
-        await host.ReloadAllAsync(cancellationToken).ConfigureAwait(false);
-        return Get(id);
+        return (directory, id, name.Trim());
     }
 
     /// <summary>

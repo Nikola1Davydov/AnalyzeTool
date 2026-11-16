@@ -64,18 +64,11 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 
 The **AnalyseTool** tab keeps three buttons:
 
-- **AnalyseTool** — the pane: every button (AnalyseTool's own and yours) as a tile, each extension a folder, with a dock of favourites, your own order, tile size and theme, and the statistics. Right-click a tile: **+** keeps it in the dock of the pane, **☆** puts it on the Revit ribbon (a Favourites panel on the AnalyseTool tab); drag to move.
-- **New button** — a button with a C# command (and, if you want, a page), compiled by AnalyseTool, with its first version saved.
-- **Refresh** — reads every extension folder again and rebuilds the buttons (saved files reload by themselves).
-
-The rest lives in the pane, in the **AnalyseTool** folder:
-
-- **Parameters** — the main window: the shared parameters of your file and project in one table (create, edit, add to the project), and a printable A4 report of how well the chosen ones are filled.
-- **Manage buttons** — your buttons and installed packages: status, compiler errors, versions, install a `.zip`.
-- **Statistics** — how often every button is clicked, the last 30 days, run times and failures. Counted on your machine only.
-- **Settings** — the AI connection (MCP) and the folders of your buttons.
+- **AnalyseTool** — the pane: your buttons in **folders** (one folder per extension), a dock of favourites, your own order, tile size and theme. **New folder** and, inside a folder, **New button** create C# that AnalyseTool compiles, each change a version of the folder. Right-click a tile: **+** keeps it in the dock, **☆** puts it on the Revit ribbon (a Favourites panel), drag to move.
 - **About** — versions, what's new and links to the source.
-- **Report a bug** — opens the GitHub issues page.
+- **Refresh** — reads every folder again and rebuilds the buttons (saved files reload by themselves).
+
+In the pane, the **AnalyseTool** folder holds **Parameters** (the main window: the shared parameters of your file and project in one table, and a printable A4 report of how well the chosen ones are filled) and **Report a bug**. The profile (your initials, top right) holds **Statistics** (how often every button is clicked, run times, failures — on your machine only), **Manage buttons** (state, compiler errors, versions, `.zip` packages) and **Settings** (MCP for AI clients, the folders of your buttons).
 
 Buttons of installed packages and of your extensions appear on the ribbon and in the pane, and change and disappear live. A button with `"ribbon": false` in its `plugin.json` is a tile of the pane only.
 

@@ -51,7 +51,7 @@ public sealed record ExtensionSummary(
         var buttons = manifest.Ui?.EffectiveButtons().Select(button => button.Name).ToList() ?? [];
         return new ExtensionSummary(
             manifest.Id,
-            buttons.FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? manifest.Id,
+            !string.IsNullOrWhiteSpace(manifest.Name) ? manifest.Name : buttons.FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? manifest.Id,
             manifest.Description,
             manifest.Version,
             manifest.Publisher,
@@ -131,6 +131,47 @@ public sealed class CreateExtension(ExtensionManager manager) : ICommand<CreateE
     public async Task<ExtensionSummary> ExecuteAsync(CreateExtensionRequest request, CommandContext context)
     {
         var state = await manager.CreateAsync(request.Name, request.Id, request.Description, request.Template, request.Panel, request.Root, context.CancellationToken).ConfigureAwait(false);
+        return ExtensionSummary.From(state);
+    }
+}
+
+/// <summary>Input of <see cref="CreateExtensionFolder" />.</summary>
+public sealed record CreateExtensionFolderRequest(
+    [property: Description("The name of the folder, e.g. «Sheets».")] string Name,
+    [property: Description("What its buttons are for.")] string? Description = null,
+    [property: Description("The id; derived from the name when absent. Letters, digits, '.', '-', '_'.")] string? Id = null,
+    [property: Description("The ribbon panel of its buttons; «Extensions» when absent.")] string? Panel = null,
+    [property: Description("One of the user's folders of extensions; the authoring folder when absent.")] string? Root = null);
+
+/// <summary>Creates an empty folder of buttons.</summary>
+[McpTool(Title = "Create a folder of buttons")]
+[Command(Description = "Creates an empty folder of buttons (an extension with no button yet): plugin.json, AGENTS.md / CLAUDE.md pointing to the authoring guide, and its version history. Add buttons with AddExtensionButton.")]
+public sealed class CreateExtensionFolder(ExtensionManager manager) : ICommand<CreateExtensionFolderRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(CreateExtensionFolderRequest request, CommandContext context)
+    {
+        var state = await manager.CreateFolderAsync(request.Name, request.Id, request.Description, request.Panel, request.Root, context.CancellationToken).ConfigureAwait(false);
+        return ExtensionSummary.From(state);
+    }
+}
+
+/// <summary>Input of <see cref="AddExtensionButton" />.</summary>
+public sealed record AddExtensionButtonRequest(
+    [property: Description("The id of the folder (extension).")] string Id,
+    [property: Description("The text of the button, e.g. «Renumber sheets».")] string Name,
+    [property: Description("What the button does: its tooltip and the description of its command.")] string? Description = null,
+    [property: Description("Command (default): runs C#; CommandWithPage: opens a page that calls C#; Page: a page without C#.")] ExtensionTemplate Template = ExtensionTemplate.Command);
+
+/// <summary>Adds a button to a folder.</summary>
+[McpTool(Title = "Add a button to a folder")]
+[Command(Description = "Adds a button to one of the user's folders: its C# command in src\\<Name>.cs (and/or a page) and its entry in plugin.json, saved as a version. Returns the folder; then edit the new src\\*.cs with WriteExtensionFile.")]
+public sealed class AddExtensionButton(ExtensionManager manager) : ICommand<AddExtensionButtonRequest, ExtensionSummary>
+{
+    /// <inheritdoc />
+    public async Task<ExtensionSummary> ExecuteAsync(AddExtensionButtonRequest request, CommandContext context)
+    {
+        var state = await manager.AddButtonAsync(request.Id, request.Name, request.Description, request.Template, context.CancellationToken).ConfigureAwait(false);
         return ExtensionSummary.From(state);
     }
 }

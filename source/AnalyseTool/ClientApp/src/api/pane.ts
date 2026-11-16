@@ -30,6 +30,8 @@ export interface PaneFolder {
   enabled: boolean;
   problems: string[];
   buttons: PaneButton[];
+  /** One of the user's folders: «+ New button» adds to it. */
+  canAddButtons: boolean;
 }
 
 export interface PaneOverview {

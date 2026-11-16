@@ -18,6 +18,7 @@ import { useState } from "react";
 import { bridge } from "revit-bridge";
 import { joinPath, openPath } from "../../api/app";
 import {
+  type AddExtensionButtonRequest,
   type CreateExtensionRequest,
   type ExtensionFile,
   type ExtensionList,
@@ -27,15 +28,19 @@ import {
   extensionCommands,
   templateLabels,
 } from "../../api/extensions";
+import { plural } from "../../components/format";
 import { errorText, useNotify } from "../../components/notify";
 import { Page } from "../../components/Page";
 import { useAppAction } from "../../components/useAppAction";
 import { useAppQuery } from "../../revit/hooks";
-import { navigate } from "../../router";
+import { navigate, useRoute } from "../../router";
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 
-/** The «New button» form: a folder with plugin.json and C# sources AnalyseTool compiles itself, and its first version. */
+/**
+ * The «New button» form: a button in one of your folders, or in a new folder — C# sources AnalyseTool compiles itself, saved as
+ * a version. `?folder=<id>` picks the folder.
+ */
 export function NewExtensionPage() {
   const [created, setCreated] = useState<ExtensionSummary | null>(null);
   const [formKey, setFormKey] = useState(0);
@@ -67,11 +72,20 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
   const [root, setRoot] = useState<string | null>(null);
   const [id, setId] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const { query } = useRoute();
+  /** "" — a new folder; otherwise the id of the folder the button goes into. */
+  const [folder, setFolder] = useState(query.get("folder") ?? "");
 
   const create = useAppAction<ExtensionSummary, CreateExtensionRequest>(extensionCommands.CreateExtension, {
     failure: "Could not create the button",
     onSuccess: onCreated,
   });
+  const add = useAppAction<ExtensionSummary, AddExtensionButtonRequest>(extensionCommands.AddExtensionButton, {
+    failure: "Could not add the button",
+    onSuccess: onCreated,
+  });
+  // Your own folders that take C#: sources or pages, not packages and not DLLs
+  const folders = (list.data?.extensions ?? []).filter((item) => item.zone === "Dev" && item.kind !== "Dll");
 
   const devRoots = (roots.data?.roots ?? []).filter((item) => item.zone === "Dev");
   const chosenRoot = root ?? roots.data?.authoringRoot ?? null;
@@ -82,10 +96,14 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
       : id.trim() && list.data?.extensions.some((item) => item.id.toLowerCase() === id.trim().toLowerCase())
         ? "An extension with this id exists."
         : undefined;
-  const canCreate = !!name.trim() && !idError && !create.isPending;
+  const canCreate = !!name.trim() && (folder !== "" || !idError) && !create.isPending && !add.isPending;
 
   function submit() {
     if (!canCreate) return;
+    if (folder) {
+      add.mutate({ id: folder, name: name.trim(), description: description.trim() || null, template });
+      return;
+    }
     create.mutate({
       name: name.trim(),
       description: description.trim() || null,
@@ -105,9 +123,26 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
       }}
     >
       <Text className="muted">
-        A folder with <code>plugin.json</code> and C# in <code>src\</code> that AnalyseTool compiles itself — no project, no
-        Visual Studio. The button appears on the ribbon at once, and its first version is saved.
+        C# in <code>src\</code> of a folder, compiled by AnalyseTool itself — no project, no Visual Studio. The button appears
+        at once, and the change is saved as a version of the folder.
       </Text>
+
+      <Field label="Folder" hint="A folder holds buttons that belong together; each has its own version history.">
+        <Dropdown
+          value={folder ? (folders.find((item) => item.id === folder)?.name ?? folder) : "New folder"}
+          selectedOptions={[folder]}
+          onOptionSelect={(_, data) => setFolder(data.optionValue ?? "")}
+        >
+          <Option value="" text="New folder">
+            New folder (named after the button)
+          </Option>
+          {folders.map((item) => (
+            <Option key={item.id} value={item.id} text={item.name}>
+              {item.name} <span className="muted">· {plural(item.buttons.length, "button")}</span>
+            </Option>
+          ))}
+        </Dropdown>
+      </Field>
 
       <Field label="Name" required hint="The text of the ribbon button.">
         <Input value={name} onChange={(_, data) => setName(data.value)} placeholder="Count walls" autoFocus />
@@ -141,6 +176,8 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
         </RadioGroup>
       </Field>
 
+      {!folder && (
+      <>
       <Field label="Ribbon panel" hint="«Extensions» when empty.">
         <Input value={panel} onChange={(_, data) => setPanel(data.value)} placeholder="Extensions" />
       </Field>
@@ -175,10 +212,12 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
           Set the id yourself…
         </Link>
       )}
+      </>
+      )}
 
       <div className="form-actions">
         <Button appearance="primary" type="submit" disabled={!canCreate}>
-          {create.isPending ? "Creating…" : "Create"}
+          {create.isPending || add.isPending ? "Creating…" : folder ? "Add to the folder" : "Create"}
         </Button>
         <Button appearance="secondary" onClick={() => navigate("/extensions")}>
           Cancel

@@ -141,7 +141,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         for (var sourceIndex = 0; sourceIndex < extensions.Count; sourceIndex++)
         {
             var extension = extensions[sourceIndex];
-            var ui = extension.Manifest.Ui!;
+            var ui = extension.Manifest.Ui ?? new ExtensionUi();
             var buttons = ui.EffectiveButtons();
             for (var index = 0; index < buttons.Count; index++)
             {
@@ -327,7 +327,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
     /// <summary>Everything about an extension the ribbon shows; when it is equal, nothing is rebuilt.</summary>
     private static string Signature(ExtensionDescriptor extension)
     {
-        var ui = extension.Manifest.Ui!;
+        var ui = extension.Manifest.Ui ?? new ExtensionUi();
         var icons = ui.EffectiveButtons().Select(button => button.Icon).Where(icon => icon is not null && !icon.StartsWith("glyph:", StringComparison.OrdinalIgnoreCase))
             .Select(icon => Path.Combine(extension.Directory, icon!))
             .Select(path => File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0);

@@ -27,6 +27,10 @@ public sealed record ExtensionManifest
     [JsonPropertyName("version")]
     public string Version { get; init; } = string.Empty;
 
+    /// <summary>Gets the name of the folder as the pane and the lists show it; the first button's name or the id when absent (1.x).</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
     /// <summary>Gets a short description for listings.</summary>
     [JsonPropertyName("description")]
     public string? Description { get; init; }

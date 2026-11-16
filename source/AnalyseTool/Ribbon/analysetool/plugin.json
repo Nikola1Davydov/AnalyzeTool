@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "analysetool",
   "version": "2.0.0",
-  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code. The ribbon keeps three — the pane, a new button, refresh; the rest are tiles of the pane (\"ribbon\": false).",
+  "description": "The buttons of AnalyseTool itself: declared like the buttons of any extension, built by the same ribbon code. The ribbon keeps three — the pane, About, Refresh; the rest are tiles of the pane (\"ribbon\": false); New button, Manage buttons, Statistics and Settings are reached from the pane (\"pane\": false too).",
   "publisher": "AnalyseTool",
   "ui": {
     "tab": "AnalyseTool",
@@ -13,16 +13,31 @@
         "icon": "analysetool.png",
         "tooltip": "The AnalyseTool pane: every button as a tile, your dock of favourites, the statistics.",
         "command": "OpenWindow",
-        "args": { "route": "/dock", "dock": true },
+        "args": {
+          "route": "/dock",
+          "dock": true
+        },
         "pane": false
+      },
+      {
+        "name": "About",
+        "icon": "glyph:E946",
+        "tooltip": "The version and what is new.",
+        "command": "OpenWindow",
+        "args": {
+          "route": "/about"
+        }
       },
       {
         "name": "New\nbutton",
         "icon": "glyph:ECC8",
         "tooltip": "A new button: C# that AnalyseTool compiles, with its own version history.",
         "command": "OpenWindow",
-        "args": { "route": "/extensions/new" },
-        "pane": false
+        "args": {
+          "route": "/extensions/new"
+        },
+        "pane": false,
+        "ribbon": false
       },
       {
         "name": "Refresh",
@@ -36,7 +51,9 @@
         "icon": "glyph:E9F9",
         "tooltip": "The parameter report, the elements and the shared parameters.",
         "command": "OpenWindow",
-        "args": { "route": "/" },
+        "args": {
+          "route": "/"
+        },
         "ribbon": false
       },
       {
@@ -44,39 +61,42 @@
         "icon": "glyph:EA86",
         "tooltip": "Your buttons: their versions, errors and folders.",
         "command": "OpenWindow",
-        "args": { "route": "/extensions" },
-        "ribbon": false
+        "args": {
+          "route": "/extensions"
+        },
+        "ribbon": false,
+        "pane": false
       },
       {
         "name": "Statistics",
         "icon": "glyph:E9D2",
         "tooltip": "How often every button is clicked, how long it runs and how often it fails.",
         "command": "OpenWindow",
-        "args": { "route": "/statistics" },
-        "ribbon": false
+        "args": {
+          "route": "/statistics"
+        },
+        "ribbon": false,
+        "pane": false
       },
       {
         "name": "Settings",
         "icon": "glyph:E713",
         "tooltip": "MCP for AI clients and the folders of your buttons.",
         "command": "OpenWindow",
-        "args": { "route": "/settings" },
-        "ribbon": false
-      },
-      {
-        "name": "About",
-        "icon": "glyph:E946",
-        "tooltip": "The version and what is new.",
-        "command": "OpenWindow",
-        "args": { "route": "/about" },
-        "ribbon": false
+        "args": {
+          "route": "/settings"
+        },
+        "ribbon": false,
+        "pane": false
       },
       {
         "name": "Report a bug",
         "icon": "glyph:EBE8",
         "tooltip": "Opens the issues of AnalyseTool on GitHub.",
         "command": "OpenUrl",
-        "args": { "url": "https://github.com/Nikola1Davydov/AnalyzeTool/issues" },
+        "args": {
+          "url": "https://github.com/Nikola1Davydov/AnalyzeTool/issues"
+        },
         "ribbon": false
       }
     ]

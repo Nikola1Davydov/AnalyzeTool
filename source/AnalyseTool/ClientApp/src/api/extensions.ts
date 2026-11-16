@@ -5,6 +5,8 @@ export const extensionCommands = {
   GetExtensions: "GetExtensions",
   ReloadExtensions: "ReloadExtensions",
   CreateExtension: "CreateExtension",
+  CreateExtensionFolder: "CreateExtensionFolder",
+  AddExtensionButton: "AddExtensionButton",
   SetExtensionEnabled: "SetExtensionEnabled",
   RemoveExtension: "RemoveExtension",
   BuildExtension: "BuildExtension",
@@ -75,6 +77,22 @@ export interface ExtensionList {
 
 export interface ReloadExtensionsRequest {
   id?: string | null;
+}
+
+export interface CreateExtensionFolderRequest {
+  name: string;
+  description?: string | null;
+  id?: string | null;
+  panel?: string | null;
+  root?: string | null;
+}
+
+export interface AddExtensionButtonRequest {
+  /** The folder (extension). */
+  id: string;
+  name: string;
+  description?: string | null;
+  template?: ExtensionTemplate;
 }
 
 export interface CreateExtensionRequest {

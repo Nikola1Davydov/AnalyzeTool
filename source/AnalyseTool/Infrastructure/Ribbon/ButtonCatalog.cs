@@ -47,8 +47,10 @@ public sealed class ButtonCatalog(ExtensionHost host)
     public IReadOnlyList<ButtonSource> GetSources()
     {
         var sources = _builtIn.Value.Select(descriptor => new ButtonSource(descriptor, true, true)).ToList();
+        // An extension with buttons, or a folder of the user that has none yet (new, or built from sources): the pane shows
+        // it so buttons can be added to it
         sources.AddRange(host.GetStates()
-            .Where(state => state.Descriptor.HasButtons)
+            .Where(state => state.Descriptor.HasButtons || (state.Descriptor.Zone == ExtensionZone.Dev && state.Descriptor.Kind == ExtensionKind.Source))
             .Select(state => new ButtonSource(state.Descriptor, false, state.Enabled, state)));
         return sources;
     }
@@ -62,7 +64,7 @@ public sealed class ButtonCatalog(ExtensionHost host)
     /// <summary>Every clickable button: the entries of a pulldown instead of the pulldown itself.</summary>
     public IReadOnlyList<RibbonButtonEntry> GetButtons()
     {
-        return GetSources().SelectMany(source => Flatten(source.Extension.Manifest.Ui!.EffectiveButtons()).Select(button => new RibbonButtonEntry(source, button))).ToList();
+        return GetSources().SelectMany(source => Flatten(source.Extension.Manifest.Ui?.EffectiveButtons() ?? []).Select(button => new RibbonButtonEntry(source, button))).ToList();
     }
 
     /// <summary>Reads the built-in button folders: <c>analysetool</c>, and <c>analysetool.dev</c> when asked.</summary>
