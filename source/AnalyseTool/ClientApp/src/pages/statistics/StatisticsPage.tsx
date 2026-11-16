@@ -133,14 +133,14 @@ export function StatisticsPage() {
 
       {query.isSuccess && (
         <>
-          <div className="stat-tiles">
+          <div className="usage-tiles">
             <StatTile label="Clicks" value={query.data.totalClicks.toLocaleString()} />
             <StatTile label="Buttons used" value={`${used.length} of ${buttons.length}`} />
             <StatTile label="Most used" value={top ? top.button : "—"} detail={top ? plural(top.clicks, "click") : undefined} />
             <StatTile label="Failed runs" value={failures.toLocaleString()} warning={failures > 0} />
           </div>
 
-          <div className="stat-toolbar">
+          <div className="usage-toolbar">
             <TabList size="small" selectedValue={filter} onTabSelect={(_, data) => setFilter(data.value as Filter)}>
               <Tab value="all">All</Tab>
               <Tab value="builtIn">AnalyseTool</Tab>
@@ -160,7 +160,7 @@ export function StatisticsPage() {
             <Empty>{buttons.length ? "No button matches." : "No buttons yet."}</Empty>
           ) : (
             <div className="table-scroll">
-              <Table size="small" sortable className="stat-table">
+              <Table size="small" sortable className="usage-table">
                 <TableHeader>
                   <TableRow>
                     {header("button", "Button")}
@@ -187,7 +187,7 @@ export function StatisticsPage() {
 
 function StatTile({ label, value, detail, warning }: { label: string; value: string; detail?: string; warning?: boolean }) {
   return (
-    <div className="stat-tile">
+    <div className="usage-tile">
       <Text size={200} className="muted">
         {label}
       </Text>
@@ -206,7 +206,7 @@ function StatRow({ button, most }: { button: ButtonStatistic; most: number }) {
     <Link href={href(`/extensions/${encodeURIComponent(button.extension)}`)}>{button.extensionName}</Link>
   );
   return (
-    <TableRow className={button.onRibbon ? undefined : "stat-gone"}>
+    <TableRow className={button.onRibbon ? undefined : "usage-gone"}>
       <TableCell>
         <div className="cell-stack">
           <span className="strong">
@@ -223,9 +223,9 @@ function StatRow({ button, most }: { button: ButtonStatistic; most: number }) {
         </div>
       </TableCell>
       <TableCell>
-        <div className="stat-clicks">
-          <span className="stat-clicks-number">{button.clicks}</span>
-          <span className="stat-bar">
+        <div className="usage-clicks">
+          <span className="usage-clicks-number">{button.clicks}</span>
+          <span className="usage-bar">
             <span style={{ width: `${(button.clicks / most) * 100}%` }} />
           </span>
         </div>

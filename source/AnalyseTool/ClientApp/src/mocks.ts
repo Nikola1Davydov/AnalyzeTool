@@ -1,6 +1,7 @@
 import { CommandError, registerMocks } from "revit-bridge";
 import type { AppInfo, McpInfo } from "./api/app";
 import type { ButtonStatistic, ButtonStatisticsResult } from "./api/statistics";
+import type { ButtonRunResult, PaneFolder, PaneOverview } from "./api/pane";
 import type {
   CompileDiagnostic,
   ExtensionFileDiff,
@@ -26,6 +27,59 @@ const fail = (message: string, code = "bad_request") => {
   throw new CommandError({ code, message });
 };
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+// ---- Dock pane: the folders of buttons and the profile of the pane
+const g = (code: number) => String.fromCodePoint(code);
+const paneButton = (folder: string, name: string, glyph: string | null, command: string | null, tooltip: string | null = null, group: string | null = null) => ({
+  key: `${folder}/${name}`,
+  name,
+  tooltip,
+  glyph,
+  image: null,
+  command,
+  group,
+});
+const paneFolders: PaneFolder[] = [
+  {
+    id: "analysetool",
+    name: "AnalyseTool",
+    builtIn: true,
+    enabled: true,
+    problems: [],
+    buttons: [
+      paneButton("analysetool", "AnalyseTool", null, "OpenWindow", "The parameter report, the elements and the shared parameters."),
+      paneButton("analysetool", "Buttons pane", g(0xe8a0), "OpenWindow"),
+      paneButton("analysetool", "New button", g(0xecc8), "OpenWindow"),
+      paneButton("analysetool", "Manage buttons", g(0xea86), "OpenWindow"),
+      paneButton("analysetool", "Statistics", g(0xe9d2), "OpenWindow"),
+      paneButton("analysetool", "Settings", g(0xe713), "OpenWindow"),
+      paneButton("analysetool", "About", g(0xe946), "OpenWindow"),
+      paneButton("analysetool", "Report a bug", g(0xebe8), "OpenUrl"),
+    ],
+  },
+  {
+    id: "count-walls",
+    name: "Count walls",
+    builtIn: false,
+    enabled: true,
+    problems: ["src/CountWalls.cs(14): The name 'grup' does not exist in the current context"],
+    buttons: [paneButton("count-walls", "Count walls", g(0xe768), "count-walls.CountWalls", "Counts the walls of the active view by type.")],
+  },
+  {
+    id: "room-sheets",
+    name: "Room sheets",
+    builtIn: false,
+    enabled: true,
+    problems: [],
+    buttons: [
+      paneButton("room-sheets", "Room sheets", g(0xe8a7), null, "A page that lists rooms and creates sheets for them."),
+      paneButton("room-sheets", "Renumber", g(0xe8ef), "room-sheets.Renumber", null, "Tools"),
+      paneButton("room-sheets", "Purge empty", g(0xe74d), "room-sheets.PurgeEmpty", null, "Tools"),
+    ],
+  },
+  { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
+];
+let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/AnalyseTool"] };
 
 // ---- Statistics: a few weeks of clicks
 const statDays = (seed: number, scale: number) =>
@@ -547,6 +601,22 @@ registerMocks({
   },
   OpenPath: (payload) => {
     console.info("OpenPath", (payload as { path: string }).path);
+    return null;
+  },
+  GetPaneButtons: async (): Promise<PaneOverview> => {
+    await delay(120);
+    return { userName: "nikolai", machineName: "WS-042", profileFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\pane-profile.json`, folders: paneFolders };
+  },
+  RunButton: async (payload): Promise<ButtonRunResult> => {
+    const key = (payload as { key: string }).key;
+    await delay(600);
+    if (key.startsWith("count-walls")) return { ok: true, text: "Level 1: 42 walls\nLevel 2: 38 walls", error: null, elapsedMilliseconds: 182, openedPage: false };
+    if (key === "room-sheets/Purge empty") return { ok: false, text: null, error: "Open a document first.", elapsedMilliseconds: 12, openedPage: false };
+    return { ok: true, text: null, error: null, elapsedMilliseconds: 0, openedPage: !key.startsWith("room-sheets/Renumber") };
+  },
+  GetPaneProfile: () => ({ profile: paneProfile }),
+  SavePaneProfile: (payload) => {
+    paneProfile = (payload as { profile: unknown }).profile;
     return null;
   },
   GetButtonStatistics: async (): Promise<ButtonStatisticsResult> => {

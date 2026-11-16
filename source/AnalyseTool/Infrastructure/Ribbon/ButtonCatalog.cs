@@ -10,7 +10,8 @@ namespace AnalyseTool.Infrastructure.Ribbon;
 /// <param name="Extension">The folder and its manifest.</param>
 /// <param name="BuiltIn">The buttons of AnalyseTool itself (<c>Ribbon\analysetool\</c> next to the add-in).</param>
 /// <param name="Shown">Its buttons are on the ribbon: built-in, or an extension that is on.</param>
-public sealed record ButtonSource(ExtensionDescriptor Extension, bool BuiltIn, bool Shown);
+/// <param name="State">The loaded state of an extension (errors, diagnostics); <see langword="null" /> for the built-in folders.</param>
+public sealed record ButtonSource(ExtensionDescriptor Extension, bool BuiltIn, bool Shown, ExtensionState? State = null);
 
 /// <summary>One button the user can click, with where it comes from.</summary>
 /// <param name="Source">Its folder.</param>
@@ -48,8 +49,14 @@ public sealed class ButtonCatalog(ExtensionHost host)
         var sources = _builtIn.Value.Select(descriptor => new ButtonSource(descriptor, true, true)).ToList();
         sources.AddRange(host.GetStates()
             .Where(state => state.Descriptor.HasButtons)
-            .Select(state => new ButtonSource(state.Descriptor, false, state.Enabled)));
+            .Select(state => new ButtonSource(state.Descriptor, false, state.Enabled, state)));
         return sources;
+    }
+
+    /// <summary>Finds a clickable button by its key (<see cref="AnalyseTool.Extensions.Usage.ButtonUsageStore.Key" />).</summary>
+    public RibbonButtonEntry? Find(string key)
+    {
+        return GetButtons().FirstOrDefault(entry => string.Equals(AnalyseTool.Extensions.Usage.ButtonUsageStore.Key(entry.Source.Extension.Id, entry.Button.Name), key, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Every clickable button: the entries of a pulldown instead of the pulldown itself.</summary>

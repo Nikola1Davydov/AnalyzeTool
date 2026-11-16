@@ -1,0 +1,1503 @@
+/*
+  The design of the pane, after iOS: system greys, the blue accent, hairline separators, squircle icons, frosted glass.
+  The font is Segoe UI Variable of Windows 11 (SF Pro is licensed for Apple platforms only), Segoe UI on Windows 10.
+*/
+
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --accent: #007aff;
+  --red: #ff3b30;
+  --green: #34c759;
+  --orange: #ff9500;
+  --label: #000;
+  --secondary-label: rgb(60 60 67 / 60%);
+  --separator: rgb(60 60 67 / 29%);
+  --background: #fff;
+  --grouped-background: #f2f2f7;
+  --fill: rgb(120 120 128 / 12%);
+  --fill-strong: rgb(120 120 128 / 20%);
+  --glass: rgb(249 249 249 / 78%);
+  --tile-background: #fff;
+  --shadow: 0 1px 2px rgb(0 0 0 / 8%), 0 4px 14px rgb(0 0 0 / 8%);
+}
+
+/* Dark: the colours of iOS dark mode — the profile asks for it (data-theme="dark"), or it follows a dark system */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #0a84ff;
+    --red: #ff453a;
+    --green: #30d158;
+    --orange: #ff9f0a;
+    --label: #fff;
+    --secondary-label: rgb(235 235 245 / 60%);
+    --separator: rgb(84 84 88 / 60%);
+    --background: #000;
+    --grouped-background: #000;
+    --fill: rgb(120 120 128 / 24%);
+    --fill-strong: rgb(120 120 128 / 36%);
+    --glass: rgb(30 30 30 / 72%);
+    --tile-background: #1c1c1e;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --accent: #0a84ff;
+  --red: #ff453a;
+  --green: #30d158;
+  --orange: #ff9f0a;
+  --label: #fff;
+  --secondary-label: rgb(235 235 245 / 60%);
+  --separator: rgb(84 84 88 / 60%);
+  --background: #000;
+  --grouped-background: #000;
+  --fill: rgb(120 120 128 / 24%);
+  --fill-strong: rgb(120 120 128 / 36%);
+  --glass: rgb(30 30 30 / 72%);
+  --tile-background: #1c1c1e;
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+}
+
+.pane,
+.sheet-backdrop {
+  font-family: var(--font);
+  color: var(--label);
+  -webkit-font-smoothing: antialiased;
+}
+
+.pane {
+  --tile: 84px;
+  position: relative;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--grouped-background);
+  overflow: hidden;
+}
+
+.pane.tiles-small {
+  --tile: 62px;
+}
+
+.pane.tiles-large {
+  --tile: 112px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.small {
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.muted {
+  color: var(--secondary-label);
+  opacity: 1;
+}
+
+.error {
+  color: var(--red);
+}
+
+.center {
+  text-align: center;
+}
+
+/* Frosted glass: the header, the dock, sheets and toasts */
+.glass {
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.no-effects .glass,
+.no-effects ~ .sheet-backdrop .glass {
+  backdrop-filter: none;
+  background: var(--tile-background);
+}
+
+/* Buttons */
+
+.pane button,
+.sheet-backdrop button {
+  font-family: var(--font);
+}
+
+.icon-button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 17px;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.icon-button:hover {
+  background: var(--fill);
+}
+
+.text-button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: 0;
+}
+
+.text-button.bold {
+  font-weight: 600;
+}
+
+.sheet-backdrop button:not(.text-button, .icon-button, .switch, .segmented button, .toast),
+.profile button:not(.text-button, .icon-button, .switch, .segmented button, .avatar),
+.versions-page button:not(.text-button, .icon-button, .version-row, .pen, .pen-color) {
+  border: none;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--fill);
+  color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+.sheet-backdrop button[type="submit"],
+.sheet-backdrop .command-form button:first-child,
+.versions-page button.primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sheet-backdrop button:disabled,
+.profile button:disabled,
+.versions-page button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pane input,
+.pane select,
+.pane textarea,
+.sheet-backdrop input,
+.sheet-backdrop select,
+.sheet-backdrop textarea {
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: none;
+  background: var(--fill);
+  color: var(--label);
+  outline: none;
+}
+
+.pane input:focus,
+.sheet-backdrop input:focus,
+.sheet-backdrop textarea:focus,
+.sheet-backdrop select:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* The navigation bar: back on the left, the title in the middle, actions on the right */
+
+.pane-header {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.nav-side {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-side.right {
+  justify-content: flex-end;
+}
+
+.pane-title {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
+}
+
+.pane-title .badge {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 15px;
+  padding: 0 4px 0 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.back-button .chevron {
+  font-size: 26px;
+  line-height: 20px;
+  margin-top: -3px;
+}
+
+.back-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  margin: 0 0 0 2px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(160deg, #5ac8fa, #007aff);
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.avatar.large {
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+  cursor: default;
+}
+
+/* The size of the tiles: a grid of 3×3, 2×2 or one square */
+.size-glyph {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+  --cell: var(--accent);
+}
+
+.size-glyph.small {
+  background: repeating-linear-gradient(90deg, var(--cell) 0 4px, transparent 4px 5.5px);
+  mask: repeating-linear-gradient(0deg, #000 0 4px, transparent 4px 5.5px);
+}
+
+.size-glyph.medium {
+  background: repeating-linear-gradient(90deg, var(--cell) 0 6.5px, transparent 6.5px 8.5px);
+  mask: repeating-linear-gradient(0deg, #000 0 6.5px, transparent 6.5px 8.5px);
+}
+
+.size-glyph.large {
+  background: var(--cell);
+  border-radius: 3px;
+}
+
+/* Screens */
+
+.pane-main {
+  position: relative;
+  overflow: auto;
+  overflow-x: hidden;
+  padding: 0 12px 100px;
+}
+
+.screen {
+  min-height: 100%;
+}
+
+.large-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 10px 2px 14px;
+}
+
+/* The number of columns follows the width of the pane; the size of a tile is the user's choice */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+  gap: 14px 6px;
+}
+
+/* Tiles */
+
+.tile {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--label);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  min-width: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* A squircle: the continuous corner of iOS icons, not a plain rounded rectangle */
+.tile-face {
+  position: relative;
+  width: calc(var(--tile) * 0.72);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: var(--tile-background);
+  box-shadow: var(--shadow);
+  border-radius: 23%;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0C10 0 0 10 0 50s10 50 50 50 50-10 50-50S90 0 50 0Z'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+  overflow: hidden;
+}
+
+/* The press: the CSS scale property, apart from the transform Motion animates (layout, drag) */
+.tile {
+  transition: scale 0.18s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.tile:not(.editing):active {
+  scale: 0.9;
+  transition-duration: 0.08s;
+}
+
+.tile.dim .tile-face {
+  opacity: 0.45;
+}
+
+.tile-label {
+  font-size: calc(var(--tile) * 0.13 + 2px);
+  line-height: 1.2;
+  text-align: center;
+  width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tile-icon {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.tile-icon.emoji {
+  font-size: calc(var(--tile) * 0.38);
+}
+
+/* A glyph of Segoe MDL2 Assets — the icons of the ribbon — white on the gradient */
+.tile-icon.glyph {
+  color: #fff;
+  font-family: "Segoe MDL2 Assets", "Segoe Fluent Icons";
+  font-size: calc(var(--tile) * 0.4);
+}
+
+.tile-icon.folder-icon .tile-icon.glyph {
+  font-size: calc(var(--tile) * 0.15);
+}
+
+.dock-list .tile-icon.glyph,
+.stats-name .tile-icon.glyph {
+  font-size: 13px;
+}
+
+.tile-icon.letters {
+  color: #fff;
+  font-weight: 600;
+  font-size: calc(var(--tile) * 0.22);
+  letter-spacing: 0.5px;
+}
+
+.tile-icon.image {
+  object-fit: contain;
+  padding: 12%;
+  box-sizing: border-box;
+}
+
+.tile-icon.add {
+  font-size: calc(var(--tile) * 0.42);
+  font-weight: 200;
+  color: var(--accent);
+}
+
+.tile.add .tile-face {
+  background: var(--fill);
+  box-shadow: none;
+}
+
+/* A folder: up to four small icons of its buttons, on a lighter square */
+.tile.folder .tile-face {
+  background: var(--fill-strong);
+  box-shadow: none;
+}
+
+.tile-icon.folder-icon {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 9%;
+  padding: 15%;
+  box-sizing: border-box;
+}
+
+.tile-icon.folder-icon .tile-icon {
+  border-radius: 28%;
+  overflow: hidden;
+  background: var(--tile-background);
+  font-size: calc(var(--tile) * 0.1);
+}
+
+.tile-icon.folder-icon .tile-icon.emoji {
+  font-size: calc(var(--tile) * 0.15);
+}
+
+/* The badges: a red «!» for an error, a lock for an untrusted project */
+.tile-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 17px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tile-badge.error {
+  background: var(--red);
+  color: #fff;
+}
+
+.tile-badge.locked {
+  font-size: 10px;
+}
+
+/* The badge of the edit mode, outside the squircle: «+» to the dock, «−» out of it */
+.edit-badge {
+  position: absolute;
+  top: -5px;
+  left: calc(50% - var(--tile) * 0.36 - 7px);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  background: rgb(120 120 128 / 85%);
+  backdrop-filter: blur(8px);
+  z-index: 2;
+  cursor: pointer;
+}
+
+.edit-badge.add {
+  background: var(--green);
+}
+
+/* ✎ — change the button: the opposite corner of «+»/«−» */
+.edit-badge.change {
+  left: auto;
+  right: calc(50% - var(--tile) * 0.36 - 7px);
+  font-size: 13px;
+  background: var(--accent);
+}
+
+.tile.editing {
+  cursor: grab;
+}
+
+.tile-busy {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--tile-background) 55%, transparent);
+}
+
+.tile-busy::after {
+  content: "";
+  position: absolute;
+  inset: 32%;
+  border: 3px solid var(--accent);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: pane-spin 0.8s linear infinite;
+}
+
+@keyframes pane-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The dock: floating frosted glass at the bottom, the content scrolls under it */
+.dock {
+  --tile: 56px;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 8px 10px 6px;
+  min-height: 44px;
+  border-radius: 22px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 12%);
+}
+
+.dock .tile {
+  flex: 0 0 var(--tile);
+}
+
+.dock .tile-label {
+  font-size: 10px;
+}
+
+.dock-hint {
+  font-size: 12px;
+  color: var(--secondary-label);
+  margin: auto;
+  text-align: center;
+}
+
+/* Banners and the trust request */
+
+.banner {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  background: color-mix(in srgb, var(--red) 14%, var(--tile-background));
+  color: var(--label);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.trust {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--orange) 16%, var(--tile-background));
+}
+
+.trust button {
+  margin-top: 6px;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 14px;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pane .root {
+  margin-top: 18px;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.result {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--fill);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+/* Sheets: slide up from the bottom, a grabber on top, pulled down they close */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 30%);
+  display: flex;
+  align-items: flex-end;
+  z-index: 10;
+}
+
+.sheet {
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  touch-action: none;
+}
+
+.sheet-grabber {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--fill-strong);
+  margin: 6px auto 0;
+  cursor: grab;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 8px 16px;
+  border-bottom: 0.5px solid var(--separator);
+  font-size: 16px;
+}
+
+.sheet-body {
+  overflow: auto;
+  padding: 12px 16px 20px;
+  touch-action: pan-y;
+}
+
+.sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sheet-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--secondary-label);
+}
+
+.sheet-form input,
+.sheet-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The form of a command with input: one field per row, the label on the left */
+.command-form .field {
+  display: grid;
+  grid-template-columns: minmax(80px, 40%) 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.command-form .field input:not([type="checkbox"]),
+.command-form .field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.command-form .field input[type="checkbox"] {
+  justify-self: start;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.command-form .toolbar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.compile-error {
+  margin-bottom: 8px;
+}
+
+/* Toasts: a notification that drops in from the top */
+
+.toast {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: none;
+  text-align: left;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--label);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 16%);
+  cursor: pointer;
+}
+
+.toast-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.toast-dot.error {
+  background: var(--red);
+}
+
+.toast-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* History of versions */
+
+.history .changes,
+.history .versions {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+}
+
+.history .versions li {
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.history .toolbar {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.history .toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  font-size: 12px;
+}
+
+/* The profile: grouped sections, as in iOS Settings */
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profile section {
+  background: var(--tile-background);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.profile h2 {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--secondary-label);
+  margin: 0 0 8px;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-card strong {
+  font-size: 18px;
+}
+
+.profile .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.profile .toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+/* The segmented control: a thumb slides under the chosen option */
+.segmented {
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--fill);
+}
+
+.segmented button {
+  position: relative;
+  flex: 1;
+  margin: 0;
+  border: none;
+  background: none;
+  color: var(--label);
+  font-size: 13px;
+  padding: 5px 6px;
+  cursor: pointer;
+  border-radius: 7px;
+}
+
+.segmented-thumb {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  background: var(--tile-background);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 12%), 0 0 0 0.5px rgb(0 0 0 / 4%);
+}
+
+.segmented button.on {
+  font-weight: 600;
+}
+
+.segmented-label {
+  position: relative;
+}
+
+/* The switch */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.switch {
+  width: 51px;
+  height: 31px;
+  border-radius: 16px;
+  border: none;
+  padding: 2px;
+  background: var(--fill-strong);
+  display: flex;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch.on {
+  background: var(--green);
+  justify-content: flex-end;
+}
+
+.switch-knob {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 15%), 0 1px 1px rgb(0 0 0 / 16%);
+}
+
+.dock-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dock-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.dock-list li:last-child {
+  border-bottom: none;
+}
+
+.dock-list .tile-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 18px;
+  background: var(--fill);
+}
+
+.dock-list .tile-icon.letters {
+  font-size: 11px;
+}
+
+.dock-list .dock-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-button.more {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.large-title .badge {
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--fill);
+  color: var(--secondary-label);
+}
+
+/* The action sheet: grouped rows with hairlines */
+.action-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--fill);
+}
+
+.sheet-backdrop .action-list button.action-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  border-bottom: 0.5px solid var(--separator);
+  background: none;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--accent);
+  text-align: left;
+}
+
+.sheet-backdrop .action-list button.action-item:last-child {
+  border-bottom: none;
+}
+
+.sheet-backdrop .action-list button.action-item:hover {
+  background: var(--fill);
+}
+
+.segmented button {
+  white-space: nowrap;
+}
+
+/* The statistics of the runs */
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats .large-title {
+  margin-bottom: 0;
+}
+
+.stats-period {
+  align-self: stretch;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--tile-background);
+}
+
+.stat-label,
+.stat-note {
+  font-size: 11px;
+  color: var(--secondary-label);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--label);
+}
+
+.stat-value.error {
+  color: var(--red);
+}
+
+.stats-card {
+  background: var(--tile-background);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.stats-card h2 {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--secondary-label);
+  margin: 0 0 10px;
+}
+
+.day-chart {
+  position: relative;
+}
+
+.day-chart svg {
+  display: block;
+  width: 100%;
+  height: 110px;
+  overflow: visible;
+}
+
+.chart-bar {
+  fill: var(--accent);
+  opacity: 0.85;
+}
+
+.chart-bar.on {
+  opacity: 1;
+}
+
+.chart-baseline {
+  stroke: var(--separator);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--secondary-label);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 15%);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--label);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+/* The name takes what the numbers leave and wraps; the numbers never do */
+.stats-table td:first-child {
+  width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.stats-table th {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--secondary-label);
+  text-align: left;
+  padding: 0 4px 6px;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.stats-table td {
+  padding: 7px 4px;
+  border-bottom: 0.5px solid var(--separator);
+  vertical-align: middle;
+}
+
+.stats-table tbody tr {
+  cursor: pointer;
+}
+
+.stats-table tbody tr:hover {
+  background: var(--fill);
+}
+
+.stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-table .number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stats-table th.number {
+  text-align: right;
+}
+
+.stats-table button.sort {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stats-table button.sort.on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.stats-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stats-name .tile-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 7px;
+  overflow: hidden;
+  font-size: 15px;
+  background: var(--fill);
+}
+
+.stats-name .tile-icon.letters {
+  font-size: 10px;
+}
+
+.stats-project {
+  display: block;
+  margin: 0;
+}
+
+.stats-details dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.stats-details dt {
+  color: var(--secondary-label);
+}
+
+.stats-details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row of the profile that opens a screen */
+.profile .link-section {
+  padding: 4px 14px 10px;
+}
+
+.profile button.row-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--label);
+  cursor: pointer;
+}
+
+.profile .chevron-right {
+  color: var(--secondary-label);
+  font-size: 20px;
+}
+
+/* Profile → «Connect an AI» */
+.connect .steps {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.connect .steps li {
+  margin-bottom: 8px;
+}
+
+.connect .snippet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.connect .snippet pre {
+  flex: 1 1 200px;
+  margin: 0;
+  word-break: break-all;
+}
+
+.connect code {
+  overflow-wrap: anywhere;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--secondary-label);
+}
+
+.status-dot.ok {
+  background: var(--green);
+}
+
+/* The window of the versions of a button: versions | the interface with the drawing | what the user wants */
+.versions-page {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.versions-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+}
+
+.versions-header .tile-icon {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  border-radius: 9px;
+}
+
+.versions-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.versions-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
+  gap: 12px;
+  padding: 12px;
+  min-height: 0;
+}
+
+.versions-list,
+.versions-request {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.version-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--tile-background);
+  color: var(--label);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.version-row.on {
+  outline: 2px solid var(--accent);
+}
+
+.versions-save {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.versions-stage-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.sketch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sketch-toolbar .pen {
+  border: none;
+  border-radius: 8px;
+  background: var(--fill);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.sketch-toolbar .pen.on {
+  background: var(--fill-strong);
+  outline: 2px solid var(--accent);
+}
+
+.sketch-toolbar .pen-color {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sketch-toolbar .pen-color.on {
+  border-color: var(--label);
+}
+
+.versions-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  background: var(--tile-background);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.stage-content {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 16px 20px;
+}
+
+.sketch-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sketch-layer.drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.interface-head {
+  margin-bottom: 10px;
+}
+
+.command-form.preview {
+  max-width: 560px;
+}
+
+.command-form.preview .field.removed > span:first-child {
+  text-decoration: line-through;
+  color: var(--secondary-label);
+}
+
+.change-note {
+  color: var(--orange);
+}
+
+.window-preview {
+  width: 100%;
+  height: 420px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--grouped-background);
+}
+
+.versions-request textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.versions-request h2 {
+  margin: 0;
+  font-size: 15px;
+}

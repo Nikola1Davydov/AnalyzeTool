@@ -48,6 +48,9 @@ Debug builds); the user's are in their extension folders.
 * `ButtonRunner` handles every click: it counts it (`ButtonUsageStore`, `%LOCALAPPDATA%\AnalyseToolutton-usage.json`),
   then runs the button's pipeline command with its `args` (source `ribbon`: a failure is shown to the user) and shows
   the result, or opens the button's page. The built-in buttons open their pages with `OpenWindow { route, dock? }`.
+* The dock pane (`/dock`) shows the same catalog as tiles (`GetPaneButtons`); a tap is `RunButton { key }` — the same
+  `ButtonRunner`, counted the same, the result shown in the pane. Its profile (dock of favourites, order, tile size,
+  theme) is `pane-profile.json` in the profile folder (`GetPaneProfile` / `SavePaneProfile`).
 * The Statistics page (`/statistics`, `GetButtonStatistics`) joins the catalog with the counts: every button, clicked or
   not, and the buttons of removed extensions until a reset.
 

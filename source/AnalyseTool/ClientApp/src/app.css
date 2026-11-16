@@ -1260,13 +1260,13 @@ code.block,
 }
 
 /* ---- Statistics ---- */
-.stat-tiles {
+.usage-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
-.stat-tile {
+.usage-tile {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1276,7 +1276,7 @@ code.block,
   border-radius: 8px;
   background: var(--colorNeutralBackground2);
 }
-.stat-toolbar {
+.usage-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1284,37 +1284,37 @@ code.block,
   gap: 8px;
   margin-bottom: 8px;
 }
-.stat-table .col-clicks {
+.usage-table .col-clicks {
   width: 180px;
 }
-.stat-table .col-days {
+.usage-table .col-days {
   width: 140px;
 }
-.stat-table .col-time {
+.usage-table .col-time {
   width: 130px;
 }
-.stat-table .col-number {
+.usage-table .col-number {
   width: 90px;
 }
-.stat-clicks {
+.usage-clicks {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.stat-clicks-number {
+.usage-clicks-number {
   min-width: 32px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
-.stat-bar {
+.usage-bar {
   flex: 1;
   height: 6px;
   border-radius: 3px;
   background: var(--colorNeutralBackground4);
   overflow: hidden;
 }
-.stat-bar span {
+.usage-bar span {
   display: block;
   height: 100%;
   border-radius: 3px;
@@ -1329,6 +1329,6 @@ code.block,
 .sparkline-empty {
   fill: var(--colorNeutralStroke2);
 }
-.stat-gone {
+.usage-gone {
   opacity: 0.6;
 }

@@ -65,7 +65,7 @@ AnalyseTool has no AI of its own — you connect the one you already use. In **S
 Open the **AnalyseTool** tab:
 
 - **AnalyseTool** — the main window: the shared parameters of your file and project in one table (create, edit, add to the project), and a printable A4 report of how well the chosen ones are filled.
-- **Buttons pane** — your buttons in the dock pane.
+- **Buttons pane** — every button (AnalyseTool's own and yours) as tiles in a dock pane, with a dock of favourites, your own order, tile size and theme, and the statistics. Right-click a tile to pin or move it.
 - **New button** — a ribbon button with a C# command (and, if you want, a page), compiled by AnalyseTool, with its first version saved.
 - **Manage buttons** — your buttons and installed packages: status, compiler errors, versions, install a `.zip`.
 - **Statistics** — how often every button is clicked (AnalyseTool's own and yours), the last 30 days, run times and failures. Counted on your machine only.
