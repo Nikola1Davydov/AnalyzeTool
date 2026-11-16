@@ -1,16 +1,13 @@
 name: Release
 
 # The version lives in the code: "Build" › "Version" of build/appsettings.json (local builds and installers carry it too).
-# A push to main with a version that has no tag yet publishes it: the whole pipeline with the installers
-# (`build -- pack`), then the tag vX.Y.Z and a GitHub release with both MSIs, the Autodesk bundle and the section of
-# CHANGELOG.md of that version as its notes. A version that is tagged already: nothing happens.
-# To release: raise the version, date its section in CHANGELOG.md («## [X.Y.Z] / <date>»), merge into main.
+# Runs only by hand (Actions › Release › Run workflow, on main). A version that has no tag yet is published: the whole
+# pipeline with the installers (`build -- pack`), then the tag vX.Y.Z and a GitHub release with both MSIs, the Autodesk
+# bundle and the section of CHANGELOG.md of that version as its notes. A version that is tagged already: nothing happens.
+# To release: raise the version, date its section in CHANGELOG.md («## [X.Y.Z] / <date>»), merge into main, run it.
 # A version with a suffix (2.1.0-beta.1) makes a pre-release.
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
