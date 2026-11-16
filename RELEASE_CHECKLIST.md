@@ -9,9 +9,9 @@ the release itself.
 
 ### Version and docs
 
-- [ ] **The version comes from the tag.** GitVersion (`GitVersion.yml`, GitHub Flow): a tag `vX.Y.Z` on `main` gives
-      X.Y.Z; anything untagged is a pre-release (`1.6.1-rewrite.1`). MSI keeps only X.Y.Z, so a tag must be higher than
-      the last one (`git tag --sort=-creatordate | head`).
+- [ ] **The version is in the code**: `"Build"` › `"Version"` of `build/appsettings.json` (local builds, CI and the
+      installers all carry it). Raise it above the last release (`git tag --sort=-creatordate | head`): MSI keeps only
+      X.Y.Z, and a version that is tagged already is not released again. Left empty, GitVersion takes it from the tags.
 - [ ] **CHANGELOG.md** has `## [X.Y.Z] / <YYYY-MM-DD>` (not «unreleased») with the changes a user notices, one or two
       sentences each, and what is not there yet. The About page shows it.
 - [ ] **The guide for authors** — `source/AnalyseTool.Extensions/Authoring/LLM.md` (ships next to the add-in, served by
@@ -63,11 +63,11 @@ the release itself.
 - [ ] SingleUser and MultiUser install on a clean user/machine; the WebView2 prompt works without the runtime.
 - [ ] Installed **over 1.x** of the same kind: 1.x is gone (its folder and `AnalyseTool.addin`), 2.0 loads, the
       extensions in `%LOCALAPPDATA%\AnalyseTool\extensions\` are still there.
-- [ ] `rewrite` (or `dev`) merged into `main`, CHANGELOG dated (`## [X.Y.Z] / <date>`).
-- [ ] Tag `vX.Y.Z` on `main` — `git tag vX.Y.Z && git push origin vX.Y.Z`, or on GitHub Releases › Draft a new release
-      with a new tag. `.github/workflows/Release.yml` builds, tests, packs and attaches both MSIs and the bundle, with the
-      changelog of the version as the notes; it makes the release itself, and a release that already exists for the tag stops it. A suffix
-      (`v2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
+- [ ] CHANGELOG dated (`## [X.Y.Z] / <date>`), then `rewrite` (or `dev`) merged into `main`. No tag by hand:
+      `.github/workflows/Release.yml` runs on every push to `main` (and by hand in Actions); when the version of
+      `build/appsettings.json` has no tag yet, it builds, tests, packs, makes the tag `vX.Y.Z` and the release with both
+      MSIs, the bundle and the changelog of the version. An undated or missing changelog section stops it. A suffix
+      (`2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
 - [ ] **The Sdk package, only if its contract changed**: the release does not push it. Bump its version, take the
       `.nupkg` of a green build, `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`, then
       move the pinned version in `LLM.md` and `ONBOARDING.md`.
