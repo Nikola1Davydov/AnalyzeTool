@@ -26,6 +26,8 @@ export interface McpInfo {
   name?: string | null;
   /** The bearer token while it listens. */
   token?: string | null;
+  /** The folder of the Claude Code plugin next to the add-in. */
+  claudePlugin?: string | null;
 }
 
 export interface RevitTheme {

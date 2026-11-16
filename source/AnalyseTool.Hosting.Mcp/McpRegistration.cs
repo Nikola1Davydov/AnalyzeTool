@@ -31,7 +31,8 @@ public static class McpRegistration
         /// <returns>The <typeparamref name="TBuilder" /> for chaining.</returns>
         /// <remarks>
         ///     On in the <c>Development</c> environment, off otherwise; <c>Mcp:Enabled</c> overrides it. The address and the
-        ///     token for the client are in <c>%LOCALAPPDATA%\{application}\{Revit version}\mcp.json</c>.
+        ///     token for the client are in <c>%LOCALAPPDATA%\{application}\mcp.json</c> — one for every Revit version: the first
+        ///     Revit holds <c>basePort - 1</c>, and a call with <c>revit</c> goes to that version.
         /// </remarks>
         /// <exception cref="InvalidOperationException"><c>AddRevitCommands</c> was not called before.</exception>
         /// <example>
@@ -42,13 +43,13 @@ public static class McpRegistration
         public TBuilder AddMcp(UIControlledApplication application, int basePort)
         {
             var revitVersion = application.ControlledApplication.VersionNumber;
+            // One file, one token and one address for every Revit version: the port before the base port
             var connectionFile = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 builder.Environment.ApplicationName,
-                revitVersion,
                 "mcp.json");
 
-            return builder.AddMcp(new McpHostSettings(revitVersion, basePort, connectionFile));
+            return builder.AddMcp(new McpHostSettings(revitVersion, basePort, connectionFile, basePort - 1));
         }
 
         /// <summary>Adds the MCP server without Revit, for tests.</summary>
@@ -62,6 +63,7 @@ public static class McpRegistration
             builder.Services.Configure<McpOptions>(builder.Configuration.GetSection(McpOptions.SectionName));
 
             builder.Services.AddSingleton(settings);
+            builder.Services.AddSingleton<McpPeers>();
             builder.Services.AddSingleton<McpToolCatalog>();
             builder.Services.AddSingleton<McpTools>();
             builder.Services.AddSingleton<McpHttpServer>();

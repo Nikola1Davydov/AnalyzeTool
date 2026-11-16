@@ -136,8 +136,13 @@ nothing else is visible to the client. A command failure is a tool result with `
   side; `Mcp:Port` overrides it. A second Revit of the same version finds the port busy, logs a warning and runs without MCP.
 * Only `localhost`, a bearer token on every request, and no request with an `Origin` header — a web page in the user's
   browser cannot reach the model.
-* `%LOCALAPPDATA%\AnalyseTool\<year>\mcp.json` holds the address, the token (kept across Revit sessions) and the
-  `claude mcp add …` command for Claude Code.
+* **One address for every Revit version** (`basePort - 1`, 48075): the first Revit holds it, the others retry every
+  five seconds; each Revit also keeps its own port. `McpPeers` registers each Revit in `%LOCALAPPDATA%\AnalyseTool\mcp\`
+  (version, port, when its window was in front); every tool takes `revit`, a call for another version is sent on to it
+  as an MCP client, a call without one goes to the Revit used last; `ListRevitVersions` lists them.
+* `%LOCALAPPDATA%\AnalyseTool\mcp.json` holds that address, the one token (kept across Revit sessions) and the
+  `claude mcp add …` command. The Claude Code plugin in `source/AnalyseTool/Claude/` (copied next to the add-in) reads
+  the token there with a `headersHelper`.
 * `IMcpEndpoint.GetInfo()` returns the same details for a page; in Debug the «MCP» tab of the Dev page shows them.
 * A command that returns `McpImage` gives the client a picture, not JSON.
 * The tools of the template: `GetActiveDocument`, `GetSelection`, `SelectElements`, `InspectElement` (the properties and

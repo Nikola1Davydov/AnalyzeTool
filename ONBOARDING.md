@@ -732,10 +732,14 @@ AnalyseTool 2.0 serves MCP **inside Revit** over Streamable HTTP — no separate
 
 - **Turn it on** in AnalyseTool → **Settings** (on by default in Debug builds). It takes effect at the next
   Revit start.
-- Settings shows the address (`http://localhost:<port>/mcp`), and for Claude Code a ready
-  `claude mcp add …` command with the bearer token; the same details are in
-  `%LOCALAPPDATA%\AnalyseTool\<year>\mcp.json`. Each Revit version has its own port, so several run side
-  by side.
+- **One address for every Revit version:** `http://localhost:48075/mcp`, one token in
+  `%LOCALAPPDATA%\AnalyseTool\mcp.json`. The first Revit you open answers on it and hands a call to the version it
+  names: every tool takes `"revit": "2026"`, `ListRevitVersions` lists the open ones, and a call without it goes to
+  the Revit you used last.
+- **Claude Code:** install the AnalyseTool plugin that ships with the add-in — no token to copy, plus a skill for
+  writing buttons (`/analysetool:new-button`). The pane › profile › AI clients shows the two commands:
+  `claude plugin marketplace add "<add-in folder>\Claude"` and `claude plugin install analysetool@analysetool`.
+  Other clients get a snippet with the address and the token there.
 - Only `localhost`, a bearer token on every request, no request from a web page (`Origin`) — a page in your
   browser cannot reach the model.
 - **The tool list follows your extensions.** When an extension is added, changed or removed, AnalyseTool

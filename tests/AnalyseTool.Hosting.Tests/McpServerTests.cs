@@ -44,7 +44,8 @@ public sealed class McpServerTests
 
         var tools = await client.ListToolsAsync();
 
-        await Assert.That(tools.Select(tool => tool.Name)).IsEquivalentTo(["McpGreet", "McpRefuse"]);
+        // ListRevitVersions is the tool of the one address of every Revit version
+        await Assert.That(tools.Select(tool => tool.Name)).IsEquivalentTo(["ListRevitVersions", "McpGreet", "McpRefuse"]);
     }
 
     [Test]
@@ -54,11 +55,39 @@ public sealed class McpServerTests
         await using var server = await McpTestServer.StartAsync(typeof(McpGreetCommand));
         await using var client = await server.ConnectAsync(protocolVersion);
 
-        var tool = (await client.ListToolsAsync()).Single().ProtocolTool;
+        var tool = (await client.ListToolsAsync()).Single(item => item.Name == "McpGreet").ProtocolTool;
 
         await Assert.That(tool.Description).IsEqualTo("Greets by name over MCP.");
         await Assert.That(tool.Annotations?.ReadOnlyHint ?? false).IsTrue();
         await Assert.That(tool.InputSchema.GetProperty("properties").TryGetProperty("name", out _)).IsTrue();
+        // Every tool can be sent to another open Revit version
+        await Assert.That(tool.InputSchema.GetProperty("properties").TryGetProperty("revit", out _)).IsTrue();
+    }
+
+    [Test]
+    public async Task CallTool_WithAnotherRevitVersion_RunsInThatRevit()
+    {
+        // Two Revit versions, one token: 2025 does not have McpPoint, 2026 does
+        var connectionFile = McpTestServer.NewConnectionFile();
+        await using var revit2025 = await McpTestServer.StartAsync(connectionFile, McpTestServer.FreePort(), "2025", typeof(McpGreetCommand));
+        await using var revit2026 = await McpTestServer.StartAsync(connectionFile, McpTestServer.FreePort(), "2026", typeof(McpGreetCommand), typeof(McpPointCommand));
+        await using var client = await revit2025.ConnectAsync(HandshakeProtocolVersion);
+
+        var forwarded = await client.CallToolAsync("McpPoint", new Dictionary<string, object?> { ["revit"] = "2026" });
+        var here = await client.CallToolAsync("McpGreet", new Dictionary<string, object?> { ["name"] = "Revit", ["revit"] = "2025" });
+        var closed = await client.CallToolAsync("McpGreet", new Dictionary<string, object?> { ["name"] = "Revit", ["revit"] = "2027" });
+        var versions = await client.CallToolAsync("ListRevitVersions", new Dictionary<string, object?>());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(forwarded.IsError ?? false).IsFalse();
+            await Assert.That(TextOf(forwarded)).Contains("\"x\"");
+            await Assert.That(TextOf(here)).IsEqualTo("\"Hello, Revit (mcp)\"");
+            await Assert.That(closed.IsError ?? false).IsTrue();
+            await Assert.That(TextOf(closed)).StartsWith("revit_not_open");
+            await Assert.That(TextOf(versions)).Contains("2025");
+            await Assert.That(TextOf(versions)).Contains("2026");
+        }
     }
 
     [Test]
@@ -311,14 +340,24 @@ internal sealed class McpTestServer : IAsyncDisposable
         return StartAsync(connectionFile, FreePort(), commands);
     }
 
-    public static async Task<McpTestServer> StartAsync(string connectionFile, int port, params Type[] commands)
+    public static Task<McpTestServer> StartAsync(string connectionFile, int port, params Type[] commands)
     {
-        var host = BuildHost(connectionFile, port, enabled: true, commands);
+        return StartAsync(connectionFile, port, "2026", commands);
+    }
+
+    public static async Task<McpTestServer> StartAsync(string connectionFile, int port, string revitVersion, params Type[] commands)
+    {
+        var host = BuildHost(connectionFile, port, enabled: true, revitVersion, commands);
         await host.StartAsync();
         return new McpTestServer(host, port, connectionFile);
     }
 
     public static IHost BuildHost(string connectionFile, int port, bool enabled, params Type[] commands)
+    {
+        return BuildHost(connectionFile, port, enabled, "2026", commands);
+    }
+
+    public static IHost BuildHost(string connectionFile, int port, bool enabled, string revitVersion, params Type[] commands)
     {
         var builder = TestHost.CreateBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -327,13 +366,14 @@ internal sealed class McpTestServer : IAsyncDisposable
             ["Mcp:Port"] = port.ToString()
         });
         builder.AddRevitCommands(configure => configure.FromTypes(commands).UseCommandLogging());
-        builder.AddMcp(new McpHostSettings("2026", port, connectionFile));
+        builder.AddMcp(new McpHostSettings(revitVersion, port, connectionFile));
         return builder.Build();
     }
 
     public static string NewConnectionFile()
     {
-        return Path.Combine(Path.GetTempPath(), $"mcp-{Guid.NewGuid():N}.json");
+        // A folder of its own: the servers of a test see each other in mcp\ next to the file, and only those
+        return Path.Combine(Path.GetTempPath(), $"mcp-{Guid.NewGuid():N}", "mcp.json");
     }
 
     public static int FreePort()

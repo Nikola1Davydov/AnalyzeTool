@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "analysetool": {
+      "type": "http",
+      "url": "http://localhost:48075/mcp",
+      "headersHelper": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/headers.ps1\""
+    }
+  }
+}

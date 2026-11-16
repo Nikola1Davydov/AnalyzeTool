@@ -22,10 +22,14 @@ namespace AnalyseTool.Infrastructure.App;
 /// <param name="Url">The address of the endpoint.</param>
 /// <param name="ClaudeCode">The <c>claude mcp add …</c> command, while it listens.</param>
 /// <param name="ConnectionFile">The file with the address and the token.</param>
-/// <param name="Name">The server name for a client configuration, unique per Revit version.</param>
+/// <param name="Name">The server name for a client configuration: one for every Revit version.</param>
 /// <param name="Token">The bearer token, while it listens: the pages build the configuration of other clients with it.</param>
-public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile, string? Name = null, string? Token = null)
+/// <param name="ClaudePlugin">The folder of the Claude Code plugin next to the add-in (a marketplace to add), when it is there.</param>
+public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile, string? Name = null, string? Token = null, string? ClaudePlugin = null)
 {
+    /// <summary>The folder of the Claude Code plugin in the add-in folder.</summary>
+    public static string PluginFolder => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(McpInfo).Assembly.Location) ?? AppContext.BaseDirectory, "Claude");
+
     internal static McpInfo From(IMcpEndpoint endpoint, McpOptions options)
     {
         var info = endpoint.GetInfo();
@@ -35,7 +39,8 @@ public sealed record McpInfo(bool Enabled, string State, string Url, string? Cla
             McpEndpointState.PortBusy => "portBusy",
             _ => "off"
         };
-        return new McpInfo(options.Enabled ?? info.State != McpEndpointState.Off, state, info.Url.ToString(), info.ClaudeCode, info.ConnectionFile, info.Name, info.Token);
+        return new McpInfo(options.Enabled ?? info.State != McpEndpointState.Off, state, info.Url.ToString(), info.ClaudeCode, info.ConnectionFile, info.Name, info.Token,
+            System.IO.Directory.Exists(PluginFolder) ? PluginFolder : null);
     }
 }
 

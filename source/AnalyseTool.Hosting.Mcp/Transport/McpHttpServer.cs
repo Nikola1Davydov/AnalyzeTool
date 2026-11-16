@@ -21,9 +21,16 @@ namespace AnalyseTool.Hosting.Mcp.Transport;
 /// </summary>
 /// <param name="RevitVersion">The Revit version number, <c>2026</c>.</param>
 /// <param name="BasePort">The port of the first supported Revit version; later versions add their offset.</param>
-/// <param name="ConnectionFile">The path of <c>mcp.json</c>.</param>
-internal sealed record McpHostSettings(string RevitVersion, int BasePort, string ConnectionFile)
+/// <param name="ConnectionFile">The path of <c>mcp.json</c>: one for every Revit version, with the one token.</param>
+/// <param name="HubPort">
+///     The port of the one address of every Revit version: the first Revit to start holds it and sends a call for another
+///     Revit on; <see langword="null" /> for none (tests).
+/// </param>
+internal sealed record McpHostSettings(string RevitVersion, int BasePort, string ConnectionFile, int? HubPort = null)
 {
+    /// <summary>Where every Revit with a server writes its file (<see cref="McpPeers" />): <c>mcp\</c> next to <c>mcp.json</c>.</summary>
+    public string PeersFolder => Path.Combine(Path.GetDirectoryName(ConnectionFile)!, "mcp");
+
     /// <summary>The first Revit version of the template: its port is the base port.</summary>
     public const int FirstRevitVersion = 2025;
 
@@ -59,7 +66,8 @@ internal sealed partial class McpHttpServer(
     McpTools tools,
     IHostEnvironment environment,
     IServiceProvider services,
-    ILoggerFactory loggerFactory) : IHostedService, IMcpEndpoint, IAsyncDisposable
+    ILoggerFactory loggerFactory,
+    McpPeers peers) : IHostedService, IMcpEndpoint, IAsyncDisposable
 {
     private const string EndpointPath = "/mcp";
     private const string SessionIdHeader = "Mcp-Session-Id";
@@ -74,6 +82,9 @@ internal sealed partial class McpHttpServer(
     private readonly SdkLoggerFactory _sdkLoggerFactory = new(loggerFactory, options.Value.SdkLogLevel);
     private HttpListener? _listener;
     private Task? _acceptLoop;
+    private HttpListener? _hub;
+    private Task? _hubLoop;
+    private Timer? _hubRetry;
     private byte[] _authorization = [];
     private McpEndpointState _state = McpEndpointState.Off;
     private McpConnectionFile? _connection;
@@ -83,7 +94,13 @@ internal sealed partial class McpHttpServer(
 
     private Uri ExpectedUrl => new($"http://localhost:{settings.GetPort(options.Value)}{EndpointPath}");
 
-    private string Name => $"{environment.ApplicationName.Replace('.', '-').ToLowerInvariant()}-{settings.RevitVersion}";
+    /// <summary>The address clients use: the one of every Revit version, else this Revit's own.</summary>
+    private Uri ClientUrl => settings.HubPort is { } hub ? new Uri($"http://localhost:{hub}{EndpointPath}") : Url ?? ExpectedUrl;
+
+    /// <summary>Whether this Revit holds the address of every Revit version now.</summary>
+    public bool IsHub => _hub is not null;
+
+    private string Name => environment.ApplicationName.Replace('.', '-').ToLowerInvariant();
 
     /// <inheritdoc />
     public McpEndpointInfo GetInfo()
@@ -93,7 +110,7 @@ internal sealed partial class McpHttpServer(
             .Select(tool => new McpToolInfo(tool.Name, tool.Description, tool.Annotations?.ReadOnlyHint ?? false))
             .ToList();
 
-        return new McpEndpointInfo(_state, Url ?? ExpectedUrl, Name, connection?.Token, connection?.ClaudeCode, settings.ConnectionFile, toolInfos);
+        return new McpEndpointInfo(_state, ClientUrl, Name, connection?.Token, connection?.ClaudeCode, settings.ConnectionFile, toolInfos);
     }
 
     /// <inheritdoc />
@@ -124,12 +141,20 @@ internal sealed partial class McpHttpServer(
         _listener = listener;
         Url = ExpectedUrl;
 
-        var connection = McpConnectionFile.Write(settings.ConnectionFile, Url.ToString(), Name);
+        var connection = McpConnectionFile.Write(settings.ConnectionFile, ClientUrl.ToString(), Name);
         _authorization = Encoding.UTF8.GetBytes($"Bearer {connection.Token}");
         _connection = connection;
         _state = McpEndpointState.Listening;
 
-        _acceptLoop = Task.Run(AcceptLoopAsync, CancellationToken.None);
+        _acceptLoop = Task.Run(() => AcceptLoopAsync(listener), CancellationToken.None);
+        peers.Register(port);
+        if (settings.HubPort is not null)
+        {
+            // The first Revit takes the address of all; the others try again while it is taken
+            TryHoldHub();
+            _hubRetry = new Timer(_ => TryHoldHub(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        }
+
         catalog.Changed += OnToolsChanged;
         LogListening(_logger, Url, settings.ConnectionFile);
         return Task.CompletedTask;
@@ -145,14 +170,29 @@ internal sealed partial class McpHttpServer(
 
         _state = McpEndpointState.Off;
         catalog.Changed -= OnToolsChanged;
+        if (_hubRetry is not null)
+        {
+            await _hubRetry.DisposeAsync().ConfigureAwait(false);
+            _hubRetry = null;
+        }
+
+        peers.Unregister();
         await _stopping.CancelAsync().ConfigureAwait(false);
         _listener.Stop();
         _listener.Close();
         _listener = null;
+        _hub?.Stop();
+        _hub?.Close();
+        _hub = null;
 
         if (_acceptLoop is not null)
         {
             await _acceptLoop.ConfigureAwait(false);
+        }
+
+        if (_hubLoop is not null)
+        {
+            await _hubLoop.ConfigureAwait(false);
         }
 
         foreach (var id in _sessions.Keys)
@@ -171,14 +211,53 @@ internal sealed partial class McpHttpServer(
         _stopping.Dispose();
     }
 
-    private async Task AcceptLoopAsync()
+    /// <summary>Takes the address of every Revit version when it is free: the Revit that held it closed, or none did yet.</summary>
+    private void TryHoldHub()
+    {
+        if (_hub is not null || _stopping.IsCancellationRequested || settings.HubPort is not { } port)
+        {
+            return;
+        }
+
+        var hub = new HttpListener();
+        hub.Prefixes.Add($"http://localhost:{port}/");
+        try
+        {
+            hub.Start();
+        }
+        catch (HttpListenerException)
+        {
+            // Another Revit holds it
+            hub.Close();
+            return;
+        }
+
+        lock (_sessions)
+        {
+            if (_hub is not null || _stopping.IsCancellationRequested)
+            {
+                hub.Close();
+                return;
+            }
+
+            _hub = hub;
+            _hubLoop = Task.Run(() => AcceptLoopAsync(hub), CancellationToken.None);
+        }
+
+        LogHub(_logger, port, settings.RevitVersion);
+    }
+
+    [LoggerMessage(LogLevel.Information, "MCP: this Revit {Version} holds the address of every Revit version, port {Port}")]
+    private static partial void LogHub(ILogger logger, int port, string version);
+
+    private async Task AcceptLoopAsync(HttpListener listener)
     {
         while (!_stopping.IsCancellationRequested)
         {
             HttpListenerContext context;
             try
             {
-                context = await _listener!.GetContextAsync().ConfigureAwait(false);
+                context = await listener.GetContextAsync().ConfigureAwait(false);
             }
             catch (Exception) when (_stopping.IsCancellationRequested)
             {
@@ -434,7 +513,7 @@ internal sealed partial class McpHttpServer(
             ServerInfo = new Implementation
             {
                 Name = environment.ApplicationName,
-                Title = $"{environment.ApplicationName} (Revit {settings.RevitVersion})",
+                Title = $"{environment.ApplicationName} (Revit)",
                 Version = typeof(McpHttpServer).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0"
             },
             Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },

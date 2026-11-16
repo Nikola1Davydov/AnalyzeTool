@@ -29,7 +29,7 @@ export function FoldersScreen() {
 type Client = "claude-code" | "codex" | "cursor" | "vscode" | "claude-desktop" | "gemini";
 
 const clients: { value: Client; label: string; where: string }[] = [
-  { value: "claude-code", label: "Claude Code", where: "Run once in a terminal:" },
+  { value: "claude-code", label: "Claude Code", where: "Run once in a terminal — the AnalyseTool plugin: the tools of every open Revit, no token to copy, and the guide for buttons:" },
   { value: "codex", label: "Codex", where: "Add to ~/.codex/config.toml (Windows: %USERPROFILE%\\.codex\\config.toml):" },
   { value: "cursor", label: "Cursor", where: "Add to ~/.cursor/mcp.json (or .cursor/mcp.json of a project):" },
   { value: "vscode", label: "VS Code", where: "Add to .vscode/mcp.json of a project (or «MCP: Open User Configuration»):" },
@@ -45,7 +45,9 @@ function snippet(client: Client, mcp: McpInfo) {
   const json = (value: unknown) => JSON.stringify(value, null, 2);
   switch (client) {
     case "claude-code":
-      return mcp.claudeCode ?? `claude mcp add --transport http ${name} ${url} --header "Authorization: ${auth}"`;
+      return mcp.claudePlugin
+        ? `claude plugin marketplace add "${mcp.claudePlugin}"\nclaude plugin install analysetool@analysetool`
+        : (mcp.claudeCode ?? `claude mcp add --transport http ${name} ${url} --header "Authorization: ${auth}"`);
     case "codex":
       return `[mcp_servers.${name}]\nurl = "${url}"\nhttp_headers = { "Authorization" = "${auth}" }`;
     case "cursor":
@@ -204,8 +206,10 @@ function ConnectClient({ mcp }: { mcp: McpInfo }) {
       <pre className="result small">{text}</pre>
       <button onClick={() => void copy(text).then(setCopied)}>{copied ? "Copied" : "Copy"}</button>
       <p className="muted small">
-        Each Revit version has its own address and token; they are also in the connection file. Keep the token on this computer — it
-        lets a program drive the open model.
+        One address and one token for every Revit version (also in the connection file): the first Revit you open answers and
+        hands a call to the version it names — every tool takes <span className="mono">"revit": "2026"</span>, ListRevitVersions shows the
+        open ones; without it a call goes to the Revit you used last. Keep the token on this computer — it lets a program drive the
+        open model.
       </p>
     </>
   );

@@ -11,7 +11,7 @@ namespace AnalyseTool.Hosting.Mcp.Transport;
 /// </summary>
 /// <param name="Url">The address of the MCP endpoint.</param>
 /// <param name="Token">The bearer token every request must carry.</param>
-/// <param name="Name">A server name for the client configuration, unique per add-in and Revit version.</param>
+/// <param name="Name">A server name for the client configuration: the add-in, for every Revit version.</param>
 /// <param name="ClaudeCode">The command that adds this server to Claude Code.</param>
 internal sealed record McpConnectionFile(string Url, string Token, string Name, string ClaudeCode)
 {
@@ -36,7 +36,8 @@ internal sealed record McpConnectionFile(string Url, string Token, string Name, 
         return file;
     }
 
-    private static string? ReadToken(string path)
+    /// <summary>The token of the file; <see langword="null" /> when there is none.</summary>
+    public static string? ReadToken(string path)
     {
         try
         {

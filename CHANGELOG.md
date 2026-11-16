@@ -8,6 +8,8 @@
 - 🕓 **Every button has its own version history.** Save a version, compare, restore a version or a file, or pin the button to an older version — from its page or over MCP.
 - 🌗 **The pane and the windows follow the theme of Revit** (or Windows, light, dark — in the profile).
 - 🔌 **Connect Codex, Cursor, VS Code, Claude Desktop or Gemini CLI** from the pane: pick the client, copy what to paste where.
+- 🧩 **A Claude Code plugin ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings a skill for writing buttons (`/analysetool:new-button`).
+- 🔀 **One MCP address for every Revit version.** The first Revit you open answers; a tool call with `"revit": "2026"` runs in that version, without it in the Revit you used last.
 - 🤖 **MCP runs inside Revit over HTTP**, no separate exe; AI clients can create, edit, build and version buttons, and the tool list follows the extensions.
 - 🧭 **The authoring guide `LLM.md` lives next to the add-in and updates with it.** A new extension gets `AGENTS.md` and `CLAUDE.md` that point AI agents there instead of a copy that goes stale.
 - 🎯 **The ribbon keeps one button: Buttons (the pane).** Refresh is ↻ in its header, About is in its profile. Everything else of AnalyseTool is in the pane; any button can be pane-only with `"ribbon": false`.

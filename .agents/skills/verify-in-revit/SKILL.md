@@ -28,8 +28,9 @@ dotnet build AnalyseTool.slnx -c Debug.R26
 
 ## Step 2: Connect
 
-`%LOCALAPPDATA%\AnalyseTool\<year>\mcp.json` has the address, the token and the command that adds the server to
-Claude Code (`claudeCode`); the token survives Revit restarts. A client reads the tool list when it connects: after a
+`%LOCALAPPDATA%\AnalyseTool\mcp.json` has the one address of every Revit version (`http://localhost:48075/mcp`), the
+token and the command that adds the server to Claude Code (`claudeCode`); the token survives Revit restarts. With
+several Revit versions open, pass `"revit": "2026"` to a tool (`ListRevitVersions` lists them). A client reads the tool list when it connects: after a
 Revit restart, reconnect the server (`/mcp` in Claude Code) — that also brings in new commands. Without the file or with
 `ECONNREFUSED`, Revit is not running, or the server is off (`Mcp:Enabled`), or the port is busy — the log says which.
 

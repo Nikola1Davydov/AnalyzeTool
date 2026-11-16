@@ -198,15 +198,16 @@ const levels = ["Debug", "Information", "Information", "Warning"] as const;
 // ---- App ------------------------------------------------------------------------------------------------
 
 const token = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
-const mcpUrl = "http://localhost:48076/mcp";
+const mcpUrl = "http://localhost:48075/mcp";
 const mcp: McpInfo = {
   enabled: true,
   state: "listening",
   url: mcpUrl,
-  claudeCode: `claude mcp add --transport http analysetool-2026 ${mcpUrl} --header "Authorization: Bearer ${token}"`,
-  connectionFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\2026\mcp.json`,
-  name: "analysetool-2026",
+  claudeCode: `claude mcp add --transport http analysetool ${mcpUrl} --header "Authorization: Bearer ${token}"`,
+  connectionFile: String.raw`C:\Users\you\AppData\Local\AnalyseTool\mcp.json`,
+  name: "analysetool",
   token,
+  claudePlugin: String.raw`C:\Users\you\AppData\Roaming\Autodesk\Revit\Addins\2026\AnalyseTool.Launcher\Claude`,
 };
 
 const changelog = `# Changelog
