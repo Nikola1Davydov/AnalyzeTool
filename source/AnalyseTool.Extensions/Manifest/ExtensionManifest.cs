@@ -192,6 +192,22 @@ public sealed record ExtensionButton
     [JsonPropertyName("args")]
     public JsonElement? Args { get; init; }
 
+    /// <summary>Gets whether the button is on the Revit ribbon; <see langword="false" />: only in the dock pane. Default: on.</summary>
+    [JsonPropertyName("ribbon")]
+    public bool? Ribbon { get; init; }
+
+    /// <summary>Gets whether the button is a tile of the dock pane; <see langword="false" />: only on the ribbon. Default: on.</summary>
+    [JsonPropertyName("pane")]
+    public bool? Pane { get; init; }
+
+    /// <summary>Gets whether the button goes on the ribbon.</summary>
+    [JsonIgnore]
+    public bool OnRibbon => Ribbon != false;
+
+    /// <summary>Gets whether the button is a tile of the dock pane.</summary>
+    [JsonIgnore]
+    public bool InPane => Pane != false;
+
     /// <summary>Gets the page of this button, overriding <see cref="ExtensionUi.EntryHtml" />.</summary>
     [JsonPropertyName("entryHtml")]
     public string? EntryHtml { get; init; }

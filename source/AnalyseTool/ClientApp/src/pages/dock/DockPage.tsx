@@ -135,7 +135,7 @@ function Pane() {
   return (
     <EditContext.Provider value={{ editing, start: () => setEditing(true) }}>
       <div className={`pane projects tiles-${profile.size} ${profile.effects ? "" : "no-effects"}`}>
-        <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => void buttons.refetch()} />
+        <Header overview={overview} screen={current} folder={folder} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => void bridge.invoke(paneCommands.RefreshButtons, null).finally(() => void buttons.refetch())} />
         <main
           className="pane-main"
           ref={main}
@@ -302,7 +302,7 @@ function HomeScreen({ overview, onOpen }: { overview: PaneOverview; onOpen: (id:
             label={folder.name}
             title={`${folder.name}\n${folder.buttons.length} button(s)${folder.enabled ? "" : "\nTurned off"}`}
             icon={<FolderIcon folder={folder} />}
-            className={folder.buttons.length > 1 ? "folder" : undefined}
+            className="folder"
             badge={folder.problems.length > 0 ? "error" : null}
             dim={!folder.enabled}
             onClick={() => onOpen(folder.id)}
@@ -433,12 +433,8 @@ function ButtonTile(props: {
   );
 }
 
-/** A folder shows the first icons of its buttons, like a folder of apps; a folder of one button shows that button. */
+/** A folder shows the first icons of its buttons, like a folder of apps — also with one button: a folder is never a button. */
 function FolderIcon({ folder }: { folder: PaneFolder }) {
-  if (folder.buttons.length === 1) {
-    const [button] = folder.buttons;
-    return <TileIcon glyph={button.glyph} image={button.image} title={folder.name} />;
-  }
   return (
     <span className="tile-icon folder-icon">
       {folder.buttons.slice(0, 4).map((button) => (

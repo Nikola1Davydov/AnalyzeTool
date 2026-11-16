@@ -39,6 +39,8 @@ only in Debug configurations):
 * A page of the add-in: `"command": "OpenWindow", "args": { "route": "/families" }` — add `"dock": true` for the dock pane.
   The window title and size of a route are in `AppWindows.Open` (`Infrastructure/App/AppCommands.cs`).
 * A web address: `"command": "OpenUrl", "args": { "url": "https://…" }`.
+* `ribbon` / `pane` — `false` keeps it off the ribbon or out of the dock pane. The ribbon of AnalyseTool keeps only the
+  pane, New button and Refresh: a new built-in button is `"ribbon": false` (a tile of the pane) unless the user asks.
 * `panel` / `tab` — where it goes; the panels appear in the order of their first button, before the panels of extensions.
 * `kind` — `push` (large, the default), `stacked` (small, three per column) or `pulldown` (with `items`).
 * `icon` — `glyph:XXXX` (a Segoe MDL2 Assets code point, crisp at any DPI) or a PNG next to the `plugin.json`.

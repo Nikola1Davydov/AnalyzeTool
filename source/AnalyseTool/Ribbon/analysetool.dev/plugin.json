@@ -2,15 +2,14 @@
   "schema": 2,
   "id": "analysetool.dev",
   "version": "2.0.0",
-  "description": "The Dev panel of Debug builds.",
+  "description": "The Dev buttons of Debug builds: tiles of the pane only.",
   "publisher": "AnalyseTool",
   "ui": {
     "tab": "AnalyseTool",
-    "panel": "Dev",
     "buttons": [
-      { "name": "Status", "icon": "glyph:E9D9", "tooltip": "Revit, the environment and the load context.", "command": "GetStatus" },
-      { "name": "Active\ndocument", "icon": "glyph:E8A5", "tooltip": "The active document as the pipeline sees it.", "command": "CheckActiveDocument" },
-      { "name": "Dev\npage", "icon": "glyph:E943", "tooltip": "The Dev page in the dock pane: the log and the pipeline.", "command": "OpenWindow", "args": { "route": "/dev", "dock": true } }
+      { "name": "Status", "icon": "glyph:E9D9", "tooltip": "Revit, the environment and the load context.", "command": "GetStatus", "ribbon": false },
+      { "name": "Active\ndocument", "icon": "glyph:E8A5", "tooltip": "The active document as the pipeline sees it.", "command": "CheckActiveDocument", "ribbon": false },
+      { "name": "Dev\npage", "icon": "glyph:E943", "tooltip": "The Dev page in the dock pane: the log and the pipeline.", "command": "OpenWindow", "args": { "route": "/dev", "dock": true }, "ribbon": false }
     ]
   }
 }

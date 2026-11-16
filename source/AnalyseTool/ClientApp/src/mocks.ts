@@ -47,9 +47,7 @@ const paneFolders: PaneFolder[] = [
     enabled: true,
     problems: [],
     buttons: [
-      paneButton("analysetool", "AnalyseTool", null, "OpenWindow", "The parameter report, the elements and the shared parameters."),
-      paneButton("analysetool", "Buttons pane", g(0xe8a0), "OpenWindow"),
-      paneButton("analysetool", "New button", g(0xecc8), "OpenWindow"),
+      paneButton("analysetool", "Parameters", g(0xe9f9), "OpenWindow", "The parameter report, the elements and the shared parameters."),
       paneButton("analysetool", "Manage buttons", g(0xea86), "OpenWindow"),
       paneButton("analysetool", "Statistics", g(0xe9d2), "OpenWindow"),
       paneButton("analysetool", "Settings", g(0xe713), "OpenWindow"),
@@ -79,7 +77,7 @@ const paneFolders: PaneFolder[] = [
   },
   { id: "Acme.Sample", name: "Acme sample", builtIn: false, enabled: false, problems: [], buttons: [paneButton("Acme.Sample", "Hello", null, "Acme.Sample.Hello")] },
 ];
-let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/AnalyseTool"] };
+let paneProfile: unknown = { dock: ["count-walls/Count walls", "analysetool/Parameters"] };
 
 // ---- Statistics: a few weeks of clicks
 const statDays = (seed: number, scale: number) =>
@@ -118,9 +116,10 @@ const stat = (
   };
 };
 let statistics: ButtonStatistic[] = [
-  stat("analysetool", "AnalyseTool", "AnalyseTool", "OpenWindow", true, 1, 6),
-  stat("analysetool", "AnalyseTool", "Buttons pane", "OpenWindow", true, 2, 2),
+  stat("analysetool", "AnalyseTool", "Parameters", "OpenWindow", true, 1, 6),
+  stat("analysetool", "AnalyseTool", "AnalyseTool", "OpenWindow", true, 2, 2),
   stat("analysetool", "AnalyseTool", "New button", "OpenWindow", true, 3, 1),
+  stat("analysetool", "AnalyseTool", "Refresh", "RefreshButtons", true, 13, 0.4),
   stat("analysetool", "AnalyseTool", "Manage buttons", "OpenWindow", true, 4, 1.5),
   stat("analysetool", "AnalyseTool", "Statistics", "OpenWindow", true, 5, 0.6),
   stat("analysetool", "AnalyseTool", "Settings", "OpenWindow", true, 6, 0.3),
@@ -613,6 +612,10 @@ registerMocks({
     if (key.startsWith("count-walls")) return { ok: true, text: "Level 1: 42 walls\nLevel 2: 38 walls", error: null, elapsedMilliseconds: 182, openedPage: false };
     if (key === "room-sheets/Purge empty") return { ok: false, text: null, error: "Open a document first.", elapsedMilliseconds: 12, openedPage: false };
     return { ok: true, text: null, error: null, elapsedMilliseconds: 0, openedPage: !key.startsWith("room-sheets/Renumber") };
+  },
+  RefreshButtons: async () => {
+    await delay(400);
+    return null;
   },
   GetPaneProfile: () => ({ profile: paneProfile }),
   SavePaneProfile: (payload) => {

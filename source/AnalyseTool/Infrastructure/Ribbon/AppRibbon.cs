@@ -122,6 +122,12 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
             for (var index = 0; index < buttons.Count; index++)
             {
                 var button = buttons[index];
+                // "ribbon": false — a tile of the dock pane only
+                if (!button.OnRibbon || (button.ResolvedKind == ButtonKind.Pulldown && !(button.Items ?? []).Any(child => child.OnRibbon)))
+                {
+                    continue;
+                }
+
                 var panelKey = Coalesce(button.Tab, ui.Tab, DefaultTab) + Separator + Coalesce(button.Panel, ui.Panel, DefaultPanel);
                 entries.Add(new Entry(extension, button, panelKey, index, extension.Directory.StartsWith(ButtonCatalog.DefaultFolder, StringComparison.OrdinalIgnoreCase) ? sourceIndex : int.MaxValue));
             }
@@ -186,7 +192,7 @@ public sealed partial class AppRibbon(ButtonCatalog catalog, ExtensionHost host,
         var icon = LoadIcon(entry.Extension, entry.Button);
         pulldown.Image = icon;
         pulldown.LargeImage = icon;
-        foreach (var child in entry.Button.Items ?? [])
+        foreach (var child in (entry.Button.Items ?? []).Where(child => child.OnRibbon))
         {
             pulldown.Items.Add(MakeButton(entry.Extension, child, small: true));
         }

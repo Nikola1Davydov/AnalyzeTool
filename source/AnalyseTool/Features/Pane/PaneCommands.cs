@@ -77,11 +77,12 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
 
     private static IEnumerable<PaneButton> Buttons(ExtensionDescriptor extension)
     {
-        foreach (var button in extension.Manifest.Ui!.EffectiveButtons())
+        // "pane": false — a button of the ribbon only
+        foreach (var button in extension.Manifest.Ui!.EffectiveButtons().Where(button => button.InPane))
         {
             if (button.ResolvedKind == ButtonKind.Pulldown)
             {
-                foreach (var child in button.Items ?? [])
+                foreach (var child in (button.Items ?? []).Where(child => child.InPane))
                 {
                     yield return Create(extension, child, ButtonUsageStore.Normalize(button.Name));
                 }
@@ -137,6 +138,22 @@ public sealed class GetPaneButtons(ButtonCatalog catalog, ExtensionPaths paths) 
         {
             return (null, null);
         }
+    }
+}
+
+/// <summary>
+///     The «Refresh» button of the ribbon and of the pane: reads every extension folder again, compiles what changed and
+///     rebuilds the ribbon. Saved files reload by themselves; this is for what the watcher cannot see (a network folder, a
+///     folder copied in while Revit was busy). Shows nothing when it worked — the buttons themselves are the answer.
+/// </summary>
+[Command(Description = "Reads every extension folder again, compiles what changed and rebuilds the ribbon and the pane.")]
+public sealed class RefreshButtons(ExtensionHost host) : ICommand<Empty>
+{
+    /// <inheritdoc />
+    public async Task<Empty> ExecuteAsync(CommandContext context)
+    {
+        await host.ReloadAllAsync(context.CancellationToken).ConfigureAwait(false);
+        return Empty.Value;
     }
 }
 

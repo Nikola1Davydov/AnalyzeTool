@@ -3,6 +3,7 @@
 export const paneCommands = {
   GetPaneButtons: "GetPaneButtons",
   RunButton: "RunButton",
+  RefreshButtons: "RefreshButtons",
   GetPaneProfile: "GetPaneProfile",
   SavePaneProfile: "SavePaneProfile",
 } as const;
