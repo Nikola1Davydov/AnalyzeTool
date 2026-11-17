@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.1] / unreleased
+## [2.0.1] / 2026-11-17
 
 - 🔔 **A new version shows itself**: AnalyseTool asks GitHub once a day for the latest release. A newer one puts a dot on your initials and a card with the download link on About. The request sends nothing about you or your models.
 - 🧪 **A switch for `ExecuteCode`**: profile › AI clients › **Let AI clients run any C#**, with a warning what it allows. It is off by default and works at once, without a restart.
