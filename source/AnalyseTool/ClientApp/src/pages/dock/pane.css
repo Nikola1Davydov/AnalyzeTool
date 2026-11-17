@@ -2146,3 +2146,24 @@
   justify-content: space-between;
   gap: 12px;
 }
+
+/* A narrow pane (Revit docks it at 200 px and less): long words break, rows wrap, wide tables scroll */
+.profile-card > div {
+  min-width: 0;
+}
+.profile-card strong,
+.pane .mono {
+  overflow-wrap: anywhere;
+}
+.segmented {
+  flex-wrap: wrap;
+}
+.dock-list li {
+  flex-wrap: wrap;
+}
+.dock-list .dock-name {
+  flex: 1 1 80px;
+}
+.stats-card {
+  overflow-x: auto;
+}
