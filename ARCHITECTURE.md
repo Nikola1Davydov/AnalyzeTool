@@ -168,7 +168,9 @@ over MCP, and of the «Commands» tab of the Dev page (`{ "code": "return doc.Ti
 * Every run is a JSON line in `%LOCALAPPDATA%\AnalyseTool\scripts\<date>.jsonl`: time, document, outcome,
   changes and the code.
 * Any code runs with the user's rights. The command exists only while scripting is on: in Debug by default, otherwise with
-  `Scripting:Enabled` — read at startup. Off, neither a page nor an AI client can reach it.
+  `Scripting:Enabled`, which the switch «Let AI clients run any C#» of the pane writes and applies at once
+  (`IScriptingSwitch`: the two commands are a command group added and removed at run time; AI clients get
+  `tools/list_changed`). Off, neither a page nor an AI client can reach it.
 
 ## Showing geometry (Visualization)
 

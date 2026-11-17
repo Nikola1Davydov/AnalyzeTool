@@ -44,8 +44,8 @@ function McpSection() {
   });
   const mcp = info.data?.mcp;
   const state = mcp ? stateText[mcp.state] : null;
-  // Asked on but not running: it starts with the next Revit
-  const waitsForRestart = mcp && mcp.enabled && mcp.state === "off";
+  // Asked on but not running: it did not start
+  const didNotStart = mcp && mcp.enabled && mcp.state === "off";
 
   return (
     <section className="panel block">
@@ -90,14 +90,9 @@ function McpSection() {
               </Link>
             </span>
           </div>
-          {waitsForRestart && (
+          {didNotStart && (
             <MessageBar intent="info" className="block">
-              <MessageBarBody>The server could not start right away — it starts with the next Revit session.</MessageBarBody>
-            </MessageBar>
-          )}
-          {!mcp.enabled && mcp.state !== "off" && (
-            <MessageBar intent="info" className="block">
-              <MessageBarBody>The server stops when Revit restarts.</MessageBarBody>
+              <MessageBarBody>The server did not start — see the log, or turn it off and on.</MessageBarBody>
             </MessageBar>
           )}
           {mcp.state === "portBusy" && (

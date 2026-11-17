@@ -8,6 +8,13 @@ public interface IMcpEndpoint
 {
     /// <summary>Returns where the server listens, how to connect to it and what tools it offers.</summary>
     McpEndpointInfo GetInfo();
+
+    /// <summary>
+    ///     Starts or stops the server now, in this Revit, without waiting for the next start: the switch of the settings page.
+    ///     The setting itself (<c>Mcp:Enabled</c>) is the caller's to save.
+    /// </summary>
+    /// <returns>Where the server is after the change: listening, off, or the port busy.</returns>
+    Task<McpEndpointInfo> SetEnabledAsync(bool enabled, CancellationToken cancellationToken);
 }
 
 /// <summary>

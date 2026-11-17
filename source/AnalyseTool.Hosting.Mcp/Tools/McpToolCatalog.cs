@@ -137,7 +137,7 @@ internal sealed class McpToolCatalog
     }
 
     /// <summary>A command registered at run time: a tool when its annotations say so.</summary>
-    private static McpToolEntry? Describe(CommandDescriptor command, CommandAnnotations annotations, List<string> problems)
+    private McpToolEntry? Describe(CommandDescriptor command, CommandAnnotations annotations, List<string> problems)
     {
         if (!annotations.ExposeToMcp)
         {
@@ -150,14 +150,19 @@ internal sealed class McpToolCatalog
             return null;
         }
 
-        var inputSchema = annotations.InputSchema ?? NoInputSchema;
+        // A command class turned on at run time (ExecuteCode) describes its input with its CLR type, as a scanned one
+        var inputSchema = annotations.InputSchema
+                          ?? (command.RequestType is { } requestType && requestType != typeof(JsonElement)
+                              ? AIJsonUtilities.CreateJsonSchema(requestType, serializerOptions: _serializerOptions)
+                              : NoInputSchema);
         if (!IsObjectSchema(inputSchema))
         {
             problems.Add($"'{command.Name}' ({command.Group}) is not an MCP tool: its input must be an object with properties.");
             return null;
         }
 
-        return new McpToolEntry(CreateTool(command, inputSchema, annotations.OutputSchema, null, annotations.ReadOnly, annotations.Destructive), command);
+        var title = command.CommandType.GetCustomAttribute<McpToolAttribute>()?.Title;
+        return new McpToolEntry(CreateTool(command, inputSchema, annotations.OutputSchema, title, annotations.ReadOnly, annotations.Destructive), command);
     }
 
     private static Tool CreateTool(CommandDescriptor command, JsonElement inputSchema, JsonElement? outputSchema, string? title, bool readOnly, bool destructive)

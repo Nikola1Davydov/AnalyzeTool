@@ -82,7 +82,9 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
   categories, and a printable A4 report of how well chosen parameters are filled.
 - **The profile** (your initials): **Statistics** (clicks, run times, failures — on this machine only), **Packages**
   (`.zip` extensions others shared), **AI clients**, **Folders of buttons** (add a network folder your team shares),
-  **Report a bug**, **About**, tile size and theme (it follows Revit by default). **↻** reads every folder again.
+  **Report a bug**, **About** (the version, what is new; a dot on your initials when a newer version is out — AnalyseTool
+  asks GitHub once a day which release is the latest; nothing else leaves the computer), tile size and theme
+  (it follows Revit by default). **↻** reads every folder again.
 
 ## AI — the one you already use
 
@@ -98,8 +100,8 @@ token for every open Revit version — and gives an AI client the built-in comma
 - **It builds with you**: it reads the guide (`GetAuthoringGuide`), creates a button (`CreateExtension`), writes its C#
   (compiler errors come back with file and line), runs it (`RunCommand`, also for a command its tool list does not show
   yet) and saves a version. Every version is yours to compare, restore or pin.
-- Only `localhost`, a token on every request, no request from a web page. Arbitrary C# (`ExecuteCode`) only where
-  scripting is switched on.
+- Only `localhost`, a token on every request, no request from a web page. Arbitrary C# (`ExecuteCode`) only after you
+  turn on **Let AI clients run any C#** in profile › AI clients (off by default, at once, no restart).
 
 ---
 

@@ -3,6 +3,7 @@ import { motion, MotionConfig } from "motion/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
+import { useUpdate } from "./update";
 import { extensionCommands } from "../../api/extensions";
 import { useRoute } from "../../router";
 import { type PaneButton, type PaneFolder, type PaneOverview, paneCommands } from "../../api/pane";
@@ -320,6 +321,7 @@ function Header(props: {
 }) {
   const { screen, folder } = props;
   const actions = useActions();
+  const update = useUpdate();
   const toastError = (message: string) => actions.toast(message, "error");
 
   const back =
@@ -422,8 +424,13 @@ function Header(props: {
                 ⋯
               </button>
             )}
-            <button className="avatar" title={`Profile of ${props.overview.userName}`} onClick={() => props.onGo({ kind: "profile" })}>
+            <button
+              className="avatar"
+              title={update.data?.available ? `Profile of ${props.overview.userName} — AnalyseTool ${update.data.latest} is out` : `Profile of ${props.overview.userName}`}
+              onClick={() => props.onGo({ kind: "profile" })}
+            >
               {props.overview.userName.slice(0, 2).toUpperCase()}
+              {update.data?.available && <span className="update-dot" />}
             </button>
           </>
         )}

@@ -259,6 +259,42 @@ public sealed class McpServerTests
     }
 
     [Test]
+    public async Task SetEnabled_StartsAndStopsWithoutARestart()
+    {
+        var port = McpTestServer.FreePort();
+        using var host = McpTestServer.BuildHost(McpTestServer.NewConnectionFile(), port, enabled: false, typeof(McpGreetCommand));
+        await host.StartAsync();
+        var endpoint = host.Services.GetRequiredService<IMcpEndpoint>();
+        using var http = new HttpClient();
+
+        async Task<HttpStatusCode> InitializeAsync(string token)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"http://localhost:{port}/mcp") { Content = InitializeBody() };
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Accept", "application/json, text/event-stream");
+            using var response = await http.SendAsync(request);
+            return response.StatusCode;
+        }
+
+        var on = await endpoint.SetEnabledAsync(true, CancellationToken.None);
+        await Assert.That(on.State).IsEqualTo(McpEndpointState.Listening);
+        await Assert.That(await InitializeAsync(on.Token!)).IsEqualTo(HttpStatusCode.OK);
+
+        var off = await endpoint.SetEnabledAsync(false, CancellationToken.None);
+        await Assert.That(off.State).IsEqualTo(McpEndpointState.Off);
+        await Assert.That(off.Token).IsNull();
+        await Assert.ThrowsAsync<HttpRequestException>(async () => await InitializeAsync(on.Token!));
+
+        // On again: the same token, and it answers
+        var again = await endpoint.SetEnabledAsync(true, CancellationToken.None);
+        await Assert.That(again.State).IsEqualTo(McpEndpointState.Listening);
+        await Assert.That(again.Token).IsEqualTo(on.Token);
+        await Assert.That(await InitializeAsync(again.Token!)).IsEqualTo(HttpStatusCode.OK);
+
+        await host.StopAsync();
+    }
+
+    [Test]
     public async Task Start_ToolWithoutDescription_Fails()
     {
         using var host = McpTestServer.BuildHost(McpTestServer.NewConnectionFile(), McpTestServer.FreePort(), enabled: false, typeof(McpUndescribedCommand), typeof(McpScalarRequestCommand));

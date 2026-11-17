@@ -1,10 +1,9 @@
 name: Compile solution
 
+# Builds and tests what is in git, on a clean machine: on a pull request, and by hand (Actions › Run workflow).
 on:
-  push:
-    branches:
-      - main
   pull_request:
+  workflow_dispatch:
 
 jobs:
   windows:
