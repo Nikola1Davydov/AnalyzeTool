@@ -241,6 +241,10 @@
   max-width: 40vw;
 }
 
+.pane-title.hidden {
+  visibility: hidden;
+}
+
 .pane-title .badge {
   margin-left: 6px;
   font-weight: 400;

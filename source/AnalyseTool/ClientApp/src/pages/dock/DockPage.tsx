@@ -399,9 +399,7 @@ function Header(props: {
           </button>
         )}
       </div>
-      <strong className="pane-title" title={title}>
-        {title}
-      </strong>
+      <PaneTitle title={title} />
       <div className="nav-side right">
         {props.editing ? (
           <button className="text-button bold" onClick={props.onDone}>
@@ -436,6 +434,27 @@ function Header(props: {
         )}
       </div>
     </header>
+  );
+}
+
+/** The title of the bar, hidden when it does not fit whole: a narrow pane shows the buttons and the avatar only. */
+function PaneTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    // Hidden keeps its place in the bar, so the measure stays the same and the title comes back when the pane widens
+    const measure = () => setFits(element.scrollWidth <= element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [title]);
+  return (
+    <strong ref={ref} className={`pane-title${fits ? "" : " hidden"}`} title={title}>
+      {title}
+    </strong>
   );
 }
 
