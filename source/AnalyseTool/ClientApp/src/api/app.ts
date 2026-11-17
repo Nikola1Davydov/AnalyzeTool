@@ -5,6 +5,7 @@ import { bridge } from "revit-bridge";
 export const appCommands = {
   GetAppInfo: "GetAppInfo",
   SetMcpEnabled: "SetMcpEnabled",
+  SetScriptingEnabled: "SetScriptingEnabled",
   OpenPath: "OpenPath",
   BrowseFolder: "BrowseFolder",
   BrowseFile: "BrowseFile",
@@ -28,6 +29,8 @@ export interface McpInfo {
   token?: string | null;
   /** The folder of the Claude Code plugin next to the add-in. */
   claudePlugin?: string | null;
+  /** Whether AI clients may run any C# (ExecuteCode). */
+  scripting?: boolean;
 }
 
 export interface RevitTheme {

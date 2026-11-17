@@ -106,6 +106,17 @@ public sealed class CommandRegistry
         return problems;
     }
 
+    /// <summary>
+    ///     Builds the descriptors of command classes for <see cref="SetGroup" />: commands a module turns on and off at run
+    ///     time. The classes must be registered in DI (scoped) like scanned commands.
+    /// </summary>
+    /// <exception cref="Microsoft.Extensions.Hosting.CommandRegistrationException">A class is not a valid command.</exception>
+    public static IReadOnlyList<CommandDescriptor> Describe(params Type[] commandTypes)
+    {
+        var (commands, errors) = CommandScanner.Scan(commandTypes, _ => false);
+        return errors.Count > 0 ? throw new Microsoft.Extensions.Hosting.CommandRegistrationException(errors) : commands;
+    }
+
     /// <summary>Removes the commands of a group.</summary>
     public void RemoveGroup(string group)
     {

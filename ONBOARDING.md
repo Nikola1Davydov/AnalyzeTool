@@ -788,7 +788,7 @@ Two things worth knowing:
 - **New buttons go to the authoring root** (`%LOCALAPPDATA%\AnalyseTool\extensions\`, or the folder named in profile ›
   Folders of buttons). A button that already lives in a shared team folder is changed where it lives, so a fix does
   not silently land in a different copy — and a fix there is everyone's fix.
-- **Arbitrary C# (`ExecuteCode`) is off unless a person turns it on** (`Scripting:Enabled`, on in Debug builds); an
+- **Arbitrary C# (`ExecuteCode`) is off unless a person turns it on** (profile › AI clients › **Let AI clients run any C#**, i.e. `Scripting:Enabled`; on in Debug builds); an
   agent cannot flip it for itself. Buttons do not need it: their C# is compiled from their folder.
 
 The mechanics — every command in the loop, the manifest it writes, the recovery paths — are in

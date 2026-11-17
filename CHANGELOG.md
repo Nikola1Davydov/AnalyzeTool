@@ -2,6 +2,7 @@
 
 ## [2.0.1] / unreleased
 
+- 🧪 **A switch for `ExecuteCode`**: profile › AI clients › **Let AI clients run any C#**, with a warning what it allows. It is off by default and works at once, without a restart.
 - 🔌 **The AI clients switch works at once**: turning MCP on starts the server in this Revit, turning it off stops it — no Revit restart.
 
 ## [2.0.0] / 2026-11-16

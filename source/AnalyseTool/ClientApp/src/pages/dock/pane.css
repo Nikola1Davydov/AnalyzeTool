@@ -2102,3 +2102,12 @@
   pointer-events: none;
   box-shadow: 0 12px 30px rgb(0 0 0 / 30%);
 }
+
+/* The warning under «Let AI clients run any C#»: muted while off, a warning colour while on */
+.scripting-warning {
+  color: var(--secondary-label);
+  margin-top: 4px;
+}
+.scripting-warning.on {
+  color: var(--orange);
+}

@@ -6,6 +6,7 @@ using System.Windows;
 using AnalyseTool.Extensions.Storage;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Mcp;
+using AnalyseTool.Hosting.Scripting;
 using AnalyseTool.Hosting.Settings;
 using AnalyseTool.Hosting.WebView.Controls;
 using Microsoft.Extensions.Options;
@@ -25,12 +26,12 @@ namespace AnalyseTool.Infrastructure.App;
 /// <param name="Name">The server name for a client configuration: one for every Revit version.</param>
 /// <param name="Token">The bearer token, while it listens: the pages build the configuration of other clients with it.</param>
 /// <param name="ClaudePlugin">The folder of the plugin for Claude Code and Codex next to the add-in (a marketplace to add), when it is there.</param>
-public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile, string? Name = null, string? Token = null, string? ClaudePlugin = null)
+public sealed record McpInfo(bool Enabled, string State, string Url, string? ClaudeCode, string ConnectionFile, string? Name = null, string? Token = null, string? ClaudePlugin = null, bool Scripting = false)
 {
     /// <summary>The folder of the plugin for Claude Code and Codex in the add-in folder.</summary>
     public static string PluginFolder => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(McpInfo).Assembly.Location) ?? AppContext.BaseDirectory, "Plugin");
 
-    internal static McpInfo From(IMcpEndpoint endpoint, McpOptions options)
+    internal static McpInfo From(IMcpEndpoint endpoint, McpOptions options, IScriptingSwitch scripting)
     {
         var info = endpoint.GetInfo();
         var state = info.State switch
@@ -40,7 +41,7 @@ public sealed record McpInfo(bool Enabled, string State, string Url, string? Cla
             _ => "off"
         };
         return new McpInfo(options.Enabled ?? info.State != McpEndpointState.Off, state, info.Url.ToString(), info.ClaudeCode, info.ConnectionFile, info.Name, info.Token,
-            System.IO.Directory.Exists(PluginFolder) ? PluginFolder : null);
+            System.IO.Directory.Exists(PluginFolder) ? PluginFolder : null, scripting.Enabled);
     }
 }
 
@@ -54,7 +55,7 @@ public sealed record AppInfo(string Version, string RevitVersion, string Changel
 
 /// <summary>Returns the version, the changelog and the MCP state.</summary>
 [Command(Description = "Returns the version of AnalyseTool, the Revit version, the changelog and the MCP state.")]
-public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp, ExtensionPaths paths, AnalyseTool.Extensions.Loading.ExtensionHost extensions) : ICommand<AppInfo>
+public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp, IScriptingSwitch scripting, ExtensionPaths paths, AnalyseTool.Extensions.Loading.ExtensionHost extensions) : ICommand<AppInfo>
 {
     /// <inheritdoc />
     public Task<AppInfo> ExecuteAsync(CommandContext context)
@@ -68,7 +69,7 @@ public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions
             extensions.RevitVersion,
             File.Exists(changelog) ? File.ReadAllText(changelog) : "",
             paths.ProfileRoot,
-            McpInfo.From(endpoint, mcp.CurrentValue)));
+            McpInfo.From(endpoint, mcp.CurrentValue, scripting)));
     }
 }
 
@@ -103,14 +104,30 @@ public sealed record SetMcpEnabledRequest([property: Description("Whether AI cli
 
 /// <summary>Turns the MCP endpoint on or off for this user: now in this Revit, and at every next start.</summary>
 [Command(Description = "Turns the MCP endpoint on or off for this user (Mcp:Enabled in the user settings): at once in this Revit, and at every next start.")]
-public sealed class SetMcpEnabled(IUserSettings settings, IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp) : ICommand<SetMcpEnabledRequest, McpInfo>
+public sealed class SetMcpEnabled(IUserSettings settings, IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp, IScriptingSwitch scripting) : ICommand<SetMcpEnabledRequest, McpInfo>
 {
     /// <inheritdoc />
     public async Task<McpInfo> ExecuteAsync(SetMcpEnabledRequest request, CommandContext context)
     {
         await settings.UpdateAsync<McpOptions>(McpOptions.SectionName, options => options.Enabled = request.Enabled, context.CancellationToken);
         await endpoint.SetEnabledAsync(request.Enabled, context.CancellationToken);
-        return McpInfo.From(endpoint, mcp.CurrentValue) with { Enabled = request.Enabled };
+        return McpInfo.From(endpoint, mcp.CurrentValue, scripting) with { Enabled = request.Enabled };
+    }
+}
+
+/// <summary>Input of <see cref="SetScriptingEnabled" />.</summary>
+public sealed record SetScriptingEnabledRequest([property: Description("Whether AI clients and pages may run any C# (ExecuteCode).")] bool Enabled);
+
+/// <summary>Lets AI clients run any C# in Revit (ExecuteCode, DescribeApi) or not: now in this Revit, and at every next start.</summary>
+[Command(Description = "Turns ExecuteCode and DescribeApi on or off for this user (Scripting:Enabled in the user settings): at once in this Revit, and at every next start.")]
+public sealed class SetScriptingEnabled(IUserSettings settings, IScriptingSwitch scripting, IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp) : ICommand<SetScriptingEnabledRequest, McpInfo>
+{
+    /// <inheritdoc />
+    public async Task<McpInfo> ExecuteAsync(SetScriptingEnabledRequest request, CommandContext context)
+    {
+        await settings.UpdateAsync<ScriptingOptions>(ScriptingOptions.SectionName, options => options.Enabled = request.Enabled, context.CancellationToken);
+        scripting.SetEnabled(request.Enabled);
+        return McpInfo.From(endpoint, mcp.CurrentValue, scripting);
     }
 }
 

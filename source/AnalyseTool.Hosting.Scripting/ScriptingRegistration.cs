@@ -2,7 +2,6 @@ using System.IO;
 using AnalyseTool.Hosting.Scripting;
 using AnalyseTool.Hosting.Scripting.Execution;
 using AnalyseTool.Hosting.Scripting.Reference;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 // ReSharper disable once CheckNamespace
@@ -21,15 +20,16 @@ public static class ScriptingRegistration
     extension(RevitCommandsBuilder commands)
     {
         /// <summary>
-        ///     Adds the code commands when scripting is on — in the <c>Development</c> environment by default, otherwise with
-        ///     <c>Scripting:Enabled</c>: <see cref="ExecuteCode" />, C# compiled with Roslyn and run inside Revit, and
-        ///     <see cref="DescribeApi" />, the Revit API of the running version for writing that code.
+        ///     Adds the code commands: <see cref="ExecuteCode" />, C# compiled with Roslyn and run inside Revit, and
+        ///     <see cref="DescribeApi" />, the Revit API of the running version for writing that code. They exist only while
+        ///     scripting is on — <c>Scripting:Enabled</c>, on in the <c>Development</c> environment by default — and
+        ///     <see cref="IScriptingSwitch" /> turns them on and off while Revit runs.
         /// </summary>
-        /// <param name="builder">The host application builder: its configuration decides, its services get the runner.</param>
+        /// <param name="builder">The host application builder: its configuration decides at start, its services get the runner.</param>
         /// <returns>The <see cref="RevitCommandsBuilder" /> for chaining.</returns>
         /// <remarks>
-        ///     Off, the command is not registered at all: no page and no AI client can reach it. Read once at startup — a changed
-        ///     setting needs a Revit restart. Any code runs with the user's rights: turn it on only where that is wanted.
+        ///     Off, the commands are not registered at all: no page and no AI client can reach them. Any code runs with the
+        ///     user's rights: turn it on only where that is wanted.
         /// </remarks>
         /// <example>
         ///     <code>
@@ -40,19 +40,19 @@ public static class ScriptingRegistration
         /// </example>
         public RevitCommandsBuilder AddScripting(IHostApplicationBuilder builder)
         {
-            var enabled = builder.Configuration.GetValue<bool?>(EnabledKey) ?? builder.Environment.IsDevelopment();
-            if (!enabled)
-            {
-                return commands;
-            }
-
             builder.Services.AddSingleton<ScriptRunner>();
             builder.Services.AddSingleton(new ScriptJournal(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 builder.Environment.ApplicationName,
                 "scripts")));
             builder.Services.AddSingleton(_ => new ApiReference([typeof(Autodesk.Revit.DB.Document).Assembly, typeof(Autodesk.Revit.UI.UIApplication).Assembly]));
-            return commands.FromTypes(typeof(ExecuteCode), typeof(DescribeApi));
+            // A command group, not scanned commands: the switch adds and removes them at run time
+            builder.Services.AddScoped<ExecuteCode>();
+            builder.Services.AddScoped<DescribeApi>();
+            builder.Services.AddSingleton<ScriptingSwitch>();
+            builder.Services.AddSingleton<IScriptingSwitch>(services => services.GetRequiredService<ScriptingSwitch>());
+            builder.Services.AddHostedService(services => services.GetRequiredService<ScriptingSwitch>());
+            return commands;
         }
     }
 }

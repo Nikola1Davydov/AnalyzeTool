@@ -664,6 +664,11 @@ registerMocks({
     mcp.state = enabled ? "listening" : "off";
     return { ...mcp };
   },
+  SetScriptingEnabled: async (payload) => {
+    await delay(200);
+    mcp.scripting = (payload as { enabled: boolean }).enabled;
+    return { ...mcp };
+  },
   OpenPath: (payload) => {
     console.info("OpenPath", (payload as { path: string }).path);
     return null;

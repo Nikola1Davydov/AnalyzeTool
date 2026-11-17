@@ -2,6 +2,7 @@ using System.Runtime.Loader;
 using System.Text.Json;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Mcp.Tools;
+using AnalyseTool.Hosting.Scripting;
 using AnalyseTool.Hosting.Scripting.Compilation;
 using AnalyseTool.Hosting.Scripting.Execution;
 using AnalyseTool.Hosting.Threading;
@@ -90,6 +91,7 @@ public sealed class ScriptingTests
     public async Task AddScripting_On_RegistersExecuteCodeAsADestructiveMcpTool()
     {
         using var host = BuildHost(enabled: true);
+        await host.Services.GetRequiredService<ScriptingSwitch>().StartAsync(CancellationToken.None);
 
         var registry = host.Services.GetRequiredService<CommandRegistry>();
         var tool = host.Services.GetRequiredService<McpToolCatalog>().Find("ExecuteCode")?.Tool;
@@ -126,8 +128,34 @@ public sealed class ScriptingTests
     public async Task AddScripting_Off_RegistersNothing()
     {
         using var host = BuildHost(enabled: false);
+        await host.Services.GetRequiredService<ScriptingSwitch>().StartAsync(CancellationToken.None);
 
         await Assert.That(host.Services.GetRequiredService<CommandRegistry>().Find("ExecuteCode")).IsNull();
+    }
+
+    [Test]
+    public async Task Switch_TurnsTheCodeToolsOnAndOffWithoutARestart()
+    {
+        using var host = BuildHost(enabled: false);
+        var scripting = host.Services.GetRequiredService<ScriptingSwitch>();
+        await scripting.StartAsync(CancellationToken.None);
+        var registry = host.Services.GetRequiredService<CommandRegistry>();
+        var catalog = host.Services.GetRequiredService<McpToolCatalog>();
+        var changed = 0;
+        catalog.Changed += (_, _) => changed++;
+
+        scripting.SetEnabled(true);
+        await Assert.That(scripting.Enabled).IsTrue();
+        await Assert.That(registry.Find("ExecuteCode")).IsNotNull();
+        await Assert.That(catalog.Find("DescribeApi")?.Tool.Annotations?.ReadOnlyHint ?? false).IsTrue();
+        await Assert.That(catalog.Find("ExecuteCode")?.Tool.Title).IsEqualTo("Execute C# in Revit");
+
+        scripting.SetEnabled(false);
+        await Assert.That(scripting.Enabled).IsFalse();
+        await Assert.That(registry.Find("ExecuteCode")).IsNull();
+        await Assert.That(catalog.Find("ExecuteCode")).IsNull();
+        // AI clients hear about both changes (tools/list_changed)
+        await Assert.That(changed).IsEqualTo(2);
     }
 
     private static IHost BuildHost(bool enabled)

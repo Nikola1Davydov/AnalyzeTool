@@ -71,6 +71,11 @@ function McpSection() {
     onSuccess: () => void client.invalidateQueries({ queryKey: ["appInfo"] }),
     onError: (error) => actions.toast(messageOf(error), "error"),
   });
+  const setScripting = useMutation({
+    mutationFn: (enabled: boolean) => bridge.invoke<McpInfo>(appCommands.SetScriptingEnabled, { enabled }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["appInfo"] }),
+    onError: (error) => actions.toast(messageOf(error), "error"),
+  });
   const mcp = info.data?.mcp;
 
   return (
@@ -89,6 +94,24 @@ function McpSection() {
           <p className="muted small">
             Claude Code, Codex, Cursor, VS Code, Gemini or any MCP client calls the commands of AnalyseTool and of your buttons.
             {mcp.enabled && mcp.state === "off" ? " It did not start: see the log, or turn it off and on." : ""}
+          </p>
+          <label className="switch-row">
+            <span>Let AI clients run any C#</span>
+            <button
+              role="switch"
+              aria-checked={!!mcp.scripting}
+              className={`switch ${mcp.scripting ? "on" : ""}`}
+              disabled={setScripting.isPending}
+              onClick={() => setScripting.mutate(!mcp.scripting)}
+            >
+              <span className="switch-knob" />
+            </button>
+          </label>
+          <p className={`small scripting-warning ${mcp.scripting ? "on" : ""}`}>
+            ⚠ <code>ExecuteCode</code>: a client writes C# and AnalyseTool runs it in Revit with your Windows rights — it can change
+            or delete anything in the model, and read or write files on this computer. A run is one undo step, and every run is
+            written to <span className="mono">%LOCALAPPDATA%\AnalyseTool\scripts</span>. Turn it on only for a client you
+            trust, and try changes on a copy of the model.
           </p>
           <dl className="key-list">
             <dt>State</dt>

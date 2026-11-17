@@ -53,7 +53,7 @@ public static partial class Host
         builder.Services.AddScoped<ActiveDocument>();
         //The built-in feature slices: Elements, Actions, SharedParameters
         builder.Services.AddTools();
-        //AnalyseTool.Hosting.Scripting: ExecuteCode runs C# inside Revit — full trust, on in Debug, Scripting:Enabled otherwise
+        //AnalyseTool.Hosting.Scripting: ExecuteCode runs C# inside Revit — full trust, on in Debug, otherwise the switch in profile › AI clients (Scripting:Enabled)
         builder.AddRevitCommands(commands => commands
             .FromAssemblyOf<Application>()
             .FromAssemblyOf<ExtensionManager>()
