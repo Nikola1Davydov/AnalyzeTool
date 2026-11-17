@@ -88,8 +88,7 @@ function McpSection() {
           </label>
           <p className="muted small">
             Claude Code, Codex, Cursor, VS Code, Gemini or any MCP client calls the commands of AnalyseTool and of your buttons.
-            {mcp.enabled && mcp.state === "off" ? " It starts with the next Revit session." : ""}
-            {!mcp.enabled && mcp.state !== "off" ? " It stops when Revit restarts." : ""}
+            {mcp.enabled && mcp.state === "off" ? " It did not start: see the log, or turn it off and on." : ""}
           </p>
           <dl className="key-list">
             <dt>State</dt>
@@ -202,7 +201,7 @@ function ConnectClient({ mcp }: { mcp: McpInfo }) {
           </button>
         ))}
       </div>
-      {!mcp.token && <p className="muted small">The server is not listening yet — turn it on (it starts with the next Revit), then copy.</p>}
+      {!mcp.token && <p className="muted small">The server is not listening — turn it on above, then copy.</p>}
       <p className="small">{chosen.where}</p>
       <pre className="result small">{text}</pre>
       <button onClick={() => void copy(text).then(setCopied)}>{copied ? "Copied" : "Copy"}</button>

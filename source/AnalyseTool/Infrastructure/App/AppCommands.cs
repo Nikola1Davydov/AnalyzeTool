@@ -101,14 +101,15 @@ public sealed class GetRevitTheme : ICommand<RevitTheme>
 /// <summary>Input of <see cref="SetMcpEnabled" />.</summary>
 public sealed record SetMcpEnabledRequest([property: Description("Whether AI clients may connect.")] bool Enabled);
 
-/// <summary>Turns the MCP endpoint on or off for this user; takes effect at the next start of Revit.</summary>
-[Command(Description = "Turns the MCP endpoint on or off for this user (Mcp:Enabled in the user settings). Takes effect at the next start of Revit.")]
+/// <summary>Turns the MCP endpoint on or off for this user: now in this Revit, and at every next start.</summary>
+[Command(Description = "Turns the MCP endpoint on or off for this user (Mcp:Enabled in the user settings): at once in this Revit, and at every next start.")]
 public sealed class SetMcpEnabled(IUserSettings settings, IMcpEndpoint endpoint, IOptionsMonitor<McpOptions> mcp) : ICommand<SetMcpEnabledRequest, McpInfo>
 {
     /// <inheritdoc />
     public async Task<McpInfo> ExecuteAsync(SetMcpEnabledRequest request, CommandContext context)
     {
         await settings.UpdateAsync<McpOptions>(McpOptions.SectionName, options => options.Enabled = request.Enabled, context.CancellationToken);
+        await endpoint.SetEnabledAsync(request.Enabled, context.CancellationToken);
         return McpInfo.From(endpoint, mcp.CurrentValue) with { Enabled = request.Enabled };
     }
 }

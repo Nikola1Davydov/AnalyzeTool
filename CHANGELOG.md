@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] / unreleased
+
+- 🔌 **The AI clients switch works at once**: turning MCP on starts the server in this Revit, turning it off stops it — no Revit restart.
+
 ## [2.0.0] / 2026-11-16
 
 AnalyseTool is rebuilt: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The Sdk,

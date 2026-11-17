@@ -23,8 +23,8 @@ export function McpTab() {
 
       {mcp.state === "Off" && (
         <p>
-          The server is off. Turn it on with <code>{'"Mcp": { "Enabled": true }'}</code> in <code>usersettings.json</code>{" "}
-          and restart Revit; a Debug build has it on by default.
+          The server is off. Turn it on in the pane: profile › AI clients (it starts at once); a Debug build has it on by
+          default.
         </p>
       )}
       {mcp.state === "PortBusy" && (

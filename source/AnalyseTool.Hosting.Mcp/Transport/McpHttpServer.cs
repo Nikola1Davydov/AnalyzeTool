@@ -77,7 +77,8 @@ internal sealed partial class McpHttpServer(
     private static readonly JsonTypeInfo ErrorTypeInfo = McpJsonUtilities.DefaultOptions.GetTypeInfo(typeof(JsonRpcError));
 
     private readonly ConcurrentDictionary<string, Session> _sessions = new(StringComparer.Ordinal);
-    private readonly CancellationTokenSource _stopping = new();
+    private readonly SemaphoreSlim _switching = new(1, 1);
+    private CancellationTokenSource _stopping = new();
     private readonly ILogger _logger = loggerFactory.CreateLogger<McpHttpServer>();
     private readonly SdkLoggerFactory _sdkLoggerFactory = new(loggerFactory, options.Value.SdkLogLevel);
     private HttpListener? _listener;
@@ -122,6 +123,43 @@ internal sealed partial class McpHttpServer(
             return Task.CompletedTask;
         }
 
+        Listen();
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async Task<McpEndpointInfo> SetEnabledAsync(bool enabled, CancellationToken cancellationToken)
+    {
+        await _switching.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (enabled && _listener is null)
+            {
+                if (_stopping.IsCancellationRequested)
+                {
+                    // A stopped server cannot listen with its old token: every loop checks it
+                    _stopping.Dispose();
+                    _stopping = new CancellationTokenSource();
+                }
+
+                Listen();
+            }
+            else if (!enabled)
+            {
+                await StopAsync(cancellationToken).ConfigureAwait(false);
+                LogDisabled(_logger);
+            }
+
+            return GetInfo();
+        }
+        finally
+        {
+            _switching.Release();
+        }
+    }
+
+    private void Listen()
+    {
         var port = settings.GetPort(options.Value);
         var listener = new HttpListener();
         listener.Prefixes.Add($"http://localhost:{port}/");
@@ -135,7 +173,7 @@ internal sealed partial class McpHttpServer(
             LogCannotListen(_logger, exception, port);
             listener.Close();
             _state = McpEndpointState.PortBusy;
-            return Task.CompletedTask;
+            return;
         }
 
         _listener = listener;
@@ -157,7 +195,6 @@ internal sealed partial class McpHttpServer(
 
         catalog.Changed += OnToolsChanged;
         LogListening(_logger, Url, settings.ConnectionFile);
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -165,6 +202,8 @@ internal sealed partial class McpHttpServer(
     {
         if (_listener is null)
         {
+            // Off, or the port was busy: nothing listens, but it is off now either way
+            _state = McpEndpointState.Off;
             return;
         }
 
@@ -195,6 +234,10 @@ internal sealed partial class McpHttpServer(
             await _hubLoop.ConfigureAwait(false);
         }
 
+        _acceptLoop = null;
+        _hubLoop = null;
+        Url = null;
+
         foreach (var id in _sessions.Keys)
         {
             if (_sessions.TryRemove(id, out var session))
@@ -209,6 +252,7 @@ internal sealed partial class McpHttpServer(
     {
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
         _stopping.Dispose();
+        _switching.Dispose();
     }
 
     /// <summary>Takes the address of every Revit version when it is free: the Revit that held it closed, or none did yet.</summary>
