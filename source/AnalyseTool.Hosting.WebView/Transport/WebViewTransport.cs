@@ -10,12 +10,14 @@ using Microsoft.Web.WebView2.Core;
 namespace AnalyseTool.Hosting.WebView.Transport;
 
 /// <summary>
-///     A message of the page ↔ host protocol: request, cancel, progress and response, matched by <c>id</c>.
+///     A message of the page ↔ host protocol: request, cancel, progress and response, matched by <c>id</c>; and events of the
+///     host, sent to every page.
 /// </summary>
 /// <remarks>
 ///     <list type="bullet">
 ///         <item>page → host: <c>{ type: "request", id, command, headers?, payload? }</c>, <c>{ type: "cancel", id }</c>;</item>
-///         <item>host → page: <c>{ type: "progress", id, payload: { fraction, message } }</c>, <c>{ type: "response", id, payload?, error? }</c>.</item>
+///         <item>host → page: <c>{ type: "progress", id, payload: { fraction, message } }</c>, <c>{ type: "response", id, payload?, error? }</c>,
+///         <c>{ type: "event", name, payload? }</c> (<see cref="IWebViewEvents" />).</item>
 ///     </list>
 ///     The TypeScript side is <c>revit-bridge/src/protocol.ts</c>; keep both in step.
 /// </remarks>
@@ -25,7 +27,8 @@ internal sealed record WebMessage(
     string? Command = null,
     Dictionary<string, string>? Headers = null,
     JsonElement? Payload = null,
-    CommandError? Error = null);
+    CommandError? Error = null,
+    string? Name = null);
 
 /// <summary>
 ///     Connects one WebView to the command pipeline.
@@ -46,6 +49,7 @@ internal sealed partial class WebViewTransport(
     ICommandExecutor executor,
     ClientAppSource? allowedSource,
     JsonSerializerOptions serializerOptions,
+    WebViewEvents events,
     ILogger logger)
 {
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _calls = new();
@@ -53,12 +57,14 @@ internal sealed partial class WebViewTransport(
     public void Attach()
     {
         core.WebMessageReceived += OnWebMessageReceived;
+        events.Published += OnPublished;
     }
 
     /// <summary>Stops listening and cancels the calls still running: their window is gone.</summary>
     public void Detach()
     {
         core.WebMessageReceived -= OnWebMessageReceived;
+        events.Published -= OnPublished;
 
         foreach (var id in _calls.Keys)
         {
@@ -127,6 +133,22 @@ internal sealed partial class WebViewTransport(
         {
             _calls.TryRemove(id, out _);
         }
+    }
+
+    /// <summary>Events come from any thread; the WebView takes messages only on its UI thread.</summary>
+    private void OnPublished(string name, object? payload)
+    {
+        dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                Post(new WebMessage("event", null, Payload: ToJson(payload), Name: name));
+            }
+            catch (Exception exception) when (exception is NotSupportedException or JsonException or InvalidOperationException)
+            {
+                LogSerializationFailed(logger, exception, name);
+            }
+        });
     }
 
     /// <summary>Progress comes from the thread pool; the WebView takes messages only on its UI thread.</summary>

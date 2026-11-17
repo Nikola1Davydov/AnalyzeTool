@@ -95,11 +95,17 @@ export function DockPage() {
 }
 
 function usePaneButtons() {
+  const queryClient = useQueryClient();
+  // Extensions come and go while the pane is open — a saved file, a new button made by an agent: the host says so
+  useEffect(
+    () => bridge.on("buttonsChanged", () => void queryClient.invalidateQueries({ queryKey: ["paneButtons"] })),
+    [queryClient],
+  );
   return useQuery({
     queryKey: ["paneButtons"],
     queryFn: ({ signal }) => bridge.invoke<PaneOverview>(paneCommands.GetPaneButtons, null, { signal }),
-    // Extensions come and go while the pane is open: a saved file, a new button made by an agent
-    refetchInterval: 5000,
+    // What the host does not announce (a folder made in Explorer) still shows up within a minute
+    refetchInterval: 60_000,
   });
 }
 

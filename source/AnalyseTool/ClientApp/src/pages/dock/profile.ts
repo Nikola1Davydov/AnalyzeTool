@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands, type RevitTheme } from "../../api/app";
 import { type PaneFolder, type PaneProfileResult, paneCommands } from "../../api/pane";
@@ -180,18 +180,22 @@ export function applyTheme(theme: "system" | "light" | "dark") {
 }
 
 /**
- * The theme to show: the profile's, with «revit» resolved by asking Revit — WebView2 only knows the theme of Windows. Asked
- * again every few seconds, so switching the theme in Revit reaches the open pane and windows.
+ * The theme to show: the profile's, with «revit» resolved by asking Revit once — WebView2 only knows the theme of Windows.
+ * Switching the theme in Revit reaches the open pane and windows as the event `revitThemeChanged`.
  */
 export function useEffectiveTheme(): "system" | "light" | "dark" {
   const { profile } = useProfile();
+  const queryClient = useQueryClient();
   const revit = useQuery({
     queryKey: ["revitTheme"],
     queryFn: ({ signal }) => bridge.invoke<RevitTheme>(appCommands.GetRevitTheme, null, { signal }),
     enabled: profile.theme === "revit",
-    refetchInterval: 4000,
-    staleTime: 2000,
+    staleTime: Infinity,
   });
+  useEffect(
+    () => bridge.on<RevitTheme>("revitThemeChanged", (theme) => queryClient.setQueryData(["revitTheme"], theme)),
+    [queryClient],
+  );
   if (profile.theme !== "revit") return profile.theme;
   return revit.data?.theme ?? "system";
 }
