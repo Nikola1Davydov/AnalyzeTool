@@ -212,7 +212,8 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The right side never shrinks below its buttons: in a narrow pane the title gives way, not the avatar */
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr);
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
@@ -236,6 +237,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
   max-width: 40vw;
 }
 
