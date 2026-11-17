@@ -1,5 +1,5 @@
 import { CommandError, registerMocks } from "revit-bridge";
-import type { AppInfo, McpInfo } from "./api/app";
+import type { AppInfo, McpInfo, UpdateInfo } from "./api/app";
 import type { ButtonStatistic, ButtonStatisticsResult } from "./api/statistics";
 import type { ButtonRunResult, PaneFolder, PaneOverview } from "./api/pane";
 import type {
@@ -206,6 +206,13 @@ const levels = ["Debug", "Information", "Information", "Warning"] as const;
 
 const token = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
 const mcpUrl = "http://localhost:48075/mcp";
+const update: UpdateInfo = {
+  current: "2.0.1",
+  latest: "2.1.0",
+  url: "https://github.com/Nikola1Davydov/AnalyzeTool/releases/tag/2.1.0",
+  available: true,
+  checkedAt: new Date().toISOString(),
+};
 const mcp: McpInfo = {
   enabled: true,
   state: "listening",
@@ -663,6 +670,10 @@ registerMocks({
     mcp.enabled = enabled;
     mcp.state = enabled ? "listening" : "off";
     return { ...mcp };
+  },
+  GetUpdate: async () => {
+    await delay(150);
+    return { ...update };
   },
   SetScriptingEnabled: async (payload) => {
     await delay(200);

@@ -5,6 +5,9 @@ using AnalyseTool.Extensions;
 using AnalyseTool.Infrastructure;
 using AnalyseTool.Infrastructure.Ribbon;
 using AnalyseTool.Services.Documents;
+using AnalyseTool.Services.Updates;
+using AnalyseTool.Extensions.Storage;
+using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -71,6 +74,9 @@ public static partial class Host
 
         //AnalyseTool.Extensions: the user's buttons — C# sources compiled in Revit (or DLLs), each folder with its own git history
         builder.AddExtensions(application.ControlledApplication.VersionNumber);
+        //A newer AnalyseTool on GitHub: asked at most once a day
+        builder.Services.AddSingleton(services => new UpdateCheck(
+            services.GetRequiredService<ExtensionPaths>().ProfileRoot, new HttpClientHandler(), TimeProvider.System, services.GetService<ILogger<UpdateCheck>>()));
         //The ribbon: AnalyseTool's own buttons and the extensions', declared and run the same way, every click counted
         builder.Services.AddSingleton<ButtonCatalog>();
         builder.Services.AddSingleton<RibbonVisibility>();

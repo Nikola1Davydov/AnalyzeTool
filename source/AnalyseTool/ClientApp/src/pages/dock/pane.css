@@ -2111,3 +2111,32 @@
 .scripting-warning.on {
   color: var(--orange);
 }
+
+/* A newer AnalyseTool: a dot on the avatar, a badge on About in the profile, a card on About */
+.avatar {
+  position: relative;
+}
+.update-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 2px var(--background);
+}
+.update-badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  color: #fff;
+  background: var(--orange);
+}
+.update-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

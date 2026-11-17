@@ -61,8 +61,7 @@ public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions
     public Task<AppInfo> ExecuteAsync(CommandContext context)
     {
         var assembly = typeof(GetAppInfo).Assembly;
-        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
-                      ?? assembly.GetName().Version?.ToString() ?? "";
+        var version = AppVersion.Current;
         var changelog = Path.Combine(Path.GetDirectoryName(assembly.Location) ?? "", "CHANGELOG.md");
         return Task.FromResult(new AppInfo(
             version,

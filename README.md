@@ -82,7 +82,9 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
   categories, and a printable A4 report of how well chosen parameters are filled.
 - **The profile** (your initials): **Statistics** (clicks, run times, failures — on this machine only), **Packages**
   (`.zip` extensions others shared), **AI clients**, **Folders of buttons** (add a network folder your team shares),
-  **Report a bug**, **About**, tile size and theme (it follows Revit by default). **↻** reads every folder again.
+  **Report a bug**, **About** (the version, what is new; a dot on your initials when a newer version is out — AnalyseTool
+  asks GitHub once a day which release is the latest; nothing else leaves the computer), tile size and theme
+  (it follows Revit by default). **↻** reads every folder again.
 
 ## AI — the one you already use
 

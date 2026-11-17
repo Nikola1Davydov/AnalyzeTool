@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useId, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
+import { useUpdate } from "./update";
 import type { PaneOverview } from "../../api/pane";
 import { messageOf, useActions } from "./Actions";
 import {
@@ -67,6 +68,7 @@ const themeOptions: { value: Theme; label: string }[] = [
 export function ProfileScreen(props: { overview: PaneOverview; onStats: () => void; onPackages: () => void; onMcp: () => void; onFolders: () => void; onAbout: () => void }) {
   const { overview, onStats, onPackages } = props;
   const { profile, update } = useProfile();
+  const newVersion = useUpdate();
   const actions = useActions();
   const [importError, setImportError] = useState<string | null>(null);
   const file = useRef<HTMLInputElement | null>(null);
@@ -156,7 +158,10 @@ export function ProfileScreen(props: { overview: PaneOverview; onStats: () => vo
 
       <section className="link-section">
         <button className="row-link" onClick={props.onAbout}>
-          <span>ℹ️ About</span>
+          <span>
+            ℹ️ About
+            {newVersion.data?.available && <span className="update-badge">{newVersion.data.latest} is out</span>}
+          </span>
           <span className="chevron-right">›</span>
         </button>
         <p className="muted small">The version, what is new, the source and where to report a bug.</p>

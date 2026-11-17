@@ -6,6 +6,7 @@ export const appCommands = {
   GetAppInfo: "GetAppInfo",
   SetMcpEnabled: "SetMcpEnabled",
   SetScriptingEnabled: "SetScriptingEnabled",
+  GetUpdate: "GetUpdate",
   OpenPath: "OpenPath",
   BrowseFolder: "BrowseFolder",
   BrowseFile: "BrowseFile",
@@ -13,6 +14,15 @@ export const appCommands = {
   OpenUrl: "OpenUrl",
   GetRevitTheme: "GetRevitTheme",
 } as const;
+
+/** Whether a newer AnalyseTool is released (GitHub, asked at most once a day). */
+export interface UpdateInfo {
+  current: string;
+  latest: string | null;
+  url: string | null;
+  available: boolean;
+  checkedAt: string | null;
+}
 
 export type McpState = "off" | "listening" | "portBusy";
 
