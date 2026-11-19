@@ -341,6 +341,25 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
       {suites.length > 0 && (
         <>
+          {layout === "pane" ? (
+            <div className="mt-strip">
+              <span className="mt-chip">
+                <b>{totals ? `${totals.passed}/${totals.tests}` : "—"}</b> passed
+              </span>
+              <span className={`mt-chip${totals?.newCases ? " error" : ""}`}>
+                <b>{totals ? totals.newCases : "—"}</b> new
+              </span>
+              <span className="mt-chip">
+                <b>{totals ? totals.baselineCases : "—"}</b> accepted
+              </span>
+              {!!totals?.inconclusiveCases && (
+                <span className="mt-chip warning">
+                  <b>{totals.inconclusiveCases}</b> ?
+                </span>
+              )}
+              {run && run.trend.length > 1 && <Sparkline run={run} />}
+            </div>
+          ) : (
           <div className="usage-tiles mt-tiles">
             <Tile label="Passed" value={totals ? `${totals.passed} of ${totals.tests}` : "—"} />
             <Tile label="New failures" value={totals ? String(totals.newCases) : "—"} tone={totals?.newCases ? "error" : undefined} detail={totals ? `${plural(totals.failed, "test")} failing` : undefined} />
@@ -348,6 +367,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
             <Tile label="Inconclusive" value={totals ? String(totals.inconclusiveCases) : "—"} tone={totals?.inconclusiveCases ? "warning" : undefined} />
             {run && run.trend.length > 1 && <Trend run={run} />}
           </div>
+          )}
 
           <div className="usage-toolbar">
             <Input size="small" contentBefore={<Search16Regular />} placeholder="Test, rule or trait" value={search} onChange={(_, data) => setSearch(data.value)} />
@@ -827,6 +847,21 @@ function Tile({ label, value, detail, tone }: { label: string; value: string; de
       </Text>
       {detail && <Text size={200}>{detail}</Text>}
     </div>
+  );
+}
+
+/** The trend in a line: new failures of the latest full runs, small enough for the strip of the pane. */
+function Sparkline({ run }: { run: ModelTestRun }) {
+  const points = run.trend.slice(-12);
+  const most = Math.max(1, ...points.map((point) => point.newCases));
+  return (
+    <Tooltip content={`New failures, last ${points.length} full runs: ${points.map((point) => point.newCases).join(" → ")}`} relationship="description">
+      <span className="mt-spark">
+        {points.map((point) => (
+          <span key={point.at} style={{ height: `${Math.max(12, (point.newCases / most) * 100)}%` }} />
+        ))}
+      </span>
+    </Tooltip>
   );
 }
 

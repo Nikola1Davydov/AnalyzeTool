@@ -1775,3 +1775,47 @@ code.block,
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+/* Model tests in the pane: the counts in one strip */
+.mt-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.mt-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  font-size: var(--fontSizeBase200);
+  color: var(--colorNeutralForeground2);
+  white-space: nowrap;
+}
+.mt-chip b {
+  color: var(--colorNeutralForeground1);
+}
+.mt-chip.error,
+.mt-chip.error b {
+  color: var(--colorPaletteRedForeground1);
+}
+.mt-chip.warning,
+.mt-chip.warning b {
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+.mt-spark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+  margin-left: auto;
+}
+.mt-spark span {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--colorPaletteRedBorder1);
+}
+.mt-spark span:last-child {
+  background: var(--colorPaletteRedForeground1);
+}
