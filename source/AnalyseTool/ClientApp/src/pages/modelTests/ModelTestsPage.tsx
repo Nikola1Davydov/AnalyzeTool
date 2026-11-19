@@ -10,6 +10,7 @@ import {
   Eye16Regular,
   Play16Regular,
   Search16Regular,
+  Info16Regular,
   Warning16Regular,
   Wrench16Regular,
   Archive16Regular,
@@ -17,7 +18,7 @@ import {
   Circle16Regular,
 } from "@fluentui/react-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import type { ExtensionSummary } from "../../api/extensions";
@@ -163,6 +164,12 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
   const selectedResult = selection ? byTest[selection.testId] : undefined;
   const selectedCase = selection?.key ? selectedResult?.cases.find((item) => item.key === selection.key) : undefined;
 
+  // In the pane the details open under their row (ⓘ), not in a panel far below
+  const inline = layout === "pane";
+  function toggleSelection(next: Selection) {
+    setSelection((current) => (current && current.testId === next.testId && current.key === next.key ? null : next));
+  }
+
   function toggle(id: string) {
     setExpanded((current) => {
       const next = new Set(current);
@@ -214,10 +221,17 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     if (result) await runTests({ tests: [test.id] });
   }
 
-  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry") {
+  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d") {
     const ids = [item.elementId, ...item.related].filter((id): id is number => id !== null);
     if (how === "select") {
       await act(modelTestCommands.SelectionInRevit, { elementIds: ids }, () => undefined, "Could not select");
+    } else if (how === "3d") {
+      await act<{ ok: boolean; error: string | null }>(
+        modelTestCommands.ShowElementsIn3D,
+        { elementIds: ids },
+        (result) => (result.ok ? undefined : undefined),
+        "Could not show it in 3D",
+      ).then((result) => result && !result.ok && notify.warning("Not shown in 3D", result.error ?? undefined));
     } else if (how === "isolate") {
       await act(modelTestCommands.IsolationInRevit, { elementIds: ids }, () => undefined, "Could not isolate");
     } else {
@@ -369,7 +383,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                         <div
                           className={`mt-row${selection?.testId === test.id && !selection.key ? " selected" : ""}`}
                           onClick={() => {
-                            setSelection({ testId: test.id, key: null });
+                            if (!inline) setSelection({ testId: test.id, key: null });
                             if (result?.cases.length) toggle(test.id);
                           }}
                         >
@@ -377,20 +391,64 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                           <StatusIcon status={result?.status} />
                           <span className="grow truncate">{test.name}</span>
                           <Counts result={result} test={test} />
+                          {inline && (
+                            <RowButton title="Details" onClick={() => toggleSelection({ testId: test.id, key: null })}>
+                              <Info16Regular />
+                            </RowButton>
+                          )}
                         </div>
+                        {inline && selected && selection?.testId === test.id && !selection.key && (
+                          <div className="mt-inline">
+                            <Details
+                              suite={selected.suite}
+                              test={selected.test}
+                              result={selectedResult}
+                              item={undefined}
+                              running={running}
+                  onRun={() => void runTests({ tests: [selected.test.id] })}
+                  onOpen={() => openFile(selected.suite, selected.test)}
+                  onShow={(item, how) => void show(item, how)}
+                  onFix={(keys) => void fix(selected.test, keys)}
+                  onAccept={(keys, remove) => void accept(selected.test, keys, remove)}
+                            />
+                          </div>
+                        )}
                         {open &&
                           result?.cases.slice(0, SHOWN_CASES).map((item) => (
-                            <div
-                              key={item.key}
-                              className={`mt-row mt-case${selection?.key === item.key ? " selected" : ""}`}
-                              onClick={() => setSelection({ testId: test.id, key: item.key })}
-                            >
-                              <CaseIcon item={item} />
-                              <span className="grow truncate">{item.label ?? item.message}</span>
-                              {item.inBaseline && (
-                                <Badge size="small" appearance="tint" color="subtle">
-                                  accepted
-                                </Badge>
+                            <div key={item.key}>
+                              <div
+                                className={`mt-row mt-case${selection?.key === item.key ? " selected" : ""}`}
+                                onClick={() => (inline ? toggleSelection({ testId: test.id, key: item.key }) : setSelection({ testId: test.id, key: item.key }))}
+                              >
+                                <CaseIcon item={item} />
+                                <span className="grow truncate">{item.label ?? item.message}</span>
+                                {item.inBaseline && (
+                                  <Badge size="small" appearance="tint" color="subtle">
+                                    accepted
+                                  </Badge>
+                                )}
+                                <RowButton title="Details" onClick={() => toggleSelection({ testId: test.id, key: item.key })}>
+                                  <Info16Regular />
+                                </RowButton>
+                                <RowButton title="Isolate in Revit and show in 3D" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
+                                  <Cube16Regular />
+                                </RowButton>
+                              </div>
+                              {inline && selected && selection?.key === item.key && (
+                                <div className="mt-inline">
+                                  <Details
+                                    suite={selected.suite}
+                                    test={selected.test}
+                                    result={selectedResult}
+                                    item={selectedCase}
+                                    running={running}
+                  onRun={() => void runTests({ tests: [selected.test.id] })}
+                                    onOpen={() => openFile(selected.suite, selected.test)}
+                                    onShow={(item, how) => void show(item, how)}
+                                    onFix={(keys) => void fix(selected.test, keys)}
+                                    onAccept={(keys, remove) => void accept(selected.test, keys, remove)}
+                                  />
+                                </div>
                               )}
                             </div>
                           ))}
@@ -406,6 +464,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
               ))}
             </div>
 
+            {!inline && (
             <div className="mt-details panel">
               {!selected && <Empty>Pick a test or a failing element.</Empty>}
               {selected && (
@@ -423,6 +482,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                 />
               )}
             </div>
+            )}
           </div>
         </>
       )}
@@ -477,7 +537,7 @@ function Details(props: {
   running: boolean;
   onRun: () => void;
   onOpen: () => void;
-  onShow: (item: ModelTestCase, how: "select" | "isolate" | "geometry") => void;
+  onShow: (item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d") => void;
   onFix: (keys: string[] | null) => void;
   onAccept: (keys: string[] | null, remove?: boolean) => void;
 }) {
@@ -520,8 +580,8 @@ function Details(props: {
             <Button size="small" icon={<Cursor16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "select")}>
               Select
             </Button>
-            <Button size="small" icon={<Eye16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "isolate")}>
-              Isolate
+            <Button size="small" icon={<Eye16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "3d")}>
+              Isolate in 3D
             </Button>
             <Button size="small" icon={<Cube16Regular />} onClick={() => props.onShow(item, "geometry")}>
               Show
@@ -577,6 +637,24 @@ function Details(props: {
         </>
       )}
     </div>
+  );
+}
+
+/** A small icon button at the end of a row: its click stays its own (it does not open or close the row). */
+function RowButton({ title, onClick, disabled, children }: { title: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  return (
+    <Tooltip content={title} relationship="label">
+      <button
+        className="mt-row-button"
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick();
+        }}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }
 

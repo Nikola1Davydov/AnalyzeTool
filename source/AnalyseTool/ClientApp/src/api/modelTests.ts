@@ -11,6 +11,7 @@ export const modelTestCommands = {
   SelectionInRevit: "SelectionInRevit",
   IsolationInRevit: "IsolationInRevit",
   ShowGeometry: "ShowGeometry",
+  ShowElementsIn3D: "ShowElementsIn3D",
   ClearGeometry: "ClearGeometry",
 } as const;
 

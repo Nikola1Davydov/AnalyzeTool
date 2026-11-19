@@ -1723,3 +1723,32 @@ code.block,
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+
+/* Model tests: ⓘ and 3D at the end of a row, the details under it */
+.mt-row-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--colorNeutralForeground3);
+  cursor: pointer;
+}
+.mt-row-button:hover:not(:disabled) {
+  background: var(--colorSubtleBackgroundPressed);
+  color: var(--colorBrandForeground1);
+}
+.mt-row-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.mt-inline {
+  margin: 2px 0 8px 24px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--colorNeutralBackground2);
+}

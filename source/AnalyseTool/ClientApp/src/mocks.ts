@@ -1207,5 +1207,6 @@ registerMocks({
   },
   CreateModelTestSuite: (payload) => fail(`Creating «${(payload as { name: string }).name}» needs Revit.`, "invalid"),
   ShowGeometry: () => ({ added: 1, missing: [], shown: 1 }),
+  ShowElementsIn3D: (payload) => ({ ok: true, isolated: (payload as { elementIds: number[] }).elementIds.length, view: "{3D}", error: null }),
   ClearGeometry: () => null,
 });
