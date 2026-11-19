@@ -18,6 +18,9 @@ export const modelTestCommands = {
 /** Sent to every page after a run, whoever started it. */
 export const modelTestsRanEvent = "modelTestsRan";
 
+/** Sent when the extensions were loaded again (a saved file): what Watch runs on. */
+export const extensionsChangedEvent = "extensionsChanged";
+
 export type TestKind = "Rule" | "Check" | "Model";
 export type TestSeverity = "Info" | "Warning" | "Error";
 export type TestStatus = "passed" | "failed" | "error" | "inconclusive" | "skipped";

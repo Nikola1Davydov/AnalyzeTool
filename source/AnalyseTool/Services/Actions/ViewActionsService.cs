@@ -85,6 +85,12 @@ public sealed class ViewActionsService
         }
         else
         {
+            // A section box left by an earlier Selection box would cut the isolated elements away
+            if (view.IsSectionBoxActive)
+            {
+                view.IsSectionBoxActive = false;
+            }
+
             view.IsolateElementsTemporary(ids);
         }
 
@@ -153,14 +159,20 @@ public sealed class ViewActionsService
         return new BoundingBoxXYZ { Min = min - margin, Max = max + margin };
     }
 
+    /// <summary>
+    ///     A 3D view AnalyseTool may change: the active one, else {3D}, else any — never one a view template governs (its
+    ///     section box and visibility belong to the template, and Revit refuses to change them).
+    /// </summary>
     private static View3D? Find3DView(Document document)
     {
-        if (document.ActiveView is View3D { IsTemplate: false } active && active.CanBePrinted)
+        static bool Free(View3D view) => !view.IsTemplate && view.CanBePrinted && view.ViewTemplateId == ElementId.InvalidElementId;
+
+        if (document.ActiveView is View3D active && Free(active))
         {
             return active;
         }
 
-        var views = new FilteredElementCollector(document).OfClass(typeof(View3D)).Cast<View3D>().Where(view => !view.IsTemplate && view.CanBePrinted).ToList();
+        var views = new FilteredElementCollector(document).OfClass(typeof(View3D)).Cast<View3D>().Where(Free).ToList();
         return views.FirstOrDefault(view => view.Name is "{3D}" || view.Name.StartsWith("{3D", StringComparison.Ordinal)) ?? views.FirstOrDefault(view => !view.IsPerspective);
     }
 

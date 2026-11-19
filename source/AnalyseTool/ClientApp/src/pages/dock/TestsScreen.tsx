@@ -30,8 +30,8 @@ export function testFolders(list: ModelTestList | undefined): TestFolder[] {
 }
 
 /** The model tests of every folder, for the tiles. */
-export function useTestFolders() {
-  return useAppQuery<ModelTestList>(modelTestCommands.GetModelTests);
+export function useTestFolders(enabled = true) {
+  return useAppQuery<ModelTestList>(modelTestCommands.GetModelTests, null, { enabled });
 }
 
 /**

@@ -14,9 +14,6 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
 {
     private readonly Dictionary<string, IReadOnlyList<SuiteDefinition>> _byExtension = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Raised after the suites of an extension changed.</summary>
-    public event EventHandler? Changed;
-
     /// <summary>Gets the suites, by extension and in the order declared.</summary>
     /// <param name="names">How categories and built-in parameters are named; their API names when absent.</param>
     public IReadOnlyList<ModelTestSuiteInfo> GetSuites(RevitNames? names = null)
@@ -39,10 +36,8 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
     /// <summary>Records the suites of an extension; none removes it.</summary>
     internal void Set(string extensionId, IReadOnlyList<SuiteDefinition> suites)
     {
-        bool changed;
         lock (_byExtension)
         {
-            changed = suites.Count > 0 || _byExtension.ContainsKey(extensionId);
             if (suites.Count == 0)
             {
                 _byExtension.Remove(extensionId);
@@ -51,11 +46,6 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
             {
                 _byExtension[extensionId] = suites;
             }
-        }
-
-        if (changed)
-        {
-            Changed?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -101,6 +91,8 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
         }
 
         var suites = new List<SuiteDefinition>();
+        // Two classes of one name in two namespaces: the second is told apart by its full name
+        var names = types.Where(type => typeof(IModelTestSuite).IsAssignableFrom(type)).GroupBy(type => type.Name).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
         foreach (var type in types.Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IModelTestSuite).IsAssignableFrom(type)))
         {
             if (type.GetConstructor(Type.EmptyTypes) is null)
@@ -111,7 +103,7 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
 
             var suite = new SuiteDefinition
             {
-                Id = $"{extensionId}.{type.Name}",
+                Id = $"{extensionId}.{(names.Contains(type.Name) ? type.FullName : type.Name)}",
                 ExtensionId = extensionId,
                 ClassName = type.Name,
                 Directory = extensionDirectory,

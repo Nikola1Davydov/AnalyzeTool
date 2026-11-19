@@ -144,9 +144,10 @@ function usePaneButtons() {
 
 function Pane() {
   const buttons = usePaneButtons();
-  const tests = useTestFolders();
   const { profile, loaded, update } = useProfile();
   const [screen, setScreen] = useState<Screen | null>(null);
+  // Listing the tests asks Revit for its names: only while the Tests tab shows them
+  const tests = useTestFolders(screen?.kind === "tests" || screen?.kind === "testFolder" || screen?.kind === "testSuite");
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [transition, setTransition] = useState({ forward: true, origin: "50% 50%" });

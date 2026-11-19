@@ -21,6 +21,9 @@ internal sealed class PageEvents(UIControlledApplication application, ExtensionH
     /// <summary>The buttons of the pane may have changed: ask <c>GetPaneButtons</c> again.</summary>
     public const string ButtonsChanged = "buttonsChanged";
 
+    /// <summary>The extensions were loaded again — a saved file, a new button: their model tests may have changed.</summary>
+    public const string ExtensionsChanged = "extensionsChanged";
+
     /// <summary>Model tests ran: ask <c>GetModelTestResults</c> for the run.</summary>
     public const string ModelTestsRan = "modelTestsRan";
 
@@ -50,6 +53,7 @@ internal sealed class PageEvents(UIControlledApplication application, ExtensionH
     private void OnExtensionsChanged(object? sender, EventArgs args)
     {
         events.Publish(ButtonsChanged);
+        events.Publish(ExtensionsChanged);
     }
 
     private void OnTestsRan(object? sender, ModelTestRun run)

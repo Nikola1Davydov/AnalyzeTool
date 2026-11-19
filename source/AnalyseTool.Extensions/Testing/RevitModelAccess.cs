@@ -15,9 +15,10 @@ internal sealed class RevitModelAccess(Document document) : IModelAccess
     {
         get
         {
-            // The project information survives Save As and copies: a copy of the model keeps its baseline
-            var info = document.ProjectInformation;
-            return info is not null && !string.IsNullOrEmpty(info.UniqueId) ? info.UniqueId : document.Title;
+            // Made when the document was created and kept by Save As and copies: a copy keeps its baseline, while two projects
+            // started from one template differ (the unique ids of their elements, ProjectInformation's too, do not)
+            var created = document.CreationGUID;
+            return created != Guid.Empty ? created.ToString("N") : document.Title;
         }
     }
 

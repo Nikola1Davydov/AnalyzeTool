@@ -84,6 +84,22 @@ public sealed class ModelTestLoadingTests
     }
 
     [Test]
+    public async Task SuitesOfOneName_InTwoNamespaces_GetTwoIds()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var state = await environment.Manager.CreateTestSuiteAsync("Checks", null, null, null, CancellationToken.None);
+
+        await environment.Manager.WriteFileAsync(state.Descriptor.Id, "src/Checks.cs", """
+            using AnalyseTool.Sdk.Testing;
+
+            namespace Arc { public sealed class Rules : IModelTestSuite { public void Define(ISuite s) => s.Test("A", _ => { }); } }
+            namespace Mep { public sealed class Rules : IModelTestSuite { public void Define(ISuite s) => s.Test("B", _ => { }); } }
+            """, CancellationToken.None);
+
+        await Assert.That(environment.Tests.GetSuites().Select(suite => suite.Id)).IsEquivalentTo(["checks.Arc.Rules", "checks.Mep.Rules"]);
+    }
+
+    [Test]
     public async Task RemovedExtension_TakesItsSuitesAlong()
     {
         using var environment = new ExtensionTestEnvironment();

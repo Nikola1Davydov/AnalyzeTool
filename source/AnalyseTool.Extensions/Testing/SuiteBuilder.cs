@@ -61,10 +61,20 @@ internal sealed partial class SuiteBuilder(SuiteDefinition suite, string extensi
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var test in suite.Tests.Where(test => test.LocalId is not null))
         {
-            if (!taken.Add(test.LocalId!))
+            if (taken.Add(test.LocalId!))
             {
-                problems.Add($"{suite.Id}: the id '{test.LocalId}' is given to two tests ({test.File}:{test.Line}).");
+                continue;
             }
+
+            // Two tests with one id would share a baseline and a repair: the second one gets a number, and the author is told
+            var unique = test.LocalId!;
+            for (var number = 2; !taken.Add(unique); number++)
+            {
+                unique = $"{test.LocalId}-{number}";
+            }
+
+            problems.Add($"{suite.Id}: the id '{test.LocalId}' is given to two tests; the one at {test.File}:{test.Line} runs as '{unique}'.");
+            test.LocalId = unique;
         }
 
         foreach (var test in suite.Tests.Where(test => test.LocalId is null))

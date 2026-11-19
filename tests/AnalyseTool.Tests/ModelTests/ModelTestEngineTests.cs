@@ -60,6 +60,23 @@ public sealed class ModelTestEngineTests
     }
 
     [Test]
+    public async Task Builder_SameExplicitIdTwice_SecondGetsANumberAndIsReported()
+    {
+        var suite = new SuiteDefinition { Id = "bep.Suite", ExtensionId = "bep", ClassName = "Suite", Directory = TempDirectory(), BaselineDirectory = TempDirectory() };
+        var builder = new SuiteBuilder(suite, suite.Directory);
+        builder.Test("A", _ => { }).Id("walls");
+        builder.Test("B", _ => { }).Id("walls");
+
+        var problems = builder.Complete();
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(suite.Tests.Select(test => test.LocalId)).IsEquivalentTo(new string?[] { "walls", "walls-2" });
+            await Assert.That(problems.Single()).Contains("'walls-2'");
+        }
+    }
+
+    [Test]
     public async Task Builder_TraitsOfTheSuite_ReachEveryTest()
     {
         var suite = Define(s =>

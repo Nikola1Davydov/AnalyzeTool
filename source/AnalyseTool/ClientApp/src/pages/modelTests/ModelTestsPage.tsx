@@ -41,6 +41,7 @@ import {
   type TestStatus,
   modelTestCommands,
   modelTestsRanEvent,
+  extensionsChangedEvent,
 } from "../../api/modelTests";
 import { useConfirm } from "../../components/confirm";
 import { plural, relativeTime } from "../../components/format";
@@ -99,6 +100,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
   const notify = useNotify();
   const confirm = useConfirm();
   const tests = useAppQuery<ModelTestList>(modelTestCommands.GetModelTests);
+  const refetchTests = tests.refetch;
   const latest = useQuery({
     queryKey: ["modelTestResults"],
     queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
@@ -133,13 +135,15 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
   useEffect(() => bridge.on(modelTestsRanEvent, () => void queryClient.invalidateQueries({ queryKey: ["modelTestResults"] })), [queryClient]);
   useEffect(
     () =>
-      bridge.on("buttonsChanged", () => {
-        void tests.refetch();
+      // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
+      bridge.on(extensionsChangedEvent, () => {
+        void refetchTests();
         if (!watch) return;
         window.clearTimeout(watchTimer.current);
-        watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch" }), 800);
+        // A suite open in the pane watches itself only
+        watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch", ...(only ? { suite: only } : {}) }), 800);
       }),
-    [tests, watch, runTests],
+    [refetchTests, watch, runTests, only],
   );
 
   const suites = tests.data?.suites ?? [];
@@ -232,7 +236,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
       await act<{ ok: boolean; error: string | null }>(
         modelTestCommands.ShowElementsIn3D,
         { elementIds: ids, sectionBox: how === "box" },
-        (result) => (result.ok ? undefined : undefined),
+        () => undefined,
         "Could not show it in 3D",
       ).then((result) => result && !result.ok && notify.warning("Not shown in 3D", result.error ?? undefined));
     } else if (how === "isolate") {
