@@ -90,7 +90,7 @@ export function ModelTestsPage() {
  * The model tests of the extensions: run them on the open model, look at what failed, repair or accept it. A window shows
  * them as a page; the Tests tab of the pane shows the same, its actions in a row instead of beside a large title.
  */
-export function ModelTests({ layout, extension }: { layout: "page" | "pane"; extension?: string }) {
+export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; suite?: string }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const confirm = useConfirm();
@@ -139,11 +139,11 @@ export function ModelTests({ layout, extension }: { layout: "page" | "pane"; ext
   );
 
   const suites = tests.data?.suites ?? [];
-  // A folder of the Tests tab of the pane shows its own suites only
-  const folderSuites = useMemo(() => (extension ? suites.filter((suite) => suite.extensionId === extension) : null), [suites, extension]);
+  // A suite opened in the Tests tab of the pane shows its own tests only
+  const folderSuites = useMemo(() => (only ? suites.filter((suite) => suite.id === only) : null), [suites, only]);
   const allTests = useMemo(() => suites.flatMap((suite) => suite.tests.map((test) => ({ suite, test }))), [suites]);
   // Inside a folder the counts, «Run failed» and the list are the folder's
-  const scope = extension ? allTests.filter((item) => item.suite.extensionId === extension) : allTests;
+  const scope = only ? allTests.filter((item) => item.suite.id === only) : allTests;
   const filtered = useMemo(() => {
     const text = search.trim().toLowerCase();
     const shown = folderSuites ?? suites;
@@ -237,7 +237,7 @@ export function ModelTests({ layout, extension }: { layout: "page" | "pane"; ext
     if (!name) return;
     const created = await act<ExtensionSummary>(
       modelTestCommands.CreateModelTestSuite,
-      { name, extension } satisfies CreateModelTestSuiteRequest,
+      { name } satisfies CreateModelTestSuiteRequest,
       () => `Created «${name}»`,
       "The suite was not created",
     );
@@ -429,18 +429,15 @@ export function ModelTests({ layout, extension }: { layout: "page" | "pane"; ext
     </>
   );
 
-  if (layout === "pane" && extension) {
+  if (layout === "pane" && only) {
     return (
       <div className="mt-pane">
         <div className="mt-pane-actions">
-          <Button appearance="primary" icon={running ? <Spinner size="extra-tiny" /> : <Play16Regular />} disabled={running || !scope.length} onClick={() => void runTests({ suite: extension })}>
-            Run folder
+          <Button appearance="primary" icon={running ? <Spinner size="extra-tiny" /> : <Play16Regular />} disabled={running || !scope.length} onClick={() => void runTests({ suite: only })}>
+            Run suite
           </Button>
           <Button icon={<ArrowRepeatAll16Regular />} disabled={running || !failing.length} onClick={() => void runTests({ tests: failing })}>
             Run failed
-          </Button>
-          <Button icon={<Add16Regular />} onClick={() => setNewSuite(newSuite === null ? "" : null)}>
-            New suite
           </Button>
         </div>
         {run && (

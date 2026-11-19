@@ -16,7 +16,7 @@ import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
 import { ProfileScreen, Segmented } from "./ProfileScreen";
 import { ModelTests } from "../modelTests/ModelTestsPage";
-import { testFolders, TestsScreen, useTestFolders } from "./TestsScreen";
+import { TestFolderScreen, testFolders, TestsScreen, useTestFolders } from "./TestsScreen";
 import { applyTheme, findButton, folderOf, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
 import { type CarryItem, CarryProvider, useCarry } from "./Carry";
@@ -37,7 +37,8 @@ type Screen =
   | { kind: "stats"; folder?: string }
   | { kind: "folder"; folder: string; group?: string }
   | { kind: "tests" }
-  | { kind: "testFolder"; folder: string };
+  | { kind: "testFolder"; folder: string }
+  | { kind: "testSuite"; folder: string; suite: string };
 
 /** The two tabs of the pane: the buttons (folders and their tiles) and the model tests. */
 type PaneTab = "tools" | "tests";
@@ -78,6 +79,8 @@ function depth(screen: Screen) {
     case "guide":
     case "testFolder":
       return 1;
+    case "testSuite":
+      return 2;
     case "stats":
     case "packages":
     case "mcp":
@@ -92,7 +95,7 @@ function depth(screen: Screen) {
 }
 
 function screenKey(screen: Screen) {
-  return screen.kind === "folder" ? `folder:${screen.folder}:${screen.group ?? ""}` : screen.kind === "testFolder" ? `tests:${screen.folder}` : screen.kind === "stats" ? `stats:${screen.folder ?? ""}` : screen.kind;
+  return screen.kind === "folder" ? `folder:${screen.folder}:${screen.group ?? ""}` : screen.kind === "testFolder" ? `tests:${screen.folder}` : screen.kind === "testSuite" ? `tests:${screen.folder}:${screen.suite}` : screen.kind === "stats" ? `stats:${screen.folder ?? ""}` : screen.kind;
 }
 
 /** Going deeper grows out of the tile that opened it; going back the outer screen settles from a little larger. */
@@ -218,7 +221,8 @@ function Pane() {
     <MoveAndRemove overview={overview} onToFolders={() => go({ kind: "home" })}>
     <EditContext.Provider value={{ editing, start: () => setEditing((value) => !value) }}>
       <div className={`pane projects tiles-${profile.size} ${profile.effects ? "" : "no-effects"}`}>
-        <Header overview={overview} screen={current} folder={folder} testFolder={current.kind === "testFolder" ? testFolders(tests.data).find((item) => item.id === current.folder)?.name ?? current.folder : undefined} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => {
+        <Header overview={overview} screen={current} folder={folder} testFolder={current.kind === "testFolder" || current.kind === "testSuite" ? testFolders(tests.data).find((item) => item.id === current.folder)?.name ?? current.folder : undefined}
+          testSuite={current.kind === "testSuite" ? tests.data?.suites.find((item) => item.id === current.suite)?.name ?? current.suite : undefined} onGo={go} onSize={cycleSize} size={profile.size} editing={editing} onDone={() => setEditing(false)} onRefresh={() => {
             setRefreshing(true);
             void bridge
               .invoke(paneCommands.RefreshButtons, null)
@@ -289,7 +293,9 @@ function Pane() {
             ) : current.kind === "tests" ? (
               <TestsScreen onOpen={(id) => go({ kind: "testFolder", folder: id })} />
             ) : current.kind === "testFolder" ? (
-              <ModelTests key={current.folder} layout="pane" extension={current.folder} />
+              <TestFolderScreen folder={current.folder} onOpen={(suite) => go({ kind: "testSuite", folder: current.folder, suite })} />
+            ) : current.kind === "testSuite" ? (
+              <ModelTests key={current.suite} layout="pane" suite={current.suite} />
             ) : current.kind === "home" || !folder ? (
               <HomeScreen overview={overview} onOpen={(id) => go({ kind: "folder", folder: id })} onGuide={() => go({ kind: "guide" })} />
             ) : (
@@ -376,6 +382,8 @@ function Header(props: {
   folder?: PaneFolder;
   /** The name of the open folder of tests. */
   testFolder?: string;
+  /** The name of the open suite of tests. */
+  testSuite?: string;
   size: TileSize;
   editing: boolean;
   onGo: (screen: Screen) => void;
@@ -406,9 +414,11 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : screen.kind === "testFolder"
               ? { label: "Tests", to: { kind: "tests" } as Screen }
-              : null;
+              : screen.kind === "testSuite"
+                ? { label: props.testFolder ?? "Back", to: { kind: "testFolder", folder: screen.folder } as Screen }
+                : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "tests" ? "Tests" : screen.kind === "testFolder" ? (props.testFolder ?? "Tests") : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "tests" ? "Tests" : screen.kind === "testFolder" ? (props.testFolder ?? "Tests") : screen.kind === "testSuite" ? (props.testSuite ?? "Tests") : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },

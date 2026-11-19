@@ -93,6 +93,77 @@ export function TestsScreen({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
+/**
+ * A folder of tests, laid out like a folder of Tools: every suite a tile (a red badge for its new failures), «New suite»
+ * last. ▶ Run folder runs every suite of the folder; a tile opens the tests of its suite.
+ */
+export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (suite: string) => void }) {
+  const actions = useActions();
+  const queryClient = useQueryClient();
+  const tests = useTestFolders();
+  const latest = useQuery({
+    queryKey: ["modelTestResults"],
+    queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
+  });
+  const [running, setRunning] = useState(false);
+  const found = testFolders(tests.data).find((item) => item.id === folder);
+  const results = new Map<string, ModelTestResult>((latest.data?.results ?? []).map((result) => [result.testId, result]));
+
+  async function runFolder() {
+    setRunning(true);
+    try {
+      const run = await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { suite: folder, trigger: "page" });
+      queryClient.setQueryData(["modelTestResults"], run);
+      const fresh = run.totals.newCases;
+      actions.toast(fresh ? `${run.totals.failed} test(s) failing, ${fresh} new failure(s)` : `${run.totals.passed} of ${run.totals.tests} passed`, fresh ? "error" : "ok");
+    } catch (failure) {
+      actions.toast(messageOf(failure), "error");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  if (!found) return <p className="muted small center">{tests.isPending ? "Loading…" : "This folder has no tests (any more)."}</p>;
+  const ran = found.suites.flatMap((suite) => suite.tests).map((test) => results.get(test.id)).filter((result): result is ModelTestResult => !!result);
+  return (
+    <>
+      <div className="tests-folder-head">
+        <button className="tests-run" disabled={running} onClick={() => void runFolder()}>
+          {running ? "Running…" : "▶ Run folder"}
+        </button>
+        <span className="muted small">
+          {ran.length
+            ? `${ran.filter((result) => result.status === "passed").length} of ${ran.length} passed · ${ran.reduce((sum, result) => sum + result.new, 0)} new failures`
+            : `${found.suites.length} suite(s), ${found.suites.reduce((sum, suite) => sum + suite.tests.length, 0)} test(s)`}
+        </span>
+      </div>
+      <div className="grid">
+        {found.suites.map((suite) => {
+          const own = suite.tests.map((test) => results.get(test.id)).filter((result): result is ModelTestResult => !!result);
+          const fresh = own.reduce((sum, result) => sum + result.new, 0);
+          return (
+            <Tile
+              key={suite.id}
+              label={suite.name}
+              title={`${suite.name}\n${suite.tests.length} test(s)${own.length ? `\n${own.filter((result) => result.status === "passed").length} passed, ${fresh} new failure(s)` : ""}`}
+              icon={<TileIcon title={suite.name} />}
+              badge={fresh > 0 ? "failed" : null}
+              onClick={() => onOpen(suite.id)}
+            />
+          );
+        })}
+        <Tile
+          label="New suite"
+          className="add"
+          title="One more suite in this folder: a C# file of example tests"
+          icon={<span className="tile-icon add">+</span>}
+          onClick={() => actions.openSheet(`New suite in ${found.name}`, <NewTestsForm extension={folder} />, "Create")}
+        />
+      </div>
+    </>
+  );
+}
+
 /** A new folder of tests, or one more suite in a folder. */
 export function NewTestsForm({ extension, onCreated }: { extension?: string; onCreated?: (id: string) => void }) {
   const actions = useActions();

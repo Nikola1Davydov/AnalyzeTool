@@ -2180,3 +2180,26 @@
   max-width: 320px;
   margin: 0 auto;
 }
+
+/* A folder of the Tests tab: ▶ Run folder above its suites */
+.tests-folder-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 2px 14px;
+}
+.tests-run {
+  border: none;
+  border-radius: 9px;
+  padding: 7px 14px;
+  background: var(--accent, #0a84ff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tests-run:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
