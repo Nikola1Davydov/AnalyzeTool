@@ -4,6 +4,7 @@ using AnalyseTool.Extensions.Building;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Loading;
 using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Extensions.Testing;
 using AnalyseTool.Extensions.Versions;
 using AnalyseTool.Hosting.Commands;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,7 +33,8 @@ internal sealed class ExtensionTestEnvironment : IDisposable
         History = new LibGit2ExtensionHistory();
         var (commands, _) = CommandScanner.Scan([], _ => false);
         Registry = new CommandRegistry(commands, []);
-        Host = new ExtensionHost(Catalog, Store, History, Registry, NullLogger<ExtensionHost>.Instance);
+        Tests = new ModelTestCatalog(Paths);
+        Host = new ExtensionHost(Catalog, Store, History, Registry, Tests, NullLogger<ExtensionHost>.Instance);
         Manager = new ExtensionManager(Host, Catalog, Paths, Store, History);
     }
 
@@ -47,6 +49,8 @@ internal sealed class ExtensionTestEnvironment : IDisposable
     public IExtensionHistory History { get; }
 
     public CommandRegistry Registry { get; }
+
+    public ModelTestCatalog Tests { get; }
 
     public ExtensionHost Host { get; }
 

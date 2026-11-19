@@ -26,4 +26,10 @@ public static class ExtensionErrorCodes
 
     /// <summary>The input is not valid: an id, a name, a path.</summary>
     public const string Invalid = "invalid";
+
+    /// <summary>No model test has this id.</summary>
+    public const string TestNotFound = "test_not_found";
+
+    /// <summary>Revit has no open model to test.</summary>
+    public const string NoDocument = "no_document";
 }

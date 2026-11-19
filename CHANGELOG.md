@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+- 🧪 **Model tests**: checks of the open model written as C#, like unit tests — rules on parameters, code per element or for the whole model. The **Model tests** page runs them, shows every failing element, repairs it or accepts it into a baseline, so only new failures count.
+- 🧰 **Sdk 1.3**: `AnalyseTool.Sdk.Testing` with the fluent `IModelTestSuite` builder; AI clients create, run, repair and accept model tests over MCP.
+
 ## [2.0.1] / 2026-11-17
 
 - 🔔 **A new version shows itself**: AnalyseTool asks GitHub once a day for the latest release. A newer one puts a dot on your initials and a card with the download link on About. The request sends nothing about you or your models.

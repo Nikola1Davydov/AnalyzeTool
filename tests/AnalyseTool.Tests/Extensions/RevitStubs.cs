@@ -32,9 +32,29 @@ internal static class RevitStubs
             .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
             .ToList();
 
-        var api = Emit("RevitAPI", "namespace Autodesk.Revit.DB { public class Document {} public class Element {} }", references, out var apiReference);
+        // The model tests also name categories, parameters, points and rooms; enum members carry Revit's values, so ToString
+        // gives the names the real enums give
+        const string api = """
+                           namespace Autodesk.Revit.DB
+                           {
+                               public class Document {}
+                               public class Element {}
+                               public class SpatialElement : Element {}
+                               public class ElementType : Element {}
+                               public class XYZ {}
+                               public class Outline {}
+                               public class Parameter {}
+                               public enum BuiltInCategory { INVALID = -1, OST_Walls = -2000011, OST_Doors = -2000023, OST_Windows = -2000014, OST_Rooms = -2000160, OST_StructuralFraming = -2001320 }
+                               public enum BuiltInParameter { INVALID = -1, ALL_MODEL_MARK = -1001203, ROOM_NUMBER = -1006901 }
+                           }
+                           namespace Autodesk.Revit.DB.Architecture
+                           {
+                               public class Room : Autodesk.Revit.DB.SpatialElement {}
+                           }
+                           """;
+        var apiAssembly = Emit("RevitAPI", api, references, out var apiReference);
         var ui = Emit("RevitAPIUI", "namespace Autodesk.Revit.UI { public class UIApplication {} public class UIDocument {} }", [.. references, apiReference], out _);
-        return new Dictionary<string, Assembly> { ["RevitAPI"] = api, ["RevitAPIUI"] = ui };
+        return new Dictionary<string, Assembly> { ["RevitAPI"] = apiAssembly, ["RevitAPIUI"] = ui };
     }
 
     private static Assembly Emit(string name, string source, IEnumerable<MetadataReference> references, out MetadataReference reference)

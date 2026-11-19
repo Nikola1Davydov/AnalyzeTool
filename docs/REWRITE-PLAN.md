@@ -171,6 +171,21 @@ MCP — один адрес для всех версий Revit; плагин д�
 * **Сторож долгих вызовов.** Команда, которая долго держит поток Revit (зависший скрипт, бесконечный цикл в кнопке),
   морозит Revit без следа. Нужно: записывать начало вызова до входа в поток Revit (чёрный ящик — после падения видно,
   что шло), предупреждать в логе и на плитке, если вызов дольше N секунд; отмена — где команда её слушает.
+* **Тесты модели (начато 2026-11-19).** Есть: Sdk 1.3 `AnalyseTool.Sdk.Testing` — fluent `IModelTestSuite` (правила
+  на значения, `Check` на элемент, `Test` на модель, `Fix` / `FixValue`, `Slow`, `Skip`, трейты); движок в
+  `AnalyseTool.Extensions/Testing` (прогон в откатываемой `TransactionGroup`, мягкие проверки, Error ≠ Inconclusive);
+  базовая линия в `baseline\<модель>.json` папки набора; тренд полных прогонов в профиле; страница `/tests`
+  (Watch, Fix, Accept); MCP: `CreateModelTestSuite`, `GetModelTests`, `RunModelTests`, `GetModelTestResults`,
+  `FixModelTestCases`, `AcceptModelTestFailures`. Дальше:
+  1. Проверить в живом Revit (тир 3 `AnalyseTool.RevitTests`): `RevitModelAccess` (OfClass для Room, единицы
+     `InRange`, `SetValueString`), откат группы, Fix одной транзакцией.
+  2. Геометрия в Sdk: `m.Geometry` (Solid с кэшем, `ClearanceBox`, `Intersecting`, `Clashes` с допуском),
+     связанные модели `s.Linked("KR")` — сначала как `[Experimental]`.
+  3. `s.Configurable<TSettings>(…)`: экземпляры настраиваемого теста из UI (форма по классу настроек).
+  4. Правила без кода: конструктор на странице → JSON в папке набора, та же модель, что у fluent-правил.
+  5. Запуск на `DocumentSaving` / синхронизации (предупреждать, не блокировать); экспорт в BCF.
+  6. «Run on selection» на странице; «Create test from…» из предупреждений Revit и отчёта параметров.
+  7. Имя теста по встроенному параметру сейчас — имя enum (`ALL_MODEL_MARK`); сообщения уже на языке Revit.
 
 ## 8. Открытые вопросы
 

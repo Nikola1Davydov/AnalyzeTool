@@ -1576,3 +1576,125 @@ code.block,
   padding: 8px;
   border-radius: 8px;
 }
+
+/* ---- Model tests ---- */
+.mt-newsuite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mt-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.mt-tree {
+  padding: 8px;
+}
+.mt-suite + .mt-suite {
+  margin-top: 8px;
+}
+.mt-suite-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.mt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--fontSizeBase300);
+}
+.mt-row:hover {
+  background: var(--colorSubtleBackgroundHover);
+}
+.mt-row.selected {
+  background: var(--colorBrandBackground2);
+}
+.mt-case {
+  padding-left: 40px;
+  font-size: var(--fontSizeBase200);
+}
+.mt-chevron-space {
+  display: inline-block;
+  width: 16px;
+  flex: none;
+}
+.mt-count {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  font-size: var(--fontSizeBase200);
+}
+.mt-more {
+  display: block;
+  padding: 2px 0 4px 40px;
+}
+.mt-details {
+  position: sticky;
+  top: 8px;
+}
+.mt-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.mt-detail-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mt-message {
+  padding: 8px 10px;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+  background: var(--colorPaletteRedBackground1);
+  color: var(--colorPaletteRedForeground1);
+}
+.mt-message.inconclusive {
+  background: var(--colorPaletteDarkOrangeBackground1);
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+.mt-traits,
+.mt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mt-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+}
+.mt-trend-bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 2px;
+  background: var(--colorPaletteRedBorder1);
+}
+.mt-trend-bar:last-child {
+  background: var(--colorPaletteRedForeground1);
+}
+@media (max-width: 760px) {
+  .mt-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mt-details {
+    position: static;
+  }
+}

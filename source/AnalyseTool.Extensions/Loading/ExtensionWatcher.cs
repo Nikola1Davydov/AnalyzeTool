@@ -19,7 +19,8 @@ namespace AnalyseTool.Extensions.Loading;
 public sealed partial class ExtensionWatcher(ExtensionHost host, ExtensionPaths paths, ILogger<ExtensionWatcher> logger) : BackgroundService
 {
     private static readonly TimeSpan Quiet = TimeSpan.FromMilliseconds(600);
-    private static readonly string[] Ignored = ["bin", "obj", ".git", ".vs", "node_modules"];
+    // baseline\: the accepted failures of model tests, written by AnalyseTool itself — not code, nothing to reload
+    private static readonly string[] Ignored = ["bin", "obj", ".git", ".vs", "node_modules", "baseline"];
 
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<FileSystemWatcher> _watchers = [];

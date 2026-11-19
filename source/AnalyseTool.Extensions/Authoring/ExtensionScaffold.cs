@@ -91,6 +91,44 @@ public static partial class ExtensionScaffold
 
                                         """;
 
+    /// <summary>The C# of a new suite of model tests: three tests that show the three kinds, ready to change.</summary>
+    public static string TestSuite(string name)
+    {
+        var className = ToClassName(name);
+        var title = name.Replace("\"", "\\\"", StringComparison.Ordinal);
+        return $$"""
+                 using AnalyseTool.Sdk.Testing;
+                 using Autodesk.Revit.DB;
+                 using Autodesk.Revit.DB.Architecture;
+
+                 /// <summary>
+                 /// Model tests: AnalyseTool runs them from the Model tests page (or an AI client over MCP) on the open model.
+                 /// Save this file and they run again. The guide: LLM.md next to AnalyseTool, section «Model tests».
+                 /// </summary>
+                 public sealed class {{className}} : IModelTestSuite
+                 {
+                     public void Define(ISuite s)
+                     {
+                         s.Name("{{title}}");
+
+                         // A rule: every door has a mark. Built-in parameters read the same in every language of Revit
+                         s.Elements(BuiltInCategory.OST_Doors)
+                          .Parameter(BuiltInParameter.ALL_MODEL_MARK).NotEmpty();
+
+                         // A rule with a filter: placed rooms have a number, and no two share one
+                         s.Elements<Room>()
+                          .Where(room => room.Area > 0)
+                          .Parameter(BuiltInParameter.ROOM_NUMBER).NotEmpty().Unique();
+
+                         // Code for the whole model: every unplaced room is a failure of its own
+                         s.Test("No unplaced rooms", m =>
+                             m.Assert.Empty(m.Elements<Room>().Where(room => room.Location == null), "The room is not placed"));
+                     }
+                 }
+
+                 """;
+    }
+
     /// <summary>Makes an id from a name: <c>Count walls</c> → <c>count-walls</c>.</summary>
     public static string ToId(string name)
     {
