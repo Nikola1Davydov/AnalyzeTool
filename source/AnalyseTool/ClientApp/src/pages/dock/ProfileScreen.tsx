@@ -19,7 +19,7 @@ import {
 import { spring, TileIcon } from "./Tile";
 
 /** The segmented control of iOS: the selected option sits on a thumb that slides to the next choice. */
-function Segmented<T extends string>(props: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
+export function Segmented<T extends string>(props: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
   const id = useId();
   return (
     <div className="segmented" role="radiogroup">

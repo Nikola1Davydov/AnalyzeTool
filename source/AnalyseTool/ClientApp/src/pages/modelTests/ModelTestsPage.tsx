@@ -81,8 +81,16 @@ function useResults() {
   return { ...state, apply };
 }
 
-/** The model tests of the extensions: run them on the open model, look at what failed, repair or accept it. */
+/** The model tests of the extensions in a window of their own. */
 export function ModelTestsPage() {
+  return <ModelTests layout="page" />;
+}
+
+/**
+ * The model tests of the extensions: run them on the open model, look at what failed, repair or accept it. A window shows
+ * them as a page; the Tests tab of the pane shows the same, its actions in a row instead of beside a large title.
+ */
+export function ModelTests({ layout }: { layout: "page" | "pane" }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const confirm = useConfirm();
@@ -251,19 +259,15 @@ export function ModelTestsPage() {
         inconclusiveCases: known.reduce((sum, result) => sum + result.inconclusive, 0),
       }
     : undefined;
-  return (
-    <Page
-      title="Model tests"
-      subtitle={
+  const subtitle =
         run ? (
           <>
             {run.model} · {relativeTime(run.at)} · {(run.milliseconds / 1000).toFixed(1)} s{run.trigger !== "page" ? ` · ${run.trigger}` : ""}
           </>
         ) : (
           "Checks of the open model written as code: rules on parameters, checks per element, tests of the whole model."
-        )
-      }
-      actions={
+        );
+  const actions = (
         <>
           <Button appearance="primary" icon={running ? <Spinner size="extra-tiny" /> : <Play16Regular />} disabled={running || !allTests.length} onClick={() => void runTests()}>
             Run all
@@ -275,8 +279,9 @@ export function ModelTestsPage() {
             New suite
           </Button>
         </>
-      }
-    >
+  );
+  const content = (
+    <>
       {newSuite !== null && (
         <div className="mt-newsuite">
           <Input autoFocus placeholder="BEP Project X" value={newSuite} onChange={(_, data) => setNewSuite(data.value)} onKeyDown={(event) => event.key === "Enter" && void createSuite()} />
@@ -416,6 +421,24 @@ export function ModelTestsPage() {
           </div>
         </>
       )}
+    </>
+  );
+
+  if (layout === "pane") {
+    return (
+      <div className="mt-pane">
+        <div className="mt-pane-actions">{actions}</div>
+        <Text size={200} className="muted mt-pane-subtitle">
+          {subtitle}
+        </Text>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Page title="Model tests" subtitle={subtitle} actions={actions}>
+      {content}
     </Page>
   );
 }

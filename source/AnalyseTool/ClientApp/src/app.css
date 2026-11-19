@@ -1698,3 +1698,27 @@ code.block,
     position: static;
   }
 }
+
+/* The model tests inside the pane: actions in a row, one column */
+.mt-pane {
+  padding-top: 4px;
+}
+.mt-pane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.mt-pane-subtitle {
+  display: block;
+  margin-bottom: 10px;
+}
+.mt-pane .mt-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mt-pane .mt-details {
+  position: static;
+}
+.mt-pane .usage-tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}

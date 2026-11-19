@@ -60,16 +60,6 @@
         "ribbon": false
       },
       {
-        "name": "Model tests",
-        "icon": "glyph:E9D5",
-        "tooltip": "Checks of the open model written as code: run them, see what fails, repair or accept it.",
-        "command": "OpenWindow",
-        "args": {
-          "route": "/tests"
-        },
-        "ribbon": false
-      },
-      {
         "name": "Manage buttons",
         "icon": "glyph:EA86",
         "tooltip": "Your buttons: their versions, errors and folders.",

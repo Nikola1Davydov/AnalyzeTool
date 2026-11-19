@@ -14,7 +14,8 @@ import { PageScreen } from "./PageScreen";
 import { HowItWorks } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
-import { ProfileScreen } from "./ProfileScreen";
+import { ProfileScreen, Segmented } from "./ProfileScreen";
+import { ModelTests } from "../modelTests/ModelTestsPage";
 import { applyTheme, findButton, folderOf, pruneProfile, type TileSize, useProfile } from "./profile";
 import { StatsScreen } from "./StatsScreen";
 import { type CarryItem, CarryProvider, useCarry } from "./Carry";
@@ -33,7 +34,33 @@ type Screen =
   | { kind: "page"; folder: string; title: string; url: string }
   | { kind: "folders" }
   | { kind: "stats"; folder?: string }
-  | { kind: "folder"; folder: string; group?: string };
+  | { kind: "folder"; folder: string; group?: string }
+  | { kind: "tests" };
+
+/** The two tabs of the pane: the buttons (folders and their tiles) and the model tests. */
+type PaneTab = "tools" | "tests";
+const TAB_KEY = "analysetool.pane.tab";
+
+function readTab(): PaneTab {
+  try {
+    return localStorage.getItem(TAB_KEY) === "tests" ? "tests" : "tools";
+  } catch {
+    return "tools";
+  }
+}
+
+function writeTab(tab: PaneTab) {
+  try {
+    localStorage.setItem(TAB_KEY, tab);
+  } catch {
+    // Storage blocked: the pane opens on Tools next time
+  }
+}
+
+/** The screens the tabs sit above: the roots of Tools and Tests. */
+function tabOf(screen: Screen): PaneTab | null {
+  return screen.kind === "tests" ? "tests" : screen.kind === "home" || (screen.kind === "folder" && screen.group === undefined) ? "tools" : null;
+}
 
 const sizes: TileSize[] = ["small", "medium", "large"];
 const sizeLabels: Record<TileSize, string> = { small: "Small buttons", medium: "Medium buttons", large: "Large buttons" };
@@ -141,6 +168,10 @@ function Pane() {
   useEffect(() => {
     if (screen || !buttons.isSuccess || !loaded) return;
     const last = profile.lastFolder;
+    if (readTab() === "tests") {
+      setScreen({ kind: "tests" });
+      return;
+    }
     setScreen(last && buttons.data.folders.some((folder) => folder.id === last) ? { kind: "folder", folder: last } : { kind: "home" });
   }, [buttons.isSuccess, buttons.data, screen, loaded, profile.lastFolder]);
 
@@ -161,6 +192,8 @@ function Pane() {
     setTransition({ forward, origin });
     setEditing(false);
     setScreen(next);
+    const tab = tabOf(next);
+    if (tab) writeTab(tab);
     if (next.kind === "home" || next.kind === "folder") {
       const lastFolder = next.kind === "folder" ? next.folder : null;
       if (lastFolder !== profile.lastFolder) update((value) => ({ ...value, lastFolder }));
@@ -203,6 +236,22 @@ function Pane() {
             if (tile) openedFrom.current = tile.getBoundingClientRect();
           }}
         >
+          {tabOf(current) && (
+            <div className="pane-tabs">
+              <Segmented<PaneTab>
+                value={tabOf(current)!}
+                options={[
+                  { value: "tools", label: "Tools" },
+                  { value: "tests", label: "Tests" },
+                ]}
+                onChange={(tab) => {
+                  if (tab === tabOf(current)) return;
+                  const last = profile.lastFolder;
+                  go(tab === "tests" ? { kind: "tests" } : last && overview.folders.some((item) => item.id === last) ? { kind: "folder", folder: last } : { kind: "home" });
+                }}
+              />
+            </div>
+          )}
           <motion.div
             key={screenKey(current)}
             className="screen"
@@ -233,6 +282,8 @@ function Pane() {
               <HowItWorks />
             ) : current.kind === "stats" ? (
               <StatsScreen overview={overview} folder={current.folder} />
+            ) : current.kind === "tests" ? (
+              <ModelTests layout="pane" />
             ) : current.kind === "home" || !folder ? (
               <HomeScreen overview={overview} onOpen={(id) => go({ kind: "folder", folder: id })} onGuide={() => go({ kind: "guide" })} />
             ) : (
@@ -347,7 +398,7 @@ function Header(props: {
             ? { label: "Folders", to: { kind: "home" } as Screen }
             : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "tests" ? "Tests" : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },

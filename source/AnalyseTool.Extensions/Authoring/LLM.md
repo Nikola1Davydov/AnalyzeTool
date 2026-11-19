@@ -768,7 +768,7 @@ model) in the payload or from your own settings file, and run the call **outside
 A **model test** checks the open model the way a unit test checks code: «every door has a fire rating», «no two rooms
 share a number», «no duct hits a beam». Tests are C# in any source extension (Sdk 1.3+): a class that implements
 `IModelTestSuite` (namespace `AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
-`Define` when the extension loads, and runs the tests from the **Model tests** page or over MCP. A saved file reloads
+`Define` when the extension loads, and runs the tests from the **Tests** tab of the pane or over MCP. A saved file reloads
 them, like a button.
 
 ```csharp

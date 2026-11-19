@@ -2167,3 +2167,16 @@
 .stats-card {
   overflow-x: auto;
 }
+
+/* ---- The tabs of the pane: Tools (the folders) and Tests ---- */
+.pane-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0 6px;
+  background: var(--grouped-background);
+}
+.pane-tabs .segmented {
+  max-width: 320px;
+  margin: 0 auto;
+}
