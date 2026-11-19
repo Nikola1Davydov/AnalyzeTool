@@ -422,6 +422,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                         {inline && selected && selection?.testId === test.id && !selection.key && (
                           <div className="mt-inline">
                             <Details
+                              inline
                               suite={selected.suite}
                               test={selected.test}
                               result={selectedResult}
@@ -462,6 +463,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                               {inline && selected && selection?.key === item.key && (
                                 <div className="mt-inline">
                                   <Details
+                                    inline
                                     suite={selected.suite}
                                     test={selected.test}
                                     result={selectedResult}
@@ -560,6 +562,8 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 }
 
 function Details(props: {
+  /** Under its row in the pane: the row says the name already. */
+  inline?: boolean;
   suite: ModelTestSuiteInfo;
   test: ModelTestInfo;
   result: ModelTestResult | undefined;
@@ -574,18 +578,19 @@ function Details(props: {
   const { suite, test, result, item } = props;
   return (
     <div className="mt-detail">
-      <Text size={200} className="muted">
-        {suite.name} · {test.kind} · {test.severity}
-        {test.slow ? " · slow" : ""}
-      </Text>
-      <Text as="h3" size={400} weight="semibold" className="mt-detail-title">
-        {item ? item.label ?? "Whole model" : test.name}
-      </Text>
-      {item ? (
-        <div className={`mt-message ${item.status}`}>{item.message}</div>
-      ) : (
-        <Text className="muted">{test.description}</Text>
+      {!props.inline && (
+        <>
+          <Text size={200} className="muted">
+            {suite.name} · {test.kind} · {test.severity}
+            {test.slow ? " · slow" : ""}
+          </Text>
+          <Text as="h3" size={400} weight="semibold" className="mt-detail-title">
+            {item ? item.label ?? "Whole model" : test.name}
+          </Text>
+        </>
       )}
+      {item && <div className={`mt-message ${item.status}`}>{item.message}</div>}
+      {!item && <WhatItChecks test={test} />}
 
       {test.file && (
         <Link className="mono small" onClick={props.onOpen}>
@@ -686,6 +691,49 @@ function Details(props: {
         </>
       )}
     </div>
+  );
+}
+
+/** What a test checks: its categories and parameter as Revit names them, with their API names, and the conditions. */
+function WhatItChecks({ test }: { test: ModelTestInfo }) {
+  const rows: { label: string; value: ReactNode }[] = [];
+  if (test.categories.length) {
+    rows.push({
+      label: test.categories.length === 1 ? "Category" : "Categories",
+      value: test.categories.map((category, index) => (
+        <span key={category.api}>
+          {index > 0 && ", "}
+          {category.name} <span className="mono muted small">{category.api}</span>
+        </span>
+      )),
+    });
+  }
+  if (test.elementClass) rows.push({ label: "Elements", value: <span className="mono">{test.elementClass}</span> });
+  if (test.kind === "Model") rows.push({ label: "Elements", value: "Whole model" });
+  if (test.parameter) {
+    rows.push({
+      label: test.typeParameter ? "Type parameter" : "Parameter",
+      value: (
+        <>
+          {test.parameter.name}
+          {test.parameter.api !== test.parameter.name && <span className="mono muted small"> {test.parameter.api}</span>}
+        </>
+      ),
+    });
+  }
+  if (test.value) rows.push({ label: "Value", value: test.value });
+  if (test.checks) rows.push({ label: "Check", value: test.checks });
+  if (test.kind !== "Rule") rows.push({ label: "Check", value: "Code" });
+  if (test.filtered) rows.push({ label: "Filter", value: "Where(…) in code" });
+  return (
+    <dl className="mt-what">
+      {rows.map((row, index) => (
+        <div key={index}>
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

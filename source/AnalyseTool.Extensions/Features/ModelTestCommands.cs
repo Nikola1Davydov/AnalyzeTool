@@ -2,6 +2,7 @@ using System.ComponentModel;
 using AnalyseTool.Extensions.Testing;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Mcp;
+using AnalyseTool.Hosting.Threading;
 
 namespace AnalyseTool.Extensions.Features;
 
@@ -13,14 +14,17 @@ public sealed record ModelTestList(IReadOnlyList<ModelTestSuiteInfo> Suites);
 [McpTool(ReadOnly = true, Title = "Model tests")]
 [Command(Description = "Lists the model tests of the loaded extensions: suites (id, name, extension) and their tests — id, name, what it checks, " +
                        "kind (Rule: a declarative check of one value per element; Check: code per element; Model: code once), severity, traits, slow, skip, " +
-                       "the file and line it is written at, and the label of its repair. A suite is a C# class implementing IModelTestSuite in an extension; " +
+                       "the file and line it is written at, the label of its repair, and what a rule checks: categories and parameter as Revit names them " +
+                       "(name, in Revit's language) and by API name (api: OST_Walls, ALL_MODEL_MARK), the conditions. A suite is a C# class implementing IModelTestSuite in an extension; " +
                        "write one with the authoring guide (GetAuthoringGuide, section «Model tests») or CreateModelTestSuite.")]
-public sealed class GetModelTests(ModelTestCatalog catalog) : ICommand<ModelTestList>
+public sealed class GetModelTests(ModelTestCatalog catalog, IRevitDispatcher dispatcher) : ICommand<ModelTestList>
 {
     /// <inheritdoc />
-    public Task<ModelTestList> ExecuteAsync(CommandContext context)
+    public async Task<ModelTestList> ExecuteAsync(CommandContext context)
     {
-        return Task.FromResult(new ModelTestList(catalog.GetSuites()));
+        // The names Revit shows come from Revit: asked on its thread
+        var suites = await dispatcher.InvokeAsync(_ => catalog.GetSuites(RevitModelAccess.Names), context.CancellationToken).ConfigureAwait(false);
+        return new ModelTestList(suites);
     }
 }
 

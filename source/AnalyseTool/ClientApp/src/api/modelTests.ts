@@ -39,6 +39,26 @@ export interface ModelTestInfo {
   line: number;
   /** The label of its repair. */
   fix: string | null;
+  /** The categories it runs over: as Revit names them, and their API names. */
+  categories: RevitName[];
+  /** The element class it runs over (`Room`), instead of categories. */
+  elementClass: string | null;
+  /** The parameter a rule checks. */
+  parameter: RevitName | null;
+  /** The parameter is one of the element's type. */
+  typeParameter: boolean;
+  /** What a rule checks when it is not a parameter. */
+  value: string | null;
+  /** The conditions of a rule: `not empty, unique`. */
+  checks: string | null;
+  /** The elements are filtered further in code. */
+  filtered: boolean;
+}
+
+/** A category or a parameter: as Revit shows it, and its API name. */
+export interface RevitName {
+  name: string;
+  api: string;
 }
 
 export interface ModelTestSuiteInfo {

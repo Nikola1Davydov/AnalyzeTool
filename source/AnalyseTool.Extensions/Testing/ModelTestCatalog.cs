@@ -18,9 +18,10 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
     public event EventHandler? Changed;
 
     /// <summary>Gets the suites, by extension and in the order declared.</summary>
-    public IReadOnlyList<ModelTestSuiteInfo> GetSuites()
+    /// <param name="names">How categories and built-in parameters are named; their API names when absent.</param>
+    public IReadOnlyList<ModelTestSuiteInfo> GetSuites(RevitNames? names = null)
     {
-        return Suites().Select(Describe).ToList();
+        return Suites().Select(suite => Describe(suite, names)).ToList();
     }
 
     /// <summary>Finds the suites of the extension assembly and records them for the extension.</summary>
@@ -140,16 +141,29 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
         return suites;
     }
 
-    internal static ModelTestSuiteInfo Describe(SuiteDefinition suite)
+    internal static ModelTestSuiteInfo Describe(SuiteDefinition suite, RevitNames? names = null)
     {
-        return new ModelTestSuiteInfo(suite.Id, suite.DisplayName, suite.ExtensionId, suite.ExtensionName ?? suite.ExtensionId, suite.Directory, suite.Tests.Select(Describe).ToList());
+        return new ModelTestSuiteInfo(suite.Id, suite.DisplayName, suite.ExtensionId, suite.ExtensionName ?? suite.ExtensionId, suite.Directory,
+            suite.Tests.Select(test => Describe(test, names)).ToList());
     }
 
-    internal static ModelTestInfo Describe(TestDefinition test)
+    internal static ModelTestInfo Describe(TestDefinition test, RevitNames? names = null)
     {
-        return new ModelTestInfo(test.Id, test.Name, test.Describe(), test.Kind.ToString(), test.Severity.ToString(),
+        var naming = names ?? RevitNames.Api;
+        var rule = test.Rule;
+        var parameter = rule?.Source is ValueSource.Parameter or ValueSource.TypeParameter
+            ? new RevitName(rule.Name(naming), rule.BuiltIn?.ToString() ?? rule.Label)
+            : null;
+        return new ModelTestInfo(test.Id, test.DisplayName(naming), test.Describe(naming), test.Kind.ToString(), test.Severity.ToString(),
             test.Traits.Select(trait => $"{trait.Key}={trait.Value}").Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-            test.Slow, test.SkipReason, test.File, test.Line, test.FixLabel);
+            test.Slow, test.SkipReason, test.File, test.Line, test.FixLabel,
+            test.Selector?.Categories.Select(category => new RevitName(naming.Category(category), category.ToString())).ToList() ?? [],
+            test.Selector?.ElementClass?.Name,
+            parameter,
+            rule?.Source == ValueSource.TypeParameter,
+            rule is not null && parameter is null ? rule.Name(naming) : null,
+            rule?.Checks() is { Length: > 0 } checks ? checks : null,
+            test.Filters.Count > 0);
     }
 
     /// <summary>The user's own folder keeps the baseline (versioned with the tests); an installed package's goes to the profile.</summary>

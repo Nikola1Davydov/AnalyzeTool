@@ -1,5 +1,10 @@
 namespace AnalyseTool.Extensions.Testing;
 
+/// <summary>A category or a parameter: as this Revit names it, and its API name.</summary>
+/// <param name="Name">As Revit shows it, in its language: <c>Wände</c>, <c>Kennzeichen</c>.</param>
+/// <param name="Api">The API name: <c>OST_Walls</c>, <c>ALL_MODEL_MARK</c>; for a parameter looked up by name, the name.</param>
+public sealed record RevitName(string Name, string Api);
+
 /// <summary>A test as the page and AI clients list it.</summary>
 /// <param name="Id">The full id: <c>&lt;suite id&gt;/&lt;test id&gt;</c>.</param>
 /// <param name="Name">The name shown.</param>
@@ -12,6 +17,13 @@ namespace AnalyseTool.Extensions.Testing;
 /// <param name="File">Where it is written, relative to the extension folder.</param>
 /// <param name="Line">The line, from 1; 0 when unknown.</param>
 /// <param name="Fix">The label of its repair; <see langword="null" /> without one.</param>
+/// <param name="Categories">The categories it runs over; empty for a class or the whole model.</param>
+/// <param name="ElementClass">The element class it runs over (<c>Room</c>); <see langword="null" /> for categories.</param>
+/// <param name="Parameter">The parameter a rule checks; <see langword="null" /> for code or another value.</param>
+/// <param name="TypeParameter">The parameter is one of the element's type.</param>
+/// <param name="Value">What a rule checks when it is not a parameter: <c>Type name</c>, a label of the author.</param>
+/// <param name="Checks">The conditions of a rule: <c>not empty, unique</c>.</param>
+/// <param name="Filtered">The elements are filtered further in code (<c>Where</c>).</param>
 public sealed record ModelTestInfo(
     string Id,
     string Name,
@@ -23,7 +35,14 @@ public sealed record ModelTestInfo(
     string? Skip,
     string File,
     int Line,
-    string? Fix);
+    string? Fix,
+    IReadOnlyList<RevitName> Categories,
+    string? ElementClass,
+    RevitName? Parameter,
+    bool TypeParameter,
+    string? Value,
+    string? Checks,
+    bool Filtered);
 
 /// <summary>A suite of tests.</summary>
 /// <param name="Id">The id: <c>&lt;extension id&gt;.&lt;class&gt;</c>.</param>

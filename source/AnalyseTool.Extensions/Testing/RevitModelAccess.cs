@@ -6,6 +6,9 @@ namespace AnalyseTool.Extensions.Testing;
 /// <summary>The model of a Revit document for the engine. Used on the Revit thread only.</summary>
 internal sealed class RevitModelAccess(Document document) : IModelAccess
 {
+    /// <summary>Categories and built-in parameters as this Revit names them, in its language. On the Revit thread.</summary>
+    public static RevitNames Names { get; } = RevitNames.Safe(LabelUtils.GetLabelFor, LabelUtils.GetLabelFor);
+
     public Document? Document => document;
 
     public string ModelKey

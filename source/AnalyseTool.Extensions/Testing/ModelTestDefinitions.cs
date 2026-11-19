@@ -35,15 +35,49 @@ public enum ValueSource
     Custom
 }
 
+/// <summary>
+///     How categories and built-in parameters are named for people: as this Revit shows them (in its language), or — without
+///     Revit, and whenever Revit cannot say — by their API names.
+/// </summary>
+/// <param name="Category">The name of a category.</param>
+/// <param name="Parameter">The name of a built-in parameter.</param>
+public sealed record RevitNames(Func<BuiltInCategory, string> Category, Func<BuiltInParameter, string> Parameter)
+{
+    /// <summary>The API names: <c>Walls</c> for <c>OST_Walls</c>, <c>ALL_MODEL_MARK</c>.</summary>
+    public static readonly RevitNames Api = new(ElementSelector.CategoryName, parameter => parameter.ToString());
+
+    /// <summary>A name from Revit, the API name when Revit throws.</summary>
+    public static RevitNames Safe(Func<BuiltInCategory, string> category, Func<BuiltInParameter, string> parameter)
+    {
+        return new RevitNames(
+            value => Try(() => category(value)) ?? Api.Category(value),
+            value => Try(() => parameter(value)) ?? Api.Parameter(value));
+    }
+
+    private static string? Try(Func<string> name)
+    {
+        try
+        {
+            var text = name();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return null;
+        }
+    }
+}
+
 /// <summary>Which elements a test runs over: categories, or a class.</summary>
 /// <param name="Categories">The categories; empty when <paramref name="ElementClass" /> is set.</param>
 /// <param name="ElementClass">The element class; <see langword="null" /> for categories.</param>
 public sealed record ElementSelector(IReadOnlyList<BuiltInCategory> Categories, Type? ElementClass)
 {
     /// <summary>Gets what the selector picks, for people: <c>Doors, Windows</c> or <c>Room</c>.</summary>
-    public string Describe()
+    public string Describe(RevitNames? names = null)
     {
-        return ElementClass is not null ? ElementClass.Name : string.Join(", ", Categories.Select(CategoryName));
+        var naming = names ?? RevitNames.Api;
+        return ElementClass is not null ? ElementClass.Name : string.Join(", ", Categories.Select(naming.Category));
     }
 
     /// <summary><c>OST_StructuralFraming</c> → <c>Structural Framing</c>, without Revit.</summary>
@@ -188,7 +222,26 @@ internal sealed class ValueRuleSpec
 
     public bool Unique { get; set; }
 
-    public string Describe()
+    public string Describe(RevitNames? names = null)
+    {
+        var checks = Checks();
+        var label = Name(names);
+        var what = Source switch
+        {
+            ValueSource.TypeParameter => $"type {label}",
+            _ => label
+        };
+        return checks.Length == 0 ? what : $"{what} · {checks}";
+    }
+
+    /// <summary>The parameter or value as people know it: a built-in parameter by the name Revit shows.</summary>
+    public string Name(RevitNames? names = null)
+    {
+        return BuiltIn is { } builtIn ? (names ?? RevitNames.Api).Parameter(builtIn) : Label;
+    }
+
+    /// <summary>The conditions: <c>not empty, unique</c>.</summary>
+    public string Checks()
     {
         var parts = Conditions.Select(condition => condition.Describe()).ToList();
         if (Unique)
@@ -196,12 +249,7 @@ internal sealed class ValueRuleSpec
             parts.Add("unique");
         }
 
-        var what = Source switch
-        {
-            ValueSource.TypeParameter => $"type {Label}",
-            _ => Label
-        };
-        return parts.Count == 0 ? what : $"{what} · {string.Join(", ", parts)}";
+        return string.Join(", ", parts);
     }
 }
 
@@ -255,13 +303,19 @@ internal sealed class TestDefinition
     /// <summary>The value a <see cref="IValueRule{T}.FixValue" /> repair writes.</summary>
     public string? FixValue { get; set; }
 
-    public string Describe()
+    /// <summary>The name shown: the author's, or the rule described in the names of this Revit.</summary>
+    public string DisplayName(RevitNames? names = null)
+    {
+        return ExplicitName ?? (Kind == ModelTestKind.Rule ? Describe(names) : DefaultName);
+    }
+
+    public string Describe(RevitNames? names = null)
     {
         var where = Filters.Count > 0 ? " (filtered)" : "";
         return Kind switch
         {
-            ModelTestKind.Rule => $"{Selector!.Describe()}{where} · {Rule!.Describe()}",
-            ModelTestKind.Check => $"{Selector!.Describe()}{where} · code",
+            ModelTestKind.Rule => $"{Selector!.Describe(names)}{where} · {Rule!.Describe(names)}",
+            ModelTestKind.Check => $"{Selector!.Describe(names)}{where} · code",
             _ => "Whole model · code"
         };
     }

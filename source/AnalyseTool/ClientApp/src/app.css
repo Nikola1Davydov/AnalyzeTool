@@ -1755,3 +1755,23 @@ code.block,
   border-radius: 8px;
   background: var(--colorNeutralBackground2);
 }
+
+/* Model tests: what a test checks, as Revit names it */
+.mt-what {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.mt-what > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 8px;
+  font-size: var(--fontSizeBase200);
+}
+.mt-what dt {
+  color: var(--colorNeutralForeground3);
+}
+.mt-what dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

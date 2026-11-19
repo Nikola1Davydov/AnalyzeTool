@@ -28,6 +28,25 @@ public sealed class ModelTestEngineTests
     }
 
     [Test]
+    public async Task Describe_NamesCategoryAndParameterAsRevitDoes_KeepsTheApiNamesAndTheId()
+    {
+        var suite = Define(s => s.Elements(BuiltInCategory.OST_Walls).Parameter(BuiltInParameter.ALL_MODEL_MARK).NotEmpty().Unique());
+        var german = new RevitNames(category => category.ToString() == "OST_Walls" ? "Wände" : "?", parameter => parameter.ToString() == "ALL_MODEL_MARK" ? "Kennzeichen" : "?");
+
+        var info = ModelTestCatalog.Describe(suite.Tests.Single(), german);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(info.Name).IsEqualTo("Wände · Kennzeichen · not empty, unique");
+            await Assert.That(info.Id).IsEqualTo("bep.Suite/walls-all-model-mark-not-empty-unique");
+            await Assert.That(info.Categories.Single()).IsEqualTo(new RevitName("Wände", "OST_Walls"));
+            await Assert.That(info.Parameter).IsEqualTo(new RevitName("Kennzeichen", "ALL_MODEL_MARK"));
+            await Assert.That(info.Checks).IsEqualTo("not empty, unique");
+            await Assert.That(info.TypeParameter).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task Builder_SameNameTwice_GetsANumber_ExplicitIdWins()
     {
         var suite = Define(s =>
