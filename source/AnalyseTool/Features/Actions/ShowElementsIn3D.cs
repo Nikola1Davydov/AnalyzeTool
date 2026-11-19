@@ -13,7 +13,8 @@ namespace AnalyseTool.Features.Actions;
 [Command(Description =
     "Shows the given elements (by id) on their own in a 3D view: the active view when it is 3D, else the default {3D} view or another 3D view " +
     "(one is created when the model has none). The elements are isolated temporarily (reset with Reset Temporary Hide/Isolate), selected, " +
-    "the view becomes active and zooms to them. Changes views only, not the model. Returns { ok, isolated, view, error }.")]
+    "the view becomes active and zooms to them. With sectionBox the elements are not isolated: a section box 300 mm around them cuts the view, " +
+    "so their surroundings show too (Revit's Selection Box). Changes views only, not the model. Returns { ok, isolated, view, error }.")]
 public sealed class ShowElementsIn3D(ActiveDocument document, ViewActionsService service) : ICommand<ShowElementsIn3DRequest, ShowIn3DResult>
 {
     /// <inheritdoc />
@@ -25,7 +26,7 @@ public sealed class ShowElementsIn3D(ActiveDocument document, ViewActionsService
             return Task.FromResult(new ShowIn3DResult(false, 0, null, "No elements to show."));
         }
 
-        return document.InvokeUIAsync(uiDocument => service.ShowIn3D(uiDocument, ids), context.CancellationToken);
+        return document.InvokeUIAsync(uiDocument => service.ShowIn3D(uiDocument, ids, request.SectionBox), context.CancellationToken);
     }
 }
 
@@ -33,4 +34,6 @@ public sealed class ShowElementsIn3D(ActiveDocument document, ViewActionsService
 /// <param name="ElementIds">The element ids to show.</param>
 public sealed record ShowElementsIn3DRequest(
     [property: Description("Element ids (Revit ElementId values) to show on their own in a 3D view.")]
-    IReadOnlyList<long>? ElementIds = null);
+    IReadOnlyList<long>? ElementIds = null,
+    [property: Description("Instead of isolating, cut the 3D view with a section box around the elements (Revit's Selection Box).")]
+    bool SectionBox = false);

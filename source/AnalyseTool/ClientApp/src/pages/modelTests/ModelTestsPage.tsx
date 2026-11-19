@@ -11,6 +11,8 @@ import {
   Play16Regular,
   Search16Regular,
   Info16Regular,
+  ScanDash16Regular,
+  Broom16Regular,
   Warning16Regular,
   Wrench16Regular,
   Archive16Regular,
@@ -221,14 +223,14 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     if (result) await runTests({ tests: [test.id] });
   }
 
-  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d") {
+  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d" | "box") {
     const ids = [item.elementId, ...item.related].filter((id): id is number => id !== null);
     if (how === "select") {
       await act(modelTestCommands.SelectionInRevit, { elementIds: ids }, () => undefined, "Could not select");
-    } else if (how === "3d") {
+    } else if (how === "3d" || how === "box") {
       await act<{ ok: boolean; error: string | null }>(
         modelTestCommands.ShowElementsIn3D,
-        { elementIds: ids },
+        { elementIds: ids, sectionBox: how === "box" },
         (result) => (result.ok ? undefined : undefined),
         "Could not show it in 3D",
       ).then((result) => result && !result.ok && notify.warning("Not shown in 3D", result.error ?? undefined));
@@ -244,6 +246,11 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
         "Could not show it",
       );
     }
+  }
+
+  // What «Show» drew over the views stays until it is cleared: one button for all of it
+  async function clearShown() {
+    await act(modelTestCommands.ClearGeometry, null, () => "The shown geometry is cleared", "Could not clear the shown geometry");
   }
 
   async function createSuite() {
@@ -297,6 +304,11 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
           <Button icon={<Add16Regular />} onClick={() => setNewSuite(newSuite === null ? "" : null)}>
             New suite
           </Button>
+          <Tooltip content="Removes what «Show» drew over the views" relationship="description">
+            <Button icon={<Broom16Regular />} onClick={() => void clearShown()}>
+              Clear shown
+            </Button>
+          </Tooltip>
         </>
   );
   const content = (
@@ -433,6 +445,9 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                                 <RowButton title="Isolate in Revit and show in 3D" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
                                   <Cube16Regular />
                                 </RowButton>
+                                <RowButton title="Selection box: a section box around it in 3D, its surroundings visible" disabled={item.elementId === null} onClick={() => void show(item, "box")}>
+                                  <ScanDash16Regular />
+                                </RowButton>
                               </div>
                               {inline && selected && selection?.key === item.key && (
                                 <div className="mt-inline">
@@ -499,6 +514,11 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
           <Button icon={<ArrowRepeatAll16Regular />} disabled={running || !failing.length} onClick={() => void runTests({ tests: failing })}>
             Run failed
           </Button>
+          <Tooltip content="Removes what «Show» drew over the views" relationship="description">
+            <Button icon={<Broom16Regular />} onClick={() => void clearShown()}>
+              Clear shown
+            </Button>
+          </Tooltip>
         </div>
         {run && (
           <Text size={200} className="muted mt-pane-subtitle">
@@ -537,7 +557,7 @@ function Details(props: {
   running: boolean;
   onRun: () => void;
   onOpen: () => void;
-  onShow: (item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d") => void;
+  onShow: (item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d" | "box") => void;
   onFix: (keys: string[] | null) => void;
   onAccept: (keys: string[] | null, remove?: boolean) => void;
 }) {
@@ -582,6 +602,9 @@ function Details(props: {
             </Button>
             <Button size="small" icon={<Eye16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "3d")}>
               Isolate in 3D
+            </Button>
+            <Button size="small" icon={<ScanDash16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "box")}>
+              Selection box
             </Button>
             <Button size="small" icon={<Cube16Regular />} onClick={() => props.onShow(item, "geometry")}>
               Show

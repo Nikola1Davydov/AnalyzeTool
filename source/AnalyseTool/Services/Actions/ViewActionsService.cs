@@ -38,11 +38,15 @@ public sealed record SelectionResult(
 /// </summary>
 public sealed class ViewActionsService
 {
+    /// <summary>How far a section box reaches beyond the elements: 300 mm, like a selection box with room to see around.</summary>
+    private const double SectionBoxMargin = 300 / 304.8;
+
     /// <summary>
-    ///     Shows the elements on their own in a 3D view — the active one when it is 3D, else <c>{3D}</c> or any 3D view, created
-    ///     when there is none — isolated temporarily, selected, active and zoomed to them.
+    ///     Shows the elements in a 3D view — the active one when it is 3D, else <c>{3D}</c> or any 3D view, created when there is
+    ///     none — selected, active and zoomed to them: isolated temporarily, or, with <paramref name="sectionBox" />, inside a
+    ///     section box around them with their surroundings (Revit's Selection Box).
     /// </summary>
-    public ShowIn3DResult ShowIn3D(Autodesk.Revit.UI.UIDocument uiDocument, IReadOnlyList<long> elementIds)
+    public ShowIn3DResult ShowIn3D(Autodesk.Revit.UI.UIDocument uiDocument, IReadOnlyList<long> elementIds, bool sectionBox = false)
     {
         var document = uiDocument.Document;
         var ids = elementIds.Select(id => new ElementId(id)).Where(id => document.GetElement(id) is not null).ToList();
@@ -66,7 +70,24 @@ public sealed class ViewActionsService
             view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
         }
 
-        view.IsolateElementsTemporary(ids);
+        BoundingBoxXYZ? box = null;
+        if (sectionBox)
+        {
+            box = BoxAround(document, ids);
+            if (box is null)
+            {
+                transaction.RollBack();
+                return new ShowIn3DResult(false, 0, view.Name, "The elements have no geometry to put a section box around.");
+            }
+
+            view.SetSectionBox(box);
+            view.IsSectionBoxActive = true;
+        }
+        else
+        {
+            view.IsolateElementsTemporary(ids);
+        }
+
         var rolledBack = failures.RollbackReason(transaction.Commit());
         if (rolledBack is not null)
         {
@@ -79,9 +100,57 @@ public sealed class ViewActionsService
         }
 
         uiDocument.Selection.SetElementIds(ids);
-        // The isolated view shows only the elements: zoom to fit is zoom to them
-        uiDocument.GetOpenUIViews().FirstOrDefault(open => open.ViewId == view.Id)?.ZoomToFit();
+        var open = uiDocument.GetOpenUIViews().FirstOrDefault(candidate => candidate.ViewId == view.Id);
+        if (box is not null)
+        {
+            open?.ZoomAndCenterRectangle(box.Min, box.Max);
+        }
+        else
+        {
+            // The isolated view shows only the elements: zoom to fit is zoom to them
+            open?.ZoomToFit();
+        }
+
         return new ShowIn3DResult(true, ids.Count, view.Name, null);
+    }
+
+    private static IEnumerable<XYZ> Corners(XYZ min, XYZ max)
+    {
+        foreach (var x in new[] { min.X, max.X })
+        foreach (var y in new[] { min.Y, max.Y })
+        foreach (var z in new[] { min.Z, max.Z })
+        {
+            yield return new XYZ(x, y, z);
+        }
+    }
+
+    /// <summary>The box around the elements in model coordinates, with a margin; <see langword="null" /> when none has geometry.</summary>
+    private static BoundingBoxXYZ? BoxAround(Document document, IEnumerable<ElementId> ids)
+    {
+        XYZ? min = null;
+        XYZ? max = null;
+        foreach (var id in ids)
+        {
+            if (document.GetElement(id)?.get_BoundingBox(null) is not { } box)
+            {
+                continue;
+            }
+
+            // A box of an element may carry a transform: its corners, moved into the model
+            foreach (var corner in Corners(box.Min, box.Max).Select(box.Transform.OfPoint))
+            {
+                min = min is null ? corner : new XYZ(Math.Min(min.X, corner.X), Math.Min(min.Y, corner.Y), Math.Min(min.Z, corner.Z));
+                max = max is null ? corner : new XYZ(Math.Max(max.X, corner.X), Math.Max(max.Y, corner.Y), Math.Max(max.Z, corner.Z));
+            }
+        }
+
+        if (min is null || max is null)
+        {
+            return null;
+        }
+
+        var margin = new XYZ(SectionBoxMargin, SectionBoxMargin, SectionBoxMargin);
+        return new BoundingBoxXYZ { Min = min - margin, Max = max + margin };
     }
 
     private static View3D? Find3DView(Document document)
