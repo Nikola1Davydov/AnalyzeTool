@@ -1729,18 +1729,21 @@ code.block,
   display: grid;
   place-items: center;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--colorNeutralForeground3);
+  border-radius: 7px;
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
   cursor: pointer;
 }
+.mt-row-button svg {
+  width: 18px;
+  height: 18px;
+}
 .mt-row-button:hover:not(:disabled) {
-  background: var(--colorSubtleBackgroundPressed);
-  color: var(--colorBrandForeground1);
+  background: var(--colorBrandBackground2Hover);
 }
 .mt-row-button:disabled {
   opacity: 0.35;
