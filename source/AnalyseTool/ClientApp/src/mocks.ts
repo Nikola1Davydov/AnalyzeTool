@@ -657,11 +657,11 @@ function runTestsMock(request: RunModelTestsRequest): ModelTestRun {
   const [doors, rooms, swing, unplaced, clashes] = testSuites.suites[0].tests;
   const all: ModelTestResult[] = [
     testResult(doors.id, [
-      ...Array.from({ length: 6 }, (_, index) => testCase(`door-${500 + index}||`, "failed", "«Fire Rating» is empty", 500 + index, `Doors · T30_Single 900 · ${500 + index}`)),
-      ...[412, 413, 414].filter((id) => !testFixed.has(`door-${id}||`)).map((id) => testCase(`door-${id}||`, "failed", "«Fire Rating» is empty", id, `Doors · T30_Single 900 · ${id}`)),
+      ...Array.from({ length: 6 }, (_, index) => testCase(`door-${500 + index}||`, "failed", "«Fire Rating» is empty", 500 + index, `Doors · T30_Single 900 · ${500 + index}`, { value: null, valueState: "empty" })),
+      ...[412, 413, 414].filter((id) => !testFixed.has(`door-${id}||`)).map((id) => testCase(`door-${id}||`, "failed", "«Fire Rating» is empty", id, `Doors · T30_Single 900 · ${id}`, { value: null, valueState: id === 414 ? "missing" : "empty" })),
     ], 210),
     testResult(rooms.id, [
-      testCase("room-7||unique", "failed", "«Number» '0.14' is used by 1 other element", 7, "Rooms · Flur · 0.14", { related: [8] }),
+      testCase("room-7||unique", "failed", "«Number» '0.14' is used by 1 other element", 7, "Rooms · Flur · 0.14", { related: [8], value: "0.14", valueState: "set" }),
       testCase("room-8||unique", "failed", "«Number» '0.14' is used by 1 other element", 8, "Rooms · Lager · 0.14", { related: [7] }),
     ], 64),
     testResult(swing.id, [

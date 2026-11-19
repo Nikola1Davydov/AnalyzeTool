@@ -87,6 +87,10 @@ export interface ModelTestCase {
   point: number[] | null;
   /** [minX, minY, minZ, maxX, maxY, maxZ] in feet. */
   box: number[] | null;
+  /** The value a rule found on the element, as Revit shows it. */
+  value?: string | null;
+  /** `set`, `empty` or `missing` for a case of a rule; null for code. */
+  valueState?: "set" | "empty" | "missing" | null;
 }
 
 export interface ModelTestResult {

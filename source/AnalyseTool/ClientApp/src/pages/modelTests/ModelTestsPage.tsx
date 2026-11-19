@@ -590,7 +590,7 @@ function Details(props: {
         </>
       )}
       {item && <div className={`mt-message ${item.status}`}>{item.message}</div>}
-      {!item && <WhatItChecks test={test} />}
+      <WhatItChecks test={test} item={item} />
 
       {test.file && (
         <Link className="mono small" onClick={props.onOpen}>
@@ -695,7 +695,7 @@ function Details(props: {
 }
 
 /** What a test checks: its categories and parameter as Revit names them, with their API names, and the conditions. */
-function WhatItChecks({ test }: { test: ModelTestInfo }) {
+function WhatItChecks({ test, item }: { test: ModelTestInfo; item?: ModelTestCase }) {
   const rows: { label: string; value: ReactNode }[] = [];
   const categories = test.categories ?? [];
   if (categories.length) {
@@ -722,7 +722,21 @@ function WhatItChecks({ test }: { test: ModelTestInfo }) {
       ),
     });
   }
-  if (test.value) rows.push({ label: "Value", value: test.value });
+  if (test.value) rows.push({ label: "Value of", value: test.value });
+  // The element's own value: what is there now, against what the check wants
+  if (item?.valueState) {
+    rows.push({
+      label: "Value",
+      value:
+        item.valueState === "missing" ? (
+          <span className="error-text">no such parameter on this element</span>
+        ) : item.valueState === "empty" ? (
+          <span className="error-text">empty</span>
+        ) : (
+          <span className="strong">{item.value}</span>
+        ),
+    });
+  }
   if (test.checks) rows.push({ label: "Check", value: test.checks });
   if (test.kind !== "Rule") rows.push({ label: "Check", value: "Code" });
   if (test.filtered) rows.push({ label: "Filter", value: "Where(…) in code" });

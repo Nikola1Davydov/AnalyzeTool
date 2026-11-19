@@ -63,6 +63,11 @@ public sealed record ModelTestSuiteInfo(string Id, string Name, string Extension
 /// <param name="InBaseline">The failure was accepted: it does not fail the test.</param>
 /// <param name="Point">A point to show, [x, y, z] in feet.</param>
 /// <param name="Box">A box to show, [minX, minY, minZ, maxX, maxY, maxZ] in feet.</param>
+/// <param name="Value">The value a rule found on the element, as Revit shows it; <see langword="null" /> when it has none.</param>
+/// <param name="ValueState">
+///     <c>set</c>, <c>empty</c> or <c>missing</c> (the element has no such parameter) for a case of a rule;
+///     <see langword="null" /> for code.
+/// </param>
 public sealed record ModelTestCase(
     string Key,
     string Status,
@@ -72,7 +77,9 @@ public sealed record ModelTestCase(
     IReadOnlyList<long> Related,
     bool InBaseline,
     double[]? Point,
-    double[]? Box);
+    double[]? Box,
+    string? Value = null,
+    string? ValueState = null);
 
 /// <summary>What one test found.</summary>
 /// <param name="TestId">The test.</param>

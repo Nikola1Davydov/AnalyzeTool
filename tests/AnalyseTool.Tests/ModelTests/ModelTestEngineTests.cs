@@ -96,6 +96,7 @@ public sealed class ModelTestEngineTests
             await Assert.That(result.Cases.Select(item => item.Message)).IsEquivalentTo(["«Fire Rating» is empty", "«Fire Rating» is missing"]);
             await Assert.That(result.Cases.Select(item => item.Key)).IsEquivalentTo(["uid-2||", "uid-3||"]);
             await Assert.That(result.Cases.Select(item => item.ElementId ?? 0)).IsEquivalentTo([2L, 3L]);
+            await Assert.That(result.Cases.Select(item => item.ValueState)).IsEquivalentTo(new string?[] { "empty", "missing" });
         }
     }
 
@@ -110,7 +111,12 @@ public sealed class ModelTestEngineTests
 
         var result = ModelTestEngine.Run(test, model, new HashSet<string>(), All, CancellationToken.None);
 
-        await Assert.That(result.Cases.Select(item => item.Message)).IsEquivalentTo(["«Width» is 1200, expected 800…1000", "«Width» 'wide' is not a number"]);
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Cases.Select(item => item.Message)).IsEquivalentTo(["«Width» is 1200, expected 800…1000", "«Width» 'wide' is not a number"]);
+            await Assert.That(result.Cases.Select(item => item.Value)).IsEquivalentTo(new string?[] { "1200", "wide" });
+            await Assert.That(result.Cases.All(item => item.ValueState == "set")).IsTrue();
+        }
     }
 
     [Test]

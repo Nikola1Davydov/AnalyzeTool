@@ -89,7 +89,7 @@ internal static class ModelTestEngine
                     var failure = test.Rule!.Conditions.Select(condition => condition.Fails(label, value)).FirstOrDefault(message => message is not null);
                     if (failure is not null)
                     {
-                        recorder.Add("failed", failure, new Evidence { Element = element });
+                        recorder.Add("failed", failure, new Evidence { Element = element }, value);
                     }
                     else
                     {
@@ -228,12 +228,12 @@ internal static class ModelTestEngine
                      .Where(group => group.Count() > 1))
         {
             var members = group.Select(item => item.Element).ToList();
-            foreach (var element in members)
+            foreach (var (element, value) in group)
             {
                 var others = members.Where(other => !ReferenceEquals(other, element)).ToList();
                 recorder.Add("failed", $"«{label}» '{group.Key}' is used by {others.Count} other element{(others.Count == 1 ? "" : "s")}",
                     // The others are not part of the key: who else shares the value changes, the failure stays the same
-                    new Evidence { Element = element, Related = others.Take(20).ToList(), Key = "unique" });
+                    new Evidence { Element = element, Related = others.Take(20).ToList(), Key = "unique" }, value);
             }
         }
     }
@@ -275,7 +275,11 @@ internal static class ModelTestEngine
 
         public IModelAccess Access => access;
 
-        public void Add(string status, string message, Evidence? evidence)
+        /// <param name="status">failed, error, inconclusive.</param>
+        /// <param name="message">What is wrong.</param>
+        /// <param name="evidence">What it points at.</param>
+        /// <param name="value">The value a rule found, shown with the case.</param>
+        public void Add(string status, string message, Evidence? evidence, ModelValue? value = null)
         {
             var element = evidence?.Element ?? Subject;
             var info = element is null ? null : Describe(element);
@@ -293,7 +297,8 @@ internal static class ModelTestEngine
             }
 
             Cases.Add(new ModelTestCase(key, status, message, info?.Id, info?.Label, related.Select(item => item.Id).ToList(), false,
-                access.Point(evidence?.Point), access.Box(evidence?.Box)));
+                access.Point(evidence?.Point), access.Box(evidence?.Box),
+                value?.Text, value is null ? null : !value.Exists ? "missing" : string.IsNullOrWhiteSpace(value.Text) ? "empty" : "set"));
         }
 
         public void Error(Element? element, Exception exception, string? where = null)
@@ -345,10 +350,11 @@ internal static class ModelTestEngine
 
         public void NotEmpty(Element element, string parameter)
         {
-            var failure = new ValueCondition.NotEmpty().Fails(parameter, recorder.Access.Read(element, ValueSource.Parameter, parameter));
+            var value = recorder.Access.Read(element, ValueSource.Parameter, parameter);
+            var failure = new ValueCondition.NotEmpty().Fails(parameter, value);
             if (failure is not null)
             {
-                recorder.Add("failed", failure, new Evidence { Element = element });
+                recorder.Add("failed", failure, new Evidence { Element = element }, value);
             }
         }
 
