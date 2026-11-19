@@ -38,19 +38,34 @@ internal sealed class RevitModelAccess(Document document) : IModelAccess
             collector = collector.WhereElementIsNotElementType();
         }
 
-        // OfClass takes only the classes Revit stores (not Room, not FamilyInstance subclasses): the nearest base it takes
-        for (var type = selector.ElementClass; type is not null && type != typeof(Element); type = type.BaseType)
+        var stored = StoredClass(selector.ElementClass);
+        return (stored == typeof(Element) ? collector : collector.OfClass(stored)).Where(selector.ElementClass.IsInstanceOfType);
+    }
+
+    /// <summary>
+    ///     The class OfClass can filter by: Revit stores rooms, areas and spaces as <c>SpatialElement</c>, and refuses the
+    ///     subclasses it does not store (with its own ArgumentException, not .NET's) — then the nearest base it takes.
+    /// </summary>
+    internal static Type StoredClass(Type elementClass)
+    {
+        if (typeof(SpatialElement).IsAssignableFrom(elementClass))
+        {
+            return typeof(SpatialElement);
+        }
+
+        for (var type = elementClass; type is not null && type != typeof(Element); type = type.BaseType)
         {
             try
             {
-                return collector.OfClass(type).Where(selector.ElementClass.IsInstanceOfType);
+                _ = new ElementClassFilter(type);
+                return type;
             }
-            catch (ArgumentException)
+            catch (Exception exception) when (exception is Autodesk.Revit.Exceptions.ArgumentException or ArgumentException)
             {
             }
         }
 
-        return collector.Where(selector.ElementClass.IsInstanceOfType);
+        return typeof(Element);
     }
 
     public ElementInfo Describe(Element element)
