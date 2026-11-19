@@ -17,7 +17,7 @@ public sealed partial class CommandLoggingMiddleware(ILogger<CommandLoggingMiddl
         try
         {
             var result = await next(context).ConfigureAwait(false);
-            // The pages call commands all the time (the pane polls its buttons and the theme): their successes are
+            // The pages call commands all the time (the pane reads its buttons again after every change): their successes are
             // details; a click on the ribbon and a call of an AI client are worth a line
             if (context.Source == CommandSources.WebView)
             {

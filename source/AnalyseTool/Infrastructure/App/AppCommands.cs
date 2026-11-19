@@ -74,11 +74,25 @@ public sealed class GetAppInfo(IMcpEndpoint endpoint, IOptionsMonitor<McpOptions
 
 /// <summary>The colour theme of Revit.</summary>
 /// <param name="Theme"><c>light</c> or <c>dark</c>.</param>
-public sealed record RevitTheme(string Theme);
+public sealed record RevitTheme(string Theme)
+{
+    /// <summary>The theme Revit shows now; light outside Revit (tests) or with an API without themes, as Revit itself.</summary>
+    public static RevitTheme Current()
+    {
+        try
+        {
+            return new RevitTheme(Autodesk.Revit.UI.UIThemeManager.CurrentTheme == Autodesk.Revit.UI.UITheme.Dark ? "dark" : "light");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or TypeLoadException or MissingMethodException)
+        {
+            return new RevitTheme("light");
+        }
+    }
+}
 
 /// <summary>
 ///     The theme Revit shows (Revit 2024+ has a dark one): the pages follow it when the profile says «Revit». WebView2 only
-///     knows the theme of Windows, so the pages ask.
+///     knows the theme of Windows, so the pages ask once, then listen to <c>revitThemeChanged</c> (<see cref="PageEvents" />).
 /// </summary>
 [Command(Description = "Returns the colour theme of Revit: light or dark.")]
 public sealed class GetRevitTheme : ICommand<RevitTheme>
@@ -86,15 +100,7 @@ public sealed class GetRevitTheme : ICommand<RevitTheme>
     /// <inheritdoc />
     public Task<RevitTheme> ExecuteAsync(CommandContext context)
     {
-        try
-        {
-            return Task.FromResult(new RevitTheme(Autodesk.Revit.UI.UIThemeManager.CurrentTheme == Autodesk.Revit.UI.UITheme.Dark ? "dark" : "light"));
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or TypeLoadException or MissingMethodException)
-        {
-            // Outside Revit (tests) or an API without themes: light, as Revit itself
-            return Task.FromResult(new RevitTheme("light"));
-        }
+        return Task.FromResult(RevitTheme.Current());
     }
 }
 

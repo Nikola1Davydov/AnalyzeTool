@@ -19,6 +19,20 @@ function fakeWebView() {
 }
 
 describe("createWebViewBridge", () => {
+  it("passes an event of the host to its listeners until they unsubscribe", () => {
+    const host = fakeWebView();
+    const bridge = createWebViewBridge(host.webview);
+    const themes: unknown[] = [];
+    const off = bridge.on("revitThemeChanged", (payload) => themes.push(payload));
+
+    host.send({ type: "event", name: "revitThemeChanged", payload: { theme: "dark" } });
+    host.send({ type: "event", name: "buttonsChanged" });
+    off();
+    host.send({ type: "event", name: "revitThemeChanged", payload: { theme: "light" } });
+
+    expect(themes).toEqual([{ theme: "dark" }]);
+  });
+
   it("posts a request and resolves with the payload of the matching response", async () => {
     const host = fakeWebView();
     const bridge = createWebViewBridge(host.webview);

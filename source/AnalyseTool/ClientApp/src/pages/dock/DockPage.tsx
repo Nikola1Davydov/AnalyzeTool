@@ -95,11 +95,17 @@ export function DockPage() {
 }
 
 function usePaneButtons() {
+  const queryClient = useQueryClient();
+  // Extensions come and go while the pane is open — a saved file, a new button made by an agent: the host says so
+  useEffect(
+    () => bridge.on("buttonsChanged", () => void queryClient.invalidateQueries({ queryKey: ["paneButtons"] })),
+    [queryClient],
+  );
   return useQuery({
     queryKey: ["paneButtons"],
     queryFn: ({ signal }) => bridge.invoke<PaneOverview>(paneCommands.GetPaneButtons, null, { signal }),
-    // Extensions come and go while the pane is open: a saved file, a new button made by an agent
-    refetchInterval: 5000,
+    // What the host does not announce (a folder made in Explorer) still shows up within a minute
+    refetchInterval: 60_000,
   });
 }
 
@@ -399,9 +405,7 @@ function Header(props: {
           </button>
         )}
       </div>
-      <strong className="pane-title" title={title}>
-        {title}
-      </strong>
+      <PaneTitle title={title} />
       <div className="nav-side right">
         {props.editing ? (
           <button className="text-button bold" onClick={props.onDone}>
@@ -436,6 +440,27 @@ function Header(props: {
         )}
       </div>
     </header>
+  );
+}
+
+/** The title of the bar, hidden when it does not fit whole: a narrow pane shows the buttons and the avatar only. */
+function PaneTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    // Hidden keeps its place in the bar, so the measure stays the same and the title comes back when the pane widens
+    const measure = () => setFits(element.scrollWidth <= element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [title]);
+  return (
+    <strong ref={ref} className={`pane-title${fits ? "" : " hidden"}`} title={title}>
+      {title}
+    </strong>
   );
 }
 

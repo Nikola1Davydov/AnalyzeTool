@@ -3,6 +3,7 @@ using System.Reflection;
 using Autodesk.Revit.UI;
 using AnalyseTool.Extensions;
 using AnalyseTool.Infrastructure;
+using AnalyseTool.Infrastructure.App;
 using AnalyseTool.Infrastructure.Ribbon;
 using AnalyseTool.Services.Documents;
 using AnalyseTool.Services.Updates;
@@ -68,6 +69,8 @@ public static partial class Host
         //pages and the pages of extensions (each held to its own origin) may call commands
         builder.AddWebView(application, webView => webView
             .DockPane(new Guid("6DFB18B8-31A9-4DC5-8FAE-6BE296CBA6AD"), "AnalyseTool Buttons", "/dock"));
+        //The pages hear what changed (the theme of Revit, the buttons) instead of asking every few seconds
+        builder.Services.AddHostedService<PageEvents>();
 
         //AnalyseTool.Hosting.Mcp: AI clients call the commands marked with [McpTool]; on in Debug, Mcp:Enabled otherwise
         builder.AddMcp(application, basePort: 48076);

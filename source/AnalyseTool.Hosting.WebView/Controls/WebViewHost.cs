@@ -29,6 +29,7 @@ internal sealed record WebViewServices(
     ClientAppSource Source,
     ICommandExecutor Executor,
     IOptions<JsonSerializerOptions> SerializerOptions,
+    WebViewEvents Events,
     IHostEnvironment HostEnvironment,
     ILogger<WebViewHost> Logger);
 
@@ -116,7 +117,7 @@ public sealed partial class WebViewHost : ContentControl, IDisposable
 
             _transport = new WebViewTransport(webView.CoreWebView2, Dispatcher, _services.Executor,
                 // An external page is held to its own origin by the navigation guard; ClientApp by its source
-                _services.Security.RestrictNavigation && _page is null ? _services.Source : null, _services.SerializerOptions.Value, _services.Logger);
+                _services.Security.RestrictNavigation && _page is null ? _services.Source : null, _services.SerializerOptions.Value, _services.Events, _services.Logger);
             _transport.Attach();
             _webView = webView;
 

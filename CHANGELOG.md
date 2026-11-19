@@ -5,6 +5,7 @@
 - 🔔 **A new version shows itself**: AnalyseTool asks GitHub once a day for the latest release. A newer one puts a dot on your initials and a card with the download link on About. The request sends nothing about you or your models.
 - 🧪 **A switch for `ExecuteCode`**: profile › AI clients › **Let AI clients run any C#**, with a warning what it allows. It is off by default and works at once, without a restart.
 - 🔌 **The AI clients switch works at once**: turning MCP on starts the server in this Revit, turning it off stops it — no Revit restart.
+- 🔕 **The pane stops asking Revit every few seconds**: Revit tells it when the theme or the buttons change.
 
 ## [2.0.0] / 2026-11-16
 

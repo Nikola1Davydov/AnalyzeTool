@@ -480,7 +480,7 @@ export function ReportPage({ fromSelection }: { fromSelection: boolean }) {
 function ReportSheet({ data, settings, date }: { data: ParameterReportResult; settings: ReportSettings; date: string }) {
   const sections = SECTION_KINDS.filter((kind) => settings.sections[kind].enabled);
   return (
-    <div className="sheet">
+    <div className="report-sheet">
       <div className="sheet-title keep">
         <div className="sheet-title-text">{settings.title || "Parameter report"}</div>
         <div className="sheet-meta">

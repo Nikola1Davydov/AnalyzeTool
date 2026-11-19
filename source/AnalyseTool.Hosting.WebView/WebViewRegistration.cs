@@ -3,6 +3,7 @@ using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.WebView.ClientApp;
 using AnalyseTool.Hosting.WebView.Controls;
 using AnalyseTool.Hosting.WebView.Runtime;
+using AnalyseTool.Hosting.WebView.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Nice3point.Revit.Toolkit.Decorators;
 
@@ -20,7 +21,8 @@ public static class WebViewRegistration
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         /// <summary>
-        ///     Adds <see cref="IWindows" />, the shared WebView2 environment and, optionally, the dock pane.
+        ///     Adds <see cref="IWindows" />, <see cref="IWebViewEvents" />, the shared WebView2 environment and, optionally, the
+        ///     dock pane.
         /// </summary>
         /// <param name="application">The application Revit passed to the add-in at startup.</param>
         /// <param name="configure">The dock pane, if the add-in has one.</param>
@@ -47,6 +49,8 @@ public static class WebViewRegistration
             builder.Services.AddSingleton<WebViewEnvironmentProvider>();
             builder.Services.AddSingleton<ClientAppSource>();
             builder.Services.AddSingleton(new WebViewSecurity(options.NavigationRestricted));
+            builder.Services.AddSingleton<WebViewEvents>();
+            builder.Services.AddSingleton<IWebViewEvents>(services => services.GetRequiredService<WebViewEvents>());
             builder.Services.AddSingleton<WebViewServices>();
 
             if (options.Pane is { } pane)

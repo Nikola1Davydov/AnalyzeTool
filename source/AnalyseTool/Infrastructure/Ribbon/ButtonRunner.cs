@@ -6,6 +6,8 @@ using AnalyseTool.Extensions.Usage;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Notifications;
 using AnalyseTool.Hosting.WebView.Controls;
+using AnalyseTool.Hosting.WebView.Transport;
+using AnalyseTool.Infrastructure.App;
 using AnalyseTool.Infrastructure.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +26,8 @@ public sealed record ButtonRunResult(bool Ok, string? Text, string? Error, doubl
 ///     What a click on any ribbon button does — AnalyseTool's own or an extension's: count it, then run its command through the
 ///     pipeline (with the button's <c>args</c>) and show what it returned, or open its page.
 /// </summary>
-public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageStore usage, IUserNotifier notifier, IWindows windows, ILogger<ButtonRunner> logger)
+public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageStore usage, IUserNotifier notifier, IWindows windows, ILogger<ButtonRunner> logger,
+    IWebViewEvents? events = null)
 {
     private const int MaxResultLength = 4000;
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
@@ -132,6 +135,8 @@ public sealed partial class ButtonRunner(ICommandExecutor executor, ButtonUsageS
         // The input of the form of the pane, else the fixed args of plugin.json
         var result = await executor.ExecuteAsync(new CommandRequest(command, input ?? button.Args ?? default, source)).ConfigureAwait(false);
         usage.RecordResult(extension, button.Name, result.Error is null, stopwatch.Elapsed, result.Error?.Message);
+        // The pane marks a button whose last run failed
+        events?.Publish(PageEvents.ButtonsChanged);
         return (result, stopwatch.Elapsed);
     }
 

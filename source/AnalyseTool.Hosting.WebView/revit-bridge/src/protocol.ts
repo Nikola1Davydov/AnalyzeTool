@@ -1,7 +1,8 @@
 // The page <-> host protocol. Keep in step with Transport/WebViewTransport.cs (WebMessage).
 //
 //   page -> host: { type: "request", id, command, headers?, payload? }, { type: "cancel", id }
-//   host -> page: { type: "progress", id, payload: { fraction, message } }, { type: "response", id, payload?, error? }
+//   host -> page: { type: "progress", id, payload: { fraction, message } }, { type: "response", id, payload?, error? },
+//                 { type: "event", name, payload? } — something changed in the host, sent to every open page
 
 export type ProgressInfo = { fraction: number; message?: string | null };
 
@@ -26,7 +27,10 @@ export type ResponseMessage = {
   error?: CommandErrorInfo | null;
 };
 
-export type HostMessage = ProgressMessage | ResponseMessage;
+/** Something changed in the host (the theme of Revit, the buttons): sent to every open page, no request before it. */
+export type EventMessage = { type: "event"; name: string; payload?: unknown };
+
+export type HostMessage = ProgressMessage | ResponseMessage | EventMessage;
 
 /** The `window.chrome.webview` object of WebView2, or a fake of it in tests. */
 export type WebViewLike = {

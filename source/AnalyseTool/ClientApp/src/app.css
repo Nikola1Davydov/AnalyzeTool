@@ -1097,7 +1097,7 @@ code.block,
 }
 
 /* The sheet is paper in both themes */
-.sheet {
+.report-sheet {
   width: 210mm;
   max-width: 100%;
   box-sizing: border-box;
@@ -1365,7 +1365,7 @@ code.block,
     padding: 0 !important;
     background: white !important;
   }
-  .sheet {
+  .report-sheet {
     box-shadow: none;
     padding: 0;
     width: auto;
