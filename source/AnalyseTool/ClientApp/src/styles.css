@@ -1,0 +1,240 @@
+/* Base colours, and the styles of the Dev page (scoped to .page so they do not touch the Fluent UI pages). */
+
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  /* Paint the page itself: a transparent page shows the host behind it — black in a Revit dock pane — under dark text */
+  background: Canvas;
+  color: CanvasText;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  padding: 16px 20px;
+}
+
+.page.compact {
+  padding: 8px 10px;
+}
+
+.page header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.page h2 {
+  font-size: 14px;
+  margin: 16px 0 6px;
+}
+
+.page button {
+  margin-right: 6px;
+}
+
+.page table {
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.page td {
+  padding: 2px 12px 2px 0;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.error {
+  color: #c42a2a;
+}
+
+/* The Dev page of the dock pane (Debug only) */
+
+.dev .tabs {
+  margin-left: auto;
+}
+
+.dev .tabs button.active {
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.toolbar input[type="text"],
+.toolbar input:not([type]) {
+  flex: 1;
+  min-width: 120px;
+}
+
+.muted {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+}
+
+/* Time, level and category on the first line; the message below them takes the whole width of the narrow pane */
+.log-list li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.log-list .time {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.log-list .level {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #3b6fb6;
+}
+
+.log-list .category {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.log-list .category {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-list .message {
+  grid-column: 1 / -1;
+}
+
+.log-list .message,
+.log-list .exception {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-list .exception {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  opacity: 0.8;
+}
+
+.log-list .level-warning .level {
+  color: #1a1a1a;
+  background: #e0a526;
+}
+
+.log-list .level-error .level,
+.log-list .level-critical .level {
+  background: #c42a2a;
+}
+
+.log-list .level-trace .level,
+.log-list .level-debug .level {
+  background: #7a7a7a;
+}
+
+.log-list .level-trace .message,
+.log-list .level-debug .message {
+  opacity: 0.7;
+}
+
+.commands textarea,
+.commands .result {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+}
+
+.commands .result {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mcp .badge.ok {
+  color: #2f855a;
+}
+
+.mcp .badge.error {
+  color: #c42a2a;
+}
+
+/* Long paths and URLs wrap in the narrow dock pane */
+.mcp code {
+  overflow-wrap: anywhere;
+}
+
+.mcp .steps {
+  padding-left: 20px;
+}
+
+.mcp .steps li {
+  margin-bottom: 6px;
+}
+
+.mcp .snippet {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.mcp .snippet pre {
+  flex: 1;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.mcp .tools {
+  padding-left: 18px;
+}
+
+.mcp .tools li {
+  margin-bottom: 4px;
+}
+
+.mcp .tools .badge {
+  margin-left: 6px;
+}

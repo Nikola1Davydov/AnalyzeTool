@@ -1,0 +1,38 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        Our module: the WebView2 environment, navigation guard, WebViewWindow, the dock pane and the
+        transport between the page and the command pipeline. The only place of WPF in our modules.
+    -->
+
+    <PropertyGroup>
+        <UseWPF>true</UseWPF>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Toolkit"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+        <PackageReference Include="Microsoft.Web.WebView2"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+        <PackageReference Include="Polyfill" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The TypeScript bridge lives next to its C# counterpart but is built by npm, not by MSBuild -->
+        <None Remove="revit-bridge\**"/>
+        <Compile Remove="revit-bridge\**"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="AnalyseTool.Hosting.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Hosting\AnalyseTool.Hosting.csproj"/>
+    </ItemGroup>
+
+</Project>

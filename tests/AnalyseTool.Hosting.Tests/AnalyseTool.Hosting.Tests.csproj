@@ -1,0 +1,48 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        Unit tests of AnalyseTool.Hosting without Revit (plan, section 12): command registry, pipeline, model binding.
+        The Revit API packages hold reference assemblies only, so these tests must not touch types that use Revit API —
+        everything that does is tested inside Revit in AnalyseTool.Tests.
+        No Polyfill package here: InternalsVisibleTo already exposes the module's polyfills, a second copy would be ambiguous.
+    -->
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- The module references the x64 Revit API; without it Revit 2025 builds warn about the architecture mismatch -->
+        <PlatformTarget>x64</PlatformTarget>
+        <EnableTUnitPolyfills>false</EnableTUnitPolyfills>
+        <!-- DescribeApi reads XML documentation: ApiReferenceTests describe this assembly with its own -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="TUnit"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <!-- The MCP client of the SDK talks to the module's server as Claude Code would -->
+        <PackageReference Include="ModelContextProtocol.Core"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\source\AnalyseTool.Hosting\AnalyseTool.Hosting.csproj"/>
+        <ProjectReference Include="..\..\source\AnalyseTool.Hosting.WebView\AnalyseTool.Hosting.WebView.csproj"/>
+        <ProjectReference Include="..\..\source\AnalyseTool.Hosting.Mcp\AnalyseTool.Hosting.Mcp.csproj"/>
+        <ProjectReference Include="..\..\source\AnalyseTool.Hosting.Scripting\AnalyseTool.Hosting.Scripting.csproj"/>
+    </ItemGroup>
+
+    <!--
+        The script compiler needs the Revit API as metadata. In Revit it is loaded; here only its reference assemblies exist,
+        so they go next to the tests (revit-ref) and the tests pass them to the compiler.
+    -->
+    <Target Name="CopyRevitReferenceAssemblies" AfterTargets="ResolveAssemblyReferences">
+        <ItemGroup>
+            <RevitReferenceAssembly Include="@(ReferencePath)" Condition="'%(Filename)' == 'RevitAPI' Or '%(Filename)' == 'RevitAPIUI'"/>
+        </ItemGroup>
+        <Copy SourceFiles="@(RevitReferenceAssembly)" DestinationFolder="$(OutDir)revit-ref" SkipUnchangedFiles="true"/>
+    </Target>
+
+</Project>

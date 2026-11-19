@@ -1,88 +1,65 @@
-# AnalyseTool — instructions for AI assistants working on this repo
+# AnalyseTool
 
-Revit 2025/2026/2027 add-in: an extensible command platform with a Vue frontend (WebView2),
-an MCP server for AI agents, and a public SDK for third-party extensions.
+A Revit 2025–2027 add-in: Nice3point SDK and Toolkit, an isolated Launcher, a command pipeline in the style of ASP.NET
+Core and a React UI in WebView2. How it fits together — [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Architecture (the dependency contract)
+## Skills
+
+Read the skill before the task it covers:
+
+| Task | Skill |
+| --- | --- |
+| A ribbon button of the add-in (its plugin.json entry, icon, command) | [.agents/skills/add-ribbon-button/SKILL.md](.agents/skills/add-ribbon-button/SKILL.md) |
+| A command the pages or a button call: reading or changing the model | [.agents/skills/add-command/SKILL.md](.agents/skills/add-command/SKILL.md) |
+| A page, a window or the dock pane | [.agents/skills/add-page/SKILL.md](.agents/skills/add-page/SKILL.md) |
+| Checking a change in a running Revit: call commands, see the view, read the log | [.agents/skills/verify-in-revit/SKILL.md](.agents/skills/verify-in-revit/SKILL.md) |
+
+## Non-negotiables
+
+* The Revit API is used only on the Revit thread. A command runs on the thread pool and reaches the model only through
+  `ActiveDocument` or `IRevitDispatcher`; a ribbon button only names a command, so the same rule holds for its click.
+* A command takes the document from `ActiveDocument`, never from `ActiveUIDocument`: the user may switch documents
+  while the command runs, and `ActiveDocument` then fails with `document_changed` instead of touching another model.
+  `build/Check-Boundaries.ps1` rejects `ActiveUIDocument` in `Features/` and `Services/`; a line that really needs it is
+  marked `// AllowActiveDocument: <reason>`.
+* `Features/` and `Services/` contain no WPF (`System.Windows`, `MessageBox`): the UI is the React app, and a message to
+  the user goes through `IUserNotifier`.
+* The Launcher (`source/AnalyseTool.Launcher`) uses no type of the add-in or the modules — only names in
+  strings. Their types would load into the Revit context and bypass the add-in's `AssemblyLoadContext`.
+* `AnalyseTool.Hosting`, `AnalyseTool.Hosting.Mcp`, `AnalyseTool.Hosting.Scripting` and `AnalyseTool.Hosting.Visualization`
+  stay headless: no WPF.
+* An AI client (MCP) sees only commands marked with `[McpTool]`: open a command to it deliberately, never by default.
+* `ExecuteCode` runs any C# with the user's rights. It exists only where scripting is on — Debug, or `Scripting:Enabled`;
+  never turn it on by default in Release.
+* Every ribbon button — the add-in's own and the extensions' — is an entry of `ui.buttons` in a `plugin.json`: the
+  add-in's are in `source/AnalyseTool/Ribbon/analysetool/plugin.json`. A button runs a pipeline command (`command` +
+  `args`) or opens a page; `AppRibbon` builds them all with AdWindows and `ButtonRunner` handles and counts every click.
+  No button classes, no proxies, no Revit API ribbon code.
+* Logging goes through source-generated `[LoggerMessage]` methods, not the `Log*` extension methods of `ILogger`.
+* A project reference or a package reference goes into the table of `build/Check-Boundaries.ps1` first; the pipeline
+  fails on a reference the table does not allow.
+
+## Extensions (the user's buttons)
+
+* An extension is a folder with `plugin.json`: C# sources in `src\` that `AnalyseTool.Extensions` compiles inside Revit
+  (the default for a new one), or a DLL per Revit year. Its commands implement `IRevitTask` of `AnalyseTool.Sdk` and
+  join the pipeline as a registry group named after the extension id (`<id>.<Command>`).
+* Every extension folder has its own git history behind `IExtensionHistory`; versions are saved, compared, restored and
+  pinned from the pages (`/extensions/<id>`) and over MCP. Pins live in `extensions-state.json`.
+* The ribbon is rebuilt from `ButtonCatalog` (built-in folders first, then the extensions) whenever
+  `ExtensionHost.Changed` says so. Clicks are counted in `button-usage.json` of the profile (`ButtonUsageStore`) for the
+  Statistics page (`GetButtonStatistics`).
+* AI clients also see the commands of extensions, unless `[RevitCommand(HiddenFromMcp = true)]` — as in 1.x.
+* `AnalyseTool.Extensions` stays headless and never references the add-in.
+
+## Build and check
 
 ```
-[callers]                      [platform]              [callees]
-WebView2 (App), Mcp.Bridge ──► CommandQueue in Core ──► Tools commands, user extensions
+dotnet build AnalyseTool.slnx -c Debug.R26
+dotnet run -c Release --project build
+dotnet run -c Release --project build -- pack
 ```
 
-| Project | References | Role |
-| --- | --- | --- |
-| `AnalyseTool.Sdk` | nothing | THE public contract (`IRevitTask`, `IRevitContext`, `RevitPayload`, `[RevitCommand]`). SemVer'd, packed to NuGet. |
-| `AnalyseTool.Core` | Sdk | Platform: `CommandQueue` (single entry point for ALL transports), `CommandDispatcher`, extension loader (collectible ALC, type-identity sharing), Roslyn (`ExecuteRevitCode` + `HostBuild`: commands saved over MCP are compiled from `<ext>\src\` into `<ext>\<year>\<id>.dll`), `CoreServices`. **Headless — no WPF, no dialogs; errors go to Serilog + `ExtensionDiagnostics`.** |
-| `AnalyseTool.Tools` | Sdk **only** | Built-in feature commands, organized as **vertical slices**: `Actions/`, `Elements/`, `SharedParameters/` (the shared parameter file editor, project bindings and the report data, 2026-10-09; Family Manager left the platform for an extension on 2026-09-01; the built-in AI slice `Ai/` was removed on 2026-10-08 — AI works through MCP only) — each slice owns everything of its feature, split inside into `Features/` (the `IRevitTask` commands) and `Infrastructure/` (services + models). `Shared/` holds the few cross-slice types (`ParameterData`, `ParameterOrigin`, `ParameterExtensions`). Namespace = `AnalyseTool.Tools.<Slice>` (subfolders don't add segments). New feature code goes INTO its slice — never into a central Infrastructure. Lives on the same rails as third-party extensions — if a command needs more than the Sdk offers, that is a deliberate Sdk contract decision, never a ProjectReference. |
-| `AnalyseTool.Mcp.Bridge` | Core, Sdk | In-Revit MCP transport: TCP bridge that enqueues into the `CommandQueue`. The reference pattern for new transports (e.g. a future SignalR remote): ProjectReference on Core + one `InternalsVisibleTo` line — zero Core changes. |
-| `AnalyseTool.Mcp` | none (links `McpWire.cs`) | Out-of-process stdio MCP exe launched by the AI client. Never loads Revit/Core. Wire contract shared with the bridge via the linked `McpWire.cs`. |
-| `AnalyseTool.App` | Core, Tools, Mcp.Bridge, Sdk | Host: windows, ribbon (`RibbonHost`), dock pane, `WebView2Transport`, `UserDialogUtils`, bootstrap (`AnalyseToolBootstrap` = stateless composition root; all state lives in `CoreServices`). |
-| `AnalyseTool.Launcher` | App (+ Mcp build-order) | Thin Revit entry: loads `AnalyseTool.App.dll` into an isolated ALC, builds the ribbon **via reflection by type name** — when renaming/moving `RibbonHost` or `AnalyseToolCommand`, update the FQN strings in `Launcher/App.cs` and `Launcher/RevitCommands/`. |
-
-Hard rules:
-- **Never** add a ProjectReference that violates the table — `src/build/Check-Boundaries.ps1` fails CI.
-- **Core and Tools stay headless**: no `UseWPF`, no `System.Windows`, no `MessageBox`. UI commands (folder pickers etc.) belong to App.
-- Commands touch the Revit model **only** inside `IRevitContext.RunInRevitAsync`. Core code gets the Revit version from `CoreServices.RevitVersion`, never from an ambient `Context`.
-- Transports never talk to `CommandDispatcher`; they enqueue `CommandRequest`s into `CoreServices.Queue` (carries command, payload, source, ct, progress, optional pre-execution gate).
-- `SharedData/ToolData` is compiled into several assemblies and must stay `internal` (a public copy causes CS0433).
-- Namespaces follow project names (`AnalyseTool.Core.*`, `AnalyseTool.Tools.*`, `AnalyseTool.App.*`).
-
-## Building
-
-```powershell
-# Full plugin chain (Debug deploys to %AppData%\Autodesk\Revit\Addins\<year>\ automatically!)
-dotnet build src/AnalyseTool.Launcher/AnalyseTool.Launcher.csproj -c "Debug R25"   # or R26 / R27
-
-# Static checks (the same two scripts CI runs first)
-powershell -File src/build/Check-Boundaries.ps1
-powershell -File src/build/Check-Schemas.ps1
-```
-
-- Configurations: `Debug|Release R25/R26/R27` → TFM `net8.0-windows` (R25/26) / `net10.0-windows` (R27), from `src/AnalyseTool.Sdk/build/AnalyseTool.Extension.props`.
-- NuGet versions are centralized in `src/Directory.Packages.props` (CPM). `samples/` is deliberately OUTSIDE CPM — it simulates an external extension author. Floating Revit API versions use `VersionOverride`.
-- Shared MSBuild deploy logic (MCP exe + clientapp/dist copying) lives in `src/PluginAssets.targets`.
-- Releases go through NUKE (`src/build`, run `src/build.cmd`) — targets: BuildClientApp → BuildLauncher → CreateInstaller/CreateBundle → PublishGitHub.
-
-## Testing
-
-Three tiers, split by what they need — and the split is the point: a test that needs Revit is a test
-nobody runs in CI.
-
-| Tier | Project | Needs | Runs |
-| --- | --- | --- | --- |
-| 1 — Revit-free | `src/AnalyseTool.Tests` (TUnit) | nothing; the plugin assemblies load because the Revit API is compile-only | CI, every push (`RunTests` in NUKE, part of `Ci`) |
-| 2 — MCP without Revit | same project, `Mcp/`: a fake bridge on `McpWire` + the exe driven over stdio (tools/list, structuredContent, error text, `list_changed`, progress notifications, cancellation, job handles via `GetJobResult`) | nothing | CI |
-| 3 — inside Revit | `src/AnalyseTool.RevitTests` (Nice3point.TUnit.Revit, from the `revit-tunit` template; namespace `AnalyseTool.RevitTests`) | a licensed Revit of the selected year | on demand: `dotnet test --project src/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj -c Debug.R25` |
-
-Rules: every fixed bug gets a test on its tier; a command's core is a function of a `Document` (or of
-plain data) so it can be tested on tier 1 or 3 without `UIApplication` — tests inside Revit never
-touch `RevitAPIUI` and exercise the SERVICES (`DataElementsCollectorService`, `ViewsSheetsService`,
-`TypeAndWorksetService`, `ParameterWriteService`) on a document seeded in code (`SeededModel`: one
-level, four walls), never the commands — plus `RoslynScriptCompiler` against the live `RevitAPI`
-(the test engine has no `RevitAPIUI`, so "UIApplication not referenced" is the one error every
-compile there reports and the tests filter out). Tier 1 today: the **schema contract** (every declared `InputType`/`OutputType`
-must accept the JSON Newtonsoft writes for it — the class of bug behind #98), manifest parsing and
-button ordering, the manifest writer's merge rules, the bridge's payload validator and name matcher, and the
-shared parameter file format (`SharedParameterFile`: columns by header, unknown columns kept, UTF-16, stale-save refusal).
-
-```powershell
-dotnet test --project src/AnalyseTool.Tests/AnalyseTool.Tests.csproj -c "Debug R25"
-```
-
-`dotnet test` runs in Microsoft.Testing.Platform mode (repo-root `global.json`, `test.runner`), which
-the .NET 10 SDK requires for TUnit; the project is passed with `--project`, not as a positional path.
-
-## Guardrails (CI: .github/workflows/ci.yml)
-
-1. `Check-Boundaries.ps1` — dependency contract + headless invariant.
-2. `Check-Schemas.ps1` — command schema contract: every command carries a `Description`, a command that reads `ctx.Payload` declares `InputType` and every property of that type carries `[Description]`, and every `AnalyseTool.Tools` command declares `OutputType`. Core commands are exempt from the output rule (extension management / scripting — they never appear in a pipeline). A source scan, so it runs before any build.
-3. Build chain for R25 (net8) and R27 (net10).
-4. `dotnet pack` Sdk → build `samples/Acme.Sample` against the packed nupkg (`-p:UseSdkPackage=true`) in an isolated package cache — the external-author simulation. NuGet ignores package-shipped props during restore, so SDK consumers must declare TFM + `Nice3point.Revit.Api.*` themselves (see ONBOARDING.md §4.1).
-5. Debug builds of Acme.Sample auto-deploy to `%LOCALAPPDATA%\AnalyseTool\extensions\Acme.Sample\` (manifest + UI in the root, assembly in `<year>\`) — a live smoke test of the real ALC loading path, in the layout authors are told to use.
-
-## Docs to keep in sync
-
-- `ONBOARDING.md` — extension author guide (mirrored to the GitHub wiki), also the NuGet README of the Sdk package.
-- `src/LLM.md` — paste-into-AI extension authoring instructions; `CreateExtensionTemplate.cs` embeds a generated copy — keep §4 (project setup) consistent in BOTH places.
-- `CHANGELOG.md` — ships next to the plugin DLL (the About window displays it).
+A Debug build deploys the add-in to `%AppData%\Autodesk\Revit\Addins\<year>\` and loads the pages from the Vite dev
+server (`npm run dev` in `source/AnalyseTool/ClientApp`). The pipeline checks the boundaries, builds `ClientApp`
+and every `Release.R2x`; `pack` adds the `.msi` installers and the Autodesk bundle in `output/`.

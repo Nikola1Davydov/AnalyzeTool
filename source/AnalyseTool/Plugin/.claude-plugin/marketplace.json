@@ -1,0 +1,14 @@
+{
+  "name": "analysetool",
+  "description": "AnalyseTool for Revit in Claude Code: the MCP tools of every open Revit version and the guide for writing buttons.",
+  "owner": {
+    "name": "Nikolai Davydov"
+  },
+  "plugins": [
+    {
+      "name": "analysetool",
+      "source": "./analysetool",
+      "description": "Connects Claude Code to AnalyseTool in Revit (every open version, no token to copy) and teaches it to write AnalyseTool buttons."
+    }
+  ]
+}

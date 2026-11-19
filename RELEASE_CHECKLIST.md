@@ -1,70 +1,74 @@
 # Release checklist
 
-A reusable checklist to run before publishing a new AnalyseTool version.
-**Part 1** can be verified in the repo/build (an agent can run it). **Part 2** needs a human
-(live Revit, publishing, tagging).
+Run it before publishing a version. **Part 1** an agent can do in the repository; **Part 2** needs a person, Revit and
+the release itself.
 
 ---
 
-## Part 1 — Repo & build (automatable)
+## Part 1 — Repository and build
 
-### Versions & docs
+### Version and docs
 
-- [ ] **Version bumped** — `PLUGIN_VERSION` in `src/SharedData/ToolData.cs` is **higher** than the last
-      published/tagged version (`git tag --sort=-creatordate`). Never re-publish an equal or lower version.
-- [ ] **Changelog complete** — `CHANGELOG.md` has a `## [<version>] / <YYYY-MM-DD>` section that lists
-      **all** notable changes of this release. Bullets start with `- ` (the release pipeline only keeps
-      lines starting with `- ` under the matching `## [<version>]` header).
-- [ ] **Extension-authoring changes documented** — if anything changed that matters to extension authors
-      (SDK contract, manifest fields, bridge, build configs, new capabilities), it is reflected in **both**
-      `ONBOARDING.md` (repo root) **and** `src/LLM.md`.
-- [ ] **SDK version bumped if the SDK changed** — if `src/AnalyseTool.Sdk/**` changed, bump the SDK
-      version in `AnalyseTool.Sdk.csproj`: - additive/backward-compatible → bump **minor** (`Version` + `FileVersion`); keep `AssemblyVersion`
-      stable within the major (it's the binding identity — moving it breaks older extensions). - breaking contract change → bump **major** (and `AssemblyVersion` major); old extensions are then
-      rejected at load with a clear message.
-- [ ] **Docs consistent** — supported Revit versions and the SDK `Description` agree everywhere
-      (README badge + Compatibility, `AnalyseTool.Sdk.csproj` Description, `AnalyseTool.Sdk.props`,
-      `ONBOARDING.md`, `LLM.md`). Note the TFM split: net8.0-windows for R25/R26, net10.0-windows for R27.
-- [ ] **No dead code / debug junk** — no unused exports/commands left behind by a refactor, no stray
-      `console.log` / `OpenDevToolsWindow` / commented-out blocks / temporary files.
+- [ ] **The version is in the code**: `"Build"` › `"Version"` of `build/appsettings.json` (local builds, CI and the
+      installers all carry it). Raise it above the last release (`git tag --sort=-creatordate | head`): MSI keeps only
+      X.Y.Z, and a version that is tagged already is not released again. Left empty, GitVersion takes it from the tags.
+- [ ] **CHANGELOG.md** has `## [X.Y.Z] / <YYYY-MM-DD>` (not «unreleased») with the changes a user notices, one or two
+      sentences each, and what is not there yet. The About page shows it.
+- [ ] **The guide for authors** — `source/AnalyseTool.Extensions/Authoring/LLM.md` (ships next to the add-in, served by
+      `GetAuthoringGuide`) and `ONBOARDING.md` (Wiki home, NuGet readme of the Sdk) — says what changed for button
+      authors: the folder layout, the Sdk, MCP tools, transactions.
+- [ ] **The plugin for Claude Code and Codex** (`source/AnalyseTool/Plugin/`): `version` in both manifests
+      (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) is the release version; `claude plugin validate
+      source/AnalyseTool/Plugin` and `claude plugin validate source/AnalyseTool/Plugin/analysetool` pass;
+      `AiPluginTests` keep the encoded headers helper in step with `scripts/headers.ps1`.
+- [ ] **The Sdk**: if `source/AnalyseTool.Sdk/**` changed, its `<Version>`/`FileVersion` moved (minor for additions,
+      major — and `AssemblyVersion` — for a break). The version `LLM.md` §4.3 and `ONBOARDING.md` §4.1 pin must exist on
+      NuGet.
+- [ ] **README**: badges, supported Revit versions, the quick start, the plugin commands are current.
 
-### Builds
+### Build
 
-- [ ] **Host builds** — Release **R25 / R26 / R27**:
-      `dotnet build src/AnalyseTool/AnalyseTool.csproj -c "Release R25"` (and `R26`, `R27`) → 0 errors.
-- [ ] **clientapp builds** — `cd src/clientapp && npm run build` → `✓ built`.
-- [ ] **SDK packs** — `dotnet pack src/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj -c "Release R25"` → nupkg
-      with the intended version, no warnings.
-- [ ] **Nuke build project compiles** — `dotnet build src/build/_build.csproj` → 0 errors (guards the
-      release pipeline itself).
+- [ ] `dotnet run -c Release --project build` is green: project boundaries, ClientApp, R25/R26/R27, the Revit-free tests
+      (`AnalyseTool.Tests`, `AnalyseTool.Hosting.Tests`) and the revit-bridge tests.
+- [ ] `dotnet run -c Release --project build -- pack` writes `output/AnalyseTool-<version>-SingleUser.msi`,
+      `-MultiUser.msi` and `AnalyseTool.bundle.zip`.
+- [ ] The MSI (read with Python `msilib`, or Orca):
+  - `UpgradeCode` is `{E74A2DBC-8131-4240-ABDE-E2A776451BBA}` — the one of 1.x, so installing removes an installed 1.x
+    of the same kind;
+  - `ProductVersion` is the release version;
+  - files: `.addin` for 2025/2026/2027, `Plugin\` (both manifests, `.mcp.json`, `codex.mcp.json`, skills,
+    `scripts\headers.ps1`), `Ribbon\analysetool\`, `LLM.md`, `CHANGELOG.md`; libgit2 for Windows only; no
+    `Ribbon\analysetool.dev\` (Debug only).
 
 ---
 
-## Part 2 — Publish & verify (human only)
+## Part 2 — In Revit and publishing (a person)
 
-### Live in Revit (can't be verified from the repo)
+### In Revit
 
-- [ ] Plugin installs and the **AnalyseTool** ribbon tab appears (AnalyseTool, Settings, Report a bug, About, Reload, Extensions, New,
-      plus the buttons of installed extensions).
-- [ ] A host-built extension (sources in `src\`, no `.csproj`) is compiled on load, gets its ribbon
-      button and runs; the folder then holds `<year>\<id>.dll`.
-- [ ] Smoke-test the features that changed this release (open windows, run the new/changed commands on a
-      **copy** of a real project — especially any model-write action: delete / purge / load / rename).
-- [ ] Long operations show progress and don't freeze Revit; closing a window mid-operation doesn't crash.
+- [ ] `dotnet test --project tests/AnalyseTool.RevitTests/AnalyseTool.RevitTests.csproj -c Release.R25` (and R26, R27)
+      from your own terminal — the tests start Revit; from an agent's shell Revit does not come up.
+- [ ] **2025** (then 2026, 2027 briefly): Buttons opens the pane; New folder, New button — it runs; edit its C# and save —
+      the new code runs; a compile error shows «!» with file and line; save, restore and pin a version.
+- [ ] Edit mode: drag between sections, into another folder, to the trash (a button and a folder); −/+, ☆, ✎, 📁.
+- [ ] A page with `"dockable": true` opens inside the pane, another in a window; a command with an input type gets a form.
+- [ ] A DLL project shows as a box with its years; Older buttons › ✎ › Move to… moves a button into a tab (on a copy).
+- [ ] Parameters: the table, binding, the report.
+- [ ] MCP: the plugin installs (`claude plugin …`, `codex plugin …`) and connects; `ListRevitVersions`, a read-only tool,
+      `RunCommand`; with two Revit versions open, `"revit": "2026"` reaches the other one.
+- [ ] Anything that writes to the model is tried on a **copy** of a real project.
 
-### Artifacts & distribution
+### Installers and publishing
 
-- [ ] Release pipeline is green; the GitHub release was created with the changelog body.
-- [ ] Both installers (**SingleUser** + **MultiUser**) install on a clean machine; WebView2-missing prompt
-      works when the runtime is absent.
-- [ ] **SDK package — publish by hand if its contract changed.** The release pipeline does NOT push it.
-      1. Bump `<Version>` (and `FileVersion`) in `src/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj`. A version
-         already on the feed is immutable, so a fix without a bump reaches nobody — that is how the
-         packaging fixes announced in 1.4.4 stayed unpublished.
-      2. Take the `.nupkg` from the `sdk-nupkg` artifact of a **green** CI run, or build it with
-         `src\build.cmd PackSdk`. Green matters: `TestSdkPackage` builds an external-author project
-         against that exact package, and a published version cannot be recalled.
-      3. `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`
-      4. Only now bump the pinned version in `ONBOARDING.md` §4.1 and `src/LLM.md` §4 — they must
-         name a version authors can actually restore.
-- [ ] If releasing from `main`, `dev` is merged into `main` first.
+- [ ] SingleUser and MultiUser install on a clean user/machine; the WebView2 prompt works without the runtime.
+- [ ] Installed **over 1.x** of the same kind: 1.x is gone (its folder and `AnalyseTool.addin`), 2.0 loads, the
+      extensions in `%LOCALAPPDATA%\AnalyseTool\extensions\` are still there.
+- [ ] CHANGELOG dated (`## [X.Y.Z] / <date>`), then `rewrite` (or `dev`) merged into `main`. No tag by hand:
+      run `.github/workflows/Release.yml` by hand (Actions › Release › Run workflow, on `main`); when the version of
+      `build/appsettings.json` has no tag yet, it builds, tests, packs, makes the tag `X.Y.Z` (no «v», as in 1.x) and the release with both
+      MSIs, the bundle and the changelog of the version. An undated or missing changelog section stops it. A suffix
+      (`2.1.0-beta.1`) makes a pre-release. Check the run in Actions and the files on the release.
+- [ ] **The Sdk package, only if its contract changed**: the release does not push it. Bump its version, take the
+      `.nupkg` of a green build, `dotnet nuget push <pkg>.nupkg -s https://api.nuget.org/v3/index.json -k <key>`, then
+      move the pinned version in `LLM.md` and `ONBOARDING.md`.
+- [ ] The Wiki follows `ONBOARDING.md` (`wiki-sync.yml`).

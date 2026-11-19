@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.0.1] / 2026-11-17
+
+- 🔔 **A new version shows itself**: AnalyseTool asks GitHub once a day for the latest release. A newer one puts a dot on your initials and a card with the download link on About. The request sends nothing about you or your models.
+- 🧪 **A switch for `ExecuteCode`**: profile › AI clients › **Let AI clients run any C#**, with a warning what it allows. It is off by default and works at once, without a restart.
+- 🔌 **The AI clients switch works at once**: turning MCP on starts the server in this Revit, turning it off stops it — no Revit restart.
+- 🔕 **The pane stops asking Revit every few seconds**: Revit tells it when the theme or the buttons change.
+
+## [2.0.0] / 2026-11-16
+
+AnalyseTool is rebuilt: an isolated add-in with a command pipeline, React pages and an MCP server inside Revit. The Sdk,
+DLL extensions and the built-in tools of 1.x carry over; the 2.0 installer replaces an installed 1.x.
+
+- 🧲 **One button on the ribbon: Buttons.** It opens a pane laid out like the home screen of a phone — every button a tile, a dock of favourites, your own order, tile size, a theme that follows Revit. A folder of the pane is a tab of the ribbon, its sections are the panels; −/+ keeps a tab or a button off the ribbon.
+- 🗃️ **A button is a folder, laid out as the ribbon**, as in pyRevit: `Sheets.tab\Numbering.panel\Renumber.pushbutton\` holds one button — its C#, its page, its versions. Code several buttons share goes to `_shared\` of the tab.
+- 🧩 **A new button is C# that AnalyseTool compiles itself** — no .NET SDK, no project, no DLL. Save a file and the button runs the new code; a compile error keeps the last good build and shows file and line on the tile.
+- 🕓 **Every button has its own version history**: save a version, compare, restore a version or a file, or pin the button to an older one.
+- 🫳 **Right-click to edit, drag to arrange**: between sections, up into another folder, down to the trash — a whole folder too. ✎ renames a button and shows its code, files and versions; 📁 opens its folder for an AI tool; **?** explains the pane with pictures.
+- ➕ **A new folder starts with its first button**, so no tab is empty; buttons of your own can join AnalyseTool's folder and its tab on the ribbon. ☆ sends a button flying into the dock.
+- 🧾 **A command that needs a few values gets a form in the pane**, built from its input type; a page marked `dockable` opens inside the pane, any other in a window.
+- 📦 **DLL projects are boxes of their own**, with the Revit years they are built for; they load their NuGet packages and native libraries. Folders with a `plugin.json` from 1.x are together in **Older buttons** and move into tabs with ✎ › Move to….
+- 🤖 **MCP runs inside Revit on one address for every Revit version** (`localhost:48075`): a call with `"revit": "2026"` runs in that version, without it in the Revit you used last. AI clients create, edit, build, run (`RunCommand`) and version buttons.
+- 🔌 **A plugin for Claude Code and Codex ships with AnalyseTool**: two commands install it, it connects without a token to copy and brings the skills `revit` and `new-button`. Cursor, VS Code, Claude Desktop and Gemini CLI get a snippet in the pane.
+- 🧭 **The authoring guide `LLM.md` ships next to the add-in and updates with it**; every button folder has an `AGENTS.md` / `CLAUDE.md` that points AI agents there. It covers transactions (one undo step = one `RunInRevitAsync`), the names a page gets back, DLL projects and migrating older folders.
+- 🧯 **A transaction left open at the end of `RunInRevitAsync` is reported with what to do** instead of failing later with a riddle.
+- 📊 **Statistics** in the profile: how often every button is clicked, its last 30 days, run time and failures — on this machine only.
+- 🪵 **The log keeps what matters**: the pages' routine calls and unchanged reloads are not written to the file.
+- 🚧 **Not in 2.0 yet**: sharing a tab or a button as a package, and update checks and the catalog of packages from 1.x.
+
 ## [1.6.0] / 2026-10-19
 
 - ✋ **Closing a window cancels the commands it started**, so a long one no longer keeps Revit busy for a window that is gone.

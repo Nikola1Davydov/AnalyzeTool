@@ -1,0 +1,4 @@
+# GitHub Flow: main plus short-lived branches. The Mainline strategy that ModularPipelines writes by default fails on the
+# merge ref of a pull request (refs/pull/N/merge) with InvalidOperationException in GetCommitsWasBranchedFrom.
+# Versions: a tag vX.Y.Z on main gives X.Y.Z; untagged main 0.0.1-N, a branch 0.0.1-<branch>.N, a pull request 0.0.1-PullRequestN.M.
+workflow: GitHubFlow/v1

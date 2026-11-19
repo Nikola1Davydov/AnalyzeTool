@@ -1,0 +1,45 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        Our module: the extensions of AnalyseTool — folders with a plugin.json and either C# sources (src\*.cs, compiled by
+        Roslyn inside Revit: the default) or a prebuilt DLL per Revit year, each folder with its own git history.
+        Their commands implement the public AnalyseTool.Sdk contract and join the pipeline at run time
+        (CommandRegistry.SetGroup). Headless: no UseWPF, no System.Windows.
+    -->
+
+    <PropertyGroup>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="LibGit2Sharp"/>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+        <PackageReference Include="Polyfill" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="AnalyseTool.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AnalyseTool.Hosting\AnalyseTool.Hosting.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Hosting.Mcp\AnalyseTool.Hosting.Mcp.csproj"/>
+        <ProjectReference Include="..\AnalyseTool.Sdk\AnalyseTool.Sdk.csproj"/>
+    </ItemGroup>
+
+    <!--
+        The guide for extension authors and AI agents: installed next to the add-in (updated with it), pointed at by the
+        AGENTS.md / CLAUDE.md of every new extension folder, served over MCP; the embedded copy is the fallback.
+    -->
+    <ItemGroup>
+        <None Include="Authoring\LLM.md" Link="LLM.md" CopyToOutputDirectory="PreserveNewest"/>
+        <EmbeddedResource Include="Authoring\LLM.md" LogicalName="AnalyseTool.Extensions.LLM.md" WithCulture="false"/>
+    </ItemGroup>
+
+</Project>

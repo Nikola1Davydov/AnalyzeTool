@@ -12,7 +12,7 @@ on:
     branches: [main]
     paths:
       - "ONBOARDING.md"
-      - "src/LLM.md"
+      - "source/AnalyseTool.Extensions/Authoring/LLM.md"
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
 
           # Map source files to wiki pages. ONBOARDING becomes Home so /wiki lands on the guide.
           cp ONBOARDING.md wiki/Home.md
-          cp src/LLM.md    "wiki/Writing-extensions-with-AI.md"
+          cp source/AnalyseTool.Extensions/Authoring/LLM.md "wiki/Writing-extensions-with-AI.md"
 
           cd wiki
           git config user.name  "github-actions[bot]"

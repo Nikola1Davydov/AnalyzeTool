@@ -1,0 +1,12 @@
+{
+  "name": "analysetool",
+  "version": "2.0.1",
+  "description": "Connects Codex to AnalyseTool in Revit (every open Revit version, one address, the token read from this computer) and teaches it to write AnalyseTool buttons.",
+  "author": {
+    "name": "Nikolai Davydov"
+  },
+  "homepage": "https://github.com/Nikola1Davydov/AnalyzeTool",
+  "keywords": ["revit", "bim", "analysetool", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./codex.mcp.json"
+}

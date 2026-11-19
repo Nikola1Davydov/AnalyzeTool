@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Dev only (npm run dev, mocks): a small interface of an extension, shown in the pane in a frame. In Revit the frame bridge
+     of AnalyseTool provides window.AT; here the same few lines stand in for it. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Room sheets</title>
+  <style>
+    body { font: 14px "Segoe UI", sans-serif; margin: 14px; color: #1f2937; }
+    @media (prefers-color-scheme: dark) { body { color: #e5e7eb; } }
+    button { padding: 6px 14px; }
+    #out { margin-top: 12px; font-weight: 600; }
+  </style>
+  <script>
+    (function () {
+      var pending = new Map(), seq = 0;
+      window.addEventListener('message', function (e) {
+        var msg = e.data; if (!msg || msg.type !== 'at-result' || !pending.has(msg.id)) return;
+        var call = pending.get(msg.id); pending.delete(msg.id);
+        msg.error ? call.reject(new Error(msg.error.message)) : call.resolve(msg.value);
+      });
+      window.AT = { invoke: function (command, payload) {
+        return new Promise(function (resolve, reject) {
+          var id = 'at-' + (++seq); pending.set(id, { resolve: resolve, reject: reject });
+          window.parent.postMessage({ type: 'at-invoke', id: id, command: command, payload: payload }, '*');
+        });
+      } };
+    })();
+  </script>
+</head>
+<body>
+  <p><select id="category"><option value="OST_Rooms">Rooms</option><option value="OST_Walls">Walls</option></select>
+     <button id="run">Count</button></p>
+  <div id="out"></div>
+  <script>
+    document.getElementById('run').addEventListener('click', async function () {
+      var out = document.getElementById('out'); out.textContent = '…';
+      try { var r = await AT.invoke('room-sheets.Count', { category: document.getElementById('category').value }); out.textContent = r.title + ': ' + r.count; }
+      catch (error) { out.textContent = error.message; }
+    });
+  </script>
+</body>
+</html>

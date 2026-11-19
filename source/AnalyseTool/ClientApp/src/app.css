@@ -1,0 +1,1578 @@
+/* The pages on Fluent UI v9: layout and the few things Fluent has no component for. Colours come from the Fluent
+   tokens (CSS variables on .app-frame), so the dark theme follows. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.app-frame {
+  min-height: 100%;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--colorNeutralBackground2);
+  color: var(--colorNeutralForeground1);
+}
+
+/* ---- Small helpers ------------------------------------------------------------------------------------ */
+
+.muted {
+  color: var(--colorNeutralForeground3);
+}
+.small {
+  font-size: var(--fontSizeBase200);
+}
+.strong {
+  font-weight: var(--fontWeightSemibold);
+}
+.mono,
+code {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+.path {
+  overflow-wrap: anywhere;
+}
+code.block,
+.block-text {
+  display: block;
+}
+.block {
+  margin-top: 12px;
+}
+.pad {
+  padding: 12px;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.spacer {
+  flex: 1;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.error-text {
+  color: var(--colorPaletteRedForeground1);
+}
+.warning-text {
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+.added-text {
+  color: var(--colorPaletteGreenForeground1);
+}
+.removed-text {
+  color: var(--colorPaletteRedForeground1);
+}
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.inline-icon {
+  vertical-align: -3px;
+}
+.empty {
+  color: var(--colorNeutralForeground3);
+  padding: 24px 8px;
+  text-align: center;
+}
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--colorBrandForegroundLink);
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.plain-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.danger-button {
+  background: var(--colorPaletteRedBackground3) !important;
+  border-color: var(--colorPaletteRedBackground3) !important;
+}
+.page-spinner {
+  margin-top: 20vh;
+}
+
+/* ---- Busy strip --------------------------------------------------------------------------------------- */
+
+.busy-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: var(--fontSizeBase200);
+  background: var(--colorNeutralBackground1);
+  border-top: 1px solid var(--colorNeutralStroke2);
+  color: var(--colorNeutralForeground2);
+}
+
+/* ---- Pages of their own window: the look of the dock pane ------------------------------------------- */
+
+/* FluentProvider paints itself with Background1 (white): the page is the grouped grey of the pane, the cards white. Only the
+   provider in #root: Fluent copies the class onto the layer of its portals (toasts, dialogs), which must stay clear */
+#root > .app-frame.fui-FluentProvider {
+  background: var(--colorNeutralBackground2);
+  -webkit-font-smoothing: antialiased;
+}
+.app-page {
+  padding: 0 0 40px;
+}
+.app-page.compact {
+  padding: 0 0 32px;
+}
+.app-page-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 20px 0;
+}
+.app-page.compact .app-page-inner {
+  padding: 8px 10px 0;
+}
+.app-page-inner.narrow {
+  max-width: 760px;
+}
+
+/* The navigation bar of iOS: frosted, sticky, «‹ back» in the accent colour */
+.glass-bar {
+  background: color-mix(in srgb, var(--colorNeutralBackground2) 78%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--colorNeutralStroke1);
+}
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+.app-nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
+  color: var(--colorBrandForegroundLink) !important;
+  text-decoration: none !important;
+}
+.app-nav-back .chevron {
+  font-size: 26px;
+  line-height: 1;
+  margin-top: -3px;
+}
+
+.app-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 4px;
+}
+.app-page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.app-page-title h1.large-title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.app-page.compact .app-page-title h1.large-title {
+  font-size: 22px;
+  line-height: 28px;
+}
+.app-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.app-page-subtitle {
+  margin: 2px 0 16px;
+  color: var(--colorNeutralForeground3);
+  font-size: 13px;
+}
+.detail-subtitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* A card of the grouped list: white on the grey page, no border, rounded */
+.panel {
+  background: var(--colorNeutralBackground1);
+  border: none;
+  border-radius: var(--borderRadiusLarge);
+  padding: 14px 16px;
+}
+.panel h2,
+.section-head h2 {
+  display: block;
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.fui-Text.block-text {
+  display: block;
+}
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.section-head h2 {
+  margin: 0;
+}
+.section-head > .fui-Button {
+  flex-shrink: 0;
+}
+.key-values {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 8px 0;
+  align-items: baseline;
+}
+.key-values > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-top: 8px;
+}
+.copy-field {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  margin: 4px 0;
+}
+.copy-field pre {
+  flex: 1;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.form-row > .fui-Field {
+  flex: 1;
+  min-width: 180px;
+}
+.form-row.tight {
+  gap: 4px;
+  align-items: center;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.created-card {
+  padding: 16px;
+  gap: 10px;
+}
+.created-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.success-icon {
+  color: var(--colorPaletteGreenForeground1);
+}
+
+/* ---- Tables ------------------------------------------------------------------------------------------- */
+
+.table-scroll {
+  overflow-x: auto;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusLarge);
+  margin-top: 12px;
+}
+/* ---- Lists of the pane: a white card of rows with inset hairlines, instead of a table ---------------- */
+
+/* <div class="list-card">
+     <div class="list-item">                       one entry, separated from the previous by a hairline
+       <div class="list-row">
+         <div class="list-main">…</div>            title, a muted line, text, badges — wraps freely
+         <div class="list-trailing">…</div>        switch, buttons — never shrinks
+       </div>
+       <div class="list-detail">…</div>            optional block under the row (problems, notes)
+     </div>
+   </div> */
+.list-card {
+  background: var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusLarge);
+  margin-top: 12px;
+  overflow: hidden;
+}
+.panel .list-card {
+  margin: 8px -4px 0;
+  background: var(--colorNeutralBackground2);
+}
+.list-item {
+  position: relative;
+  padding: 10px 12px 10px 16px;
+}
+.list-item + .list-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}
+.list-item.off .list-main {
+  opacity: 0.65;
+}
+.list-row {
+  display: flex;
+  gap: 8px 12px;
+  align-items: flex-start;
+}
+.list-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.list-title {
+  font-size: 15px;
+  font-weight: var(--fontWeightSemibold);
+  text-align: left;
+}
+.list-meta {
+  overflow-wrap: anywhere;
+}
+.list-badges {
+  margin-top: 2px;
+}
+/* The badge groups (KindBadge, StatusBadges…) flow as one wrapping row */
+.list-badges .badges {
+  display: contents;
+}
+.list-radio {
+  margin: 0 0 -6px -8px;
+}
+.list-trailing {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.list-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.list-detail.problems {
+  background: var(--colorPaletteRedBackground1);
+}
+.list-detail .diagnostics {
+  margin: 0;
+}
+
+.diagnostics {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: var(--fontSizeBase200);
+}
+.diagnostics li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.diagnostics li.error > svg {
+  color: var(--colorPaletteRedForeground1);
+}
+.diagnostics li.warning > svg {
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+
+/* ---- Extension detail: versions ---------------------------------------------------------------------- */
+
+.tab-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: var(--fontSizeBase100);
+  background: var(--colorPaletteMarigoldBackground2);
+}
+.versions-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  align-items: start;
+}
+.versions-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.panel.selectable {
+  cursor: pointer;
+}
+.panel.selected {
+  border-color: var(--colorBrandStroke1);
+  box-shadow: 0 0 0 1px var(--colorBrandStroke1);
+}
+.file-changes {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.file-changes li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0;
+}
+.state-badge {
+  min-width: 58px;
+}
+.save-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  cursor: default;
+}
+.save-form button {
+  align-self: flex-start;
+}
+.history {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.history li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--borderRadiusMedium);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.history li:hover {
+  background: var(--colorNeutralBackground1Hover);
+}
+.history li.selected {
+  background: var(--colorBrandBackground2);
+}
+.history li.running {
+  border-left-color: var(--colorPaletteMarigoldBorderActive);
+}
+.history-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.history-message {
+  overflow-wrap: anywhere;
+}
+.changes-panel {
+  min-width: 0;
+}
+.changes-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.changes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.file-diff {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.file-diff-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--colorNeutralBackground3);
+  flex-wrap: wrap;
+}
+.file-diff-name {
+  overflow-wrap: anywhere;
+}
+
+/* ---- Diff and code ------------------------------------------------------------------------------------- */
+
+.diff-scroll,
+.code-view {
+  overflow: auto;
+  max-height: 70vh;
+  background: var(--colorNeutralBackground1);
+}
+.diff-table,
+.code-view table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.diff-table.split {
+  table-layout: fixed;
+}
+.diff-no-col {
+  width: 44px;
+}
+.diff-no,
+.code-no {
+  width: 1%;
+  min-width: 36px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--colorNeutralForeground4);
+  user-select: none;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.diff-sign {
+  width: 1%;
+  padding: 0 4px;
+  user-select: none;
+  color: var(--colorNeutralForeground3);
+}
+.diff-text,
+.code-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 0 8px;
+}
+.diff-add {
+  background: rgba(46, 160, 67, 0.16);
+}
+.diff-del {
+  background: rgba(248, 81, 73, 0.16);
+}
+.diff-empty {
+  background: var(--colorNeutralBackground3);
+}
+.diff-fold td {
+  background: var(--colorBrandBackground2);
+  padding: 2px 8px;
+}
+.diff-fold button {
+  background: none;
+  border: none;
+  color: var(--colorBrandForegroundLink);
+  cursor: pointer;
+  font: inherit;
+}
+.diff-note {
+  padding: 8px 12px;
+  color: var(--colorNeutralForeground3);
+}
+.code-view {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  margin-top: 8px;
+}
+.code-view tr.current {
+  background: var(--colorBrandBackground2);
+}
+.code-view tr.has-error .code-text {
+  text-decoration: underline wavy var(--colorPaletteRedForeground1);
+  text-decoration-skip-ink: none;
+}
+.code-view tr.has-error .code-no {
+  color: var(--colorPaletteRedForeground1);
+  font-weight: 600;
+}
+.code-view tr.has-warning .code-no {
+  color: var(--colorPaletteDarkOrangeForeground1);
+  font-weight: 600;
+}
+
+/* ---- Extension detail: files ------------------------------------------------------------------------------ */
+
+.files-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  align-items: start;
+}
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusLarge);
+}
+.file-list button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  border: none;
+  border-radius: var(--borderRadiusMedium);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.file-list button span.mono {
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.file-list button:hover {
+  background: var(--colorNeutralBackground1Hover);
+}
+.file-list button.selected {
+  background: var(--colorBrandBackground2);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.error {
+  background: var(--colorPaletteRedBackground3);
+}
+.dot.warning {
+  background: var(--colorPaletteMarigoldBackground3);
+}
+.file-view {
+  min-width: 0;
+}
+.file-view-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---- Release notes, markdown ------------------------------------------------------------------------- */
+
+.markdown {
+  line-height: 1.5;
+}
+.markdown.inline,
+.markdown.inline p {
+  display: inline;
+  margin: 0;
+}
+.markdown code {
+  background: var(--colorNeutralBackground3);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.markdown a {
+  color: var(--colorBrandForegroundLink);
+}
+.release {
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  margin-top: 8px;
+  padding: 0 12px;
+}
+.release > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--fontWeightSemibold);
+}
+.release > summary::-webkit-details-marker {
+  display: none;
+}
+.release-chevron {
+  transition: transform 0.15s;
+}
+.release[open] .release-chevron {
+  transform: rotate(90deg);
+}
+
+/* ---- Dock pane ---------------------------------------------------------------------------------------- */
+
+.dock-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.dock-list > li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+.dock-list > li.disabled {
+  opacity: 0.6;
+}
+.dock-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+.dock-commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.dock-result {
+  position: relative;
+  margin-top: 6px;
+  border-radius: var(--borderRadiusMedium);
+  background: var(--colorNeutralBackground3);
+}
+.dock-result.failed {
+  background: var(--colorPaletteRedBackground1);
+}
+.dock-result pre {
+  margin: 0;
+  padding: 6px 24px 6px 8px;
+  max-height: 240px;
+  overflow: auto;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dock-result-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* ---- Main window: tools ------------------------------------------------------------------------------------ */
+
+.main-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.main-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  min-height: 44px;
+  background: var(--colorNeutralBackground1);
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  flex-wrap: wrap;
+}
+.brand {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--fontSizeBase300);
+}
+.document-title {
+  max-width: 30vw;
+}
+.main-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.main-footer {
+  padding: 3px 12px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+  min-height: 18px;
+}
+.tool-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.file-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusLarge);
+}
+.file-bar.wrap,
+.selection-bar.wrap {
+  flex-wrap: wrap;
+}
+.file-bar-name {
+  flex: 1;
+  min-width: 0;
+}
+.toolbar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 2px 12px;
+  font-size: var(--fontSizeBase300);
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+.selection-bar.active {
+  background: var(--colorBrandBackground2);
+  border-color: var(--colorBrandStroke2);
+}
+.two-panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 8px;
+}
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusLarge);
+}
+.pane-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+.pane-body {
+  flex: 1;
+  overflow-y: auto;
+  font-size: var(--fontSizeBase300);
+}
+.tree-group {
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+}
+.tree-group-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  min-height: 30px;
+  background: var(--colorNeutralBackground3);
+}
+.tree-group-header.clickable {
+  cursor: pointer;
+}
+.tree-group-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fontWeightSemibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px 1px 28px;
+  min-height: 30px;
+}
+.tree-row.indent {
+  padding-left: 28px;
+}
+.chosen-list .tree-row,
+.picker-side .tree-row:not(.indent) {
+  padding-left: 8px;
+}
+.tree-row[draggable="true"] {
+  cursor: grab;
+}
+.tree-row:hover {
+  background: var(--colorNeutralBackground1Hover);
+}
+.tree-row.selected {
+  background: var(--colorBrandBackground2);
+}
+.tree-row-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tree-empty {
+  padding: 6px 0 6px 40px;
+}
+.type-col {
+  width: 90px;
+  text-align: right;
+}
+.badge-col {
+  width: 80px;
+  text-align: right;
+}
+.origin-badge {
+  min-width: 64px;
+}
+.order {
+  width: 20px;
+  text-align: right;
+}
+.hover-actions {
+  display: inline-flex;
+  opacity: 0;
+}
+.tree-row:hover .hover-actions,
+.tree-group-header:hover .hover-actions,
+.hover-actions:focus-within {
+  opacity: 1;
+}
+.drop-target {
+  outline: 2px solid var(--colorBrandStroke1);
+  outline-offset: -2px;
+  background: var(--colorBrandBackground2);
+}
+.drop-zone {
+  margin: 8px;
+  padding: 10px;
+  border: 2px dashed var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusLarge);
+  text-align: center;
+  font-size: var(--fontSizeBase200);
+  color: var(--colorNeutralForeground3);
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+.drop-zone.active {
+  border-color: var(--colorBrandStroke1);
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+}
+.check-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+
+/* Report */
+
+.report-page {
+  flex-direction: row;
+  padding: 0;
+  gap: 0;
+}
+.report-settings {
+  width: 290px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--colorNeutralBackground1);
+  border-right: 1px solid var(--colorNeutralStroke2);
+}
+.settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-block.push-down {
+  margin-top: auto;
+}
+.section-card {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  padding: 4px;
+}
+.indent {
+  padding-left: 40px;
+}
+.top-values {
+  width: 72px;
+}
+.chosen-list {
+  max-height: 14rem;
+  overflow-y: auto;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+.report-preview {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 20px;
+  background: var(--colorNeutralBackground4);
+}
+
+/* The sheet is paper in both themes */
+.report-sheet {
+  width: 210mm;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 14mm;
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+}
+.keep {
+  break-inside: avoid;
+}
+.keep-with-next {
+  break-after: avoid;
+  break-inside: avoid;
+}
+.sheet-title {
+  padding-bottom: 2mm;
+  border-bottom: 2px solid #1e293b;
+}
+.sheet-title-text {
+  font-size: 22pt;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.sheet-meta {
+  font-size: 9pt;
+  color: #475569;
+  margin-top: 1mm;
+}
+.sheet-section-title {
+  font-size: 9.5pt;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 1mm;
+}
+.sheet-heading {
+  padding-top: 2mm;
+  border-top: 1px solid #cbd5e1;
+}
+.sheet-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12pt;
+  font-weight: 600;
+}
+.sheet-heading-name {
+  font-size: 14pt;
+  font-weight: 700;
+}
+.sheet-heading-row .complete {
+  color: #15803d;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+}
+.report-table th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+  padding: 0.6mm 1.5mm;
+}
+.report-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.6mm 1.5mm;
+  vertical-align: top;
+}
+.report-table .num {
+  text-align: right;
+  white-space: nowrap;
+  width: 18mm;
+}
+.report-table .bar-col {
+  width: 45mm;
+}
+.report-table .break {
+  word-break: break-all;
+}
+.report-table .muted {
+  color: #64748b;
+}
+.percent-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.percent-track {
+  flex: 1;
+  height: 2.5mm;
+  background: #fecdd3;
+  border-radius: 1px;
+  overflow: hidden;
+}
+.percent-fill {
+  height: 100%;
+  background: #16a34a;
+}
+.percent-bar span {
+  width: 9mm;
+  text-align: right;
+}
+.bar-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Parameter picker */
+
+.picker {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  height: min(34rem, 65vh);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+.picker-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.picker-side + .picker-side {
+  border-left: 1px solid var(--colorNeutralStroke2);
+}
+.picker-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+.picker-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Elements */
+
+.category-box {
+  min-width: 260px;
+}
+.columns-box {
+  min-width: 200px;
+}
+.mode-box {
+  min-width: 130px;
+}
+.grid-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+.data-grid {
+  border-collapse: collapse;
+  font-size: var(--fontSizeBase200);
+  min-width: 100%;
+}
+.data-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  font-weight: var(--fontWeightSemibold);
+  background: var(--colorNeutralBackground3);
+  padding: 4px 8px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--colorNeutralStroke1);
+}
+.data-grid td {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-grid tr.selected td {
+  background: var(--colorBrandBackground2);
+}
+.data-grid .check-col {
+  width: 32px;
+  padding: 0 4px;
+}
+.data-grid td.editable {
+  cursor: text;
+}
+.data-grid td.read-only {
+  color: var(--colorNeutralForeground3);
+}
+.data-grid td.edited {
+  background: var(--colorPaletteMarigoldBackground1);
+  font-weight: var(--fontWeightSemibold);
+}
+.data-grid td.editing {
+  padding: 0;
+}
+.data-grid td.editing input {
+  width: 100%;
+  min-width: 120px;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 2px 6px;
+}
+
+/* ---- Narrow windows ------------------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .versions-layout,
+  .files-layout,
+  .two-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .two-panes {
+    overflow-y: auto;
+  }
+  .two-panes .pane {
+    min-height: 320px;
+  }
+  .report-page {
+    flex-direction: column;
+  }
+  .report-settings {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+  }
+  .picker {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .picker-list {
+    max-height: 18rem;
+  }
+}
+
+/* ---- Print: only the report sheet --------------------------------------------------------------------- */
+
+@media print {
+  .no-print,
+  .busy-bar,
+  .fui-Toaster {
+    display: none !important;
+  }
+  .app-frame,
+  .main-window,
+  .main-content,
+  .tool-page,
+  .report-page,
+  .report-preview {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .report-sheet {
+    box-shadow: none;
+    padding: 0;
+    width: auto;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
+
+/* ---- Statistics ---- */
+.usage-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.usage-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 8px;
+  background: var(--colorNeutralBackground2);
+}
+.usage-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.usage-table .col-clicks {
+  width: 180px;
+}
+.usage-table .col-days {
+  width: 140px;
+}
+.usage-table .col-time {
+  width: 130px;
+}
+.usage-table .col-number {
+  width: 90px;
+}
+.usage-clicks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.usage-clicks-number {
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.usage-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--colorNeutralBackground4);
+  overflow: hidden;
+}
+.usage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--colorBrandBackground);
+}
+.sparkline {
+  display: block;
+}
+.sparkline-bar {
+  fill: var(--colorBrandBackground);
+}
+.sparkline-empty {
+  fill: var(--colorNeutralStroke2);
+}
+.usage-gone {
+  opacity: 0.6;
+}
+
+/* ---- The pane look for Fluent pieces ------------------------------------------------------------------ */
+
+/* Tables sit in a card like the lists of iOS */
+.table-scroll {
+  background: var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusLarge);
+  padding: 4px 8px;
+}
+.table-scroll .fui-TableHeaderCell {
+  color: var(--colorNeutralForeground3);
+  font-size: 12px;
+}
+.table-scroll .fui-TableRow {
+  border-bottom-color: var(--colorNeutralStroke2);
+}
+.fui-Card {
+  box-shadow: none;
+}
+.fui-TabList {
+  margin-bottom: 4px;
+}
+
+/* ---- Narrow windows: the pages also fit a width like the pane's -------------------------------------- */
+
+@media (max-width: 600px) {
+  .app-page-inner,
+  .app-page.compact .app-page-inner {
+    padding: 8px 12px 0;
+  }
+  .app-page-title h1.large-title {
+    font-size: 26px;
+    line-height: 32px;
+  }
+  .app-page-header {
+    align-items: flex-start;
+  }
+  .app-page-actions {
+    width: 100%;
+  }
+  .panel {
+    padding: 12px;
+  }
+  .section-head {
+    flex-wrap: wrap;
+  }
+  .key-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+  .key-values > :nth-child(odd) {
+    margin-top: 6px;
+    color: var(--colorNeutralForeground3);
+    font-size: 12px;
+  }
+  .key-values > :first-child {
+    margin-top: 0;
+  }
+  .form-row > .fui-Field {
+    min-width: 100%;
+  }
+  .usage-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .list-item {
+    padding: 10px 8px 10px 12px;
+  }
+  .list-item + .list-item::before {
+    left: 12px;
+  }
+  /* Statistics: the sparkline, the last use and the average leave the table; the last use moves under the name */
+  .usage-table .wide-only {
+    display: none;
+  }
+  .usage-table .col-clicks {
+    width: 96px;
+  }
+  .usage-table .col-number {
+    width: 52px;
+  }
+  .usage-toolbar .fui-Input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+.narrow-only {
+  display: none;
+}
+@media (max-width: 600px) {
+  .narrow-only {
+    display: inline;
+  }
+}
+
+/* A path as a link (a button element) still wraps anywhere instead of running under the next column */
+.fui-Link.path {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  text-align: left;
+}
+
+/* The layer of Fluent's portals copies the class of the provider: it must not get the size or the colour of the page,
+   or it covers it */
+.app-frame[data-portal-node] {
+  min-height: 0 !important;
+  background: transparent !important;
+}
+
+/* A page that failed: what failed, and a way back */
+.crash {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff1f0;
+  color: #5c1a14;
+  font: 13px "Segoe UI", sans-serif;
+}
+
+.crash pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 11px Consolas, monospace;
+  background: rgb(0 0 0 / 5%);
+  padding: 8px;
+  border-radius: 8px;
+}

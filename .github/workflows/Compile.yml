@@ -1,0 +1,39 @@
+name: Compile solution
+
+# Builds and tests what is in git, on a clean machine: on a pull request, and by hand (Actions › Run workflow).
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: windows-2025
+    runs-on: windows-2025
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            source/AnalyseTool/ClientApp/package-lock.json
+            source/AnalyseTool.Hosting.WebView/revit-bridge/package-lock.json
+
+      - name: Cache packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Compile solution
+        run: dotnet run -c Release
+        working-directory: "build"
+        env:
+          DOTNET_ENVIRONMENT: ${{ github.ref_name == 'main' && 'Production' || 'Development' }}

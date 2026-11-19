@@ -1,0 +1,41 @@
+<Project Sdk="Nice3point.Revit.Sdk">
+
+    <!--
+        Unit tests of the add-in and AnalyseTool.Extensions without Revit: file formats, manifests, the extension loader on
+        temp folders, version history. The Revit API packages hold reference assemblies only, so these tests must not run
+        code that calls the Revit API — that is tested inside Revit in AnalyseTool.RevitTests.
+    -->
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <PlatformTarget>x64</PlatformTarget>
+        <EnableTUnitPolyfills>false</EnableTUnitPolyfills>
+        <Configurations>Debug.R25;Debug.R26;Debug.R27</Configurations>
+        <Configurations>$(Configurations);Release.R25;Release.R26;Release.R27</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI"/>
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"/>
+        <PackageReference Include="TUnit"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="JetBrains.Annotations" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\source\AnalyseTool\AnalyseTool.csproj"/>
+        <ProjectReference Include="..\..\source\AnalyseTool.Extensions\AnalyseTool.Extensions.csproj"/>
+    </ItemGroup>
+
+    <!--
+        The extension compiler needs the Revit API as metadata. In Revit it is loaded; here only its reference assemblies
+        exist, so they go next to the tests (revit-ref) and the tests pass them to the compiler.
+    -->
+    <Target Name="CopyRevitReferenceAssemblies" AfterTargets="ResolveAssemblyReferences">
+        <ItemGroup>
+            <RevitReferenceAssembly Include="@(ReferencePath)" Condition="'%(Filename)' == 'RevitAPI' Or '%(Filename)' == 'RevitAPIUI'"/>
+        </ItemGroup>
+        <Copy SourceFiles="@(RevitReferenceAssembly)" DestinationFolder="$(OutDir)revit-ref" SkipUnchangedFiles="true"/>
+    </Target>
+
+</Project>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+    <AddIn Type="Application">
+        <Name>AnalyseTool</Name>
+        <Assembly>AnalyseTool.Launcher/AnalyseTool.Launcher.dll</Assembly>
+        <AddInId>44FA6176-D487-4A03-A373-99B870E9411E</AddInId>
+        <FullClassName>AnalyseTool.Launcher.App</FullClassName>
+        <VendorId>Davydov</VendorId>
+        <VendorDescription></VendorDescription>
+    </AddIn>
+</RevitAddIns>
