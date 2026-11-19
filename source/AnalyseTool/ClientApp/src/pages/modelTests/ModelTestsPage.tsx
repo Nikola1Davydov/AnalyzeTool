@@ -697,10 +697,11 @@ function Details(props: {
 /** What a test checks: its categories and parameter as Revit names them, with their API names, and the conditions. */
 function WhatItChecks({ test }: { test: ModelTestInfo }) {
   const rows: { label: string; value: ReactNode }[] = [];
-  if (test.categories.length) {
+  const categories = test.categories ?? [];
+  if (categories.length) {
     rows.push({
-      label: test.categories.length === 1 ? "Category" : "Categories",
-      value: test.categories.map((category, index) => (
+      label: categories.length === 1 ? "Category" : "Categories",
+      value: categories.map((category, index) => (
         <span key={category.api}>
           {index > 0 && ", "}
           {category.name} <span className="mono muted small">{category.api}</span>
