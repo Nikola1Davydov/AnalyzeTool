@@ -13,6 +13,7 @@ import {
   Info16Regular,
   ScanDash16Regular,
   Broom16Regular,
+  Highlight16Regular,
   Warning16Regular,
   Wrench16Regular,
   Archive16Regular,
@@ -248,9 +249,9 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     }
   }
 
-  // What «Show» drew over the views stays until it is cleared: one button for all of it
+  // What «Highlight» drew over the views stays until it is cleared: one button for all of it
   async function clearShown() {
-    await act(modelTestCommands.ClearGeometry, null, () => "The shown geometry is cleared", "Could not clear the shown geometry");
+    await act(modelTestCommands.ClearGeometry, null, () => "Highlights cleared", "Could not clear the highlights");
   }
 
   async function createSuite() {
@@ -304,9 +305,9 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
           <Button icon={<Add16Regular />} onClick={() => setNewSuite(newSuite === null ? "" : null)}>
             New suite
           </Button>
-          <Tooltip content="Removes what «Show» drew over the views" relationship="description">
+          <Tooltip content="Removes the red highlights «Highlight» drew over the views" relationship="description">
             <Button icon={<Broom16Regular />} onClick={() => void clearShown()}>
-              Clear shown
+              Clear highlights
             </Button>
           </Tooltip>
         </>
@@ -546,9 +547,9 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
           <Button icon={<ArrowRepeatAll16Regular />} disabled={running || !failing.length} onClick={() => void runTests({ tests: failing })}>
             Run failed
           </Button>
-          <Tooltip content="Removes what «Show» drew over the views" relationship="description">
+          <Tooltip content="Removes the red highlights «Highlight» drew over the views" relationship="description">
             <Button icon={<Broom16Regular />} onClick={() => void clearShown()}>
-              Clear shown
+              Clear highlights
             </Button>
           </Tooltip>
         </div>
@@ -641,9 +642,13 @@ function Details(props: {
             <Button size="small" icon={<ScanDash16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "box")}>
               Selection box
             </Button>
-            <Button size="small" icon={<Cube16Regular />} onClick={() => props.onShow(item, "geometry")}>
-              Show
-            </Button>
+            {(test.kind !== "Rule" || item.box || item.point) && (
+              <Tooltip content="Draws it in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+                <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(item, "geometry")}>
+                  Highlight
+                </Button>
+              </Tooltip>
+            )}
           </div>
           <div className="mt-actions">
             {test.fix && item.status === "failed" && (
@@ -683,9 +688,13 @@ function Details(props: {
               <Button size="small" icon={<ScanDash16Regular />} onClick={() => props.onShow(groupOf(result)!, "box")}>
                 Selection box
               </Button>
-              <Button size="small" icon={<Cube16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
-                Show all
-              </Button>
+              {test.kind !== "Rule" && (
+                <Tooltip content="Draws them in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+                  <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
+                    Highlight all
+                  </Button>
+                </Tooltip>
+              )}
             </div>
           )}
           <div className="mt-actions">
