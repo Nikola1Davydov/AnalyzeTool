@@ -105,17 +105,21 @@ public sealed class AcceptModelTestFailures(ModelTestService service) : ICommand
 public sealed record CreateModelTestSuiteRequest(
     [property: Description("The name of the suite, e.g. 'BEP Project X'.")] string Name,
     [property: Description("The id of the folder; made from the name when absent.")] string? Id = null,
-    [property: Description("What the suite checks.")] string? Description = null);
+    [property: Description("What the suite checks.")] string? Description = null,
+    [property: Description("An existing folder (extension id) to add the suite to — a project holds many suites; a new folder when absent.")] string? Extension = null);
 
 /// <summary>Creates a suite of model tests.</summary>
 [McpTool(Title = "Create model tests")]
-[Command(Description = "Creates a folder of model tests in the user's extensions: one C# suite (src\\<Name>.cs) with three example tests, compiled and loaded at once, with its version history. " +
-                       "Edit it with WriteExtensionFile; every save reloads the tests. Returns the extension.")]
+[Command(Description = "Creates a folder of model tests in the user's extensions — a project — with one C# suite (src\\<Name>.cs) of three example tests, compiled and loaded at once, " +
+                       "with its version history; with 'extension' it adds one more suite to that folder instead. Edit it with WriteExtensionFile; every save reloads the tests. Returns the extension.")]
 public sealed class CreateModelTestSuite(ExtensionManager manager) : ICommand<CreateModelTestSuiteRequest, ExtensionSummary>
 {
     /// <inheritdoc />
     public async Task<ExtensionSummary> ExecuteAsync(CreateModelTestSuiteRequest request, CommandContext context)
     {
-        return ExtensionSummary.From(await manager.CreateTestSuiteAsync(request.Name, request.Id, request.Description, null, context.CancellationToken).ConfigureAwait(false));
+        var state = string.IsNullOrWhiteSpace(request.Extension)
+            ? await manager.CreateTestSuiteAsync(request.Name, request.Id, request.Description, null, context.CancellationToken).ConfigureAwait(false)
+            : await manager.AddTestSuiteAsync(request.Extension.Trim(), request.Name, context.CancellationToken).ConfigureAwait(false);
+        return ExtensionSummary.From(state);
     }
 }

@@ -90,7 +90,7 @@ export function ModelTestsPage() {
  * The model tests of the extensions: run them on the open model, look at what failed, repair or accept it. A window shows
  * them as a page; the Tests tab of the pane shows the same, its actions in a row instead of beside a large title.
  */
-export function ModelTests({ layout }: { layout: "page" | "pane" }) {
+export function ModelTests({ layout, extension }: { layout: "page" | "pane"; extension?: string }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const confirm = useConfirm();
@@ -139,11 +139,16 @@ export function ModelTests({ layout }: { layout: "page" | "pane" }) {
   );
 
   const suites = tests.data?.suites ?? [];
+  // A folder of the Tests tab of the pane shows its own suites only
+  const folderSuites = useMemo(() => (extension ? suites.filter((suite) => suite.extensionId === extension) : null), [suites, extension]);
   const allTests = useMemo(() => suites.flatMap((suite) => suite.tests.map((test) => ({ suite, test }))), [suites]);
+  // Inside a folder the counts, «Run failed» and the list are the folder's
+  const scope = extension ? allTests.filter((item) => item.suite.extensionId === extension) : allTests;
   const filtered = useMemo(() => {
     const text = search.trim().toLowerCase();
-    if (!text) return suites;
-    return suites
+    const shown = folderSuites ?? suites;
+    if (!text) return shown;
+    return shown
       .map((suite) => ({
         ...suite,
         tests: suite.tests.filter((test) =>
@@ -151,9 +156,9 @@ export function ModelTests({ layout }: { layout: "page" | "pane" }) {
         ),
       }))
       .filter((suite) => suite.tests.length > 0);
-  }, [suites, search]);
+  }, [suites, folderSuites, search]);
 
-  const failing = allTests.filter(({ test }) => ["failed", "error"].includes(byTest[test.id]?.status ?? "")).map(({ test }) => test.id);
+  const failing = scope.filter(({ test }) => ["failed", "error"].includes(byTest[test.id]?.status ?? "")).map(({ test }) => test.id);
   const selected = selection ? allTests.find(({ test }) => test.id === selection.testId) : undefined;
   const selectedResult = selection ? byTest[selection.testId] : undefined;
   const selectedCase = selection?.key ? selectedResult?.cases.find((item) => item.key === selection.key) : undefined;
@@ -232,7 +237,7 @@ export function ModelTests({ layout }: { layout: "page" | "pane" }) {
     if (!name) return;
     const created = await act<ExtensionSummary>(
       modelTestCommands.CreateModelTestSuite,
-      { name } satisfies CreateModelTestSuiteRequest,
+      { name, extension } satisfies CreateModelTestSuiteRequest,
       () => `Created «${name}»`,
       "The suite was not created",
     );
@@ -248,7 +253,7 @@ export function ModelTests({ layout }: { layout: "page" | "pane" }) {
   }
 
   // The tiles add up every test shown, not only the latest run: running one test keeps the others' results
-  const known = allTests.map(({ test }) => byTest[test.id]).filter((result): result is ModelTestResult => !!result);
+  const known = scope.map(({ test }) => byTest[test.id]).filter((result): result is ModelTestResult => !!result);
   const totals = known.length
     ? {
         tests: known.length,
@@ -423,6 +428,30 @@ export function ModelTests({ layout }: { layout: "page" | "pane" }) {
       )}
     </>
   );
+
+  if (layout === "pane" && extension) {
+    return (
+      <div className="mt-pane">
+        <div className="mt-pane-actions">
+          <Button appearance="primary" icon={running ? <Spinner size="extra-tiny" /> : <Play16Regular />} disabled={running || !scope.length} onClick={() => void runTests({ suite: extension })}>
+            Run folder
+          </Button>
+          <Button icon={<ArrowRepeatAll16Regular />} disabled={running || !failing.length} onClick={() => void runTests({ tests: failing })}>
+            Run failed
+          </Button>
+          <Button icon={<Add16Regular />} onClick={() => setNewSuite(newSuite === null ? "" : null)}>
+            New suite
+          </Button>
+        </div>
+        {run && (
+          <Text size={200} className="muted mt-pane-subtitle">
+            {subtitle}
+          </Text>
+        )}
+        {content}
+      </div>
+    );
+  }
 
   if (layout === "pane") {
     return (

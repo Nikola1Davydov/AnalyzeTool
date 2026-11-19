@@ -29,9 +29,10 @@ public sealed record ModelTestInfo(
 /// <param name="Id">The id: <c>&lt;extension id&gt;.&lt;class&gt;</c>.</param>
 /// <param name="Name">The name shown.</param>
 /// <param name="ExtensionId">The extension it comes from: its versions are the suite's versions.</param>
+/// <param name="ExtensionName">The name of that extension: the folder the Tests tab shows the suite in.</param>
 /// <param name="Directory">The extension folder: the files of the tests are relative to it.</param>
 /// <param name="Tests">Its tests in the order declared.</param>
-public sealed record ModelTestSuiteInfo(string Id, string Name, string ExtensionId, string Directory, IReadOnlyList<ModelTestInfo> Tests);
+public sealed record ModelTestSuiteInfo(string Id, string Name, string ExtensionId, string ExtensionName, string Directory, IReadOnlyList<ModelTestInfo> Tests);
 
 /// <summary>A failing, broken or undecided case of a test: one element, or the model.</summary>
 /// <param name="Key">Identifies the case across runs: what the baseline keeps.</param>

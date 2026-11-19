@@ -285,6 +285,9 @@ internal sealed class SuiteDefinition
     /// <summary>The extension folder.</summary>
     public required string Directory { get; init; }
 
+    /// <summary>The name of the extension.</summary>
+    public string? ExtensionName { get; init; }
+
     /// <summary>Where the accepted failures of this suite live: the extension folder, or the profile for an installed package.</summary>
     public required string BaselineDirectory { get; init; }
 

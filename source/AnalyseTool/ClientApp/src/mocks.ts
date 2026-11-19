@@ -610,6 +610,7 @@ const testSuites: ModelTestList = {
       id: "bep-project-x.BepProjectX",
       name: "BEP Project X",
       extensionId: "bep-project-x",
+      extensionName: "BEP Project X",
       directory: "C:\\Users\\you\\AppData\\Local\\AnalyseTool\\extensions\\bep-project-x",
       tests: [
         { id: "bep-project-x.BepProjectX/doors-fire-rating-not-empty", name: "Doors · Fire Rating · not empty", description: "Doors · Fire Rating · not empty", kind: "Rule", severity: "Error", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 12, fix: "Set to 'EI30'" },
@@ -617,6 +618,17 @@ const testSuites: ModelTestList = {
         { id: "bep-project-x.BepProjectX/swing-zone-is-free", name: "Swing zone is free", description: "Doors · code", kind: "Check", severity: "Warning", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 21, fix: null },
         { id: "bep-project-x.BepProjectX/no-unplaced-rooms", name: "No unplaced rooms", description: "Whole model · code", kind: "Model", severity: "Error", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 28, fix: null },
         { id: "bep-project-x.BepProjectX/ducts-do-not-hit-beams", name: "Ducts do not hit beams", description: "Duct Curves · code", kind: "Check", severity: "Error", traits: ["Discipline=MEP"], slow: true, skip: null, file: "src\\Clashes.cs", line: 9, fix: null },
+      ],
+    },
+    {
+      id: "sikla-test.SiklaTest",
+      name: "Sikla Test",
+      extensionId: "sikla-test",
+      extensionName: "Sikla Test",
+      directory: "C:\\Users\\you\\AppData\\Local\\AnalyseTool\\extensions\\sikla-test",
+      tests: [
+        { id: "sikla-test.SiklaTest/project-number-is-set", name: "Project number is set", description: "Whole model · code", kind: "Model", severity: "Error", traits: [], slow: false, skip: null, file: "src\\SiklaTest.cs", line: 14, fix: null },
+        { id: "sikla-test.SiklaTest/sheet-numbers-are-unique", name: "Sheet numbers are unique", description: "Sheets · SHEET_NUMBER · not empty, unique", kind: "Rule", severity: "Error", traits: ["Discipline=Documentation"], slow: false, skip: null, file: "src\\SiklaTest.cs", line: 70, fix: null },
       ],
     },
   ],

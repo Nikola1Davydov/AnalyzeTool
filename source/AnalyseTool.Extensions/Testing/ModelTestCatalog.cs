@@ -30,7 +30,7 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
     /// <returns>How many suites it has.</returns>
     internal int Load(Assembly assembly, ExtensionDescriptor descriptor, ICollection<string> problems)
     {
-        var suites = Discover(assembly, descriptor.Id, descriptor.Directory, BaselineDirectory(descriptor), problems);
+        var suites = Discover(assembly, descriptor.Id, descriptor.Directory, BaselineDirectory(descriptor), problems, descriptor.Manifest.Name);
         Set(descriptor.Id, suites);
         return suites.Count;
     }
@@ -86,7 +86,8 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
     }
 
     /// <summary>Creates every suite class of an assembly and lets it declare its tests.</summary>
-    internal static List<SuiteDefinition> Discover(Assembly assembly, string extensionId, string extensionDirectory, string baselineDirectory, ICollection<string> problems)
+    internal static List<SuiteDefinition> Discover(Assembly assembly, string extensionId, string extensionDirectory, string baselineDirectory, ICollection<string> problems,
+        string? extensionName = null)
     {
         Type[] types;
         try
@@ -113,6 +114,7 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
                 ExtensionId = extensionId,
                 ClassName = type.Name,
                 Directory = extensionDirectory,
+                ExtensionName = extensionName,
                 BaselineDirectory = baselineDirectory
             };
             var builder = new SuiteBuilder(suite, extensionDirectory);
@@ -140,7 +142,7 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
 
     internal static ModelTestSuiteInfo Describe(SuiteDefinition suite)
     {
-        return new ModelTestSuiteInfo(suite.Id, suite.DisplayName, suite.ExtensionId, suite.Directory, suite.Tests.Select(Describe).ToList());
+        return new ModelTestSuiteInfo(suite.Id, suite.DisplayName, suite.ExtensionId, suite.ExtensionName ?? suite.ExtensionId, suite.Directory, suite.Tests.Select(Describe).ToList());
     }
 
     internal static ModelTestInfo Describe(TestDefinition test)

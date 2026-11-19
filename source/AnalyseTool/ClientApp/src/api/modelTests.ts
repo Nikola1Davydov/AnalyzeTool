@@ -44,6 +44,8 @@ export interface ModelTestSuiteInfo {
   id: string;
   name: string;
   extensionId: string;
+  /** The name of the folder (extension): the Tests tab groups the suites by it. */
+  extensionName: string;
   directory: string;
   tests: ModelTestInfo[];
 }
@@ -150,4 +152,6 @@ export interface CreateModelTestSuiteRequest {
   name: string;
   id?: string | null;
   description?: string | null;
+  /** An existing folder to add the suite to; a new folder when absent. */
+  extension?: string | null;
 }

@@ -1,5 +1,6 @@
 using System.IO;
 using AnalyseTool.Extensions.Authoring;
+using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Tests.Extensions;
 
 namespace AnalyseTool.Tests.ModelTests;
@@ -60,6 +61,25 @@ public sealed class ModelTestLoadingTests
             await Assert.That(suites).HasSingleItem();
             await Assert.That(suites[0].Tests.Single().Id).IsEqualTo("checks.Checks/walls-fire");
             await Assert.That(after.Errors.Any(error => error.Contains("Broken.Define threw InvalidOperationException: not yet"))).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task AddTestSuite_PutsASecondSuiteIntoTheSameFolder()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var state = await environment.Manager.CreateTestSuiteAsync("Project A", null, null, null, CancellationToken.None);
+
+        await environment.Manager.AddTestSuiteAsync(state.Descriptor.Id, "Sheets", CancellationToken.None);
+        var again = async () => await environment.Manager.AddTestSuiteAsync(state.Descriptor.Id, "Sheets", CancellationToken.None);
+
+        var suites = environment.Tests.GetSuites();
+        using (Assert.Multiple())
+        {
+            await Assert.That(suites.Select(suite => suite.Name)).IsEquivalentTo(["Project A", "Sheets"]);
+            await Assert.That(suites.Select(suite => suite.ExtensionName).Distinct()).IsEquivalentTo(["Project A"]);
+            await Assert.That(environment.History.GetHistory(state.Descriptor.Directory).Count).IsEqualTo(2);
+            await Assert.That(again).Throws<CommandException>();
         }
     }
 
