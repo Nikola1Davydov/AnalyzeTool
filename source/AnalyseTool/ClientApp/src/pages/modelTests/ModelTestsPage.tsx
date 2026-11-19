@@ -408,6 +408,16 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                               <Info16Regular />
                             </RowButton>
                           )}
+                          {groupOf(result) && (
+                            <>
+                              <RowButton title="Isolate every failing element in Revit and show them in 3D" onClick={() => void show(groupOf(result)!, "3d")}>
+                                <Cube16Regular />
+                              </RowButton>
+                              <RowButton title="Selection box around every failing element" onClick={() => void show(groupOf(result)!, "box")}>
+                                <ScanDash16Regular />
+                              </RowButton>
+                            </>
+                          )}
                         </div>
                         {inline && selected && selection?.testId === test.id && !selection.key && (
                           <div className="mt-inline">
@@ -637,6 +647,22 @@ function Details(props: {
                 : `${plural(result.checked, "element")} checked · ${result.new} new · ${result.baseline} accepted${result.resolved ? ` · ${result.resolved} accepted no longer fail` : ""} · ${result.milliseconds} ms`}
             </Text>
           )}
+          {groupOf(result) && (
+            <div className="mt-actions">
+              <Button size="small" icon={<Cursor16Regular />} onClick={() => props.onShow(groupOf(result)!, "select")}>
+                Select all
+              </Button>
+              <Button size="small" icon={<Eye16Regular />} onClick={() => props.onShow(groupOf(result)!, "3d")}>
+                Isolate all in 3D
+              </Button>
+              <Button size="small" icon={<ScanDash16Regular />} onClick={() => props.onShow(groupOf(result)!, "box")}>
+                Selection box
+              </Button>
+              <Button size="small" icon={<Cube16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
+                Show all
+              </Button>
+            </div>
+          )}
           <div className="mt-actions">
             <Button size="small" icon={<Play16Regular />} disabled={props.running} onClick={props.onRun}>
               Run this test
@@ -679,6 +705,18 @@ function RowButton({ title, onClick, disabled, children }: { title: string; onCl
       </button>
     </Tooltip>
   );
+}
+
+/**
+ * Every failing element of a test as one case, for the actions on the whole group: the new failures, or every failure when
+ * all are accepted; null when no element failed.
+ */
+function groupOf(result: ModelTestResult | undefined): ModelTestCase | null {
+  const failed = (result?.cases ?? []).filter((item) => item.elementId !== null && item.status !== "error");
+  const shown = failed.some((item) => !item.inBaseline) ? failed.filter((item) => !item.inBaseline) : failed;
+  const ids = [...new Set(shown.map((item) => item.elementId!))];
+  if (!ids.length) return null;
+  return { key: "*", status: "failed", message: "", elementId: ids[0], label: null, related: ids.slice(1), inBaseline: false, point: null, box: null };
 }
 
 function StatusIcon({ status }: { status: TestStatus | undefined }) {
