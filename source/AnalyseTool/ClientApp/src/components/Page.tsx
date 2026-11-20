@@ -5,6 +5,8 @@ import { href } from "../router";
 
 type PageProps = {
   title: ReactNode;
+  /** Sits in the title row, after the title: badges, a small ⓘ. */
+  titleExtra?: ReactNode;
   subtitle?: ReactNode;
   /** A link back, e.g. to the list. */
   back?: { label: string; path: string };
@@ -19,7 +21,7 @@ type PageProps = {
  * A page of its own window, in the look of the dock pane: a frosted navigation bar with «‹ back» when there is a way back,
  * a large title with the actions beside it, the content on the grouped background.
  */
-export function Page({ title, subtitle, back, actions, children, narrow, compact }: PageProps) {
+export function Page({ title, titleExtra, subtitle, back, actions, children, narrow, compact }: PageProps) {
   return (
     <div className={`app-page${compact ? " compact" : ""}`}>
       {back && (
@@ -41,6 +43,7 @@ export function Page({ title, subtitle, back, actions, children, narrow, compact
                 mock
               </Badge>
             )}
+            {titleExtra}
           </div>
           {actions && <div className="app-page-actions">{actions}</div>}
         </header>

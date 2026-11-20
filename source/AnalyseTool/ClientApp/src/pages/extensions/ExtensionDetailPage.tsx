@@ -107,30 +107,28 @@ function Detail({ extension, query }: { extension: ExtensionSummary; query: URLS
     <Page
       title={extension.name}
       back={{ label: "Extensions", path: "/extensions" }}
-      subtitle={
-        <div className="detail-subtitle">
-          <span className="badges">
-            <KindBadge extension={extension} />
-            <StatusBadges extension={extension} />
-            <VersionBadge extension={extension} />
-            {/* The reference card: everything that is good to have but not worked with every day */}
-            <Popover withArrow positioning="below-start">
-              <PopoverTrigger disableButtonEnhancement>
-                <Button appearance="subtle" size="small" icon={<Info16Regular />} aria-label="About this extension" />
-              </PopoverTrigger>
-              <PopoverSurface className="detail-info">
-                <span className="muted small">
-                  <span className="mono">{extension.id}</span> · v{extension.version}
-                  {extension.publisher && <> · {extension.publisher}</>}
-                </span>
-                {extension.buttons.length > 0 && <span className="small">Buttons: {extension.buttons.join(", ")}</span>}
-                {extension.commands.length > 0 && <span className="small">Commands: {extension.commands.join(", ")}</span>}
-                {extension.description && <Text>{extension.description}</Text>}
-                <code className="path small">{extension.directory}</code>
-              </PopoverSurface>
-            </Popover>
-          </span>
-        </div>
+      titleExtra={
+        <span className="badges">
+          <KindBadge extension={extension} />
+          <StatusBadges extension={extension} />
+          <VersionBadge extension={extension} />
+          {/* The reference card: everything that is good to have but not worked with every day */}
+          <Popover withArrow positioning="below-start">
+            <PopoverTrigger disableButtonEnhancement>
+              <Button appearance="subtle" size="small" icon={<Info16Regular />} aria-label="About this extension" />
+            </PopoverTrigger>
+            <PopoverSurface className="detail-info">
+              <span className="muted small">
+                <span className="mono">{extension.id}</span> · v{extension.version}
+                {extension.publisher && <> · {extension.publisher}</>}
+              </span>
+              {extension.buttons.length > 0 && <span className="small">Buttons: {extension.buttons.join(", ")}</span>}
+              {extension.commands.length > 0 && <span className="small">Commands: {extension.commands.join(", ")}</span>}
+              {extension.description && <Text>{extension.description}</Text>}
+              <code className="path small">{extension.directory}</code>
+            </PopoverSurface>
+          </Popover>
+        </span>
       }
       actions={
         <Menu>
