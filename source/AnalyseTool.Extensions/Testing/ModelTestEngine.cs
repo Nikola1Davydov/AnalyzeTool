@@ -233,7 +233,7 @@ internal static class ModelTestEngine
                 var others = members.Where(other => !ReferenceEquals(other, element)).ToList();
                 recorder.Add("failed", $"«{label}» '{group.Key}' is used by {others.Count} other element{(others.Count == 1 ? "" : "s")}",
                     // The others are not part of the key: who else shares the value changes, the failure stays the same
-                    new Evidence { Element = element, Related = others.Take(20).ToList(), Key = "unique" }, value);
+                    new Evidence { Element = element, Related = others.Take(20).ToList(), Key = "unique" }, value, relatedInKey: false);
             }
         }
     }
@@ -251,9 +251,10 @@ internal static class ModelTestEngine
         var newCount = failed - baseline;
         var inconclusive = cases.Count(item => item.Status == "inconclusive");
         var errors = cases.Count(item => item.Status == "error");
-        var failing = cases.Where(item => item.Status == "failed").Select(item => item.Key).ToHashSet(StringComparer.Ordinal);
+        // An accepted case that now errors or is inconclusive was not checked, so it is not resolved either
+        var seen = cases.Select(item => item.Key).ToHashSet(StringComparer.Ordinal);
         // On a part of the model an accepted case that did not fail may just not have been looked at
-        var resolved = everyElement ? accepted.Count(key => !failing.Contains(key)) : 0;
+        var resolved = everyElement ? accepted.Count(key => !seen.Contains(key)) : 0;
         var status = newCount > 0 ? "failed" : errors > 0 ? "error" : inconclusive > 0 ? "inconclusive" : "passed";
         var ordered = cases
             .OrderBy(item => item.Status switch { "failed" when !item.InBaseline => 0, "error" => 1, "inconclusive" => 2, _ => 3 })
@@ -279,14 +280,15 @@ internal static class ModelTestEngine
         /// <param name="message">What is wrong.</param>
         /// <param name="evidence">What it points at.</param>
         /// <param name="value">The value a rule found, shown with the case.</param>
-        public void Add(string status, string message, Evidence? evidence, ModelValue? value = null)
+        /// <param name="relatedInKey">Whether the related elements tell this case apart (two clashes of one duct), or only point at it.</param>
+        public void Add(string status, string message, Evidence? evidence, ModelValue? value = null, bool relatedInKey = true)
         {
             var element = evidence?.Element ?? Subject;
             var info = element is null ? null : Describe(element);
             var related = (evidence?.Related ?? []).Select(Describe).ToList();
             var key = string.Join('|',
                 info?.UniqueId ?? ModelKeyPrefix,
-                string.Join(',', related.Select(item => item.UniqueId).Order(StringComparer.Ordinal)),
+                relatedInKey ? string.Join(',', related.Select(item => item.UniqueId).Order(StringComparer.Ordinal)) : "",
                 evidence?.Key ?? (info is null ? message : ""));
             // One element failing a check twice: the second failure is a case of its own
             var seen = _keys.GetValueOrDefault(key) + 1;

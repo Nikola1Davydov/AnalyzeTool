@@ -91,8 +91,10 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
         }
 
         var suites = new List<SuiteDefinition>();
-        // Two classes of one name in two namespaces: the second is told apart by its full name
-        var names = types.Where(type => typeof(IModelTestSuite).IsAssignableFrom(type)).GroupBy(type => type.Name).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet();
+        // Two classes of one name in two namespaces: the second is told apart by its full name. Case does not
+        // count as a difference: suite ids are compared ignoring it everywhere else
+        var names = types.Where(type => typeof(IModelTestSuite).IsAssignableFrom(type)).GroupBy(type => type.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var type in types.Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IModelTestSuite).IsAssignableFrom(type)))
         {
             if (type.GetConstructor(Type.EmptyTypes) is null)

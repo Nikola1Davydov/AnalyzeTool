@@ -171,6 +171,28 @@ public sealed class ModelTestEngineTests
     }
 
     [Test]
+    public async Task Rule_Unique_CaseKeys_DoNotDependOnWhoElseSharesTheValue()
+    {
+        var model = new FakeModel();
+        model.Add(1, BuiltInCategory.OST_Rooms, parameters: ("Number", "0.14"));
+        model.Add(2, BuiltInCategory.OST_Rooms, parameters: ("Number", "0.14"));
+        var test = Define(s => s.Elements(BuiltInCategory.OST_Rooms).Parameter("Number").Unique()).Tests.Single();
+
+        var two = ModelTestEngine.Run(test, model, new HashSet<string>(), All, CancellationToken.None);
+        var accepted = two.Cases.Select(item => item.Key).ToHashSet(StringComparer.Ordinal);
+        model.Add(3, BuiltInCategory.OST_Rooms, parameters: ("Number", "0.14"));
+        var three = ModelTestEngine.Run(test, model, accepted, All, CancellationToken.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(two.Cases.Select(item => item.Key)).IsEquivalentTo(["uid-1||unique", "uid-2||unique"]);
+            // A third element joining the duplicates is the only new failure: the accepted two keep their keys
+            await Assert.That(three.New).IsEqualTo(1);
+            await Assert.That(three.Cases.Single(item => !item.InBaseline).ElementId).IsEqualTo(3L);
+        }
+    }
+
+    [Test]
     public async Task Baseline_AcceptedFailures_DoNotFail_AndFixedOnesCountAsResolved()
     {
         var model = new FakeModel();
@@ -187,6 +209,23 @@ public sealed class ModelTestEngineTests
             await Assert.That(result.New).IsEqualTo(0);
             await Assert.That(result.Resolved).IsEqualTo(1);
             await Assert.That(result.Cases.Single().InBaseline).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Baseline_AnAcceptedCaseThatNowErrors_IsNotResolved()
+    {
+        var model = new FakeModel();
+        model.Add(1, BuiltInCategory.OST_Doors, parameters: ("Mark", ""));
+        var test = Define(s => s.Elements(BuiltInCategory.OST_Doors).Check("Mark ok", (_, _) => throw new InvalidOperationException("bad"))).Tests.Single();
+
+        var result = ModelTestEngine.Run(test, model, new HashSet<string> { "uid-1||" }, All, CancellationToken.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Errors).IsEqualTo(1);
+            // The element was not checked, only broken: its accepted failure is not resolved
+            await Assert.That(result.Resolved).IsEqualTo(0);
         }
     }
 
@@ -352,7 +391,7 @@ public sealed class ModelTestEngineTests
         model.Add(2, BuiltInCategory.OST_Doors, parameters: ("Mark", ""));
         var suite = Define(s => s.Elements(BuiltInCategory.OST_Doors).Parameter("Mark").NotEmpty());
         var test = suite.Tests.Single();
-        ModelTestBaseline.Change(suite.BaselineDirectory, model.ModelKey, model.ModelTitle, test.LocalId!, [Case("uid-1||")], [], "me");
+        ModelTestBaseline.Change(suite.BaselineDirectory, model.ModelKey, model.ModelTitle, test.BaselineId, [Case("uid-1||")], [], "me");
         var history = TempDirectory();
         var tests = ModelTestService.Select([suite], All);
 
@@ -369,6 +408,61 @@ public sealed class ModelTestEngineTests
             await Assert.That(partial.Trend.Count).IsEqualTo(1);
             await Assert.That(second.Trend.Count).IsEqualTo(2);
             await Assert.That(second.Trigger).IsEqualTo("watch");
+        }
+    }
+
+    [Test]
+    public async Task Execute_TrendOfAFullRun_LeavesTheSlowTestsOut()
+    {
+        var model = new FakeModel();
+        model.Add(1, BuiltInCategory.OST_Doors, parameters: ("Mark", ""));
+        var suite = Define(s =>
+        {
+            s.Elements(BuiltInCategory.OST_Doors).Parameter("Mark").NotEmpty();
+            s.Test("Slow sweep", m => m.Assert.Fail("heavy")).Slow();
+        });
+        var history = TempDirectory();
+        var tests = ModelTestService.Select([suite], All);
+
+        var run = ModelTestService.Execute(model, tests, new ModelTestRunOptions(IncludeSlow: true), "page", history, CancellationToken.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(run.Full).IsTrue();
+            await Assert.That(run.Totals.NewCases).IsEqualTo(2);
+            // The slow test's failure stays out of the trend: it compares the default runs with each other
+            await Assert.That(run.Trend.Single().NewCases).IsEqualTo(1);
+            await Assert.That(run.Trend.Single().Failed).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task Baseline_TwoSuitesOfOneExtension_KeepTheirEntriesApart()
+    {
+        var directory = TempDirectory();
+        var model = new FakeModel();
+        model.Add(1, BuiltInCategory.OST_Doors, parameters: ("Mark", ""));
+        SuiteDefinition Make(string className)
+        {
+            var suite = new SuiteDefinition { Id = $"bep.{className}", ExtensionId = "bep", ClassName = className, Directory = directory, BaselineDirectory = directory };
+            var builder = new SuiteBuilder(suite, directory);
+            builder.Elements(BuiltInCategory.OST_Doors).Parameter("Mark").NotEmpty();
+            builder.Complete();
+            return suite;
+        }
+
+        var a = Make("SuiteA");
+        var b = Make("SuiteB");
+        ModelTestBaseline.Change(directory, model.ModelKey, model.ModelTitle, a.Tests.Single().BaselineId, [Case("uid-1||")], [], "me");
+
+        var run = ModelTestService.Execute(model, ModelTestService.Select([a, b], All), All, "page", null, CancellationToken.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(a.Tests.Single().BaselineId).IsEqualTo("SuiteA/doors-mark-not-empty");
+            // The suites share the baseline file (one folder), not the entries: accepting in A says nothing about B
+            await Assert.That(run.Results[0].Status).IsEqualTo("passed");
+            await Assert.That(run.Results[1].Status).IsEqualTo("failed");
         }
     }
 

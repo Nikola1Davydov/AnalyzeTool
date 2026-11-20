@@ -273,6 +273,13 @@ internal sealed class TestDefinition
 
     public string Id => $"{SuiteId}/{LocalId}";
 
+    /// <summary>
+    ///     The id the baseline files the accepted failures under: <c>&lt;suite class&gt;/&lt;test id&gt;</c>. Suites of one
+    ///     extension share the baseline file, so the suite must be in the key; the extension (= the folder) must not, or
+    ///     renaming the folder would orphan every baseline in it.
+    /// </summary>
+    public string BaselineId => $"{(SuiteId.StartsWith(ExtensionId + ".", StringComparison.OrdinalIgnoreCase) ? SuiteId[(ExtensionId.Length + 1)..] : SuiteId)}/{LocalId}";
+
     public string Name => ExplicitName ?? DefaultName;
 
     /// <summary>The name of a code test, or the rule described.</summary>

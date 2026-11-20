@@ -558,6 +558,54 @@ per chunk — a single long call blocks Revit's UI thread, and the updates only 
 Commands that don't implement `IProgressAware` are completely unaffected; SDK 1.0 extensions keep
 working unchanged.
 
+### 4.7 Model tests (SDK 1.3, optional)
+
+An extension can also declare **model tests**: checks of the open model, written like unit tests.
+Implement `AnalyseTool.Sdk.Testing.IModelTestSuite` in any public class with a parameterless
+constructor — AnalyseTool finds every such class when the extension loads, calls `Define` once, and
+runs the declared tests from the Model tests page (the Tests tab of the pane) or over MCP.
+
+```csharp
+using AnalyseTool.Sdk.Testing;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
+
+public sealed class BepProjectX : IModelTestSuite
+{
+    public void Define(ISuite s)
+    {
+        s.Name("BEP Project X");
+
+        // A rule: one value per element, the conditions checked in order
+        s.Elements(BuiltInCategory.OST_Doors)
+         .Parameter(BuiltInParameter.ALL_MODEL_MARK).NotEmpty().FixValue("—");
+
+        // A rule with a filter, per element class
+        s.Elements<Room>().Where(room => room.Area > 0)
+         .Parameter(BuiltInParameter.ROOM_NUMBER).NotEmpty().Unique();
+
+        // Code for the whole model: assert through the context
+        s.Test("No unplaced rooms", m =>
+            m.Assert.Empty(m.Elements<Room>().Where(room => room.Location == null), "The room is not placed"));
+    }
+}
+```
+
+What to know:
+
+- `Define` only **describes** the tests — there is no model there. The lambdas run on the Revit
+  thread when the tests run, inside a transaction group that is always rolled back: a test cannot
+  change the model.
+- `Fix("…", element => …)` / `FixValue("…")` declare a **repair** the page and AI clients offer for
+  failing elements; it runs in one transaction (one Ctrl+Z).
+- Failures can be **accepted** into a baseline (`baseline\<model>.json` next to the tests, versioned
+  with them) so an existing model starts clean and only new failures fail.
+- `.Slow()` keeps an expensive test (geometry, the whole model) out of the default run; `.Id("…")`
+  pins the id the baseline is kept under across renames.
+
+The full guide — every rule, `Evidence`, units, severity — is in `LLM.md` next to the installed
+add-in, section «Model tests» (also served to AI clients by `GetAuthoringGuide`).
+
 ## 5. Writing a JS / UI extension
 
 The host opens your page in its own WebView2 window and injects a `window.AT` bridge. **Any
@@ -921,6 +969,13 @@ public sealed record ProgressInfo(double Fraction, string? Message = null);
 public interface IProgressAware
 {
     IProgress<ProgressInfo>? Progress { get; set; }
+}
+
+// OPTIONAL (SDK 1.3+): model tests (§4.7). The fluent surface lives in AnalyseTool.Sdk.Testing:
+// ISuite, IElementSet<T>, IValueRule<T>, IModelTestContext, IModelAssert, Evidence, Units.
+public interface IModelTestSuite
+{
+    void Define(ISuite suite);
 }
 ```
 

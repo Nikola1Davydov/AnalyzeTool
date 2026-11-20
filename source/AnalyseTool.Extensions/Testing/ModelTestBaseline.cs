@@ -18,7 +18,7 @@ public sealed class BaselineFile
     /// <summary>Gets or sets the title of the model, for people reading the file.</summary>
     public string? Model { get; set; }
 
-    /// <summary>Gets or sets the accepted failures by test id within the suite.</summary>
+    /// <summary>Gets or sets the accepted failures by <c>&lt;suite class&gt;/&lt;test id&gt;</c> — suites of one extension share the file.</summary>
     public SortedDictionary<string, List<BaselineEntry>> Tests { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 

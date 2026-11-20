@@ -66,8 +66,15 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         }, cancellationToken).ConfigureAwait(false);
 
         _last = run;
-        // The statistics: every run counts, whoever started it
-        usage.Record(run, tests.ToDictionary(pair => pair.Test.Id, pair => (pair.Test.Name, pair.Suite.DisplayName, pair.Suite.ExtensionId), StringComparer.OrdinalIgnoreCase));
+        // The statistics: every run counts, whoever started it. Written key by key: two ids differing
+        // only by case (two suite classes may) must not fail the run after it finished
+        var names = new Dictionary<string, (string Test, string Suite, string ExtensionId)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (suite, test) in tests)
+        {
+            names[test.Id] = (test.Name, suite.DisplayName, suite.ExtensionId);
+        }
+
+        usage.Record(run, names);
         Completed?.Invoke(this, run);
         return run;
     }
@@ -92,7 +99,11 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
                 ? keys
                 : RunAlone(document, access, suite, test, cancellationToken).Cases.Where(item => item.Status == "failed" && !item.InBaseline).Select(item => item.Key).ToList();
             using var transaction = new Transaction(document, $"AnalyseTool: {test.FixLabel}");
-            transaction.Start();
+            if (transaction.Start() != TransactionStatus.Started)
+            {
+                throw new CommandException(ExtensionErrorCodes.Invalid, "The model cannot be changed right now: the document is read-only or busy.");
+            }
+
             var (fixedCount, problems) = ModelTestEngine.Fix(test, access, chosen, cancellationToken);
             if (fixedCount > 0)
             {
@@ -146,7 +157,7 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
                 baselines[suite.Id] = baseline;
             }
 
-            results.Add(ModelTestEngine.Run(test, access, ModelTestBaseline.Accepted(baseline, test.LocalId!), options, cancellationToken));
+            results.Add(ModelTestEngine.Run(test, access, ModelTestBaseline.Accepted(baseline, test.BaselineId), options, cancellationToken));
         }
 
         var totals = new ModelTestTotals(
@@ -161,7 +172,15 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
             results.Sum(result => result.Inconclusive));
         var at = DateTimeOffset.Now;
         var full = options.IsFull;
-        var trend = historyDirectory is null ? [] : Trend(historyDirectory, modelKey, full ? new ModelTestTrendPoint(at, totals.NewCases, totals.BaselineCases, totals.Failed) : null);
+        ModelTestTrendPoint? point = null;
+        if (full)
+        {
+            // The trend compares like with like: a full run may add the slow tests (IncludeSlow), their counts stay out of it
+            var steady = results.Where((result, index) => !tests[index].Test.Slow).ToList();
+            point = new ModelTestTrendPoint(at, steady.Sum(result => result.New), steady.Sum(result => result.Baseline), steady.Count(result => result.Status == "failed"));
+        }
+
+        var trend = historyDirectory is null ? [] : Trend(historyDirectory, modelKey, point);
         return new ModelTestRun(access.ModelTitle, modelKey, at, stopwatch.ElapsedMilliseconds, trigger, full, totals, results, trend);
     }
 
@@ -185,8 +204,8 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         var chosen = keys is { Count: > 0 } ? keys.ToHashSet(StringComparer.Ordinal) : null;
         if (remove)
         {
-            var current = ModelTestBaseline.Accepted(ModelTestBaseline.Load(suite.BaselineDirectory, modelKey), test.LocalId!);
-            return ModelTestBaseline.Change(suite.BaselineDirectory, modelKey, modelTitle, test.LocalId!, [], chosen ?? current.ToHashSet(StringComparer.Ordinal), ExtensionManager.Author);
+            var current = ModelTestBaseline.Accepted(ModelTestBaseline.Load(suite.BaselineDirectory, modelKey), test.BaselineId);
+            return ModelTestBaseline.Change(suite.BaselineDirectory, modelKey, modelTitle, test.BaselineId, [], chosen ?? current.ToHashSet(StringComparer.Ordinal), ExtensionManager.Author);
         }
 
         if (latest is null)
@@ -195,7 +214,7 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         }
 
         var accept = latest.Cases.Where(item => item.Status == "failed" && (chosen is null || chosen.Contains(item.Key))).ToList();
-        return ModelTestBaseline.Change(suite.BaselineDirectory, modelKey, modelTitle, test.LocalId!, accept, [], ExtensionManager.Author);
+        return ModelTestBaseline.Change(suite.BaselineDirectory, modelKey, modelTitle, test.BaselineId, accept, [], ExtensionManager.Author);
     }
 
     private string HistoryDirectory => Path.Combine(paths.ProfileRoot, "model-tests", "history");
@@ -212,7 +231,7 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         var started = !document.IsReadOnly && !document.IsModifiable && group.Start() == TransactionStatus.Started;
         try
         {
-            var accepted = ModelTestBaseline.Accepted(ModelTestBaseline.Load(suite.BaselineDirectory, access.ModelKey), test.LocalId!);
+            var accepted = ModelTestBaseline.Accepted(ModelTestBaseline.Load(suite.BaselineDirectory, access.ModelKey), test.BaselineId);
             return ModelTestEngine.Run(test, access, accepted, new ModelTestRunOptions(Tests: [test.Id], IncludeSlow: true, MaxCases: int.MaxValue), cancellationToken);
         }
         finally

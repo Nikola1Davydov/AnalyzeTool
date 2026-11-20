@@ -65,6 +65,8 @@ public sealed class ViewActionsService
             return new ShowIn3DResult(false, 0, null, "The model has no 3D view type to create a 3D view from.");
         }
 
+        // Read before any rollback: a rollback deletes a view this transaction created, and its Name with it
+        var viewName = view.Name;
         if (view.IsTemporaryHideIsolateActive())
         {
             view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
@@ -77,7 +79,7 @@ public sealed class ViewActionsService
             if (box is null)
             {
                 transaction.RollBack();
-                return new ShowIn3DResult(false, 0, view.Name, "The elements have no geometry to put a section box around.");
+                return new ShowIn3DResult(false, 0, viewName, "The elements have no geometry to put a section box around.");
             }
 
             view.SetSectionBox(box);
@@ -97,7 +99,7 @@ public sealed class ViewActionsService
         var rolledBack = failures.RollbackReason(transaction.Commit());
         if (rolledBack is not null)
         {
-            return new ShowIn3DResult(false, 0, view.Name, rolledBack);
+            return new ShowIn3DResult(false, 0, viewName, rolledBack);
         }
 
         if (uiDocument.ActiveView?.Id != view.Id)
@@ -117,7 +119,7 @@ public sealed class ViewActionsService
             open?.ZoomToFit();
         }
 
-        return new ShowIn3DResult(true, ids.Count, view.Name, null);
+        return new ShowIn3DResult(true, ids.Count, viewName, null);
     }
 
     private static IEnumerable<XYZ> Corners(XYZ min, XYZ max)
