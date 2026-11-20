@@ -36,11 +36,11 @@
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). Ahead of
-         nuget.org on purpose: 1.1.2 dropped the duplicated Revit API references (NU1504) and 1.2.0
-         adds OutputType. A published version is immutable, so each fix needs a new number to reach
-         anyone. Docs still pin 1.1.2 — what authors can restore today — and move only in the same
-         commit as the push. -->
+    <!-- The version the Release workflow pushes to NuGet (Trusted Publishing; skip-duplicate, so an
+         unchanged version is skipped). Ahead of nuget.org until the next release: 1.1.2 dropped the
+         duplicated Revit API references (NU1504), 1.2.0 adds OutputType, 1.3.0 the model tests. A
+         published version is immutable, so each fix needs a new number to reach anyone. Docs still
+         pin 1.1.2 — what authors can restore today — and move only with the release that pushes. -->
     <Version>1.3.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>

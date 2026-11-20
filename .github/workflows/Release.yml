@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: write
+  # For NuGet Trusted Publishing: the job's OIDC token is exchanged for a one-hour NuGet key
+  id-token: write
 
 concurrency:
   group: release
@@ -77,6 +79,29 @@ jobs:
         working-directory: "build"
         env:
           DOTNET_ENVIRONMENT: Production
+
+      # The Sdk goes to NuGet with the release, via Trusted Publishing — no stored API key. Once, by hand:
+      #   - nuget.org › profile › Trusted Publishing › new policy: repository owner Nikola1Davydov,
+      #     repository AnalyzeTool, workflow file Release.yml, no environment;
+      #   - the repository secret NUGET_USER = the nuget.org profile name (not the email).
+      # --skip-duplicate makes it idempotent: an Sdk version that is on nuget.org already is skipped, so
+      # releases that do not touch the Sdk need nothing. Before the GitHub release on purpose: a failed
+      # push stops the release before the tag exists.
+      - name: Pack the Sdk
+        if: steps.version.outputs.release == 'true'
+        run: dotnet pack source/AnalyseTool.Sdk/AnalyseTool.Sdk.csproj -c Release.R25 -o output/nuget
+
+      - name: NuGet login (Trusted Publishing)
+        if: steps.version.outputs.release == 'true'
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push the Sdk to NuGet
+        if: steps.version.outputs.release == 'true'
+        shell: pwsh
+        run: dotnet nuget push output/nuget/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --skip-duplicate
 
       - name: Publish the release
         if: steps.version.outputs.release == 'true'
