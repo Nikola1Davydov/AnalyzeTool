@@ -227,3 +227,12 @@ public struct PlainSettings
 {
     public int Level { get; set; }
 }
+
+public sealed class SlowCommand : ICommand<string>
+{
+    public async Task<string> ExecuteAsync(CommandContext context)
+    {
+        await Task.Delay(120, context.CancellationToken);
+        return "done";
+    }
+}
