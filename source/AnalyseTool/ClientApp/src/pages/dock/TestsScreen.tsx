@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { bridge } from "revit-bridge";
 import type { ExtensionSummary } from "../../api/extensions";
 import {
@@ -9,6 +9,7 @@ import {
   type ModelTestRun,
   type ModelTestSuiteInfo,
   modelTestCommands,
+  modelTestsRanEvent,
 } from "../../api/modelTests";
 import { appQueryKey, useAppQuery } from "../../revit/hooks";
 import { messageOf, SHEET_FORM, useActions } from "./Actions";
@@ -34,6 +35,16 @@ export function useTestFolders(enabled = true) {
   return useAppQuery<ModelTestList>(modelTestCommands.GetModelTests, null, { enabled });
 }
 
+/** The latest run, kept fresh: a run from an AI client or another window updates the badges here too. */
+function useLatestRun() {
+  const queryClient = useQueryClient();
+  useEffect(() => bridge.on(modelTestsRanEvent, () => void queryClient.invalidateQueries({ queryKey: ["modelTestResults"] })), [queryClient]);
+  return useQuery({
+    queryKey: ["modelTestResults"],
+    queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
+  });
+}
+
 /**
  * The first screen of the Tests tab, laid out like the folders of Tools: a project is a folder, its suites are inside. A tile
  * shows a red badge with the new failures of the latest run.
@@ -41,10 +52,7 @@ export function useTestFolders(enabled = true) {
 export function TestsScreen({ onOpen, onGuide }: { onOpen: (id: string) => void; onGuide: () => void }) {
   const actions = useActions();
   const tests = useTestFolders();
-  const latest = useQuery({
-    queryKey: ["modelTestResults"],
-    queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
-  });
+  const latest = useLatestRun();
   const results = new Map<string, ModelTestResult>((latest.data?.results ?? []).map((result) => [result.testId, result]));
   const folders = testFolders(tests.data);
 
@@ -104,10 +112,7 @@ export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (
   const actions = useActions();
   const queryClient = useQueryClient();
   const tests = useTestFolders();
-  const latest = useQuery({
-    queryKey: ["modelTestResults"],
-    queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
-  });
+  const latest = useLatestRun();
   const [running, setRunning] = useState(false);
   const found = testFolders(tests.data).find((item) => item.id === folder);
   const results = new Map<string, ModelTestResult>((latest.data?.results ?? []).map((result) => [result.testId, result]));

@@ -228,6 +228,49 @@ code.block,
   flex-direction: column;
   gap: 4px;
 }
+/* The ⓘ card of an extension: the reference lines the header no longer carries */
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+}
+.detail-info .path {
+  white-space: normal;
+  word-break: break-all;
+}
+/* Preview of a button's page: how it looked beside how it looks */
+.page-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.page-preview-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.page-preview-frame {
+  width: 100%;
+  height: 420px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  background: #fff;
+}
+.page-preview-none {
+  display: grid;
+  place-items: center;
+  height: 420px;
+  border: 1px dashed var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+@media (max-width: 900px) {
+  .page-preview {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* A card of the grouped list: white on the grey page, no border, rounded */
 .panel {
@@ -1792,6 +1835,21 @@ code.block,
   font-size: var(--fontSizeBase200);
   color: var(--colorNeutralForeground2);
   white-space: nowrap;
+}
+button.mt-chip {
+  font-family: inherit;
+  cursor: pointer;
+}
+button.mt-chip:hover {
+  border-color: var(--colorNeutralStroke1);
+}
+.mt-chip.on {
+  background: var(--colorBrandBackground2);
+  border-color: var(--colorBrandStroke1);
+}
+.mt-chip.on,
+.mt-chip.on b {
+  color: var(--colorBrandForeground1);
 }
 .mt-chip b {
   color: var(--colorNeutralForeground1);

@@ -335,14 +335,27 @@ type ChangesPanelProps = {
   onPin: (version: ExtensionVersion | null) => void;
 };
 
+type ChangesView = DiffMode | "preview";
+
+/** A file the Preview mode can render: the page of the button. */
+function isPage(file: ExtensionFileDiff) {
+  return !file.binary && /\.html?$/i.test(file.file);
+}
+
 /** The diff of the unsaved changes, or of what one version changed, file by file. */
 function ChangesPanel({ extension, selection, latest, onRestoreVersion, onRestoreFile, onDeleteNewFile, onPin }: ChangesPanelProps) {
-  const [mode, setMode] = useState<DiffMode>(() => (window.innerWidth > 1100 ? "split" : "unified"));
+  // Nothing picked: a page shows as the page (Preview), code as a diff
+  const [view, setView] = useState<ChangesView | null>(null);
   const request: ExtensionDiffRequest =
     selection.kind === "unsaved" ? { id: extension.id } : { id: extension.id, to: selection.version.id };
   const diff = useAppQuery<ExtensionFileDiff[]>(extensionCommands.GetExtensionDiff, request);
   const version = selection.kind === "version" ? selection.version : null;
   const running = version && sameVersion(version.id, extension.loadedVersion);
+  const pages = (diff.data ?? []).filter(isPage);
+  const fallback: DiffMode = window.innerWidth > 1100 ? "split" : "unified";
+  // The pick survives switching to a selection without a page: the diff shows instead
+  const shown: ChangesView = view && !(view === "preview" && !pages.length) ? view : pages.length ? "preview" : fallback;
+  const mode: DiffMode = shown === "preview" ? "unified" : shown;
 
   return (
     <section className="panel changes-panel">
@@ -381,9 +394,10 @@ function ChangesPanel({ extension, selection, latest, onRestoreVersion, onRestor
               )}
             </>
           )}
-          <TabList size="small" selectedValue={mode} onTabSelect={(_, data) => setMode(data.value as DiffMode)}>
+          <TabList size="small" selectedValue={shown} onTabSelect={(_, data) => setView(data.value as ChangesView)}>
             <Tab value="unified">Unified</Tab>
             <Tab value="split">Side by side</Tab>
+            {pages.length > 0 && <Tab value="preview">Preview</Tab>}
           </TabList>
         </div>
       </header>
@@ -391,7 +405,21 @@ function ChangesPanel({ extension, selection, latest, onRestoreVersion, onRestor
       {diff.isPending && <Spinner size="small" label="Comparing…" />}
       {diff.isError && <Text className="error-text">{errorText(diff.error)}</Text>}
       {diff.isSuccess && !diff.data.length && <Empty>No changes.</Empty>}
-      {diff.data?.map((file) => (
+      {shown === "preview" &&
+        pages.map((file) => (
+          <PagePreview
+            key={`${request.to ?? "work"}:${file.file}`}
+            file={file}
+            beforeLabel={version ? `Before ${version.shortId}` : latest ? `Latest version (${latest.shortId})` : "Before"}
+            afterLabel={version ? `In ${version.shortId}` : "The files now"}
+          />
+        ))}
+      {shown === "preview" && diff.isSuccess && pages.length < diff.data.length && (
+        <Text size={200} className="muted">
+          Only the page is previewed; the other {diff.data.length - pages.length} changed file(s) are in the diff.
+        </Text>
+      )}
+      {shown !== "preview" && diff.data?.map((file) => (
         <FileDiff
           key={`${request.to ?? "work"}:${file.file}`}
           file={file}
@@ -453,6 +481,41 @@ function FileDiff({ file, mode, action }: { file: ExtensionFileDiff; mode: DiffM
         {action}
       </div>
       {open && <DiffView before={file.before} after={file.after} binary={file.binary} mode={mode} />}
+    </div>
+  );
+}
+
+// Preview: the page renders its own layout; nothing reaches Revit — calls of the bridge stay pending forever,
+// so spinners and empty tables show instead of errors
+const AT_STUB = `<script>window.AT = { preview: true, inRevit: false, invoke: () => new Promise(() => {}), on: () => () => {} };</script>`;
+
+/** The stub goes in before the page's own scripts, so the first AT.invoke already finds it. */
+function withStub(html: string) {
+  return /<head[^>]*>/i.test(html) ? html.replace(/<head([^>]*)>/i, (match) => match + AT_STUB) : AT_STUB + html;
+}
+
+/** The page of the button rendered from the diff: how it looked beside how it looks. */
+function PagePreview({ file, beforeLabel, afterLabel }: { file: ExtensionFileDiff; beforeLabel: string; afterLabel: string }) {
+  return (
+    <div className="page-preview">
+      <PreviewFrame title={`${beforeLabel} · ${file.file}`} html={file.before} />
+      <PreviewFrame title={`${afterLabel} · ${file.file}`} html={file.after} />
+    </div>
+  );
+}
+
+function PreviewFrame({ title, html }: { title: string; html: string | null }) {
+  return (
+    <div className="page-preview-side">
+      <Text size={200} className="muted truncate">
+        {title}
+      </Text>
+      {html === null ? (
+        <div className="page-preview-none muted small">The file does not exist here.</div>
+      ) : (
+        // allow-scripts without allow-same-origin: the page runs isolated and cannot reach this window or the bridge
+        <iframe className="page-preview-frame" sandbox="allow-scripts" srcDoc={withStub(html)} title={title} />
+      )}
     </div>
   );
 }

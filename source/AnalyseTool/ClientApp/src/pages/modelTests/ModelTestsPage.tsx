@@ -55,6 +55,9 @@ const SHOWN_CASES = 50;
 
 type Selection = { testId: string; key: string | null };
 
+/** What a chip of the strip narrows the list to. */
+type StatusFilter = "passed" | "new" | "accepted" | "inconclusive";
+
 function readFlag(key: string): boolean {
   try {
     return localStorage.getItem(key) === "1";
@@ -110,6 +113,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
   const [watch, setWatch] = useState(() => readFlag(WATCH_KEY));
   const [includeSlow, setIncludeSlow] = useState(() => readFlag(SLOW_KEY));
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState<Selection | null>(null);
   const [newSuite, setNewSuite] = useState<string | null>(null);
@@ -133,18 +137,21 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
   // A run from an AI client or another window shows here too; a saved test file reloads the list (and, watching, runs)
   useEffect(() => bridge.on(modelTestsRanEvent, () => void queryClient.invalidateQueries({ queryKey: ["modelTestResults"] })), [queryClient]);
-  useEffect(
-    () =>
-      // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
-      bridge.on(extensionsChangedEvent, () => {
-        void refetchTests();
-        if (!watch) return;
-        window.clearTimeout(watchTimer.current);
-        // A suite open in the pane watches itself only
-        watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch", ...(only ? { suite: only } : {}) }), 800);
-      }),
-    [refetchTests, watch, runTests, only],
-  );
+  useEffect(() => {
+    // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
+    const off = bridge.on(extensionsChangedEvent, () => {
+      void refetchTests();
+      if (!watch) return;
+      window.clearTimeout(watchTimer.current);
+      // A suite open in the pane watches itself only
+      watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch", ...(only ? { suite: only } : {}) }), 800);
+    });
+    return () => {
+      off();
+      // A pending run must not fire after Watch is switched off or the screen is left
+      window.clearTimeout(watchTimer.current);
+    };
+  }, [refetchTests, watch, runTests, only]);
 
   const suites = tests.data?.suites ?? [];
   // A suite opened in the Tests tab of the pane shows its own tests only
@@ -155,16 +162,31 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
   const filtered = useMemo(() => {
     const text = search.trim().toLowerCase();
     const shown = folderSuites ?? suites;
-    if (!text) return shown;
+    if (!text && !statusFilter) return shown;
+    const byStatus = (test: ModelTestInfo) => {
+      if (!statusFilter) return true;
+      const result = byTest[test.id];
+      switch (statusFilter) {
+        case "passed":
+          return result?.status === "passed";
+        case "new":
+          return (result?.new ?? 0) > 0;
+        case "accepted":
+          return (result?.baseline ?? 0) > 0;
+        case "inconclusive":
+          return (result?.inconclusive ?? 0) > 0;
+      }
+    };
     return shown
       .map((suite) => ({
         ...suite,
-        tests: suite.tests.filter((test) =>
-          [suite.name, test.name, test.description, ...test.traits].some((part) => part.toLowerCase().includes(text)),
+        tests: suite.tests.filter(
+          (test) => byStatus(test) && (!text || [suite.name, test.name, test.description, ...test.traits].some((part) => part.toLowerCase().includes(text))),
         ),
       }))
       .filter((suite) => suite.tests.length > 0);
-  }, [suites, folderSuites, search]);
+  }, [suites, folderSuites, search, statusFilter, byTest]);
+  const toggleFilter = (filter: StatusFilter) => setStatusFilter((current) => (current === filter ? null : filter));
 
   const failing = scope.filter(({ test }) => ["failed", "error"].includes(byTest[test.id]?.status ?? "")).map(({ test }) => test.id);
   const selected = selection ? allTests.find(({ test }) => test.id === selection.testId) : undefined;
@@ -348,19 +370,19 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
         <>
           {layout === "pane" ? (
             <div className="mt-strip">
-              <span className="mt-chip">
+              <FilterChip active={statusFilter === "passed"} title="Show only the tests that passed" onToggle={() => toggleFilter("passed")}>
                 <b>{totals ? `${totals.passed}/${totals.tests}` : "—"}</b> passed
-              </span>
-              <span className={`mt-chip${totals?.newCases ? " error" : ""}`}>
+              </FilterChip>
+              <FilterChip active={statusFilter === "new"} tone={totals?.newCases ? "error" : undefined} title="Show only the tests with new failures" onToggle={() => toggleFilter("new")}>
                 <b>{totals ? totals.newCases : "—"}</b> new
-              </span>
-              <span className="mt-chip">
+              </FilterChip>
+              <FilterChip active={statusFilter === "accepted"} title="Show only the tests with accepted failures" onToggle={() => toggleFilter("accepted")}>
                 <b>{totals ? totals.baselineCases : "—"}</b> accepted
-              </span>
+              </FilterChip>
               {!!totals?.inconclusiveCases && (
-                <span className="mt-chip warning">
+                <FilterChip active={statusFilter === "inconclusive"} tone="warning" title="Show only the tests Revit could not tell" onToggle={() => toggleFilter("inconclusive")}>
                   <b>{totals.inconclusiveCases}</b> ?
-                </span>
+                </FilterChip>
               )}
               {run && run.trend.length > 1 && <Sparkline run={run} />}
             </div>
@@ -377,14 +399,16 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
           <div className="usage-toolbar">
             <Input size="small" contentBefore={<Search16Regular />} placeholder="Test, rule or trait" value={search} onChange={(_, data) => setSearch(data.value)} />
             <div className="mt-switches">
-              <Switch
-                label="Slow tests"
-                checked={includeSlow}
-                onChange={(_, data) => {
-                  setIncludeSlow(data.checked);
-                  writeFlag(SLOW_KEY, data.checked);
-                }}
-              />
+              <Tooltip content="Runs the tests marked slow too (geometry, the whole model) — they are skipped by default; a test run on its own runs anyway" relationship="description">
+                <Switch
+                  label="Slow tests"
+                  checked={includeSlow}
+                  onChange={(_, data) => {
+                    setIncludeSlow(data.checked);
+                    writeFlag(SLOW_KEY, data.checked);
+                  }}
+                />
+              </Tooltip>
               <Tooltip content="Runs the tests again whenever an extension is saved or reloaded" relationship="description">
                 <Switch
                   label="Watch"
@@ -782,6 +806,15 @@ function WhatItChecks({ test, item }: { test: ModelTestInfo; item?: ModelTestCas
         </div>
       ))}
     </dl>
+  );
+}
+
+/** A count of the strip that is also a filter: pressed, the list shows only its tests; pressed again, everything. */
+function FilterChip({ active, tone, title, onToggle, children }: { active: boolean; tone?: "error" | "warning"; title: string; onToggle: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className={`mt-chip${tone ? ` ${tone}` : ""}${active ? " on" : ""}`} aria-pressed={active} title={title} onClick={onToggle}>
+      {children}
+    </button>
   );
 }
 

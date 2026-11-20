@@ -212,8 +212,8 @@
   position: relative;
   z-index: 3;
   display: grid;
-  /* The right side never shrinks below its buttons: in a narrow pane the title gives way, not the avatar */
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  /* Neither side shrinks below its content: in a narrow pane the title gives way (and hides), not the back button or the avatar */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
@@ -273,6 +273,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* A long folder name still ends somewhere: past this the label (not the title) gets the ellipsis */
+  max-width: 45vw;
 }
 
 .avatar {

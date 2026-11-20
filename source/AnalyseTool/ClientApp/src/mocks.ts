@@ -399,9 +399,35 @@ const extensions: MockExtension[] = [
     ],
   },
   (() => {
+    const pageSaved = "<!doctype html>\n<html>\n  <body>\n    <h1>Room sheets</h1>\n  </body>\n</html>\n";
+    // The current page differs from the saved one, so Versions shows unsaved changes with a Preview
+    const pageNow = [
+      "<!doctype html>",
+      "<html>",
+      "  <head>",
+      "    <style>",
+      "      body { font-family: 'Segoe UI', sans-serif; margin: 16px; color: #222; }",
+      "      h1 { font-size: 18px; margin: 0 0 4px; }",
+      "      p { color: #666; margin: 0 0 12px; }",
+      "      table { border-collapse: collapse; width: 100%; }",
+      "      th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e3e3e3; font-size: 13px; }",
+      "      button { margin-top: 12px; padding: 6px 14px; border: none; border-radius: 4px; background: #0f6cbd; color: #fff; }",
+      "    </style>",
+      "  </head>",
+      "  <body>",
+      "    <h1>Room sheets</h1>",
+      "    <p>Pick the rooms; a sheet is created for each.</p>",
+      "    <table><tr><th></th><th>Number</th><th>Name</th></tr>",
+      "      <tr><td><input type=checkbox checked></td><td>101</td><td>Office</td></tr>",
+      "      <tr><td><input type=checkbox></td><td>102</td><td>Meeting</td></tr></table>",
+      "    <button>Create sheets</button>",
+      "  </body>",
+      "</html>",
+      "",
+    ].join("\n");
     const files = {
       "plugin.json": pluginJson("RoomSheets", "Room sheets", "A page that lists rooms and creates sheets for them."),
-      "index.html": "<!doctype html>\n<html>\n  <body>\n    <h1>Room sheets</h1>\n  </body>\n</html>\n",
+      "index.html": pageNow,
       "src/RoomSheets.cs": "namespace RoomSheets;\n\npublic sealed class ListRooms : IRevitTask\n{\n}\n",
     };
     const version = newVersion("Page with the room list", 60 * 24 * 5);
@@ -414,7 +440,7 @@ const extensions: MockExtension[] = [
         loadedVersion: version.id,
       }),
       files,
-      versions: [{ version, files: { ...files } }],
+      versions: [{ version, files: { ...files, "index.html": pageSaved } }],
     };
   })(),
   {
@@ -689,7 +715,14 @@ function runTestsMock(request: RunModelTestsRequest): ModelTestRun {
     inconclusiveCases: results.reduce((sum, r) => sum + r.inconclusive, 0),
   };
   const at = new Date().toISOString();
-  if (full) testTrend = [...testTrend, { at, newCases: totals.newCases, baselineCases: totals.baselineCases, failed: totals.failed }].slice(-30);
+  if (full) {
+    // As on the C# side: the slow tests' counts stay out of the trend, so it compares like with like
+    const steady = results.filter((r) => r.testId !== clashes.id);
+    testTrend = [
+      ...testTrend,
+      { at, newCases: steady.reduce((sum, r) => sum + r.new, 0), baselineCases: steady.reduce((sum, r) => sum + r.baseline, 0), failed: steady.filter((r) => r.status === "failed").length },
+    ].slice(-30);
+  }
   lastTestRun = { model: "Projekt X – ARC.rvt", modelKey: "mock-model", at, milliseconds: 840, trigger: request.trigger ?? "page", full, totals, results, trend: testTrend };
   return lastTestRun;
 }
