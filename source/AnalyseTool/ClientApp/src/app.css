@@ -1819,3 +1819,11 @@ code.block,
 .mt-spark span:last-child {
   background: var(--colorPaletteRedForeground1);
 }
+
+/* Statistics: buttons or model tests */
+.stats-kind-tabs {
+  margin-bottom: 12px;
+}
+.stats-status {
+  margin-left: 6px;
+}

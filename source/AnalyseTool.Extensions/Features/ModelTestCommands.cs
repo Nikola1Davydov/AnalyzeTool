@@ -127,3 +127,86 @@ public sealed class CreateModelTestSuite(ExtensionManager manager) : ICommand<Cr
         return ExtensionSummary.From(state);
     }
 }
+
+/// <summary>How one model test has run.</summary>
+/// <param name="TestId">The full id of the test.</param>
+/// <param name="Test">Its name.</param>
+/// <param name="Suite">The name of its suite.</param>
+/// <param name="Folder">The name of its folder (extension).</param>
+/// <param name="Exists">It is still declared; <see langword="false" /> for a test that is gone or renamed.</param>
+/// <param name="Runs">How many times it ran.</param>
+/// <param name="Failed">Runs with new failures.</param>
+/// <param name="Errors">Runs in which the test threw: a bug in the test.</param>
+/// <param name="Inconclusive">Runs in which Revit could not tell.</param>
+/// <param name="LastStatus">The status of the last run.</param>
+/// <param name="LastRun">When it ran last.</param>
+/// <param name="LastNew">New failures of the last run.</param>
+/// <param name="LastError">The message of the last time the test threw.</param>
+/// <param name="AverageMilliseconds">The average time of a run.</param>
+/// <param name="Last30Days">Runs per day, the oldest first, today last.</param>
+public sealed record ModelTestStatistic(
+    string TestId,
+    string Test,
+    string Suite,
+    string Folder,
+    bool Exists,
+    int Runs,
+    int Failed,
+    int Errors,
+    int Inconclusive,
+    string? LastStatus,
+    DateTimeOffset? LastRun,
+    int LastNew,
+    string? LastError,
+    double? AverageMilliseconds,
+    IReadOnlyList<int> Last30Days);
+
+/// <summary>The statistics of the model tests.</summary>
+/// <param name="Since">When the counting started.</param>
+/// <param name="Runs">Runs of tests (one Run all is one run).</param>
+/// <param name="Tests">Every test that ran, most run first.</param>
+public sealed record ModelTestStatisticsResult(DateTimeOffset? Since, int Runs, IReadOnlyList<ModelTestStatistic> Tests);
+
+/// <summary>Returns how the model tests have run.</summary>
+[McpTool(ReadOnly = true, Title = "Model test statistics")]
+[Command(Description = "Returns how every model test has run on this machine: runs, runs with new failures, runs in which the test threw (a bug in the test), " +
+                       "the last status and time, the average run time and runs per day of the last 30 days. Counted whoever ran them: the pane, Watch, AI clients.")]
+public sealed class GetModelTestStatistics(ModelTestUsageStore usage, ModelTestCatalog catalog, TimeProvider? time = null) : ICommand<ModelTestStatisticsResult>
+{
+    /// <inheritdoc />
+    public Task<ModelTestStatisticsResult> ExecuteAsync(CommandContext context)
+    {
+        var snapshot = usage.Read();
+        var today = DateOnly.FromDateTime((time ?? TimeProvider.System).GetLocalNow().DateTime);
+        // Names as declared now; a test that is gone keeps the names it had
+        var current = catalog.Suites().SelectMany(suite => suite.Tests.Select(test => (Suite: suite, Test: test)))
+            .ToDictionary(pair => pair.Test.Id, StringComparer.OrdinalIgnoreCase);
+        var tests = snapshot.Tests.Select(used =>
+        {
+            var exists = current.TryGetValue(used.TestId, out var pair);
+            var days = Enumerable.Range(0, 30)
+                .Select(offset => today.AddDays(offset - 29).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
+                .Select(day => used.Days.GetValueOrDefault(day))
+                .ToList();
+            return new ModelTestStatistic(used.TestId, exists ? pair.Test.Name : used.Test, exists ? pair.Suite.DisplayName : used.Suite,
+                exists ? pair.Suite.ExtensionName ?? pair.Suite.ExtensionId : used.ExtensionId, exists, used.Runs, used.Failed, used.Errors, used.Inconclusive,
+                used.LastStatus, used.LastRun, used.LastNew, used.LastError, used.AverageMilliseconds, days);
+        }).ToList();
+        return Task.FromResult(new ModelTestStatisticsResult(snapshot.Since, snapshot.Runs, tests));
+    }
+}
+
+/// <summary>The result of <see cref="ResetModelTestStatistics" />.</summary>
+/// <param name="Removed">How many tests were forgotten.</param>
+public sealed record ResetModelTestStatisticsResult(int Removed);
+
+/// <summary>Forgets the statistics of the model tests.</summary>
+[Command(Description = "Forgets the run counts of every model test.")]
+public sealed class ResetModelTestStatistics(ModelTestUsageStore usage) : ICommand<ResetModelTestStatisticsResult>
+{
+    /// <inheritdoc />
+    public Task<ResetModelTestStatisticsResult> ExecuteAsync(CommandContext context)
+    {
+        return Task.FromResult(new ResetModelTestStatisticsResult(usage.Reset()));
+    }
+}

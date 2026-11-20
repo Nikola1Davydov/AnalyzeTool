@@ -25,7 +25,7 @@ public sealed record ModelTestBaselineResult(string TestId, int Accepted, string
 ///     Runs the model tests on the active document, repairs failing elements, keeps the baseline and the trend. The pages and
 ///     the MCP tools in <c>Features/ModelTestCommands</c> are thin wrappers over it.
 /// </summary>
-public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths paths, IRevitDispatcher dispatcher)
+public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths paths, IRevitDispatcher dispatcher, ModelTestUsageStore usage)
 {
     private const int TrendLength = 30;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -66,6 +66,8 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         }, cancellationToken).ConfigureAwait(false);
 
         _last = run;
+        // The statistics: every run counts, whoever started it
+        usage.Record(run, tests.ToDictionary(pair => pair.Test.Id, pair => (pair.Test.Name, pair.Suite.DisplayName, pair.Suite.ExtensionId), StringComparer.OrdinalIgnoreCase));
         Completed?.Invoke(this, run);
         return run;
     }

@@ -1185,6 +1185,18 @@ registerMocks({
   },
 
   // ---- Model tests
+  GetModelTestStatistics: () => ({
+    since: ago(60 * 24 * 21),
+    runs: 47,
+    tests: [
+      { testId: "bep-project-x.BepProjectX/doors-fire-rating-not-empty", test: "Doors · Fire Rating · not empty", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 31, errors: 0, inconclusive: 0, lastStatus: "failed", lastRun: ago(5), lastNew: 3, lastError: null, averageMilliseconds: 14, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "bep-project-x.BepProjectX/swing-zone-is-free", test: "Swing zone is free", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 12, errors: 2, inconclusive: 40, lastStatus: "failed", lastRun: ago(5), lastNew: 1, lastError: "The test threw NullReferenceException: Object reference not set to an instance of an object.", averageMilliseconds: 240, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "bep-project-x.BepProjectX/no-unplaced-rooms", test: "No unplaced rooms", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 0, errors: 0, inconclusive: 0, lastStatus: "passed", lastRun: ago(5), lastNew: 0, lastError: null, averageMilliseconds: 6, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "sikla-test.SiklaTest/walls-have-a-mark", test: "Walls have a mark", suite: "Sikla Test", folder: "Sikla Test", exists: true, runs: 9, failed: 9, errors: 0, inconclusive: 0, lastStatus: "failed", lastRun: ago(120), lastNew: 6, lastError: null, averageMilliseconds: 31, last30Days: [...Array(27).fill(0), 3, 4, 2] },
+      { testId: "sikla-test.SiklaTest/old-rule", test: "Old rule", suite: "Sikla Test", folder: "Sikla Test", exists: false, runs: 2, failed: 0, errors: 0, inconclusive: 0, lastStatus: "passed", lastRun: ago(60 * 24 * 10), lastNew: 0, lastError: null, averageMilliseconds: 3, last30Days: [...Array(19).fill(0), 2, ...Array(10).fill(0)] },
+    ],
+  }),
+  ResetModelTestStatistics: () => ({ removed: 5 }),
   GetModelTests: () => testSuites,
   GetModelTestResults: () => lastTestRun,
   RunModelTests: async (payload) => {

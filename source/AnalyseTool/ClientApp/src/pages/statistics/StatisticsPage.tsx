@@ -32,6 +32,9 @@ import { errorText } from "../../components/notify";
 import { Empty, Page } from "../../components/Page";
 import { useAppAction } from "../../components/useAppAction";
 import { useAppQuery } from "../../revit/hooks";
+import { type ModelTestStatisticsResult, modelTestCommands } from "../../api/modelTests";
+
+type ResetModelTestStatisticsResult = { removed: number };
 import { href } from "../../router";
 
 type Filter = "all" | "builtIn" | "extensions" | "unused";
@@ -54,6 +57,7 @@ export function StatisticsPage() {
     failure: "Could not reset",
   });
   const [filter, setFilter] = useState<Filter>("all");
+  const [kind, setKind] = useState<"buttons" | "tests">("buttons");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: "clicks", descending: true });
 
@@ -104,6 +108,16 @@ export function StatisticsPage() {
     if (ok) reset.mutate({});
   }
 
+  // The model tests have a tab of their own: their runs, not clicks
+  if (kind === "tests") {
+    return (
+      <Page title="Statistics" subtitle="How the model tests ran — from the pane, Watch or an AI client. Counted on this machine only.">
+        <KindTabs kind={kind} onKind={setKind} />
+        <ModelTestStatistics />
+      </Page>
+    );
+  }
+
   return (
     <Page
       title="Statistics"
@@ -124,6 +138,7 @@ export function StatisticsPage() {
         </>
       }
     >
+      <KindTabs kind={kind} onKind={setKind} />
       {query.isPending && <Spinner label="Counting…" />}
       {query.isError && (
         <MessageBar intent="error">
@@ -182,6 +197,126 @@ export function StatisticsPage() {
         </>
       )}
     </Page>
+  );
+}
+
+/** Buttons or model tests: what the statistics count. */
+function KindTabs({ kind, onKind }: { kind: "buttons" | "tests"; onKind: (kind: "buttons" | "tests") => void }) {
+  return (
+    <TabList className="stats-kind-tabs" selectedValue={kind} onTabSelect={(_, data) => onKind(data.value as "buttons" | "tests")}>
+      <Tab value="buttons">Buttons</Tab>
+      <Tab value="tests">Model tests</Tab>
+    </TabList>
+  );
+}
+
+const testDuration = (milliseconds: number | null) =>
+  milliseconds === null ? "—" : milliseconds < 1000 ? `${Math.round(milliseconds)} ms` : `${(milliseconds / 1000).toFixed(1)} s`;
+
+/** How every model test ran: runs, runs with new failures, runs in which the test threw, the last result. */
+function ModelTestStatistics() {
+  const query = useAppQuery<ModelTestStatisticsResult>(modelTestCommands.GetModelTestStatistics);
+  const confirm = useConfirm();
+  const reset = useAppAction<ResetModelTestStatisticsResult>(modelTestCommands.ResetModelTestStatistics, {
+    success: (result) => (result.removed ? `Forgot the runs of ${plural(result.removed, "test")}` : "Nothing to forget"),
+    failure: "Could not reset",
+  });
+  const [search, setSearch] = useState("");
+  const tests = query.data?.tests ?? [];
+  const text = search.trim().toLowerCase();
+  const rows = tests.filter((test) => !text || [test.test, test.suite, test.folder].some((part) => part.toLowerCase().includes(text)));
+  const failingNow = tests.filter((test) => test.exists && test.lastStatus === "failed").length;
+  const broken = tests.filter((test) => test.exists && test.lastStatus === "error").length;
+
+  async function resetAll() {
+    const ok = await confirm({
+      title: "Forget the runs of every test?",
+      message: "The counts start again from zero. The tests, their results and baselines stay as they are.",
+      confirmLabel: "Forget",
+      danger: true,
+    });
+    if (ok) reset.mutate(undefined);
+  }
+
+  if (query.isPending) return <Spinner label="Counting…" />;
+  if (query.isError) {
+    return (
+      <MessageBar intent="error">
+        <MessageBarBody>{errorText(query.error)}</MessageBarBody>
+      </MessageBar>
+    );
+  }
+
+  return (
+    <>
+      <div className="usage-tiles">
+        <StatTile label="Runs" value={query.data.runs.toLocaleString()} detail={query.data.since ? `since ${new Date(query.data.since).toLocaleDateString()}` : undefined} />
+        <StatTile label="Tests run" value={String(tests.length)} />
+        <StatTile label="Failing now" value={String(failingNow)} warning={failingNow > 0} />
+        <StatTile label="Broken tests" value={String(broken)} detail="threw at the last run" warning={broken > 0} />
+      </div>
+      <div className="usage-toolbar">
+        <Input size="small" contentBefore={<Search16Regular />} placeholder="Test, suite or folder" value={search} onChange={(_, data) => setSearch(data.value)} />
+        <span className="spacer" />
+        <Button size="small" icon={<ArrowClockwise16Regular />} disabled={query.isFetching} onClick={() => void query.refetch()}>
+          Refresh
+        </Button>
+        <Button size="small" icon={<Delete16Regular />} disabled={reset.isPending || !tests.length} onClick={() => void resetAll()}>
+          Reset…
+        </Button>
+      </div>
+      {!rows.length ? (
+        <Empty>{tests.length ? "No test matches." : "No test has run yet."}</Empty>
+      ) : (
+        <div className="table-scroll">
+          <Table size="small" className="usage-table">
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Test</TableHeaderCell>
+                <TableHeaderCell className="col-number">Runs</TableHeaderCell>
+                <TableHeaderCell className="col-number">Failed</TableHeaderCell>
+                <TableHeaderCell className="col-number">Errors</TableHeaderCell>
+                <TableHeaderCell className="col-time wide-only">Last run</TableHeaderCell>
+                <TableHeaderCell className="col-number wide-only">Avg. run</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((test) => (
+                <TableRow key={test.testId}>
+                  <TableCell>
+                    <Text weight="semibold">{test.test}</Text>
+                    {!test.exists && <Text className="muted"> (gone)</Text>}
+                    <br />
+                    <Text size={200} className="muted">
+                      {test.folder} · {test.suite}
+                    </Text>
+                    {test.lastError && (
+                      <Tooltip content={test.lastError} relationship="description">
+                        <Text size={200} className="error-text block-text truncate">
+                          {test.lastError}
+                        </Text>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                  <TableCell className="col-number">{test.runs}</TableCell>
+                  <TableCell className={`col-number ${test.failed ? "error-text" : "muted"}`}>{test.failed}</TableCell>
+                  <TableCell className={`col-number ${test.errors ? "error-text" : "muted"}`}>{test.errors}</TableCell>
+                  <TableCell className="col-time wide-only">
+                    {test.lastRun ? relativeTime(test.lastRun) : "—"}
+                    {test.lastStatus && (
+                      <Badge size="small" appearance="tint" color={test.lastStatus === "passed" ? "success" : test.lastStatus === "inconclusive" ? "warning" : "danger"} className="stats-status">
+                        {test.lastStatus}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="col-number wide-only">{testDuration(test.averageMilliseconds)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -2203,3 +2203,8 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* Statistics: buttons or model tests */
+.stats-kind {
+  margin-bottom: 8px;
+}

@@ -8,6 +8,8 @@ export const modelTestCommands = {
   FixModelTestCases: "FixModelTestCases",
   AcceptModelTestFailures: "AcceptModelTestFailures",
   CreateModelTestSuite: "CreateModelTestSuite",
+  GetModelTestStatistics: "GetModelTestStatistics",
+  ResetModelTestStatistics: "ResetModelTestStatistics",
   SelectionInRevit: "SelectionInRevit",
   IsolationInRevit: "IsolationInRevit",
   ShowGeometry: "ShowGeometry",
@@ -174,6 +176,35 @@ export interface ModelTestBaselineResult {
   testId: string;
   accepted: number;
   file: string;
+}
+
+/** How one model test has run (GetModelTestStatistics). */
+export interface ModelTestStatistic {
+  testId: string;
+  test: string;
+  suite: string;
+  folder: string;
+  /** Still declared; false for a test that is gone or renamed. */
+  exists: boolean;
+  runs: number;
+  /** Runs with new failures. */
+  failed: number;
+  /** Runs in which the test threw: a bug in the test. */
+  errors: number;
+  inconclusive: number;
+  lastStatus: TestStatus | null;
+  lastRun: string | null;
+  lastNew: number;
+  lastError: string | null;
+  averageMilliseconds: number | null;
+  /** Runs per day, oldest first, today last (30 entries). */
+  last30Days: number[];
+}
+
+export interface ModelTestStatisticsResult {
+  since: string | null;
+  runs: number;
+  tests: ModelTestStatistic[];
 }
 
 export interface CreateModelTestSuiteRequest {
