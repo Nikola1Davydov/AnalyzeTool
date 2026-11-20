@@ -4,9 +4,10 @@ import { bridge } from "revit-bridge";
 import { type AppInfo, appCommands, openPath } from "../../api/app";
 import { Markdown } from "../../components/Markdown";
 import { messageOf, useActions } from "./Actions";
+import { links } from "./links";
 import { useUpdate } from "./update";
 
-const REPO_URL = "https://github.com/Nikola1Davydov/AnalyzeTool";
+const REPO_URL = links.repo;
 
 type Release = { title: string; body: string };
 
@@ -61,6 +62,10 @@ export function AboutScreen() {
       <section className="link-section">
         <button className="row-link" onClick={() => open(REPO_URL)}>
           <span>🌐 Source on GitHub</span>
+          <span className="chevron-right">›</span>
+        </button>
+        <button className="row-link" onClick={() => open(links.youtube)}>
+          <span>▶ Videos on YouTube</span>
           <span className="chevron-right">›</span>
         </button>
         <button className="row-link" onClick={() => open(`${REPO_URL}/issues`)}>

@@ -1,7 +1,23 @@
 import type { ReactNode } from "react";
+import { bridge } from "revit-bridge";
+import { appCommands } from "../../api/app";
+import { messageOf, useActions } from "./Actions";
+import { links } from "./links";
+
+/** A row that opens a video (or the channel) in the browser: watching it is quicker than reading. */
+export function WatchVideo({ url, label }: { url: string; label: string }) {
+  const actions = useActions();
+  return (
+    <button className="guide-video" title={url} onClick={() => void bridge.invoke(appCommands.OpenUrl, { url }).catch((error: unknown) => actions.toast(messageOf(error), "error"))}>
+      <span className="guide-video-play">▶</span>
+      <span>{label}</span>
+      <span className="chevron-right">›</span>
+    </button>
+  );
+}
 
 /** One step of the guide: a small picture made of the pane's own pieces, and what it means. */
-function Step({ picture, title, children }: { picture: ReactNode; title: string; children: ReactNode }) {
+export function Step({ picture, title, children }: { picture: ReactNode; title: string; children: ReactNode }) {
   return (
     <div className="guide-step">
       <div className="guide-picture">{picture}</div>
@@ -20,6 +36,7 @@ export function HowItWorks() {
   return (
     <div className="guide">
       <h1 className="large-title">How it works</h1>
+      <WatchVideo url={links.toolsVideo} label="Watch it on YouTube" />
       <Step picture={<span className="guide-folder" />} title="A folder is a tab of the Revit ribbon">
         Every folder here is a tab of its own name; AnalyseTool is the AnalyseTool tab. «New folder» makes a new tab. Inside a
         folder, its sections are the panels of that tab. On disk it is the same, as in pyRevit:{" "}
@@ -85,6 +102,51 @@ export function HowItWorks() {
       <Step picture={<span className="guide-avatar">NI</span>} title="Your profile">
         Top right: statistics of your buttons, packages (.zip extensions others shared), AI clients (what to paste into Claude Code,
         Codex, Cursor…), the folders of buttons, report a bug, about, tile size and theme.
+      </Step>
+    </div>
+  );
+}
+
+const Glyph = ({ children }: { children: ReactNode }) => <span className="guide-glyph">{children}</span>;
+
+/** «How tests work» (the «?» on the Tests tab): what a folder, a suite and a test are, a run, its results and how to write one. */
+export function HowTestsWork() {
+  return (
+    <div className="guide">
+      <h1 className="large-title">How tests work</h1>
+      <WatchVideo url={links.testsVideo} label="Watch it on YouTube" />
+      <Step picture={<span className="guide-folder" />} title="A folder is a project">
+        One folder for a project or a BEP, with as many suites as it needs. It is a folder on disk with its own versions, like a
+        folder of buttons — put it on a shared drive and the whole team runs the same tests. «New folder» makes one with a first suite.
+      </Step>
+      <Step picture={<span className="guide-tile" />} title="A suite is a C# file of tests">
+        Like unit tests, but for the model: «doors · Fire Rating · not empty», «every room is placed», «no duct crosses a beam». A
+        tile opens its tests; ▶ Run folder runs every suite of the folder at once.
+      </Step>
+      <Step picture={<Glyph>▶</Glyph>} title="Run: nothing in the model changes">
+        «Run suite» checks the open model; «Run failed» only what failed last time. Whatever a test does is rolled back. «Watch»
+        runs the suite again when you save its file.
+      </Step>
+      <Step picture={<Glyph>✓ ✕</Glyph>} title="Passed, new failures, accepted, inconclusive">
+        A failure is one element (or a pair) that breaks the rule. Red: new. Accepted: known and agreed — it stays visible but does
+        not fail the test. Inconclusive: Revit could not tell. An error is a bug in the test itself, with its file and line.
+      </Step>
+      <Step picture={<Glyph>ⓘ 3D</Glyph>} title="See the failing elements">
+        <b>ⓘ</b> what the test checks and the element's value. <b>3D</b> isolates it in a 3D view, <b>Selection box</b> puts a
+        section box around it. <b>Highlight</b> draws it in red over the views without touching the model; «Clear highlights»
+        removes it. On a test, the same buttons act on all its failures.
+      </Step>
+      <Step picture={<Glyph>🔧</Glyph>} title="Repair or accept">
+        A test that knows the fix shows its button (🔧 «Set Fire Rating to EI30», for example) — one Ctrl+Z undoes it. «Accept» writes the failure into the baseline of this model,
+        kept next to the tests, so the team sees the same.
+      </Step>
+      <Step picture={<span className="guide-tile add">+</span>} title="Writing tests: ask the AI">
+        The easiest way: connect Claude Code, Codex or Cursor (profile › AI clients) and say what to check — «every door needs a
+        Fire Rating», «walls of type X only on level 1». It writes the suite, runs it and shows you the result. Or open the
+        folder (📁) and write C# yourself: the AGENTS.md there points to the guide; saving reloads the tests.
+      </Step>
+      <Step picture={<span className="guide-avatar">NI</span>} title="Statistics">
+        Profile › Statistics › Model tests: how often each test ran, failed or broke.
       </Step>
     </div>
   );

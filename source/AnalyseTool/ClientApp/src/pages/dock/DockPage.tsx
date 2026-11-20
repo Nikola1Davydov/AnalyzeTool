@@ -11,7 +11,7 @@ import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { AboutScreen } from "./AboutScreen";
 import { PageScreen } from "./PageScreen";
-import { HowItWorks } from "./HowItWorks";
+import { HowItWorks, HowTestsWork } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
 import { ProfileScreen, Segmented } from "./ProfileScreen";
@@ -29,6 +29,7 @@ type Screen =
   | { kind: "home" }
   | { kind: "profile" }
   | { kind: "guide" }
+  | { kind: "testsGuide" }
   | { kind: "packages" }
   | { kind: "mcp" }
   | { kind: "about" }
@@ -77,6 +78,7 @@ function depth(screen: Screen) {
       return screen.group === undefined ? 1 : 2;
     case "profile":
     case "guide":
+    case "testsGuide":
     case "testFolder":
       return 1;
     case "testSuite":
@@ -289,10 +291,12 @@ function Pane() {
               <FoldersScreen />
             ) : current.kind === "guide" ? (
               <HowItWorks />
+            ) : current.kind === "testsGuide" ? (
+              <HowTestsWork />
             ) : current.kind === "stats" ? (
               <StatsScreen overview={overview} folder={current.folder} />
             ) : current.kind === "tests" ? (
-              <TestsScreen onOpen={(id) => go({ kind: "testFolder", folder: id })} />
+              <TestsScreen onOpen={(id) => go({ kind: "testFolder", folder: id })} onGuide={() => go({ kind: "testsGuide" })} />
             ) : current.kind === "testFolder" ? (
               <TestFolderScreen folder={current.folder} onOpen={(suite) => go({ kind: "testSuite", folder: current.folder, suite })} />
             ) : current.kind === "testSuite" ? (
@@ -413,13 +417,13 @@ function Header(props: {
           ? { label: folder?.name ?? "Back", to: { kind: "folder", folder: screen.folder } as Screen }
           : screen.kind === "folder"
             ? { label: "Folders", to: { kind: "home" } as Screen }
-            : screen.kind === "testFolder"
+            : screen.kind === "testFolder" || screen.kind === "testsGuide"
               ? { label: "Tests", to: { kind: "tests" } as Screen }
               : screen.kind === "testSuite"
                 ? { label: props.testFolder ?? "Back", to: { kind: "testFolder", folder: screen.folder } as Screen }
                 : null;
   const title =
-    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "tests" ? "Tests" : screen.kind === "testFolder" ? (props.testFolder ?? "Tests") : screen.kind === "testSuite" ? (props.testSuite ?? "Tests") : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
+    screen.kind === "stats" ? "Statistics" : screen.kind === "packages" ? "Packages" : screen.kind === "mcp" ? "AI clients" : screen.kind === "about" ? "About" : screen.kind === "page" ? screen.title : screen.kind === "folders" ? "Folders of buttons" : screen.kind === "profile" ? "Profile" : screen.kind === "guide" ? "How it works" : screen.kind === "testsGuide" ? "How tests work" : screen.kind === "tests" ? "Tests" : screen.kind === "testFolder" ? (props.testFolder ?? "Tests") : screen.kind === "testSuite" ? (props.testSuite ?? "Tests") : screen.kind === "folder" && folder ? (screen.group ?? folder.name) : "AnalyseTool";
 
   const menu: ActionItem[] = [
     { label: sizeLabels[props.size], hint: "Tap to change", onClick: props.onSize, keepOpen: true },

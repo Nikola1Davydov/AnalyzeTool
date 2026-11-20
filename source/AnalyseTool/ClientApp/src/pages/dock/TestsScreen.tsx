@@ -38,7 +38,7 @@ export function useTestFolders(enabled = true) {
  * The first screen of the Tests tab, laid out like the folders of Tools: a project is a folder, its suites are inside. A tile
  * shows a red badge with the new failures of the latest run.
  */
-export function TestsScreen({ onOpen }: { onOpen: (id: string) => void }) {
+export function TestsScreen({ onOpen, onGuide }: { onOpen: (id: string) => void; onGuide: () => void }) {
   const actions = useActions();
   const tests = useTestFolders();
   const latest = useQuery({
@@ -53,6 +53,9 @@ export function TestsScreen({ onOpen }: { onOpen: (id: string) => void }) {
       <h1 className="large-title">
         Tests
         {!bridge.inRevit && <span className="badge">mock</span>}
+        <button className="help-button" title="How tests work" onClick={onGuide}>
+          ?
+        </button>
       </h1>
       {tests.isError && <p className="error small">{messageOf(tests.error)}</p>}
       <div className="grid">
