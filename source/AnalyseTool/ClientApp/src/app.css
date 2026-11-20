@@ -148,7 +148,7 @@ code.block,
 .app-page-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 12px 20px 0;
+  padding: 6px 20px 0;
 }
 .app-page.compact .app-page-inner {
   padding: 8px 10px 0;
@@ -192,7 +192,7 @@ code.block,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  margin: 8px 0 4px;
+  margin: 2px 0 2px;
 }
 .app-page-title {
   display: flex;
@@ -219,7 +219,7 @@ code.block,
   align-items: center;
 }
 .app-page-subtitle {
-  margin: 2px 0 16px;
+  margin: 2px 0 10px;
   color: var(--colorNeutralForeground3);
   font-size: 13px;
 }
