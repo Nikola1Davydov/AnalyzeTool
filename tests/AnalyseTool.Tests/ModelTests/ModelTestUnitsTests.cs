@@ -87,6 +87,22 @@ public sealed class ModelTestUnitsTests
     }
 
     [Test]
+    public async Task InRange_ExactBound_AsRevitStoresIt_Passes()
+    {
+        // Revit holds 600 mm a few last bits off 600.Mm(): a pipe of exactly 600 mm fits «10…600 mm»
+        var stored = BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(600.Mm()) + 2);
+        var below = BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(10.Mm()) - 2);
+        var model = Walls("mm", stored, below, 601.Mm());
+        var result = Run(model, s => s.Elements(BuiltInCategory.OST_Walls).Parameter(Height).InRange(10.Mm(), 600.Mm()));
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(stored).IsNotEqualTo(600.Mm());
+            await Assert.That(result.Cases.Select(item => item.ElementId ?? 0)).IsEquivalentTo([3L]);
+        }
+    }
+
+    [Test]
     public async Task InRange_Bounds_EitherOrder()
     {
         var model = Walls("mm", 3.M());

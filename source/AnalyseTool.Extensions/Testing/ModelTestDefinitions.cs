@@ -215,10 +215,14 @@ internal abstract class ValueCondition
             }
 
             // Compared in internal units, told in the units of the project
-            return number >= min && number <= max ? null : $"«{label}» is {value.Show(number)}, expected {value.Show(min)}…{value.Show(max)}";
+            return number >= min - Tolerance(min) && number <= max + Tolerance(max) ? null : $"«{label}» is {value.Show(number)}, expected {value.Show(min)}…{value.Show(max)}";
         }
 
         private static string Format(double number) => number.ToString("0.###", CultureInfo.InvariantCulture);
+
+        // A bound is met within a billionth: Revit keeps 600 mm in feet a few last bits off 600.Mm(), and a pipe of exactly
+        // 600 mm must pass «10…600 mm»
+        private static double Tolerance(double bound) => 1e-9 * Math.Max(1, Math.Abs(bound));
     }
 }
 
