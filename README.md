@@ -52,7 +52,8 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
 - **Blank pane or window** → the WebView2 Runtime is missing; install it and restart Revit. A page that fails shows its
   error and **Reload**.
-- **A button is grey, has a «!» or an orange dot** → grey: off the ribbon (−/+ in the edit mode) or turned off; «!»: its
+- **A button has a struck-through eye, a «!» or an orange dot, or is pale** → the eye: not on the Revit ribbon, it works
+  from the pane (−/+ in the edit mode); pale: its folder is turned off; «!»: its
   C# does not compile (tap it: file, line, message — the last good build still runs); orange dot: its last run failed (tap
   it for the error).
 - **An AI client does not answer** → AnalyseTool starts its MCP server the first time you open it in a Revit session:
@@ -72,7 +73,7 @@ YouTube: https://www.youtube.com/@AnalyseTool-Revit
   set by hand.
 - **Right-click to edit**: drag a button between sections; drag it **up** to «into another folder» (the folders show, drop
   it on one) or **down** to the trash; drag a folder of yours to the trash too. **−/+** keeps a tab or a button off the
-  ribbon (it stays in the pane, grey), **☆** keeps a button in the dock at the bottom, **✎** renames it, sets its page to
+  ribbon (it stays in the pane and works, with a struck-through eye), **☆** keeps a button in the dock at the bottom, **✎** renames it, sets its page to
   open in the pane and shows its code, files and versions, **📁** opens its folder for an AI tool. **?** explains it all
   with pictures.
 
