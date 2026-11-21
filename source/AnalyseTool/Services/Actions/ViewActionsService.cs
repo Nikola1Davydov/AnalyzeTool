@@ -133,9 +133,13 @@ public sealed class ViewActionsService
             .Where(id => wanted.Contains(id.Value)).ToList();
         if (shown.Count == 0)
         {
+            // Say why when the view hides their category: «Doors are off in Visibility/Graphics» is a fix, «not shown» a riddle
+            var hidden = ids.Select(document.GetElement).Select(element => element?.Category)
+                .Where(category => category is not null && view.GetCategoryHidden(category.Id)).Select(category => category!.Name).Distinct().ToList();
             transaction.RollBack();
+            var why = hidden.Count > 0 ? $" — {string.Join(", ", hidden)} {(hidden.Count == 1 ? "is" : "are")} hidden in its Visibility/Graphics" : "";
             return new ShowIn3DResult(false, 0, view.Name,
-                $"The active view «{view.Name}» does not show {(ids.Count == 1 ? "the element" : "any of the elements")}: open a view where {(ids.Count == 1 ? "it is" : "they are")}, or use Selection box.");
+                $"The active view «{view.Name}» does not show {(ids.Count == 1 ? "the element" : "any of the elements")}{why}: open a view where {(ids.Count == 1 ? "it is" : "they are")}, or use Selection box.");
         }
 
         view.IsolateElementsTemporary(shown);
