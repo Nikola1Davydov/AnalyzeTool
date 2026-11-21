@@ -1,6 +1,6 @@
 {
   "name": "analysetool",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Connects Claude Code to AnalyseTool in Revit (every open Revit version, one address, the token read from this computer) and teaches it to write AnalyseTool buttons.",
   "author": {
     "name": "Nikolai Davydov"
