@@ -131,8 +131,8 @@ export function HowTestsWork() {
         A failure is one element (or a pair) that breaks the rule. Red: new. Accepted: known and agreed — it stays visible but does
         not fail the test. Inconclusive: Revit could not tell. An error is a bug in the test itself, with its file and line.
       </Step>
-      <Step picture={<Glyph>ⓘ 3D</Glyph>} title="See the failing elements">
-        <b>ⓘ</b> what the test checks and the element's value. <b>3D</b> isolates it in a 3D view, <b>Selection box</b> puts a
+      <Step picture={<Glyph>ⓘ 👁</Glyph>} title="See the failing elements">
+        <b>ⓘ</b> what the test checks and the element's value. <b>👁</b> isolates it in the view you are in, <b>Selection box</b> puts a
         section box around it. <b>Highlight</b> draws it in red over the views without touching the model; «Clear highlights»
         removes it. On a test, the same buttons act on all its failures.
       </Step>

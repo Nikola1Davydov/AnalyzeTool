@@ -4,7 +4,6 @@ import {
   Checkmark16Regular,
   ChevronDown16Regular,
   ChevronRight16Regular,
-  Cube16Regular,
   Cursor16Regular,
   Dismiss16Regular,
   Eye16Regular,
@@ -259,8 +258,12 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
         modelTestCommands.ShowElementsIn3D,
         { elementIds: ids, sectionBox: how === "box" },
         () => undefined,
-        "Could not show it in 3D",
-      ).then((result) => result && !result.ok && notify.warning("Not shown in 3D", result.error ?? undefined));
+        how === "box" ? "Could not show it in 3D" : "Could not isolate",
+      ).then(
+        (result) =>
+          result?.error &&
+          notify.warning(how === "box" ? "Not shown in 3D" : result.ok ? "Isolated in part" : "Not isolated", result.error),
+      );
     } else if (how === "isolate") {
       await act(modelTestCommands.IsolationInRevit, { elementIds: ids }, () => undefined, "Could not isolate");
     } else {
@@ -459,8 +462,8 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                           )}
                           {groupOf(result) && (
                             <>
-                              <RowButton title="Isolate every failing element in Revit and show them in 3D" onClick={() => void show(groupOf(result)!, "3d")}>
-                                <Cube16Regular />
+                              <RowButton title="Isolate every failing element in the active view" onClick={() => void show(groupOf(result)!, "3d")}>
+                                <Eye16Regular />
                               </RowButton>
                               <RowButton title="Selection box around every failing element" onClick={() => void show(groupOf(result)!, "box")}>
                                 <ScanDash16Regular />
@@ -502,8 +505,8 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                                 <RowButton title="Details" onClick={() => toggleSelection({ testId: test.id, key: item.key })}>
                                   <Info16Regular />
                                 </RowButton>
-                                <RowButton title="Isolate in Revit and show in 3D" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
-                                  <Cube16Regular />
+                                <RowButton title="Isolate it in the active view" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
+                                  <Eye16Regular />
                                 </RowButton>
                                 <RowButton title="Selection box: a section box around it in 3D, its surroundings visible" disabled={item.elementId === null} onClick={() => void show(item, "box")}>
                                   <ScanDash16Regular />
@@ -665,7 +668,7 @@ function Details(props: {
               Select
             </Button>
             <Button size="small" icon={<Eye16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "3d")}>
-              Isolate in 3D
+              Isolate
             </Button>
             <Button size="small" icon={<ScanDash16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "box")}>
               Selection box
@@ -711,7 +714,7 @@ function Details(props: {
                 Select all
               </Button>
               <Button size="small" icon={<Eye16Regular />} onClick={() => props.onShow(groupOf(result)!, "3d")}>
-                Isolate all in 3D
+                Isolate all
               </Button>
               <Button size="small" icon={<ScanDash16Regular />} onClick={() => props.onShow(groupOf(result)!, "box")}>
                 Selection box

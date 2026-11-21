@@ -74,7 +74,7 @@ Rules of thumb:
   a bug in the test, fix the code**, not the model; `inconclusive`; `skipped`.
 - Report to the user per test: what failed, how many elements, two or three examples with their `label` and `value`
   (`valueState`: `empty`, `missing` — no such parameter, `set`). Not a dump of every case.
-- Show them in Revit when it helps: `ShowElementsIn3D { elementIds }` (isolated in a 3D view) or
+- Show them in Revit when it helps: `ShowElementsIn3D { elementIds }` (isolated in the active view; the view does not change) or
   `{ elementIds, sectionBox: true }` (a section box around them); `ShowGeometry` for evidence boxes, `ClearGeometry`
   after.
 
