@@ -218,7 +218,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     if (result) await runTests({ tests: [test.id] });
   }
 
-  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d" | "box") {
+  async function show(item: Shown, how: "select" | "isolate" | "geometry" | "3d" | "box") {
     const ids = [item.elementId, ...item.related].filter((id): id is number => id !== null);
     if (how === "select") {
       await act(modelTestCommands.SelectionInRevit, { elementIds: ids }, () => undefined, "Could not select");
@@ -237,13 +237,17 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
       await act(modelTestCommands.IsolationInRevit, { elementIds: ids }, () => undefined, "Could not isolate");
     } else {
       await bridge.invoke(modelTestCommands.ClearGeometry, null).catch(() => undefined);
-      const box = item.box ? [{ min: item.box.slice(0, 3), max: item.box.slice(3, 6) }] : [];
-      await act(
-        modelTestCommands.ShowGeometry,
-        { ids, boxes: box, points: item.point ? [item.point] : [], color: item.status === "failed" ? "#D13438" : "#CA5010" },
-        () => undefined,
-        "Could not show it",
-      );
+      // Highlight shows where the problem is: the place the test found (a clash, a gap) when it gave one, the elements pale
+      // around it for orientation; else the elements themselves
+      const red = item.status === "failed" ? "#D13438" : "#CA5010";
+      const boxes = (item.boxes ?? (item.box ? [item.box] : [])).map((box) => ({ min: box.slice(0, 3), max: box.slice(3, 6) }));
+      const points = item.points ?? (item.point ? [item.point] : []);
+      if (boxes.length || points.length) {
+        await bridge.invoke(modelTestCommands.ShowGeometry, { ids, color: "#8A8886", transparency: 85 }).catch(() => undefined);
+        await act(modelTestCommands.ShowGeometry, { boxes, points, color: red, transparency: 15 }, () => undefined, "Could not show it");
+      } else {
+        await act(modelTestCommands.ShowGeometry, { ids, color: red }, () => undefined, "Could not show it");
+      }
     }
   }
 
@@ -622,7 +626,7 @@ function Details(props: {
               Selection box
             </Button>
             {(test.kind !== "Rule" || item.box || item.point) && (
-              <Tooltip content="Draws it in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+              <Tooltip content="Draws where it fails in red over the 3D views and plans: the place the test found (a clash) with the elements pale around it, else the element. Nothing is added to the model; Clear highlights removes it" relationship="description">
                 <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(item, "geometry")}>
                   Highlight
                 </Button>
@@ -668,7 +672,7 @@ function Details(props: {
                 Selection box
               </Button>
               {test.kind !== "Rule" && (
-                <Tooltip content="Draws them in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+                <Tooltip content="Draws where they fail in red over the 3D views and plans: the places the test found (clashes) with the elements pale around them, else the elements. Nothing is added to the model; Clear highlights removes it" relationship="description">
                   <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
                     Highlight all
                   </Button>
@@ -791,13 +795,29 @@ function RowButton({ title, onClick, disabled, children }: { title: string; onCl
  * Every failing element of a test as one case, for the actions on the whole group: the new failures, or every failure when
  * all are accepted; null when no element failed.
  */
-function groupOf(result: ModelTestResult | undefined): ModelTestCase | null {
+/** What a group action works on: every failing element of a test, the ones they hit, and every place the test found. */
+function groupOf(result: ModelTestResult | undefined): Shown | null {
   const failed = (result?.cases ?? []).filter((item) => item.elementId !== null && item.status !== "error");
   const shown = failed.some((item) => !item.inBaseline) ? failed.filter((item) => !item.inBaseline) : failed;
-  const ids = [...new Set(shown.map((item) => item.elementId!))];
+  const ids = [...new Set(shown.flatMap((item) => [item.elementId!, ...item.related]))];
   if (!ids.length) return null;
-  return { key: "*", status: "failed", message: "", elementId: ids[0], label: null, related: ids.slice(1), inBaseline: false, point: null, box: null };
+  return {
+    key: "*",
+    status: "failed",
+    message: "",
+    elementId: ids[0],
+    label: null,
+    related: ids.slice(1),
+    inBaseline: false,
+    point: null,
+    box: null,
+    boxes: shown.flatMap((item) => (item.box ? [item.box] : [])),
+    points: shown.flatMap((item) => (item.point ? [item.point] : [])),
+  };
 }
+
+/** A case, or the cases of a whole test at once (their places together). */
+type Shown = ModelTestCase & { boxes?: number[][]; points?: number[][] };
 
 function StatusIcon({ status }: { status: TestStatus | undefined }) {
   switch (status) {

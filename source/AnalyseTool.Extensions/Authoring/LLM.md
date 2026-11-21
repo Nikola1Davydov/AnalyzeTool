@@ -834,7 +834,9 @@ public sealed class BepProjectX : IModelTestSuite
 
 Inside a body, `m.Document` is the model, `m.Elements(…)` collects, `m.Assert` records failures — `True`, `NotEmpty`,
 `Empty(items, message)` (each item fails; an element item is the failing element), `Fail`, `Inconclusive` — and an
-optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw. `Units`: `900.Mm()`,
+optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw: with a `Box` or `Point`
+(where two solids overlap, where a gap is too small) **Highlight** draws that place red and the elements pale around it;
+without, it draws the element. Give a clash its overlap box: the place is what the user looks for. `Units`: `900.Mm()`,
 `0.9.M()`, `25.M2()`, `0.5.M3()`, `45.Deg()` — the API measures in feet, square and cubic feet, radians.
 
 - **Tests never change the model.** They run inside a transaction group that is always rolled back; only a repair the
