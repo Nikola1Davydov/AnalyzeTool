@@ -238,17 +238,29 @@ public sealed class CommandPipelineTests
     {
         var builder = TestHost.CreateBuilder();
         builder.Services.AddSingleton(new LongCallWatchdogOptions([TimeSpan.FromMilliseconds(20)]));
-        builder.AddRevitCommands(commands => commands.FromTypes(typeof(SlowCommand), typeof(GreetCommand)).UseLongCallWatchdog());
+        builder.AddRevitCommands(commands => commands.FromTypes(typeof(SlowCommand)).UseLongCallWatchdog());
         using var host = builder.Build();
 
         var slow = await host.ExecuteAsync("Slow");
-        var quick = await host.ExecuteAsync("greet", new { name = "Revit" });
 
         var entries = host.Services.GetRequiredService<LogRecorder>().Entries;
         await Assert.That(slow.Succeeded).IsTrue();
         await Assert.That(entries.Any(entry => entry.Level == LogLevel.Warning && entry.Message.Contains("Slow") && entry.Message.Contains("still running"))).IsTrue();
-        // A command that returns before the mark is nobody's business
+    }
+
+    [Test]
+    public async Task Watchdog_ACommandBeforeTheMark_IsNobodysBusiness()
+    {
+        // A mark no test run reaches: on a cold CI runner even a trivial command can take tens of milliseconds,
+        // so the quiet side of the watchdog is checked against a mark that timing noise cannot cross
+        var builder = TestHost.CreateBuilder();
+        builder.Services.AddSingleton(new LongCallWatchdogOptions([TimeSpan.FromHours(1)]));
+        builder.AddRevitCommands(commands => commands.FromTypes(typeof(GreetCommand)).UseLongCallWatchdog());
+        using var host = builder.Build();
+
+        var quick = await host.ExecuteAsync("greet", new { name = "Revit" });
+
         await Assert.That(quick.Succeeded).IsTrue();
-        await Assert.That(entries.Any(entry => entry.Message.Contains("Greet") && entry.Message.Contains("still running"))).IsFalse();
+        await Assert.That(host.Services.GetRequiredService<LogRecorder>().Entries.Any(entry => entry.Message.Contains("still running"))).IsFalse();
     }
 }
