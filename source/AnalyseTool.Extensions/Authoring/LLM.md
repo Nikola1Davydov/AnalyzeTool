@@ -826,7 +826,7 @@ public sealed class BepProjectX : IModelTestSuite
 | Builder | What it declares |
 | --- | --- |
 | `s.Elements(params BuiltInCategory[])`, `s.Elements<T>()` | The elements (instances; `Elements<WallType>()` for types). `.Where(e => …)` filters. |
-| `.Parameter(name \| BuiltInParameter)`, `.TypeParameter(…)`, `.TypeName()`, `.Value(label, e => …)` | A **rule** on one value. Conditions: `NotEmpty()`, `Equal(text)`, `Matches(regex)`, `OneOf(…)`, `InRange(min, max)` (in Revit's internal units: lengths in feet, so `InRange(100.Mm(), 20000.Mm())`; a failure shows the value in the project's units), `Unique()`. The first that fails is the message; a missing parameter fails every condition. |
+| `.Parameter(name \| BuiltInParameter)`, `.TypeParameter(…)`, `.TypeName()`, `.Value(label, e => …)` | A **rule** on one value. Conditions: `NotEmpty()`, `Equal(text)`, `Matches(regex)`, `OneOf(…)`, `InRange(min, max)` (in Revit's internal units: lengths in feet, so `InRange(100.Mm(), 20000.Mm())`, areas `1.M2()`, volumes `0.5.M3()`, angles `45.Deg()`; a failure shows the value in the project's units), `Unique()`. The first that fails is the message; a missing parameter fails every condition. |
 | `.Check(name, (element, m) => …)` | Code per element. |
 | `s.Test(name, m => …)` | Code once for the model. |
 | `.Fix(label, e => …)`, `.FixValue(text)` | A repair for failing elements; it runs in one transaction AnalyseTool opens (one Ctrl+Z). |
@@ -835,7 +835,7 @@ public sealed class BepProjectX : IModelTestSuite
 Inside a body, `m.Document` is the model, `m.Elements(…)` collects, `m.Assert` records failures — `True`, `NotEmpty`,
 `Empty(items, message)` (each item fails; an element item is the failing element), `Fail`, `Inconclusive` — and an
 optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw. `Units`: `900.Mm()`,
-`0.9.M()` — the API measures in feet.
+`0.9.M()`, `25.M2()`, `0.5.M3()`, `45.Deg()` — the API measures in feet, square and cubic feet, radians.
 
 - **Tests never change the model.** They run inside a transaction group that is always rolled back; only a repair the
   user (or you, with `FixModelTestCases`) starts writes.

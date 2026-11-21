@@ -57,7 +57,7 @@ Rules of thumb:
 
 - **`BuiltInCategory` / `BuiltInParameter` over names**: names depend on Revit's language («Mark» is «Kennzeichen»).
   A shared or project parameter has no built-in id — use its name exactly as `GetCategoryParameters` lists it.
-- Conditions: `NotEmpty`, `Equal`, `Matches(regex)`, `OneOf`, `InRange(min, max)` (in Revit's internal units — lengths in feet: `InRange(100.Mm(), 20000.Mm())`, never bare millimetres),
+- Conditions: `NotEmpty`, `Equal`, `Matches(regex)`, `OneOf`, `InRange(min, max)` (in Revit's internal units — lengths in feet: `InRange(100.Mm(), 20000.Mm())`, areas `1.M2()`, volumes `0.5.M3()`, angles `45.Deg()` — never bare numbers),
   `Unique`. Options last: `.Name`, `.Id`, `.Severity`, `.Trait`, `.Slow()`, `.Skip(reason)`.
 - Give every test a readable `.Name(...)`; give a stable `.Id(...)` to a test whose rule may change — accepted
   failures are kept by id.

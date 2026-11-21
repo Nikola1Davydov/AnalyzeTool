@@ -27,6 +27,33 @@ public sealed class ModelTestUnitsTests
     }
 
     [Test]
+    public async Task Units_AreasVolumesAngles_ConvertToInternalUnits()
+    {
+        using (Assert.Multiple())
+        {
+            // 1 m² = 10.7639 ft², 1 m³ = 35.3147 ft³
+            await Assert.That(1.M2()).IsEqualTo(10.763910416709722).Within(1e-12);
+            await Assert.That(1.M3()).IsEqualTo(35.31466672148859).Within(1e-11);
+            await Assert.That(2000.M2()).IsEqualTo(2000.0.M2()).Within(1e-12);
+            await Assert.That(2.M2()).IsEqualTo(2.M() * 1.M()).Within(1e-12);
+            await Assert.That(180.Deg()).IsEqualTo(Math.PI).Within(1e-15);
+            await Assert.That(45.0.Deg()).IsEqualTo(Math.PI / 4).Within(1e-15);
+        }
+    }
+
+    [Test]
+    public async Task InRange_Area_InSquareMetres()
+    {
+        var model = new FakeModel();
+        // Areas reach the engine in square feet, as Revit holds them
+        model.Add(1, BuiltInCategory.OST_Rooms, parameters: ("Area", 25.M2().ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
+        model.Add(2, BuiltInCategory.OST_Rooms, parameters: ("Area", 0.5.M2().ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
+        var result = Run(model, s => s.Elements(BuiltInCategory.OST_Rooms).Parameter("Area").InRange(1.M2(), 2000.M2()));
+
+        await Assert.That(result.Cases.Select(item => item.ElementId ?? 0)).IsEquivalentTo([2L]);
+    }
+
+    [Test]
     [Arguments("mm")]
     [Arguments("m")]
     public async Task InRange_InFeet_SameResultWhateverTheProjectUnit(string unit)
