@@ -242,12 +242,15 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
       const red = item.status === "failed" ? "#D13438" : "#CA5010";
       const boxes = (item.boxes ?? (item.box ? [item.box] : [])).map((box) => ({ min: box.slice(0, 3), max: box.slice(3, 6) }));
       const points = item.points ?? (item.point ? [item.point] : []);
+      let shown: { hidden?: string | null } | undefined;
       if (boxes.length || points.length) {
         await bridge.invoke(modelTestCommands.ShowGeometry, { ids, color: "#8A8886", transparency: 85 }).catch(() => undefined);
-        await act(modelTestCommands.ShowGeometry, { boxes, points, color: red, transparency: 15 }, () => undefined, "Could not show it");
+        shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { boxes, points, color: red, transparency: 15 }, () => undefined, "Could not show it");
       } else {
-        await act(modelTestCommands.ShowGeometry, { ids, color: red }, () => undefined, "Could not show it");
+        shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { ids, color: red }, () => undefined, "Could not show it");
       }
+      // The Realistic display style draws none of the highlight: say so, or the button looks broken
+      if (shown?.hidden) notify.warning("Not visible in this view", shown.hidden);
     }
   }
 
