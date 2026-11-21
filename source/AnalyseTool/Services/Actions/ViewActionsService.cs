@@ -119,21 +119,23 @@ public sealed class ViewActionsService
             return new ShowIn3DResult(false, 0, view?.Name, "The active view cannot isolate elements: open a plan, a section or a 3D view.");
         }
 
+        using var transaction = new Transaction(document, "Isolate");
+        transaction.Start();
+        var failures = CollectingFailuresPreprocessor.Apply(transaction);
+        // An earlier isolation first: the view's collector sees only what it leaves visible
+        if (view.IsTemporaryHideIsolateActive())
+        {
+            view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
+        }
+
         var wanted = ids.Select(id => id.Value).ToHashSet();
         var shown = new FilteredElementCollector(document, view.Id).WhereElementIsNotElementType().ToElementIds()
             .Where(id => wanted.Contains(id.Value)).ToList();
         if (shown.Count == 0)
         {
+            transaction.RollBack();
             return new ShowIn3DResult(false, 0, view.Name,
                 $"The active view «{view.Name}» does not show {(ids.Count == 1 ? "the element" : "any of the elements")}: open a view where {(ids.Count == 1 ? "it is" : "they are")}, or use Selection box.");
-        }
-
-        using var transaction = new Transaction(document, "Isolate");
-        transaction.Start();
-        var failures = CollectingFailuresPreprocessor.Apply(transaction);
-        if (view.IsTemporaryHideIsolateActive())
-        {
-            view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
         }
 
         view.IsolateElementsTemporary(shown);
