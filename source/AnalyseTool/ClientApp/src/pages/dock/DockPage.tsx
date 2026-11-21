@@ -565,7 +565,7 @@ function ActionList({ items }: { items: ActionItem[] }) {
 
 /**
  * The first screen: the folders — each one a tab of the Revit ribbon. In the edit mode «+»/«−» puts its tab on the ribbon or
- * takes it off (it stays here); a folder off the ribbon is grey.
+ * takes it off (it stays here); a folder off the ribbon carries a struck-through eye.
  */
 function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onOpen: (id: string) => void; onGuide: () => void }) {
   const carry = useCarry();
@@ -656,7 +656,8 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
       </div>
       <p className="muted small center">
         Each folder is a tab of the Revit ribbon, its sections are the panels. Right-click to edit: ☆ keeps a button in the dock below, + / −
-        puts a folder or a button on the ribbon or takes it off, drag to move.
+        puts a folder or a button on the ribbon or takes it off, drag to move. A struck-through eye in the corner: not on the
+        ribbon — it works here.
       </p>
     </>
   );
@@ -966,7 +967,7 @@ function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; fol
 
 /**
  * A button as a tile: a tap runs it. In the edit mode its four corners: −/+ loads it on the Revit ribbon or not, ✎ its name,
- * description and «Move to…», ☆/★ the dock below, 📁 its folder. A button that is not on the ribbon is grey.
+ * description and «Move to…», ☆/★ the dock below, 📁 its folder. A button that is not on the ribbon carries a struck-through eye.
  */
 function ButtonTile(props: {
   folder: PaneFolder;

@@ -3,6 +3,7 @@ import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { messageOf, useActions } from "./Actions";
 import { links } from "./links";
+import { OffRibbonMark } from "./Tile";
 
 /** A row that opens a video (or the channel) in the browser: watching it is quicker than reading. */
 export function WatchVideo({ url, label }: { url: string; label: string }) {
@@ -67,7 +68,14 @@ export function HowItWorks() {
         bottom of this pane. <b>✎</b> its name, description and «Move to…» another folder. <b>📁</b> opens its folder — to edit
         it with an AI tool (Claude Code, Cursor). «Done» or Escape ends the editing.
       </Step>
-      <Step picture={<span className="guide-tile off" />} title="⊘ in the corner: not on the ribbon">
+      <Step
+        picture={
+          <span className="guide-tile">
+            <OffRibbonMark />
+          </span>
+        }
+        title="An eye struck through: not on the ribbon"
+      >
         The button stays here and works — a tap runs it — but the Revit ribbon does not show it. A folder off the ribbon says
         so once, above its buttons; «+» or that line brings it back.
       </Step>
