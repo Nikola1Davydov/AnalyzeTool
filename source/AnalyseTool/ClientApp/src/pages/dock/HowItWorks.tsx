@@ -133,7 +133,7 @@ export function HowTestsWork() {
       </Step>
       <Step picture={<Glyph>ⓘ 👁</Glyph>} title="See the failing elements">
         <b>ⓘ</b> what the test checks and the element's value. <b>👁</b> isolates it in the view you are in, <b>Selection box</b> puts a
-        section box around it. <b>Highlight</b> draws in red where it fails — the clash itself when the test found one, the element pale around it —
+        section box around it. <b>Highlight</b> draws in red where it fails — the clash itself when the test found one, else the element —
         without touching the model; «Clear highlights»
         removes it. On a test, the same buttons act on all its failures.
       </Step>

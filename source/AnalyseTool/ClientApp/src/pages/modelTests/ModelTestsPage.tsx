@@ -237,14 +237,12 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
       await act(modelTestCommands.IsolationInRevit, { elementIds: ids }, () => undefined, "Could not isolate");
     } else {
       await bridge.invoke(modelTestCommands.ClearGeometry, null).catch(() => undefined);
-      // Highlight shows where the problem is: the place the test found (a clash, a gap) when it gave one, the elements pale
-      // around it for orientation; else the elements themselves
+      // Highlight shows where the problem is: the place the test found (a clash, a gap) when it gave one, else the elements
       const red = item.status === "failed" ? "#D13438" : "#CA5010";
       const boxes = (item.boxes ?? (item.box ? [item.box] : [])).map((box) => ({ min: box.slice(0, 3), max: box.slice(3, 6) }));
       const points = item.points ?? (item.point ? [item.point] : []);
       let shown: { hidden?: string | null } | undefined;
       if (boxes.length || points.length) {
-        await bridge.invoke(modelTestCommands.ShowGeometry, { ids, color: "#8A8886", transparency: 85 }).catch(() => undefined);
         shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { boxes, points, color: red, transparency: 15 }, () => undefined, "Could not show it");
       } else {
         shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { ids, color: red }, () => undefined, "Could not show it");
@@ -629,7 +627,7 @@ function Details(props: {
               Selection box
             </Button>
             {(test.kind !== "Rule" || item.box || item.point) && (
-              <Tooltip content="Draws where it fails in red over the 3D views and plans: the place the test found (a clash) with the elements pale around it, else the element. Nothing is added to the model; Clear highlights removes it" relationship="description">
+              <Tooltip content="Draws where it fails in red over the 3D views and plans: the place the test found (a clash), else the element. Nothing is added to the model; Clear highlights removes it" relationship="description">
                 <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(item, "geometry")}>
                   Highlight
                 </Button>
@@ -675,7 +673,7 @@ function Details(props: {
                 Selection box
               </Button>
               {test.kind !== "Rule" && (
-                <Tooltip content="Draws where they fail in red over the 3D views and plans: the places the test found (clashes) with the elements pale around them, else the elements. Nothing is added to the model; Clear highlights removes it" relationship="description">
+                <Tooltip content="Draws where they fail in red over the 3D views and plans: the places the test found (clashes), else the elements. Nothing is added to the model; Clear highlights removes it" relationship="description">
                   <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
                     Highlight all
                   </Button>
