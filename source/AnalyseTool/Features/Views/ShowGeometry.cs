@@ -22,6 +22,7 @@ namespace AnalyseTool.Features.Views;
     "Coordinates are [x, y, z] in feet, the internal units of Revit, as bounding boxes and locations report them. " +
     "color — #RRGGBB, red by default; transparency — of faces, 0 to 100, 50 by default. " +
     "Each call adds to what is shown: use a colour per group, then RenderView to look. ClearGeometry removes everything. " +
+    "A view in the Realistic display style does not show it: the result then has 'hidden' — tell the user to switch the view to Shaded, Consistent Colors or Textures. " +
     "Ids that are not in the document or have no geometry are returned as missing.")]
 public sealed class ShowGeometry(ActiveDocument document, IGeometryOverlay overlay) : ICommand<ShowGeometryRequest, ShowGeometryResult>
 {
@@ -80,8 +81,16 @@ public sealed class ShowGeometry(ActiveDocument document, IGeometryOverlay overl
             }
 
             overlay.Show(revitDocument, geometry);
-            return new ShowGeometryResult(geometry.IsEmpty ? 0 : 1, missing, overlay.Count);
+            return new ShowGeometryResult(geometry.IsEmpty ? 0 : 1, missing, overlay.Count, HiddenBy(revitDocument.ActiveView));
         }, context.CancellationToken);
+    }
+
+    /// <summary>Why the active view does not show the overlay: the Realistic display style draws none of it.</summary>
+    private static string? HiddenBy(View? view)
+    {
+        return view?.DisplayStyle is DisplayStyle.Realistic or DisplayStyle.RealisticWithEdges
+            ? $"The view «{view.Name}» is in the Realistic display style, which does not show it: switch the view to Shaded, Consistent Colors or Textures."
+            : null;
     }
 
     private static XYZ ToPoint(IReadOnlyList<double>? point, string name)
@@ -139,4 +148,10 @@ public sealed record GeometryLine(IReadOnlyList<double> From, IReadOnlyList<doub
 /// <param name="Added">How many geometries this call added: 1, or 0 when there was nothing to draw.</param>
 /// <param name="Missing">The ids that are not in the document or have no geometry.</param>
 /// <param name="Shown">How many geometries are shown now, from every call.</param>
-public sealed record ShowGeometryResult(int Added, IReadOnlyList<long> Missing, int Shown);
+/// <param name="Hidden">Why the active view does not show it (the Realistic display style); absent when it does.</param>
+public sealed record ShowGeometryResult(
+    int Added,
+    IReadOnlyList<long> Missing,
+    int Shown,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? Hidden = null);

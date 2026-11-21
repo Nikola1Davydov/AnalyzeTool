@@ -3,6 +3,7 @@ import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { messageOf, useActions } from "./Actions";
 import { links } from "./links";
+import { OffRibbonMark } from "./Tile";
 
 /** A row that opens a video (or the channel) in the browser: watching it is quicker than reading. */
 export function WatchVideo({ url, label }: { url: string; label: string }) {
@@ -67,8 +68,16 @@ export function HowItWorks() {
         bottom of this pane. <b>✎</b> its name, description and «Move to…» another folder. <b>📁</b> opens its folder — to edit
         it with an AI tool (Claude Code, Cursor). «Done» or Escape ends the editing.
       </Step>
-      <Step picture={<span className="guide-tile off" />} title="Grey and struck through: not on the ribbon">
-        The button (or the folder) stays here and works, but Revit does not show it. «+» brings it back.
+      <Step
+        picture={
+          <span className="guide-tile">
+            <OffRibbonMark />
+          </span>
+        }
+        title="An eye struck through: not on the ribbon"
+      >
+        The button stays here and works — a tap runs it — but the Revit ribbon does not show it. A folder off the ribbon says
+        so once, above its buttons; «+» or that line brings it back.
       </Step>
       <Step
         picture={
@@ -116,24 +125,25 @@ export function HowTestsWork() {
       <h1 className="large-title">How tests work</h1>
       <WatchVideo url={links.testsVideo} label="Watch it on YouTube" />
       <Step picture={<span className="guide-folder" />} title="A folder is a project">
-        One folder for a project or a BEP, with as many suites as it needs. It is a folder on disk with its own versions, like a
-        folder of buttons — put it on a shared drive and the whole team runs the same tests. «New folder» makes one with a first suite.
+        One folder for a project or a BEP, with as many suites as it needs. On disk its name ends in{" "}
+        <span className="mono">.tests</span> — tests load only from such a folder — and it has its own versions, like a folder of buttons — put it on a shared drive and the whole team runs the same tests. «New folder» makes one with a first suite.
       </Step>
       <Step picture={<span className="guide-tile" />} title="A suite is a C# file of tests">
         Like unit tests, but for the model: «doors · Fire Rating · not empty», «every room is placed», «no duct crosses a beam». A
         tile opens its tests; ▶ Run folder runs every suite of the folder at once.
       </Step>
       <Step picture={<Glyph>▶</Glyph>} title="Run: nothing in the model changes">
-        «Run suite» checks the open model; «Run failed» only what failed last time. Whatever a test does is rolled back. «Watch»
-        runs the suite again when you save its file.
+        «Run suite» checks the open model with every test; «Run failed» only what failed last time. Whatever a test does
+        is rolled back.
       </Step>
       <Step picture={<Glyph>✓ ✕</Glyph>} title="Passed, new failures, accepted, inconclusive">
         A failure is one element (or a pair) that breaks the rule. Red: new. Accepted: known and agreed — it stays visible but does
         not fail the test. Inconclusive: Revit could not tell. An error is a bug in the test itself, with its file and line.
       </Step>
-      <Step picture={<Glyph>ⓘ 3D</Glyph>} title="See the failing elements">
-        <b>ⓘ</b> what the test checks and the element's value. <b>3D</b> isolates it in a 3D view, <b>Selection box</b> puts a
-        section box around it. <b>Highlight</b> draws it in red over the views without touching the model; «Clear highlights»
+      <Step picture={<Glyph>ⓘ 👁</Glyph>} title="See the failing elements">
+        <b>ⓘ</b> what the test checks and the element's value. <b>👁</b> isolates it in the view you are in, <b>Selection box</b> puts a
+        section box around it. <b>Highlight</b> draws in red where it fails — the clash itself when the test found one, else the element —
+        without touching the model; «Clear highlights»
         removes it. On a test, the same buttons act on all its failures.
       </Step>
       <Step picture={<Glyph>🔧</Glyph>} title="Repair or accept">

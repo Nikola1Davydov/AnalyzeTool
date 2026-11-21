@@ -30,7 +30,7 @@ internal static class ModelTestEngine
         var askedFor = options.Tests?.Contains(test.Id, StringComparer.OrdinalIgnoreCase) == true;
         if (test.Slow && !options.IncludeSlow && !askedFor)
         {
-            return Skipped(test, "Slow: runs when slow tests are included or the test is run on its own.");
+            return Skipped(test, "Slow: left out of this quick run (includeSlow false).");
         }
 
         if (test.Kind == ModelTestKind.Model && onElements)
@@ -300,7 +300,7 @@ internal static class ModelTestEngine
 
             Cases.Add(new ModelTestCase(key, status, message, info?.Id, info?.Label, related.Select(item => item.Id).ToList(), false,
                 access.Point(evidence?.Point), access.Box(evidence?.Box),
-                value?.Text, value is null ? null : !value.Exists ? "missing" : string.IsNullOrWhiteSpace(value.Text) ? "empty" : "set"));
+                value?.Shown, value is null ? null : !value.Exists ? "missing" : string.IsNullOrWhiteSpace(value.Text) ? "empty" : "set"));
         }
 
         public void Error(Element? element, Exception exception, string? where = null)

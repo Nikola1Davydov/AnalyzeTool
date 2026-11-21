@@ -11,7 +11,7 @@ namespace AnalyseTool.Infrastructure.App;
 ///     Tells the open pages what changed, so they need not ask every few seconds: <c>revitThemeChanged</c> (payload
 ///     <see cref="RevitTheme" />) when the theme of Revit is switched, <c>buttonsChanged</c> when the extensions were
 ///     loaded again — a saved file, a new button, a restored version — or a button ran (<see cref="Ribbon.ButtonRunner" />),
-///     <c>modelTestsRan</c> when model tests ran, from a page or an AI client.
+///     <c>modelTestsRan</c> when model tests ran, from a page or an AI client, <c>modelTestsProgress</c> before every test of a run.
 /// </summary>
 internal sealed class PageEvents(UIControlledApplication application, ExtensionHost extensions, ModelTestService tests, IWebViewEvents events) : IHostedService
 {
@@ -27,12 +27,16 @@ internal sealed class PageEvents(UIControlledApplication application, ExtensionH
     /// <summary>Model tests ran: ask <c>GetModelTestResults</c> for the run.</summary>
     public const string ModelTestsRan = "modelTestsRan";
 
+    /// <summary>A run of model tests goes on: the payload is a <see cref="ModelTestProgress" />, before every test and at the end.</summary>
+    public const string ModelTestsProgress = "modelTestsProgress";
+
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
         application.ThemeChanged += OnThemeChanged;
         extensions.Changed += OnExtensionsChanged;
         tests.Completed += OnTestsRan;
+        tests.Progress += OnTestsProgress;
         return Task.CompletedTask;
     }
 
@@ -42,6 +46,7 @@ internal sealed class PageEvents(UIControlledApplication application, ExtensionH
         application.ThemeChanged -= OnThemeChanged;
         extensions.Changed -= OnExtensionsChanged;
         tests.Completed -= OnTestsRan;
+        tests.Progress -= OnTestsProgress;
         return Task.CompletedTask;
     }
 
@@ -59,5 +64,10 @@ internal sealed class PageEvents(UIControlledApplication application, ExtensionH
     private void OnTestsRan(object? sender, ModelTestRun run)
     {
         events.Publish(ModelTestsRan);
+    }
+
+    private void OnTestsProgress(object? sender, ModelTestProgress progress)
+    {
+        events.Publish(ModelTestsProgress, progress);
     }
 }

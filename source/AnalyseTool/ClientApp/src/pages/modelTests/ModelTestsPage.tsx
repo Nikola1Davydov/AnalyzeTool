@@ -1,10 +1,9 @@
-import { Badge, Button, Input, Link, MessageBar, MessageBarBody, Spinner, Switch, Text, Tooltip } from "@fluentui/react-components";
+import { Badge, Button, Input, Link, MessageBar, MessageBarBody, Spinner, Text, Tooltip } from "@fluentui/react-components";
 import {
   Add16Regular,
   Checkmark16Regular,
   ChevronDown16Regular,
   ChevronRight16Regular,
-  Cube16Regular,
   Cursor16Regular,
   Dismiss16Regular,
   Eye16Regular,
@@ -21,7 +20,7 @@ import {
   Circle16Regular,
 } from "@fluentui/react-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import type { ExtensionSummary } from "../../api/extensions";
@@ -47,32 +46,15 @@ import { useConfirm } from "../../components/confirm";
 import { plural, relativeTime } from "../../components/format";
 import { errorText, useNotify } from "../../components/notify";
 import { Empty, Page } from "../../components/Page";
+import { RunProgress, useRunProgress } from "./RunProgress";
 import { useAppQuery } from "../../revit/hooks";
 
-const WATCH_KEY = "analysetool.modelTests.watch";
-const SLOW_KEY = "analysetool.modelTests.slow";
 const SHOWN_CASES = 50;
 
 type Selection = { testId: string; key: string | null };
 
 /** What a chip of the strip narrows the list to. */
 type StatusFilter = "passed" | "new" | "accepted" | "inconclusive";
-
-function readFlag(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeFlag(key: string, on: boolean) {
-  try {
-    localStorage.setItem(key, on ? "1" : "0");
-  } catch {
-    // Storage blocked: the switch still works for this window
-  }
-}
 
 /** The results the page shows: a full run replaces them, a partial one updates its tests. */
 function useResults() {
@@ -109,15 +91,13 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
   });
   const { run, byTest, apply } = useResults();
+  const progress = useRunProgress();
   const [running, setRunning] = useState(false);
-  const [watch, setWatch] = useState(() => readFlag(WATCH_KEY));
-  const [includeSlow, setIncludeSlow] = useState(() => readFlag(SLOW_KEY));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState<Selection | null>(null);
   const [newSuite, setNewSuite] = useState<string | null>(null);
-  const watchTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => apply(latest.data ?? null), [latest.data, apply]);
 
@@ -125,33 +105,21 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     async (request: RunModelTestsRequest = {}) => {
       setRunning(true);
       try {
-        apply(await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { includeSlow, trigger: "page", ...request }));
+        // Run means every test, the slow ones too: what the page shows is never half a run
+        apply(await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { includeSlow: true, trigger: "page", ...request }));
       } catch (error) {
         notify.failed(error, "The tests did not run");
       } finally {
         setRunning(false);
       }
     },
-    [apply, includeSlow, notify],
+    [apply, notify],
   );
 
-  // A run from an AI client or another window shows here too; a saved test file reloads the list (and, watching, runs)
+  // A run from an AI client or another window shows here too; a saved test file reloads the list
   useEffect(() => bridge.on(modelTestsRanEvent, () => void queryClient.invalidateQueries({ queryKey: ["modelTestResults"] })), [queryClient]);
-  useEffect(() => {
-    // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
-    const off = bridge.on(extensionsChangedEvent, () => {
-      void refetchTests();
-      if (!watch) return;
-      window.clearTimeout(watchTimer.current);
-      // A suite open in the pane watches itself only
-      watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch", ...(only ? { suite: only } : {}) }), 800);
-    });
-    return () => {
-      off();
-      // A pending run must not fire after Watch is switched off or the screen is left
-      window.clearTimeout(watchTimer.current);
-    };
-  }, [refetchTests, watch, runTests, only]);
+  // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
+  useEffect(() => bridge.on(extensionsChangedEvent, () => void refetchTests()), [refetchTests]);
 
   const suites = tests.data?.suites ?? [];
   // A suite opened in the Tests tab of the pane shows its own tests only
@@ -250,7 +218,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     if (result) await runTests({ tests: [test.id] });
   }
 
-  async function show(item: ModelTestCase, how: "select" | "isolate" | "geometry" | "3d" | "box") {
+  async function show(item: Shown, how: "select" | "isolate" | "geometry" | "3d" | "box") {
     const ids = [item.elementId, ...item.related].filter((id): id is number => id !== null);
     if (how === "select") {
       await act(modelTestCommands.SelectionInRevit, { elementIds: ids }, () => undefined, "Could not select");
@@ -259,19 +227,28 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
         modelTestCommands.ShowElementsIn3D,
         { elementIds: ids, sectionBox: how === "box" },
         () => undefined,
-        "Could not show it in 3D",
-      ).then((result) => result && !result.ok && notify.warning("Not shown in 3D", result.error ?? undefined));
+        how === "box" ? "Could not show it in 3D" : "Could not isolate",
+      ).then(
+        (result) =>
+          result?.error &&
+          notify.warning(how === "box" ? "Not shown in 3D" : result.ok ? "Isolated in part" : "Not isolated", result.error),
+      );
     } else if (how === "isolate") {
       await act(modelTestCommands.IsolationInRevit, { elementIds: ids }, () => undefined, "Could not isolate");
     } else {
       await bridge.invoke(modelTestCommands.ClearGeometry, null).catch(() => undefined);
-      const box = item.box ? [{ min: item.box.slice(0, 3), max: item.box.slice(3, 6) }] : [];
-      await act(
-        modelTestCommands.ShowGeometry,
-        { ids, boxes: box, points: item.point ? [item.point] : [], color: item.status === "failed" ? "#D13438" : "#CA5010" },
-        () => undefined,
-        "Could not show it",
-      );
+      // Highlight shows where the problem is: the place the test found (a clash, a gap) when it gave one, else the elements
+      const red = item.status === "failed" ? "#D13438" : "#CA5010";
+      const boxes = (item.boxes ?? (item.box ? [item.box] : [])).map((box) => ({ min: box.slice(0, 3), max: box.slice(3, 6) }));
+      const points = item.points ?? (item.point ? [item.point] : []);
+      let shown: { hidden?: string | null } | undefined;
+      if (boxes.length || points.length) {
+        shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { boxes, points, color: red, transparency: 15 }, () => undefined, "Could not show it");
+      } else {
+        shown = await act<{ hidden?: string | null }>(modelTestCommands.ShowGeometry, { ids, color: red }, () => undefined, "Could not show it");
+      }
+      // The Realistic display style draws none of the highlight: say so, or the button looks broken
+      if (shown?.hidden) notify.warning("Not visible in this view", shown.hidden);
     }
   }
 
@@ -347,7 +324,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
             Create
           </Button>
           <Text size={200} className="muted">
-            A folder in your extensions with one C# suite of examples. Open it in your editor: every save runs again with Watch on.
+            A folder in your extensions with one C# suite of examples. Open it in your editor or ask your AI client; Run checks the model again.
           </Text>
         </div>
       )}
@@ -368,6 +345,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
       {suites.length > 0 && (
         <>
+          {progress && <RunProgress progress={progress} />}
           {layout === "pane" ? (
             <div className="mt-strip">
               <FilterChip active={statusFilter === "passed"} title="Show only the tests that passed" onToggle={() => toggleFilter("passed")}>
@@ -398,28 +376,6 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
           <div className="usage-toolbar">
             <Input size="small" contentBefore={<Search16Regular />} placeholder="Test, rule or trait" value={search} onChange={(_, data) => setSearch(data.value)} />
-            <div className="mt-switches">
-              <Tooltip content="Runs the tests marked slow too (geometry, the whole model) — they are skipped by default; a test run on its own runs anyway" relationship="description">
-                <Switch
-                  label="Slow tests"
-                  checked={includeSlow}
-                  onChange={(_, data) => {
-                    setIncludeSlow(data.checked);
-                    writeFlag(SLOW_KEY, data.checked);
-                  }}
-                />
-              </Tooltip>
-              <Tooltip content="Runs the tests again whenever an extension is saved or reloaded" relationship="description">
-                <Switch
-                  label="Watch"
-                  checked={watch}
-                  onChange={(_, data) => {
-                    setWatch(data.checked);
-                    writeFlag(WATCH_KEY, data.checked);
-                  }}
-                />
-              </Tooltip>
-            </div>
           </div>
 
           <div className="mt-layout">
@@ -459,8 +415,8 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                           )}
                           {groupOf(result) && (
                             <>
-                              <RowButton title="Isolate every failing element in Revit and show them in 3D" onClick={() => void show(groupOf(result)!, "3d")}>
-                                <Cube16Regular />
+                              <RowButton title="Isolate every failing element in the active view" onClick={() => void show(groupOf(result)!, "3d")}>
+                                <Eye16Regular />
                               </RowButton>
                               <RowButton title="Selection box around every failing element" onClick={() => void show(groupOf(result)!, "box")}>
                                 <ScanDash16Regular />
@@ -502,8 +458,8 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
                                 <RowButton title="Details" onClick={() => toggleSelection({ testId: test.id, key: item.key })}>
                                   <Info16Regular />
                                 </RowButton>
-                                <RowButton title="Isolate in Revit and show in 3D" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
-                                  <Cube16Regular />
+                                <RowButton title="Isolate it in the active view" disabled={item.elementId === null} onClick={() => void show(item, "3d")}>
+                                  <Eye16Regular />
                                 </RowButton>
                                 <RowButton title="Selection box: a section box around it in 3D, its surroundings visible" disabled={item.elementId === null} onClick={() => void show(item, "box")}>
                                   <ScanDash16Regular />
@@ -665,13 +621,13 @@ function Details(props: {
               Select
             </Button>
             <Button size="small" icon={<Eye16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "3d")}>
-              Isolate in 3D
+              Isolate
             </Button>
             <Button size="small" icon={<ScanDash16Regular />} disabled={item.elementId === null} onClick={() => props.onShow(item, "box")}>
               Selection box
             </Button>
             {(test.kind !== "Rule" || item.box || item.point) && (
-              <Tooltip content="Draws it in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+              <Tooltip content="Draws where it fails in red over the 3D views and plans: the place the test found (a clash), else the element. Nothing is added to the model; Clear highlights removes it" relationship="description">
                 <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(item, "geometry")}>
                   Highlight
                 </Button>
@@ -711,13 +667,13 @@ function Details(props: {
                 Select all
               </Button>
               <Button size="small" icon={<Eye16Regular />} onClick={() => props.onShow(groupOf(result)!, "3d")}>
-                Isolate all in 3D
+                Isolate all
               </Button>
               <Button size="small" icon={<ScanDash16Regular />} onClick={() => props.onShow(groupOf(result)!, "box")}>
                 Selection box
               </Button>
               {test.kind !== "Rule" && (
-                <Tooltip content="Draws them in red over the 3D views and plans — nothing is added to the model; Clear highlights removes it" relationship="description">
+                <Tooltip content="Draws where they fail in red over the 3D views and plans: the places the test found (clashes), else the elements. Nothing is added to the model; Clear highlights removes it" relationship="description">
                   <Button size="small" icon={<Highlight16Regular />} onClick={() => props.onShow(groupOf(result)!, "geometry")}>
                     Highlight all
                   </Button>
@@ -840,13 +796,29 @@ function RowButton({ title, onClick, disabled, children }: { title: string; onCl
  * Every failing element of a test as one case, for the actions on the whole group: the new failures, or every failure when
  * all are accepted; null when no element failed.
  */
-function groupOf(result: ModelTestResult | undefined): ModelTestCase | null {
+/** What a group action works on: every failing element of a test, the ones they hit, and every place the test found. */
+function groupOf(result: ModelTestResult | undefined): Shown | null {
   const failed = (result?.cases ?? []).filter((item) => item.elementId !== null && item.status !== "error");
   const shown = failed.some((item) => !item.inBaseline) ? failed.filter((item) => !item.inBaseline) : failed;
-  const ids = [...new Set(shown.map((item) => item.elementId!))];
+  const ids = [...new Set(shown.flatMap((item) => [item.elementId!, ...item.related]))];
   if (!ids.length) return null;
-  return { key: "*", status: "failed", message: "", elementId: ids[0], label: null, related: ids.slice(1), inBaseline: false, point: null, box: null };
+  return {
+    key: "*",
+    status: "failed",
+    message: "",
+    elementId: ids[0],
+    label: null,
+    related: ids.slice(1),
+    inBaseline: false,
+    point: null,
+    box: null,
+    boxes: shown.flatMap((item) => (item.box ? [item.box] : [])),
+    points: shown.flatMap((item) => (item.point ? [item.point] : [])),
+  };
 }
+
+/** A case, or the cases of a whole test at once (their places together). */
+type Shown = ModelTestCase & { boxes?: number[][]; points?: number[][] };
 
 function StatusIcon({ status }: { status: TestStatus | undefined }) {
   switch (status) {

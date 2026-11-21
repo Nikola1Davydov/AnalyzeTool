@@ -149,16 +149,24 @@ public sealed record ModelTestRun(
 /// <param name="Tests">Only these tests (full ids).</param>
 /// <param name="Trait">Only tests with this label, <c>name=value</c>.</param>
 /// <param name="ElementIds">Only these elements: tests of the whole model do not run.</param>
-/// <param name="IncludeSlow">Slow tests run too.</param>
+/// <param name="IncludeSlow">Slow tests run too — the default: a run checks everything unless told to skip them.</param>
 /// <param name="MaxCases">At most this many cases per test in the result.</param>
 public sealed record ModelTestRunOptions(
     string? Suite = null,
     IReadOnlyList<string>? Tests = null,
     string? Trait = null,
     IReadOnlyList<long>? ElementIds = null,
-    bool IncludeSlow = false,
+    bool IncludeSlow = true,
     int MaxCases = 500)
 {
     /// <summary>Gets a value indicating whether this is a run of every default test on every element.</summary>
     public bool IsFull => Suite is null && (Tests is null || Tests.Count == 0) && Trait is null && (ElementIds is null || ElementIds.Count == 0);
 }
+
+/// <summary>How far a run of model tests is: sent to the pages before every test and once at the end.</summary>
+/// <param name="Done">How many tests have run.</param>
+/// <param name="Total">How many the run has.</param>
+/// <param name="TestId">The test running now; <see langword="null" /> at the end.</param>
+/// <param name="Test">Its name, as Revit names its categories and parameters.</param>
+/// <param name="Suite">The suite it belongs to.</param>
+public sealed record ModelTestProgress(int Done, int Total, string? TestId, string? Test, string? Suite);

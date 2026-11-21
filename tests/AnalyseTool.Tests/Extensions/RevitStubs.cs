@@ -46,6 +46,28 @@ internal static class RevitStubs
                                public class Parameter {}
                                public enum BuiltInCategory { INVALID = -1, OST_Walls = -2000011, OST_Doors = -2000023, OST_Windows = -2000014, OST_Rooms = -2000160, OST_StructuralFraming = -2001320 }
                                public enum BuiltInParameter { INVALID = -1, ALL_MODEL_MARK = -1001203, ROOM_NUMBER = -1006901 }
+                               // Units of the Sdk's Units helpers: the same factors Revit converts with
+                               public class ForgeTypeId { public ForgeTypeId(string typeId) { TypeId = typeId; } public string TypeId { get; } }
+                               public static class UnitTypeId
+                               {
+                                   public static ForgeTypeId Millimeters { get; } = new ForgeTypeId("mm");
+                                   public static ForgeTypeId Meters { get; } = new ForgeTypeId("m");
+                                   public static ForgeTypeId SquareMeters { get; } = new ForgeTypeId("m2");
+                                   public static ForgeTypeId CubicMeters { get; } = new ForgeTypeId("m3");
+                                   public static ForgeTypeId Degrees { get; } = new ForgeTypeId("deg");
+                               }
+                               public static class UnitUtils
+                               {
+                                   public static double ConvertToInternalUnits(double value, ForgeTypeId unit) => unit.TypeId switch
+                                   {
+                                       "mm" => value / 304.8,
+                                       "m" => value / 0.3048,
+                                       "m2" => value / (0.3048 * 0.3048),
+                                       "m3" => value / (0.3048 * 0.3048 * 0.3048),
+                                       "deg" => value * System.Math.PI / 180,
+                                       _ => throw new System.ArgumentException(unit.TypeId)
+                                   };
+                               }
                            }
                            namespace Autodesk.Revit.DB.Architecture
                            {

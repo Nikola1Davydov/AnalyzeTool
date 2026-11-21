@@ -278,7 +278,7 @@ public sealed class ModelTestEngineTests
     }
 
     [Test]
-    public async Task Run_SlowAndSkipped_RunOnlyWhenAskedFor()
+    public async Task Run_SlowRunsByDefault_AQuickRunLeavesItOut_SkippedNever()
     {
         var model = new FakeModel();
         var suite = Define(s =>
@@ -288,15 +288,16 @@ public sealed class ModelTestEngineTests
         });
         var slow = suite.Tests[0];
 
+        // Run means every test: a slow one too, unless a quick run leaves it out; named, it runs anyway
         var byDefault = ModelTestEngine.Run(slow, model, new HashSet<string>(), All, CancellationToken.None);
-        var included = ModelTestEngine.Run(slow, model, new HashSet<string>(), new ModelTestRunOptions(IncludeSlow: true), CancellationToken.None);
-        var named = ModelTestEngine.Run(slow, model, new HashSet<string>(), new ModelTestRunOptions(Tests: [slow.Id]), CancellationToken.None);
-        var skipped = ModelTestEngine.Run(suite.Tests[1], model, new HashSet<string>(), new ModelTestRunOptions(IncludeSlow: true), CancellationToken.None);
+        var quick = ModelTestEngine.Run(slow, model, new HashSet<string>(), new ModelTestRunOptions(IncludeSlow: false), CancellationToken.None);
+        var named = ModelTestEngine.Run(slow, model, new HashSet<string>(), new ModelTestRunOptions(Tests: [slow.Id], IncludeSlow: false), CancellationToken.None);
+        var skipped = ModelTestEngine.Run(suite.Tests[1], model, new HashSet<string>(), All, CancellationToken.None);
 
         using (Assert.Multiple())
         {
-            await Assert.That(byDefault.Status).IsEqualTo("skipped");
-            await Assert.That(included.Status).IsEqualTo("failed");
+            await Assert.That(byDefault.Status).IsEqualTo("failed");
+            await Assert.That(quick.Status).IsEqualTo("skipped");
             await Assert.That(named.Status).IsEqualTo("failed");
             await Assert.That(skipped.Skip).IsEqualTo("Not ready");
         }

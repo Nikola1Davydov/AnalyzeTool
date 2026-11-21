@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, MotionConfig } from "motion/react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { useUpdate } from "./update";
@@ -11,6 +11,7 @@ import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { AboutScreen } from "./AboutScreen";
 import { PageScreen } from "./PageScreen";
+import { EditContext } from "./edit";
 import { HowItWorks, HowTestsWork } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
@@ -69,8 +70,6 @@ function tabOf(screen: Screen): PaneTab | null {
 const sizes: TileSize[] = ["small", "medium", "large"];
 const sizeLabels: Record<TileSize, string> = { small: "Small buttons", medium: "Medium buttons", large: "Large buttons" };
 
-/** The edit mode: the right mouse button starts it and, clicked again, ends it — as «Done» or Escape do. */
-const EditContext = createContext<{ editing: boolean; start: () => void }>({ editing: false, start: () => {} });
 
 function depth(screen: Screen) {
   switch (screen.kind) {
@@ -566,7 +565,7 @@ function ActionList({ items }: { items: ActionItem[] }) {
 
 /**
  * The first screen: the folders — each one a tab of the Revit ribbon. In the edit mode «+»/«−» puts its tab on the ribbon or
- * takes it off (it stays here); a folder off the ribbon is grey.
+ * takes it off (it stays here); a folder off the ribbon carries a struck-through eye.
  */
 function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onOpen: (id: string) => void; onGuide: () => void }) {
   const carry = useCarry();
@@ -657,7 +656,8 @@ function HomeScreen({ overview, onOpen, onGuide }: { overview: PaneOverview; onO
       </div>
       <p className="muted small center">
         Each folder is a tab of the Revit ribbon, its sections are the panels. Right-click to edit: ☆ keeps a button in the dock below, + / −
-        puts a folder or a button on the ribbon or takes it off, drag to move.
+        puts a folder or a button on the ribbon or takes it off, drag to move. A struck-through eye in the corner: not on the
+        ribbon — it works here.
       </p>
     </>
   );
@@ -810,6 +810,7 @@ function OlderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFol
 
 function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; folders: PaneFolder[]; embedded?: boolean }) {
   const actions = useActions();
+  const { profile, update } = useProfile();
   const edit = useContext(EditContext);
   const refresh = useQueryClient();
   const movable = folder.canAddButtons;
@@ -869,6 +870,11 @@ function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; fol
           }
         >
           This folder is turned off: its buttons and commands do not load. <b>Tap to turn it on.</b>
+        </button>
+      )}
+      {!embedded && !folder.builtIn && profile.hiddenFolders.includes(folder.id) && (
+        <button className="banner info" onClick={() => toggleIn(update, "hiddenFolders", folder.id)}>
+          This folder is not on the Revit ribbon — its buttons work here. <b>Tap to put it on the ribbon.</b>
         </button>
       )}
       {folder.problems.length > 0 && (
@@ -961,7 +967,7 @@ function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; fol
 
 /**
  * A button as a tile: a tap runs it. In the edit mode its four corners: −/+ loads it on the Revit ribbon or not, ✎ its name,
- * description and «Move to…», ☆/★ the dock below, 📁 its folder. A button that is not on the ribbon is grey.
+ * description and «Move to…», ☆/★ the dock below, 📁 its folder. A button that is not on the ribbon carries a struck-through eye.
  */
 function ButtonTile(props: {
   folder: PaneFolder;
@@ -979,6 +985,8 @@ function ButtonTile(props: {
   const folderHidden = !folder.builtIn && profile.hiddenFolders.includes(folder.id);
   const loaded = button.offRibbon ? profile.ribbon.includes(button.key) : !profile.hiddenButtons.includes(button.key);
   const onRibbon = loaded && !folderHidden;
+  // Its own choice gets the mark; a folder off the ribbon says so once, above its buttons
+  const ownOff = !loaded;
   const toastError = (message: string) => actions.toast(message, "error");
   const carry = useCarry();
   // In the grid of a folder of the user (a tab, or a folder of plugin.json that moves into tabs) a button can leave it
@@ -1046,7 +1054,7 @@ function ButtonTile(props: {
       label={button.name}
       title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
-      off={!onRibbon}
+      off={ownOff}
       badge={button.problems?.length ? "error" : button.lastFailure ? "failed" : null}
       onBadge={() =>
         button.problems?.length

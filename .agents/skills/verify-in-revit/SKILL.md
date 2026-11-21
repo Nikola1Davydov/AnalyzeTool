@@ -43,13 +43,38 @@ Revit restart, reconnect the server (`/mcp` in Claude Code) — that also brings
 | `GetSelection` / `SelectElements` | what the user selected; select and zoom to what you found |
 | `InspectElement` | properties and parameters of an element by id — follow references by id and nested objects by `path` (`Location.Curve`); reads only, no code |
 | `RenderView` | a PNG of the active view — look at the result instead of guessing; the selection is highlighted; `width` 1280 by default |
-| `ShowGeometry` / `ClearGeometry` | draw elements, boxes, lines or points over the 3D views and plans without changing the model — a colour per group, then `RenderView`; clear when done |
+| `ShowGeometry` / `ClearGeometry` | draw elements, boxes, lines or points over the 3D views and plans without changing the model — a colour per group; clear when done. When it does not show, see the pitfalls below |
 | `GetLogEntries` | the add-in log: `afterSequence` 0, then the `lastSequence` you got; `minLevel` `Warning` for failures |
 | `DescribeApi` | a Revit API type of this Revit version, with its members — before using a member you are not sure of |
 | `ExecuteCode` | C# on the Revit thread (`doc`, `uidoc`, `uiapp`) — for what `InspectElement` and the commands do not show |
 
 A command that is not marked with `[McpTool]` is not visible; check it through `ExecuteCode`, or ask the user to press
 the button and then read `GetLogEntries`.
+
+## Pitfalls
+
+* **To see what the user sees, take a screenshot of the Revit window** — the pane, the ribbon and the view as they are:
+
+  ```powershell
+  Add-Type -AssemblyName System.Drawing
+  Add-Type 'using System;using System.Runtime.InteropServices;public static class Win{[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);public struct R{public int L,T,Ri,B;}}'
+  $r = New-Object Win+R; [Win]::GetWindowRect((Get-Process Revit)[0].MainWindowHandle, [ref]$r) | Out-Null
+  $bmp = New-Object System.Drawing.Bitmap ($r.Ri - $r.L), ($r.B - $r.T)
+  [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size); $bmp.Save("<scratchpad>\revit.png")
+  ```
+
+  Wait a second after the call that draws: Revit draws when it is idle.
+* **A view in the Realistic display style does not show the overlay** — on screen nor in `RenderView`; *Shaded*,
+  *Consistent colors*, *Textures* and plans do. This holds with colours per vertex and with the colour on the
+  `EffectInstance` alike (both tried on a live model). Tell the user to switch the style before looking for another
+  cause, and compare the display style first when an overlay shows in one model and not in another. In the API the
+  styles are `DisplayStyle.Realistic` / `RealisticWithEdges`; `Textures` is a style of its own and shows the overlay.
+* **Revit may not ask a DirectContext3D server at all.** `OverlayServer.Calls` counts how often Revit asked it
+  (`CanExecute`), for its bounds and to draw, and `LastError` keeps the last exception of those calls — Revit drops a
+  server that throws without a word. Read both through `ExecuteCode` and reflection on
+  `ExternalServiceRegistry.GetService(DirectContext3DService).GetServer(id)` before guessing.
+* **Geometry inside the model is hidden by it.** A clash in a basement is behind walls and floors: isolate the elements
+  or cut the view with a section box before you conclude that nothing was drawn.
 
 ## Rules
 

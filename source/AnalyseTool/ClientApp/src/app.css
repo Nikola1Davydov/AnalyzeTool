@@ -1885,3 +1885,16 @@ button.mt-chip:hover {
 .stats-status {
   margin-left: 6px;
 }
+
+/* Model tests: the run going on */
+.mt-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+}
+.mt-progress-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -29,8 +29,23 @@ public sealed class ModelTestCatalog(ExtensionPaths paths)
     internal int Load(Assembly assembly, ExtensionDescriptor descriptor, ICollection<string> problems)
     {
         var suites = Discover(assembly, descriptor.Id, descriptor.Directory, BaselineDirectory(descriptor), problems, descriptor.Manifest.Name);
+        // Model tests live in a folder that says so: «<Name>.tests». Anywhere else they are a problem, not tests
+        if (suites.Count > 0 && !IsTestsFolder(descriptor.Directory))
+        {
+            var name = Path.GetFileName(descriptor.Directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            problems.Add($"Model tests run only from a folder ending in «{ExtensionCatalog.TestsSuffix}»: rename «{name}» to «{name}{ExtensionCatalog.TestsSuffix}».");
+            suites = [];
+        }
+
         Set(descriptor.Id, suites);
         return suites.Count;
+    }
+
+    /// <summary>Whether a folder is one of model tests: its name ends in <see cref="ExtensionCatalog.TestsSuffix" />.</summary>
+    public static bool IsTestsFolder(string directory)
+    {
+        return Path.GetFileName(directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+            .EndsWith(ExtensionCatalog.TestsSuffix, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Records the suites of an extension; none removes it.</summary>

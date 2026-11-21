@@ -18,6 +18,16 @@ internal sealed class OverlayServer : IDirectContext3DServer
 
     private readonly List<Entry> _entries = [];
 
+    /// <summary>How often Revit asked whether to draw, for the bounds, and drew: what tells a server Revit never calls.</summary>
+    public (int CanExecute, int Bounds, int Render) Calls => (_canExecute, _bounds, _render);
+
+    /// <summary>The last exception a call from Revit threw; Revit drops a server that throws without a word.</summary>
+    public string? LastError { get; private set; }
+
+    private int _canExecute;
+    private int _bounds;
+    private int _render;
+
     public int Count
     {
         get
@@ -74,11 +84,34 @@ internal sealed class OverlayServer : IDirectContext3DServer
 
     public bool CanExecute(View view)
     {
-        Prune();
-        return Of(view).Any();
+        _canExecute++;
+        try
+        {
+            Prune();
+            return Of(view).Any();
+        }
+        catch (Exception exception)
+        {
+            LastError = $"CanExecute: {exception}";
+            return false;
+        }
     }
 
     public Outline GetBoundingBox(View view)
+    {
+        _bounds++;
+        try
+        {
+            return Bounds(view);
+        }
+        catch (Exception exception)
+        {
+            LastError = $"GetBoundingBox: {exception}";
+            return new Outline(XYZ.Zero, XYZ.Zero);
+        }
+    }
+
+    private Outline Bounds(View view)
     {
         var clamp = CutPlaneClamp.Of(view);
         Outline? bounds = null;
@@ -107,6 +140,19 @@ internal sealed class OverlayServer : IDirectContext3DServer
     ///     pressed onto its cut plane (<see cref="CutPlaneClamp" />).
     /// </summary>
     public void RenderScene(View view, DisplayStyle displayStyle)
+    {
+        _render++;
+        try
+        {
+            Render(view);
+        }
+        catch (Exception exception)
+        {
+            LastError = $"RenderScene: {exception}";
+        }
+    }
+
+    private void Render(View view)
     {
         var transparentPass = DrawContext.IsTransparentPass();
         var clamp = CutPlaneClamp.Of(view);
@@ -164,7 +210,7 @@ internal sealed class OverlayServer : IDirectContext3DServer
             return buffers;
 
             OverlayBuffer? Create(IReadOnlyList<XYZ> points, PrimitiveType type, int transparency) =>
-                points.Count == 0 ? null : new OverlayBuffer(clamp == CutPlaneClamp.None ? points : points.Select(clamp.Apply).ToList(), type, Color(transparency));
+                points.Count == 0 ? null : new OverlayBuffer(clamp == CutPlaneClamp.None ? points : points.Select(clamp.Apply).ToList(), type, Geometry.Color, transparency / 100.0);
         }
 
         public void Dispose()
@@ -176,13 +222,6 @@ internal sealed class OverlayServer : IDirectContext3DServer
             }
 
             _buffers.Clear();
-        }
-
-        // Transparency of DirectContext3D goes from 0 (opaque) to 255
-        private ColorWithTransparency Color(int transparency)
-        {
-            var color = Geometry.Color;
-            return new ColorWithTransparency(color.Red, color.Green, color.Blue, (uint)(transparency * 255 / 100));
         }
     }
 }

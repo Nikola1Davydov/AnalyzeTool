@@ -42,9 +42,9 @@ public sealed class ViewActionsService
     private const double SectionBoxMargin = 300 / 304.8;
 
     /// <summary>
-    ///     Shows the elements in a 3D view — the active one when it is 3D, else <c>{3D}</c> or any 3D view, created when there is
-    ///     none — selected, active and zoomed to them: isolated temporarily, or, with <paramref name="sectionBox" />, inside a
-    ///     section box around them with their surroundings (Revit's Selection Box).
+    ///     Shows the elements, selected and zoomed to: isolated temporarily in the active view — whatever view it is, the view
+    ///     never changes — or, with <paramref name="sectionBox" />, inside a section box around them with their surroundings
+    ///     (Revit's Selection Box), in the active view when it is 3D, else <c>{3D}</c> or any 3D view, created when there is none.
     /// </summary>
     public ShowIn3DResult ShowIn3D(Autodesk.Revit.UI.UIDocument uiDocument, IReadOnlyList<long> elementIds, bool sectionBox = false)
     {
@@ -53,6 +53,11 @@ public sealed class ViewActionsService
         if (ids.Count == 0)
         {
             return new ShowIn3DResult(false, 0, null, "None of the elements is in the model.");
+        }
+
+        if (!sectionBox)
+        {
+            return IsolateInActiveView(uiDocument, ids);
         }
 
         using var transaction = new Transaction(document, "Show in 3D");
@@ -72,29 +77,15 @@ public sealed class ViewActionsService
             view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
         }
 
-        BoundingBoxXYZ? box = null;
-        if (sectionBox)
+        var box = BoxAround(document, ids);
+        if (box is null)
         {
-            box = BoxAround(document, ids);
-            if (box is null)
-            {
-                transaction.RollBack();
-                return new ShowIn3DResult(false, 0, viewName, "The elements have no geometry to put a section box around.");
-            }
-
-            view.SetSectionBox(box);
-            view.IsSectionBoxActive = true;
+            transaction.RollBack();
+            return new ShowIn3DResult(false, 0, viewName, "The elements have no geometry to put a section box around.");
         }
-        else
-        {
-            // A section box left by an earlier Selection box would cut the isolated elements away
-            if (view.IsSectionBoxActive)
-            {
-                view.IsSectionBoxActive = false;
-            }
 
-            view.IsolateElementsTemporary(ids);
-        }
+        view.SetSectionBox(box);
+        view.IsSectionBoxActive = true;
 
         var rolledBack = failures.RollbackReason(transaction.Commit());
         if (rolledBack is not null)
@@ -108,18 +99,60 @@ public sealed class ViewActionsService
         }
 
         uiDocument.Selection.SetElementIds(ids);
-        var open = uiDocument.GetOpenUIViews().FirstOrDefault(candidate => candidate.ViewId == view.Id);
-        if (box is not null)
-        {
-            open?.ZoomAndCenterRectangle(box.Min, box.Max);
-        }
-        else
-        {
-            // The isolated view shows only the elements: zoom to fit is zoom to them
-            open?.ZoomToFit();
-        }
+        uiDocument.GetOpenUIViews().FirstOrDefault(candidate => candidate.ViewId == view.Id)?.ZoomAndCenterRectangle(box.Min, box.Max);
 
         return new ShowIn3DResult(true, ids.Count, viewName, null);
+    }
+
+    /// <summary>
+    ///     Isolates the elements temporarily in the active view, the view the user looks at: a plan stays a plan. Elements the
+    ///     view does not show (another level, another phase) are left out; none shown is an answer, not an empty view.
+    /// </summary>
+    private static ShowIn3DResult IsolateInActiveView(Autodesk.Revit.UI.UIDocument uiDocument, IReadOnlyList<ElementId> ids)
+    {
+        var document = uiDocument.Document;
+        var view = uiDocument.ActiveView;
+        if (view is null || view.IsTemplate || view.ViewType is ViewType.Schedule or ViewType.DrawingSheet or ViewType.ProjectBrowser
+                or ViewType.SystemBrowser or ViewType.Internal or ViewType.Undefined or ViewType.Report or ViewType.PanelSchedule
+                or ViewType.ColumnSchedule)
+        {
+            return new ShowIn3DResult(false, 0, view?.Name, "The active view cannot isolate elements: open a plan, a section or a 3D view.");
+        }
+
+        using var transaction = new Transaction(document, "Isolate");
+        transaction.Start();
+        var failures = CollectingFailuresPreprocessor.Apply(transaction);
+        // An earlier isolation first: the view's collector sees only what it leaves visible
+        if (view.IsTemporaryHideIsolateActive())
+        {
+            view.DisableTemporaryViewMode(TemporaryViewMode.TemporaryHideIsolate);
+        }
+
+        var wanted = ids.Select(id => id.Value).ToHashSet();
+        var shown = new FilteredElementCollector(document, view.Id).WhereElementIsNotElementType().ToElementIds()
+            .Where(id => wanted.Contains(id.Value)).ToList();
+        if (shown.Count == 0)
+        {
+            // Say why when the view hides their category: «Doors are off in Visibility/Graphics» is a fix, «not shown» a riddle
+            var hidden = ids.Select(document.GetElement).Select(element => element?.Category)
+                .Where(category => category is not null && view.GetCategoryHidden(category.Id)).Select(category => category!.Name).Distinct().ToList();
+            transaction.RollBack();
+            var why = hidden.Count > 0 ? $" — {string.Join(", ", hidden)} {(hidden.Count == 1 ? "is" : "are")} hidden in its Visibility/Graphics" : "";
+            return new ShowIn3DResult(false, 0, view.Name,
+                $"The active view «{view.Name}» does not show {(ids.Count == 1 ? "the element" : "any of the elements")}{why}: open a view where {(ids.Count == 1 ? "it is" : "they are")}, or use Selection box.");
+        }
+
+        view.IsolateElementsTemporary(shown);
+        var rolledBack = failures.RollbackReason(transaction.Commit());
+        if (rolledBack is not null)
+        {
+            return new ShowIn3DResult(false, 0, view.Name, rolledBack);
+        }
+
+        uiDocument.Selection.SetElementIds(shown);
+        // The isolated view shows only the elements: zoom to fit is zoom to them
+        uiDocument.GetOpenUIViews().FirstOrDefault(candidate => candidate.ViewId == view.Id)?.ZoomToFit();
+        return new ShowIn3DResult(true, shown.Count, view.Name, shown.Count < ids.Count ? $"{ids.Count - shown.Count} of the elements are not in this view." : null);
     }
 
     private static IEnumerable<XYZ> Corners(XYZ min, XYZ max)

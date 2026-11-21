@@ -39,7 +39,7 @@
         AGENTS.md / CLAUDE.md of every new extension folder, served over MCP; the embedded copy is the fallback.
     -->
     <ItemGroup>
-        <None Include="Authoring\LLM.md" Link="LLM.md" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="Authoring\LLM.md" TargetPath="LLM.md" CopyToOutputDirectory="PreserveNewest"/>
         <EmbeddedResource Include="Authoring\LLM.md" LogicalName="AnalyseTool.Extensions.LLM.md" WithCulture="false"/>
     </ItemGroup>
 

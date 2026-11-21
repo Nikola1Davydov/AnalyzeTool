@@ -34,7 +34,7 @@ public sealed record RunModelTestsRequest(
     [property: Description("Only these tests, by full id.")] IReadOnlyList<string>? Tests = null,
     [property: Description("Only tests with this trait, 'name=value' or 'name'.")] string? Trait = null,
     [property: Description("Only these elements (ids): tests of the whole model do not run.")] IReadOnlyList<long>? ElementIds = null,
-    [property: Description("Run slow tests too; a slow test named in 'tests' runs anyway.")] bool IncludeSlow = false,
+    [property: Description("false skips the tests marked slow, for a quick check; every test runs by default, as Run on the page does.")] bool IncludeSlow = true,
     [property: Description("At most this many failing cases per test in the result; 200 by default.")] int MaxCases = 200,
     [property: Description("Who runs it, shown on the page: page, watch, mcp. Defaults to where the call comes from.")] string? Trigger = null);
 
@@ -42,7 +42,7 @@ public sealed record RunModelTestsRequest(
 [McpTool(ReadOnly = true, Title = "Run model tests")]
 [Command(Description = "Runs model tests on the active Revit model and returns a result per test: status (passed — nothing new failed, accepted failures do not count; failed; error — the test threw; " +
                        "inconclusive; skipped), counts (checked, failed, new, baseline, resolved), and the cases that did not pass with element id, label, message and a key. " +
-                       "Tests run inside a transaction group that is rolled back: the model never changes. Without filters every test that is not slow runs on every element, " +
+                       "Tests run inside a transaction group that is rolled back: the model never changes. Without filters every test runs on every element (includeSlow false leaves out the slow ones), " +
                        "and the counts join the trend of the model.")]
 public sealed class RunModelTests(ModelTestService service) : ICommand<RunModelTestsRequest, ModelTestRun>
 {
@@ -114,7 +114,7 @@ public sealed record CreateModelTestSuiteRequest(
 
 /// <summary>Creates a suite of model tests.</summary>
 [McpTool(Title = "Create model tests")]
-[Command(Description = "Creates a folder of model tests in the user's extensions — a project — with one C# suite (src\\<Name>.cs) of three example tests, compiled and loaded at once, " +
+[Command(Description = "Creates a folder of model tests in the user's extensions — a project, <id>.tests (model tests load only from folders ending in .tests) — with one C# suite (src\\<Name>.cs) of three example tests, compiled and loaded at once, " +
                        "with its version history; with 'extension' it adds one more suite to that folder instead. Edit it with WriteExtensionFile; every save reloads the tests. Returns the extension.")]
 public sealed class CreateModelTestSuite(ExtensionManager manager) : ICommand<CreateModelTestSuiteRequest, ExtensionSummary>
 {
@@ -188,7 +188,8 @@ public sealed class GetModelTestStatistics(ModelTestUsageStore usage, ModelTestC
                 .Select(offset => today.AddDays(offset - 29).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
                 .Select(day => used.Days.GetValueOrDefault(day))
                 .ToList();
-            return new ModelTestStatistic(used.TestId, exists ? pair.Test.Name : used.Test, exists ? pair.Suite.DisplayName : used.Suite,
+            // A rule without a name keeps the name of its run: Revit's names, which this thread cannot read
+            return new ModelTestStatistic(used.TestId, exists && pair.Test.ExplicitName is not null ? pair.Test.Name : used.Test, exists ? pair.Suite.DisplayName : used.Suite,
                 exists ? pair.Suite.ExtensionName ?? pair.Suite.ExtensionId : used.ExtensionId, exists, used.Runs, used.Failed, used.Errors, used.Inconclusive,
                 used.LastStatus, used.LastRun, used.LastNew, used.LastError, used.AverageMilliseconds, days);
         }).ToList();

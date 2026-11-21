@@ -99,6 +99,12 @@ public sealed class ExtensionCatalog(ExtensionPaths paths, string revitVersion)
         return GetTabs().FirstOrDefault(tab => string.Equals(tab.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    ///     The ending of a folder of model tests (<c>bep-project-x.tests</c>): model tests load only from such a folder. Otherwise
+    ///     it is an extension like any other; its id comes from its plugin.json, without the ending.
+    /// </summary>
+    public const string TestsSuffix = ".tests";
+
     /// <summary>Finds an extension by id.</summary>
     public ExtensionDescriptor? Find(string id)
     {

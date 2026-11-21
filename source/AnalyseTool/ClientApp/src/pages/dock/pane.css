@@ -621,6 +621,11 @@
   cursor: pointer;
 }
 
+/* Information, not a problem: a folder off the Revit ribbon still works here */
+.banner.info {
+  background: color-mix(in srgb, var(--accent) 12%, var(--tile-background));
+}
+
 .trust {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -1601,28 +1606,26 @@
   font-weight: 600;
 }
 
-/* ---- Not on the Revit ribbon: grey and struck through — at a glance, not only in the edit mode ---- */
-.tile.off .tile-face > .tile-icon {
-  filter: grayscale(1);
-  opacity: 0.45;
-}
-
-.tile.off .tile-label {
-  color: var(--secondary-label);
-}
-
-/* A diagonal stroke across the icon, like a crossed-out item */
+/* ---- Not on the Revit ribbon: it works here, so the tile stays as it is — a small mark in the corner says it ---- */
 .tile-off {
   position: absolute;
-  inset: 0;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
   pointer-events: none;
-  background: linear-gradient(
-    to top right,
-    transparent calc(50% - 1.5px),
-    color-mix(in srgb, var(--secondary-label) 80%, transparent) calc(50% - 1.5px),
-    color-mix(in srgb, var(--secondary-label) 80%, transparent) calc(50% + 1.5px),
-    transparent calc(50% + 1.5px)
-  );
+  color: var(--label);
+  background: color-mix(in srgb, var(--tile-background) 85%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+}
+
+.tile-off svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* ---- Sections of a folder: the panels of its ribbon tab ---- */
@@ -1757,12 +1760,6 @@
 .guide-folder {
   background: var(--fill-strong);
   box-shadow: inset 0 0 0 6px var(--fill), inset 0 0 0 7px var(--separator);
-}
-
-.guide-tile.off {
-  filter: grayscale(1);
-  opacity: 0.45;
-  background-image: linear-gradient(to top right, transparent 48%, #555 48%, #555 52%, transparent 52%), linear-gradient(160deg, hsl(210 70% 58%), hsl(235 65% 42%));
 }
 
 .guide-tile.pulldown::after {

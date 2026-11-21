@@ -37,6 +37,19 @@ export function TileIcon({ glyph, image, title }: { glyph?: string | null; image
  * A square button of the grid, like an app on the home screen. The right mouse button starts the edit mode: the tiles
  * wiggle, can be dragged to another place and show their badges: pin to the dock or remove from it, and ✎ — change.
  */
+/** The mark of a tile that is not on the Revit ribbon: an eye struck through — Revit does not show it, the pane does. */
+export function OffRibbonMark() {
+  return (
+    <span className="tile-off" title="Not on the Revit ribbon — it works here">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M3 3l18 18" />
+      </svg>
+    </span>
+  );
+}
+
 export function Tile(props: {
   label: string;
   icon: ReactNode;
@@ -46,7 +59,7 @@ export function Tile(props: {
   onBadge?: () => void;
   busy?: boolean;
   dim?: boolean;
-  /** Not on the Revit ribbon: grey, with a struck-through mark — always visible, not only in the edit mode. */
+  /** Not on the Revit ribbon: the tile as usual with a struck-through eye in the corner — it works here, always visible. */
   off?: boolean;
   className?: string;
   /** The key of the tile among its neighbours: makes it draggable in the edit mode and animates its moves. */
@@ -169,7 +182,7 @@ export function Tile(props: {
         )}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
-        {props.off && !props.editing && <span className="tile-off" title="Not on the Revit ribbon" />}
+        {props.off && !props.editing && <OffRibbonMark />}
         {props.star?.on && !props.editing && <span className="tile-star" title="In the dock">★</span>}
       </motion.span>
       {props.editing && props.editBadge && (

@@ -766,8 +766,10 @@ model) in the payload or from your own settings file, and run the call **outside
 ## 11. Model tests
 
 A **model test** checks the open model the way a unit test checks code: «every door has a fire rating», «no two rooms
-share a number», «no duct hits a beam». Tests are C# in any source extension (Sdk 1.3+): a class that implements
-`IModelTestSuite` (namespace `AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
+share a number», «no duct hits a beam». Tests are C# in a folder of model tests — a source extension whose folder name
+ends in **`.tests`** (`bep-project-x.tests\src\*.cs`; its id in plugin.json has no ending). A suite anywhere else does
+not load and the folder reports it. A suite is a class (Sdk 1.3+) that implements `IModelTestSuite` (namespace
+`AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
 `Define` when the extension loads, and runs the tests from the **Tests** tab of the pane or over MCP. A saved file reloads
 them, like a button.
 
@@ -824,7 +826,7 @@ public sealed class BepProjectX : IModelTestSuite
 | Builder | What it declares |
 | --- | --- |
 | `s.Elements(params BuiltInCategory[])`, `s.Elements<T>()` | The elements (instances; `Elements<WallType>()` for types). `.Where(e => …)` filters. |
-| `.Parameter(name \| BuiltInParameter)`, `.TypeParameter(…)`, `.TypeName()`, `.Value(label, e => …)` | A **rule** on one value. Conditions: `NotEmpty()`, `Equal(text)`, `Matches(regex)`, `OneOf(…)`, `InRange(min, max)` (units as Revit shows them), `Unique()`. The first that fails is the message; a missing parameter fails every condition. |
+| `.Parameter(name \| BuiltInParameter)`, `.TypeParameter(…)`, `.TypeName()`, `.Value(label, e => …)` | A **rule** on one value. Conditions: `NotEmpty()`, `Equal(text)`, `Matches(regex)`, `OneOf(…)`, `InRange(min, max)` (in Revit's internal units: lengths in feet, so `InRange(100.Mm(), 20000.Mm())`, areas `1.M2()`, volumes `0.5.M3()`, angles `45.Deg()`; a failure shows the value in the project's units), `Unique()`. The first that fails is the message; a missing parameter fails every condition. |
 | `.Check(name, (element, m) => …)` | Code per element. |
 | `s.Test(name, m => …)` | Code once for the model. |
 | `.Fix(label, e => …)`, `.FixValue(text)` | A repair for failing elements; it runs in one transaction AnalyseTool opens (one Ctrl+Z). |
@@ -832,8 +834,11 @@ public sealed class BepProjectX : IModelTestSuite
 
 Inside a body, `m.Document` is the model, `m.Elements(…)` collects, `m.Assert` records failures — `True`, `NotEmpty`,
 `Empty(items, message)` (each item fails; an element item is the failing element), `Fail`, `Inconclusive` — and an
-optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw. `Units`: `900.Mm()`,
-`0.9.M()` — the API measures in feet.
+optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw: with a `Box` or `Point`
+(where two solids overlap, where a gap is too small) **Highlight** draws only that place, in red;
+without, it draws the element. Give a clash its overlap box: the place is what the user looks for. A view in the
+Realistic display style does not show the highlight: Shaded, Consistent Colors or Textures does. `Units`: `900.Mm()`,
+`0.9.M()`, `25.M2()`, `0.5.M3()`, `45.Deg()` — the API measures in feet, square and cubic feet, radians.
 
 - **Tests never change the model.** They run inside a transaction group that is always rolled back; only a repair the
   user (or you, with `FixModelTestCases`) starts writes.
@@ -844,10 +849,10 @@ optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to
   versioned with the tests. Keys follow the element's unique id, so a test keeps its baseline while its id stays —
   give a test whose name may change an `.Id("…")`. **Ask the user before accepting failures**: it hides them.
 - **Results.** `passed` means nothing *new* failed; `failed`, `error` (the test threw — a bug in the test, not the
-  model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` without `includeSlow`).
+  model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` in a run with `includeSlow: false`).
 - **Keep `Define` cheap**: it runs at every load and has no model. Collect in the lambdas.
 
-Over MCP: `CreateModelTestSuite { name }` (a folder with an example suite), `GetModelTests`, `RunModelTests { suite?,
+Over MCP: `CreateModelTestSuite { name }` (a folder `<id>.tests` with an example suite), `GetModelTests`, `RunModelTests { suite?,
 tests?, trait?, elementIds?, includeSlow? }`, `GetModelTestResults`, `FixModelTestCases { testId, keys? }`,
 `AcceptModelTestFailures { testId, keys?, remove? }`. A good loop: write the test, run it, read what failed, refine
 the rule or offer the repair — then save a version.
