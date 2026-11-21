@@ -560,10 +560,11 @@ working unchanged.
 
 ### 4.7 Model tests (SDK 1.3, optional)
 
-An extension can also declare **model tests**: checks of the open model, written like unit tests.
-Implement `AnalyseTool.Sdk.Testing.IModelTestSuite` in any public class with a parameterless
-constructor — AnalyseTool finds every such class when the extension loads, calls `Define` once, and
-runs the declared tests from the Model tests page (the Tests tab of the pane) or over MCP.
+A folder of **model tests** checks the open model the way unit tests check code. It is an extension
+whose folder name ends in **`.tests`** (`bep-project-x.tests\src\*.cs`; «New folder» on the Tests tab
+makes one) — suites anywhere else do not load. Implement `AnalyseTool.Sdk.Testing.IModelTestSuite` in a
+public class with a parameterless constructor: AnalyseTool finds every such class when the folder loads,
+calls `Define` once, and runs the declared tests from the Tests tab of the pane or over MCP.
 
 ```csharp
 using AnalyseTool.Sdk.Testing;
@@ -584,6 +585,10 @@ public sealed class BepProjectX : IModelTestSuite
         s.Elements<Room>().Where(room => room.Area > 0)
          .Parameter(BuiltInParameter.ROOM_NUMBER).NotEmpty().Unique();
 
+        // Numbers in Revit's internal units: lengths in feet, so write them with Units
+        s.Elements(BuiltInCategory.OST_Doors)
+         .TypeParameter(BuiltInParameter.DOOR_WIDTH).InRange(800.Mm(), 1000.Mm());
+
         // Code for the whole model: assert through the context
         s.Test("No unplaced rooms", m =>
             m.Assert.Empty(m.Elements<Room>().Where(room => room.Location == null), "The room is not placed"));
@@ -600,8 +605,14 @@ What to know:
   failing elements; it runs in one transaction (one Ctrl+Z).
 - Failures can be **accepted** into a baseline (`baseline\<model>.json` next to the tests, versioned
   with them) so an existing model starts clean and only new failures fail.
-- `.Slow()` keeps an expensive test (geometry, the whole model) out of the default run; `.Id("…")`
-  pins the id the baseline is kept under across renames.
+- `InRange` compares in Revit's internal units — `Mm()`, `M()`, `M2()`, `M3()`, `Deg()` convert —
+  so a suite checks the same in a project in millimetres and one in metres; failures show the
+  project's units.
+- A clash or a gap passes `Evidence { Box = … }`: **Highlight** then draws that place in red (a view
+  in the Realistic display style shows no highlight).
+- `.Slow()` marks an expensive test (geometry, the whole model): it runs with every run, stays out
+  of the trend, and a quick run over MCP (`includeSlow: false`) leaves it out. `.Id("…")` pins the
+  id the baseline is kept under across renames.
 
 The full guide — every rule, `Evidence`, units, severity — is in `LLM.md` next to the installed
 add-in, section «Model tests» (also served to AI clients by `GetAuthoringGuide`).

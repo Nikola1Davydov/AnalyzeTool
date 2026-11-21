@@ -11,6 +11,8 @@
 AnalyseTool is a free Revit add-in. It brings shared parameters and a printable parameter report, and it is a place for your
 own tools: a button is a folder with a C# file (and, if you like, a page); save the file and the button runs the new code.
 Claude Code, Codex, Cursor or any MCP client can read and change the model through AnalyseTool — and write buttons with you.
+**Model tests** check the open model like unit tests check code — required parameters, naming, ranges, clashes — with a
+baseline of accepted failures, so only what is new fails.
 
 <p align="center"><img src="img/Overview.png" width="860" alt="Revit with the AnalyseTool ribbon tab — one button, Buttons — and the Buttons pane on the right: the folders AnalyseTool and test, New folder, the dock below" /></p>
 
@@ -25,6 +27,9 @@ Claude Code, Codex, Cursor or any MCP client can read and change the model throu
    is a file you (or your AI) edit.
 4. **(Optional) AI** — profile (your initials, top right) › **AI clients**: two commands install the AnalyseTool plugin
    for Claude Code or Codex; other clients get a snippet to paste.
+5. **(Optional) Model tests** — the **Tests** tab of the pane: **New folder** makes a folder of tests (`<name>.tests`)
+   with an example suite; **Run** checks the model, every failure can be isolated, highlighted, repaired or accepted. The
+   easiest way to write tests is to ask your AI client — the «?» on the tab explains the rest.
 
 YouTube: https://www.youtube.com/@AnalyseTool-Revit
 
