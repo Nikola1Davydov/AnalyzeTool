@@ -766,8 +766,10 @@ model) in the payload or from your own settings file, and run the call **outside
 ## 11. Model tests
 
 A **model test** checks the open model the way a unit test checks code: «every door has a fire rating», «no two rooms
-share a number», «no duct hits a beam». Tests are C# in any source extension (Sdk 1.3+): a class that implements
-`IModelTestSuite` (namespace `AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
+share a number», «no duct hits a beam». Tests are C# in a folder of model tests — a source extension whose folder name
+ends in **`.tests`** (`bep-project-x.tests\src\*.cs`; its id in plugin.json has no ending). A suite anywhere else does
+not load and the folder reports it. A suite is a class (Sdk 1.3+) that implements `IModelTestSuite` (namespace
+`AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
 `Define` when the extension loads, and runs the tests from the **Tests** tab of the pane or over MCP. A saved file reloads
 them, like a button.
 
@@ -847,7 +849,7 @@ optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to
   model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` without `includeSlow`).
 - **Keep `Define` cheap**: it runs at every load and has no model. Collect in the lambdas.
 
-Over MCP: `CreateModelTestSuite { name }` (a folder with an example suite), `GetModelTests`, `RunModelTests { suite?,
+Over MCP: `CreateModelTestSuite { name }` (a folder `<id>.tests` with an example suite), `GetModelTests`, `RunModelTests { suite?,
 tests?, trait?, elementIds?, includeSlow? }`, `GetModelTestResults`, `FixModelTestCases { testId, keys? }`,
 `AcceptModelTestFailures { testId, keys?, remove? }`. A good loop: write the test, run it, read what failed, refine
 the rule or offer the repair — then save a version.

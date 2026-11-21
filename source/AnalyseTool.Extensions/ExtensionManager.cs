@@ -580,7 +580,7 @@ public sealed partial class ExtensionManager(ExtensionHost host, ExtensionCatalo
     }
 
     /// <summary>Checks a new folder's name and id and finds where it goes.</summary>
-    private (string Directory, string Id, string Name) NewFolder(string name, string? id, string? root)
+    private (string Directory, string Id, string Name) NewFolder(string name, string? id, string? root, string suffix = "")
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -600,7 +600,7 @@ public sealed partial class ExtensionManager(ExtensionHost host, ExtensionCatalo
 
         var target = root is null ? paths.AuthoringRoot : paths.GetRoots().FirstOrDefault(candidate => ExtensionPaths.SamePath(candidate.Path, root) && candidate.Zone == ExtensionZone.Dev)?.Path
                                                          ?? throw new CommandException(ExtensionErrorCodes.Invalid, $"'{root}' is not one of your folders of extensions.");
-        var directory = Path.Combine(target, id);
+        var directory = Path.Combine(target, id + suffix);
         if (Directory.Exists(directory))
         {
             throw new CommandException(ExtensionErrorCodes.ExtensionExists, $"The folder {directory} exists already.");

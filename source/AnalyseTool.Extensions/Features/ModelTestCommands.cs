@@ -114,7 +114,7 @@ public sealed record CreateModelTestSuiteRequest(
 
 /// <summary>Creates a suite of model tests.</summary>
 [McpTool(Title = "Create model tests")]
-[Command(Description = "Creates a folder of model tests in the user's extensions — a project — with one C# suite (src\\<Name>.cs) of three example tests, compiled and loaded at once, " +
+[Command(Description = "Creates a folder of model tests in the user's extensions — a project, <id>.tests (model tests load only from folders ending in .tests) — with one C# suite (src\\<Name>.cs) of three example tests, compiled and loaded at once, " +
                        "with its version history; with 'extension' it adds one more suite to that folder instead. Edit it with WriteExtensionFile; every save reloads the tests. Returns the extension.")]
 public sealed class CreateModelTestSuite(ExtensionManager manager) : ICommand<CreateModelTestSuiteRequest, ExtensionSummary>
 {

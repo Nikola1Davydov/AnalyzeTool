@@ -84,6 +84,53 @@ public sealed class ModelTestLoadingTests
     }
 
     [Test]
+    public async Task CreateTestSuite_FolderEndsInTests_IdDoesNot()
+    {
+        using var environment = new ExtensionTestEnvironment();
+
+        var state = await environment.Manager.CreateTestSuiteAsync("Project A", null, null, null, CancellationToken.None);
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(Path.GetFileName(state.Descriptor.Directory)).IsEqualTo("project-a.tests");
+            await Assert.That(state.Descriptor.Id).IsEqualTo("project-a");
+            await Assert.That(environment.Tests.GetSuites().Single().Id).IsEqualTo("project-a.ProjectA");
+        }
+    }
+
+    [Test]
+    public async Task Suite_OutsideATestsFolder_DoesNotLoad_AndSaysWhy()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var state = await environment.Manager.CreatePluginFolderAsync("Tools", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+
+        await environment.Manager.WriteFileAsync(state.Descriptor.Id, "src/Rules.cs", """
+            using AnalyseTool.Sdk.Testing;
+
+            public sealed class Rules : IModelTestSuite { public void Define(ISuite s) => s.Test("A", _ => { }); }
+            """, CancellationToken.None);
+
+        var after = environment.Host.GetState(state.Descriptor.Id)!;
+        var name = Path.GetFileName(state.Descriptor.Directory);
+        using (Assert.Multiple())
+        {
+            await Assert.That(environment.Tests.GetSuites()).IsEmpty();
+            await Assert.That(after.Errors.Any(error => error.Contains($"rename «{name}» to «{name}.tests»"))).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task AddTestSuite_ToAFolderThatIsNotOfTests_IsRefused()
+    {
+        using var environment = new ExtensionTestEnvironment();
+        var state = await environment.Manager.CreatePluginFolderAsync("Tools", null, null, ExtensionTemplate.Command, null, null, CancellationToken.None);
+
+        var add = async () => await environment.Manager.AddTestSuiteAsync(state.Descriptor.Id, "Sheets", CancellationToken.None);
+
+        await Assert.That(add).Throws<CommandException>();
+    }
+
+    [Test]
     public async Task SuitesOfOneName_InTwoNamespaces_GetTwoIds()
     {
         using var environment = new ExtensionTestEnvironment();

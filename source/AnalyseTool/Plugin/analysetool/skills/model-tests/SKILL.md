@@ -5,7 +5,8 @@ description: Write, run and act on AnalyseTool model tests — checks of the ope
 
 # AnalyseTool model tests
 
-A **suite** is a C# class implementing `IModelTestSuite` (`AnalyseTool.Sdk.Testing`) in an extension folder.
+A **suite** is a C# class implementing `IModelTestSuite` (`AnalyseTool.Sdk.Testing`) in a folder of model tests: its
+name ends in `.tests` (`bep-project-x.tests\src\*.cs`). Suites in any other folder do not load.
 A **folder** is a project: one extension with one or more suites, shown as a folder in the **Tests** tab of the
 AnalyseTool pane. AnalyseTool compiles the folder, calls `Define` on load, and runs the tests in a transaction group
 that is always rolled back — **tests never change the model**; only a repair (`Fix`) the user asks for writes.
@@ -17,7 +18,7 @@ Read section **11. Model tests** of the guide (`GetAuthoringGuide`) before writi
 1. **Learn the model first**: `GetModelOverview` (language, units, categories by `builtInCategory`, counts), then
    `GetCategoryParameters { builtInCategory }` for the parameters a rule will read. Test what exists — a rule on an
    empty category proves nothing.
-2. **New project**: `CreateModelTestSuite { name }` → a folder with an example suite. **One more suite in a
+2. **New project**: `CreateModelTestSuite { name }` → a folder `<id>.tests` with an example suite. **One more suite in a
    project**: `CreateModelTestSuite { name, extension: "<folder id>" }`. Existing ones: `GetModelTests`.
 3. Write the suite with `WriteExtensionFile { id, path: "src/<Class>.cs", content }`; the result carries compiler
    errors with file and line — fix until there are none.

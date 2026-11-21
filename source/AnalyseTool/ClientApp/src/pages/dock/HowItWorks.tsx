@@ -116,8 +116,8 @@ export function HowTestsWork() {
       <h1 className="large-title">How tests work</h1>
       <WatchVideo url={links.testsVideo} label="Watch it on YouTube" />
       <Step picture={<span className="guide-folder" />} title="A folder is a project">
-        One folder for a project or a BEP, with as many suites as it needs. It is a folder on disk with its own versions, like a
-        folder of buttons — put it on a shared drive and the whole team runs the same tests. «New folder» makes one with a first suite.
+        One folder for a project or a BEP, with as many suites as it needs. On disk its name ends in{" "}
+        <span className="mono">.tests</span> — tests load only from such a folder — and it has its own versions, like a folder of buttons — put it on a shared drive and the whole team runs the same tests. «New folder» makes one with a first suite.
       </Step>
       <Step picture={<span className="guide-tile" />} title="A suite is a C# file of tests">
         Like unit tests, but for the model: «doors · Fire Rating · not empty», «every room is placed», «no duct crosses a beam». A

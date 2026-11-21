@@ -2,7 +2,7 @@ using System.IO;
 using AnalyseTool.Extensions.Authoring;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Loading;
-using AnalyseTool.Extensions.Manifest;
+using AnalyseTool.Extensions.Testing;
 using AnalyseTool.Hosting.Commands;
 
 namespace AnalyseTool.Extensions;
@@ -15,7 +15,8 @@ public sealed partial class ExtensionManager
     /// </summary>
     public async Task<ExtensionState> CreateTestSuiteAsync(string name, string? id, string? description, string? root, CancellationToken cancellationToken)
     {
-        var (directory, folderId, trimmed) = NewFolder(name, id, root);
+        // «<id>.tests»: a folder of model tests says so on disk, as a tab says «.tab»; the id (plugin.json) has no ending
+        var (directory, folderId, trimmed) = NewFolder(name, id, root, ExtensionCatalog.TestsSuffix);
         ExtensionScaffold.CreateFolder(directory, folderId, trimmed, description ?? $"Model tests: {trimmed}", null);
         var source = Path.Combine(directory, ExtensionCatalog.SourceFolder, ExtensionScaffold.ToClassName(trimmed) + ".cs");
         Directory.CreateDirectory(Path.GetDirectoryName(source)!);
@@ -46,9 +47,14 @@ public sealed partial class ExtensionManager
             throw new CommandException(ExtensionErrorCodes.Invalid, $"'{id}' is built as a DLL by its author: add the suite to its project.");
         }
 
+        if (!ModelTestCatalog.IsTestsFolder(descriptor.Directory))
+        {
+            throw new CommandException(ExtensionErrorCodes.Invalid,
+                $"'{id}' is not a folder of model tests (its name ends in «{ExtensionCatalog.TestsSuffix}»): create one with CreateModelTestSuite.");
+        }
+
         var trimmed = name.Trim();
-        // A button folder keeps its C# beside bundle.json, an extension of plugin.json in src\
-        var folder = ButtonFolder.IsButton(descriptor.Directory) ? descriptor.Directory : Path.Combine(descriptor.Directory, ExtensionCatalog.SourceFolder);
+        var folder = Path.Combine(descriptor.Directory, ExtensionCatalog.SourceFolder);
         var source = Path.Combine(folder, ExtensionScaffold.ToClassName(trimmed) + ".cs");
         if (File.Exists(source))
         {
