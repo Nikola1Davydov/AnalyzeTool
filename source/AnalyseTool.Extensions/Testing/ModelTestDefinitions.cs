@@ -211,7 +211,7 @@ internal abstract class ValueCondition
 
             if (value.Number is not { } number)
             {
-                return $"«{label}» '{value.Text}' is not a number";
+                return string.IsNullOrWhiteSpace(value.Text) ? $"«{label}» is empty" : $"«{label}» '{value.Text}' is not a number";
             }
 
             // Compared in internal units, told in the units of the project

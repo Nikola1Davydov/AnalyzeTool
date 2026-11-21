@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { bridge } from "revit-bridge";
 import type { ExtensionSummary } from "../../api/extensions";
 import {
@@ -12,7 +12,9 @@ import {
   modelTestsRanEvent,
 } from "../../api/modelTests";
 import { appQueryKey, useAppQuery } from "../../revit/hooks";
+import { appCommands } from "../../api/app";
 import { messageOf, SHEET_FORM, useActions } from "./Actions";
+import { EditContext } from "./edit";
 import { Tile, TileIcon } from "./Tile";
 
 /** A folder of the Tests tab: an extension holding suites — a project, with as many suites as it likes. */
@@ -28,6 +30,11 @@ export function testFolders(list: ModelTestList | undefined): TestFolder[] {
   }
 
   return [...folders.values()];
+}
+
+/** Opens a folder of tests in Explorer — where an AI tool (Claude Code, Cursor) or an editor changes its C#. */
+function openTestsFolder(directory: string, actions: ReturnType<typeof useActions>) {
+  void bridge.invoke(appCommands.OpenPath, { path: directory }).catch((error: unknown) => actions.toast(messageOf(error), "error"));
 }
 
 /** The model tests of every folder, for the tiles. */
@@ -51,6 +58,7 @@ function useLatestRun() {
  */
 export function TestsScreen({ onOpen, onGuide }: { onOpen: (id: string) => void; onGuide: () => void }) {
   const actions = useActions();
+  const edit = useContext(EditContext);
   const tests = useTestFolders();
   const latest = useLatestRun();
   const results = new Map<string, ModelTestResult>((latest.data?.results ?? []).map((result) => [result.testId, result]));
@@ -85,6 +93,9 @@ export function TestsScreen({ onOpen, onGuide }: { onOpen: (id: string) => void;
               }
               className="folder"
               badge={fresh > 0 ? "failed" : null}
+              editing={edit.editing}
+              onEdit={edit.start}
+              onOpenFolder={{ title: "Open the folder (edit the tests with an AI tool)", onClick: () => openTestsFolder(folder.directory, actions) }}
               onClick={() => onOpen(folder.id)}
             />
           );
@@ -110,6 +121,7 @@ export function TestsScreen({ onOpen, onGuide }: { onOpen: (id: string) => void;
  */
 export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (suite: string) => void }) {
   const actions = useActions();
+  const edit = useContext(EditContext);
   const queryClient = useQueryClient();
   const tests = useTestFolders();
   const latest = useLatestRun();
@@ -156,6 +168,9 @@ export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (
               title={`${suite.name}\n${suite.tests.length} test(s)${own.length ? `\n${own.filter((result) => result.status === "passed").length} passed, ${fresh} new failure(s)` : ""}`}
               icon={<TileIcon title={suite.name} />}
               badge={fresh > 0 ? "failed" : null}
+              editing={edit.editing}
+              onEdit={edit.start}
+              onOpenFolder={{ title: "Open the folder of this suite", onClick: () => openTestsFolder(suite.directory, actions) }}
               onClick={() => onOpen(suite.id)}
             />
           );

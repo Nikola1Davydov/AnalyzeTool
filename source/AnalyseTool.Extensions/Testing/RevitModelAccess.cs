@@ -176,7 +176,11 @@ internal sealed class RevitModelAccess(Document document) : IModelAccess
 
             var options = parameter.Element.Document.GetUnits().GetFormatOptions(spec);
             var unit = options.GetUnitTypeId();
-            var symbol = options.CanHaveSymbol() && !options.GetSymbolTypeId().Empty() ? LabelUtils.GetLabelForSymbol(options.GetSymbolTypeId()) : "";
+            // The project's symbol; a project that hides it still gets the unit's, or «1.01, expected 0.8…1» says neither m nor mm
+            var symbolId = options.CanHaveSymbol() && !options.GetSymbolTypeId().Empty()
+                ? options.GetSymbolTypeId()
+                : FormatOptions.GetValidSymbols(unit).FirstOrDefault(candidate => !candidate.Empty());
+            var symbol = symbolId is null ? "" : LabelUtils.GetLabelForSymbol(symbolId);
             return number =>
             {
                 var shown = UnitUtils.ConvertFromInternalUnits(number, unit).ToString("0.###", CultureInfo.InvariantCulture);

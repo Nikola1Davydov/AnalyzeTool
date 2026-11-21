@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, MotionConfig } from "motion/react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import { useUpdate } from "./update";
@@ -11,6 +11,7 @@ import { ActionsProvider, messageOf, ProblemList, useActions } from "./Actions";
 import { EditButtonForm, EditFolderForm, NewButtonForm, NewFolderForm, PanelForm } from "./Forms";
 import { AboutScreen } from "./AboutScreen";
 import { PageScreen } from "./PageScreen";
+import { EditContext } from "./edit";
 import { HowItWorks, HowTestsWork } from "./HowItWorks";
 import { PackagesScreen } from "./PackagesScreen";
 import { FoldersScreen, McpScreen } from "./SettingsScreen";
@@ -69,8 +70,6 @@ function tabOf(screen: Screen): PaneTab | null {
 const sizes: TileSize[] = ["small", "medium", "large"];
 const sizeLabels: Record<TileSize, string> = { small: "Small buttons", medium: "Medium buttons", large: "Large buttons" };
 
-/** The edit mode: the right mouse button starts it and, clicked again, ends it — as «Done» or Escape do. */
-const EditContext = createContext<{ editing: boolean; start: () => void }>({ editing: false, start: () => {} });
 
 function depth(screen: Screen) {
   switch (screen.kind) {

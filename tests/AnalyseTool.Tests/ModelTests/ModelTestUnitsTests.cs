@@ -122,6 +122,17 @@ public sealed class ModelTestUnitsTests
     }
 
     [Test]
+    public async Task InRange_EmptyValue_SaysEmpty_NotNotANumber()
+    {
+        var model = new FakeModel();
+        model.Add(1, BuiltInCategory.OST_Doors, parameters: ("Width", ""));
+        model.Add(2, BuiltInCategory.OST_Doors, parameters: ("Width", null));
+        var result = Run(model, s => s.Elements(BuiltInCategory.OST_Doors).Parameter("Width").InRange(800.Mm(), 1000.Mm()));
+
+        await Assert.That(result.Cases.Select(item => item.Message)).IsEquivalentTo(["«Width» is empty", "«Width» is empty"]);
+    }
+
+    [Test]
     public async Task InRange_PlainNumbers_StayAsTheyAre()
     {
         var model = new FakeModel();
