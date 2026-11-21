@@ -849,7 +849,7 @@ Realistic display style does not show the highlight: Shaded, Consistent Colors o
   versioned with the tests. Keys follow the element's unique id, so a test keeps its baseline while its id stays —
   give a test whose name may change an `.Id("…")`. **Ask the user before accepting failures**: it hides them.
 - **Results.** `passed` means nothing *new* failed; `failed`, `error` (the test threw — a bug in the test, not the
-  model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` without `includeSlow`).
+  model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` in a run with `includeSlow: false`).
 - **Keep `Define` cheap**: it runs at every load and has no model. Collect in the lambdas.
 
 Over MCP: `CreateModelTestSuite { name }` (a folder `<id>.tests` with an example suite), `GetModelTests`, `RunModelTests { suite?,

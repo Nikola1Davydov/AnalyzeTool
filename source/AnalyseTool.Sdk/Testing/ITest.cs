@@ -18,7 +18,10 @@ namespace AnalyseTool.Sdk.Testing
         /// <summary>A label for filtering.</summary>
         ITest Trait(string name, string value);
 
-        /// <summary>A slow test (geometry, the whole model): runs only when asked for, not with every run.</summary>
+        /// <summary>
+        /// A slow test (geometry, the whole model): runs with every run like any other, is marked slow on the page, stays out of
+        /// the trend and is left out of a quick run that asks for it (<c>includeSlow: false</c> over MCP).
+        /// </summary>
         ITest Slow();
 
         /// <summary>Does not run; the page shows the reason.</summary>

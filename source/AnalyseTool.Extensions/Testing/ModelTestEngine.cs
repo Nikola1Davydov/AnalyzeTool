@@ -30,7 +30,7 @@ internal static class ModelTestEngine
         var askedFor = options.Tests?.Contains(test.Id, StringComparer.OrdinalIgnoreCase) == true;
         if (test.Slow && !options.IncludeSlow && !askedFor)
         {
-            return Skipped(test, "Slow: runs when slow tests are included or the test is run on its own.");
+            return Skipped(test, "Slow: left out of this quick run (includeSlow false).");
         }
 
         if (test.Kind == ModelTestKind.Model && onElements)

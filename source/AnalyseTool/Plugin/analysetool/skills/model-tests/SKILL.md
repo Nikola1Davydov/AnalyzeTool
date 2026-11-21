@@ -69,7 +69,8 @@ Rules of thumb:
 ## Run and report
 
 - `RunModelTests { suite: "<folder or suite id>" }` — or `tests: [...]`, `trait: "Discipline=ARC"`,
-  `elementIds: [...]`, `includeSlow: true`. Without filters every non-slow test runs and the counts join the trend.
+  `elementIds: [...]`, `includeSlow: false` for a quick run without the slow ones. Without filters every test runs, as Run on the page does,
+  and the counts join the trend.
 - Status: `passed` = nothing **new** failed (accepted failures do not count); `failed`; `error` = **the test threw —
   a bug in the test, fix the code**, not the model; `inconclusive`; `skipped`.
 - Report to the user per test: what failed, how many elements, two or three examples with their `label` and `value`

@@ -149,14 +149,14 @@ public sealed record ModelTestRun(
 /// <param name="Tests">Only these tests (full ids).</param>
 /// <param name="Trait">Only tests with this label, <c>name=value</c>.</param>
 /// <param name="ElementIds">Only these elements: tests of the whole model do not run.</param>
-/// <param name="IncludeSlow">Slow tests run too.</param>
+/// <param name="IncludeSlow">Slow tests run too — the default: a run checks everything unless told to skip them.</param>
 /// <param name="MaxCases">At most this many cases per test in the result.</param>
 public sealed record ModelTestRunOptions(
     string? Suite = null,
     IReadOnlyList<string>? Tests = null,
     string? Trait = null,
     IReadOnlyList<long>? ElementIds = null,
-    bool IncludeSlow = false,
+    bool IncludeSlow = true,
     int MaxCases = 500)
 {
     /// <summary>Gets a value indicating whether this is a run of every default test on every element.</summary>

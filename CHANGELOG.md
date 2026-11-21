@@ -3,6 +3,12 @@
 ## [2.1.0] / 2026-11-21
 
 - 🧪 **Model tests**: checks of the open model written as C#, like unit tests — rules on parameters, code per element or for the whole model. The pane has two tabs now, **Tools** and **Tests**: Tests runs them, shows every failing element, repairs it or accepts it into a baseline, so only new failures count. The counts above the list are filters too — tap **new** to see only what broke.
+- 📁 **A folder of tests ends in `.tests`** — `bep-project-x.tests` — and only such a folder runs them; right-click a folder or a suite for 📁 to open it.
+- ▶️ **Run checks everything and shows how far it is**: a bar with «12 / 42 · the test running now», whoever started the run. The Slow tests and Watch switches are gone.
+- 📏 **Ranges in Revit's units**: `InRange(100.Mm(), 20000.Mm())` checks the same in a project in mm or in m, with `M2()`, `M3()` and `Deg()` for areas, volumes and angles; a failure says «1.01 m, expected 0.8 m…1 m».
+- 🎯 **Highlight shows where it fails**: the place of a clash in red, the elements pale around it. A view in the Realistic style shows no highlight — the pane says so.
+- 👁 **Isolate stays in your view**: a plan stays a plan; only Selection box goes to 3D.
+- ❓ **How tests work**: a «?» on the Tests tab explains them, and both guides link the videos on YouTube.
 - 📈 **Statistics have a Model tests tab**: how often each test ran, found new failures or threw, and how long it takes.
 - 🧰 **Sdk 1.3**: `AnalyseTool.Sdk.Testing` with the fluent `IModelTestSuite` builder; AI clients create, run, repair and accept model tests over MCP. The package now goes to NuGet with every release.
 - 👀 **Versions of a button with a page compare visually**: Preview shows the page as it was beside the page as it is; the code diff stays a click away.
