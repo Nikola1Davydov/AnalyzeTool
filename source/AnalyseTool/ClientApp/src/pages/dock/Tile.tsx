@@ -169,7 +169,14 @@ export function Tile(props: {
         )}
         {props.badge === "locked" && <span className="tile-badge locked">🔒</span>}
         {props.busy && <span className="tile-busy" />}
-        {props.off && !props.editing && <span className="tile-off" title="Not on the Revit ribbon" />}
+        {props.off && !props.editing && (
+          <span className="tile-off" title="Not on the Revit ribbon — it works here">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="2.5" y="4" width="11" height="8" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M2.5 13.5 13.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </span>
+        )}
         {props.star?.on && !props.editing && <span className="tile-star" title="In the dock">★</span>}
       </motion.span>
       {props.editing && props.editBadge && (

@@ -809,6 +809,7 @@ function OlderScreen({ folder, folders }: { folder: PaneFolder; folders: PaneFol
 
 function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; folders: PaneFolder[]; embedded?: boolean }) {
   const actions = useActions();
+  const { profile, update } = useProfile();
   const edit = useContext(EditContext);
   const refresh = useQueryClient();
   const movable = folder.canAddButtons;
@@ -868,6 +869,11 @@ function FolderSections({ folder, folders, embedded }: { folder: PaneFolder; fol
           }
         >
           This folder is turned off: its buttons and commands do not load. <b>Tap to turn it on.</b>
+        </button>
+      )}
+      {!embedded && !folder.builtIn && profile.hiddenFolders.includes(folder.id) && (
+        <button className="banner info" onClick={() => toggleIn(update, "hiddenFolders", folder.id)}>
+          This folder is not on the Revit ribbon — its buttons work here. <b>Tap to put it on the ribbon.</b>
         </button>
       )}
       {folder.problems.length > 0 && (
@@ -978,6 +984,8 @@ function ButtonTile(props: {
   const folderHidden = !folder.builtIn && profile.hiddenFolders.includes(folder.id);
   const loaded = button.offRibbon ? profile.ribbon.includes(button.key) : !profile.hiddenButtons.includes(button.key);
   const onRibbon = loaded && !folderHidden;
+  // Its own choice gets the mark; a folder off the ribbon says so once, above its buttons
+  const ownOff = !loaded;
   const toastError = (message: string) => actions.toast(message, "error");
   const carry = useCarry();
   // In the grid of a folder of the user (a tab, or a folder of plugin.json that moves into tabs) a button can leave it
@@ -1045,7 +1053,7 @@ function ButtonTile(props: {
       label={button.name}
       title={`${button.name}${button.tooltip ? `\n${button.tooltip}` : ""}\n${folder.name}${inDock ? "\n★ In the dock" : ""}${onRibbon ? "" : "\nNot on the Revit ribbon"}`}
       icon={<TileIcon glyph={button.glyph} image={button.image} title={button.name} />}
-      off={!onRibbon}
+      off={ownOff}
       badge={button.problems?.length ? "error" : button.lastFailure ? "failed" : null}
       onBadge={() =>
         button.problems?.length

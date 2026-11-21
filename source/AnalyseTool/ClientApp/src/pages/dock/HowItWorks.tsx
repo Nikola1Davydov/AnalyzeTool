@@ -67,8 +67,9 @@ export function HowItWorks() {
         bottom of this pane. <b>✎</b> its name, description and «Move to…» another folder. <b>📁</b> opens its folder — to edit
         it with an AI tool (Claude Code, Cursor). «Done» or Escape ends the editing.
       </Step>
-      <Step picture={<span className="guide-tile off" />} title="Grey and struck through: not on the ribbon">
-        The button (or the folder) stays here and works, but Revit does not show it. «+» brings it back.
+      <Step picture={<span className="guide-tile off" />} title="⊘ in the corner: not on the ribbon">
+        The button stays here and works — a tap runs it — but the Revit ribbon does not show it. A folder off the ribbon says
+        so once, above its buttons; «+» or that line brings it back.
       </Step>
       <Step
         picture={
