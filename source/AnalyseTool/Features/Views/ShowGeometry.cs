@@ -22,6 +22,7 @@ namespace AnalyseTool.Features.Views;
     "Coordinates are [x, y, z] in feet, the internal units of Revit, as bounding boxes and locations report them. " +
     "color — #RRGGBB, red by default; transparency — of faces, 0 to 100, 50 by default. " +
     "Each call adds to what is shown: use a colour per group, then RenderView to look. ClearGeometry removes everything. " +
+    "A view in the Realistic display style does not show it: when the user sees nothing, ask them to switch the view to Shaded, Consistent Colors or Textures. " +
     "Ids that are not in the document or have no geometry are returned as missing.")]
 public sealed class ShowGeometry(ActiveDocument document, IGeometryOverlay overlay) : ICommand<ShowGeometryRequest, ShowGeometryResult>
 {

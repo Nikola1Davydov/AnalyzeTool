@@ -76,7 +76,8 @@ Rules of thumb:
   (`valueState`: `empty`, `missing` — no such parameter, `set`). Not a dump of every case.
 - Show them in Revit when it helps: `ShowElementsIn3D { elementIds }` (isolated in the active view; the view does not change) or
   `{ elementIds, sectionBox: true }` (a section box around them); `ShowGeometry` for evidence boxes, `ClearGeometry`
-  after.
+  after. A view in the **Realistic** display style does not show what `ShowGeometry` (and Highlight) draws: when the
+  user sees nothing, ask them to switch the view to Shaded, Consistent Colors or Textures.
 
 ## Act — ask first
 

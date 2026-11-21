@@ -64,12 +64,11 @@ the button and then read `GetLogEntries`.
   ```
 
   Wait a second after the call that draws: Revit draws when it is idle.
-* **The display style decides what DirectContext3D shows.** *Realistic* (and *Realistic with edges*) ignores the colour
-  of the vertices (`VertexFormatBits.PositionColored`): an overlay coloured per vertex vanishes there — on screen and in
-  `RenderView` — and shows in *Shaded*, *Consistent colors* or a plan. Colour a DirectContext3D buffer with its
-  `EffectInstance` (`SetColor`, `SetTransparency`) and give the vertices their position only, as `OverlayBuffer` does;
-  then it shows in every style. When an overlay shows in one model and not in another, compare the display style of the
-  view first.
+* **A view in the Realistic display style does not show the overlay** — on screen nor in `RenderView`; *Shaded*,
+  *Consistent colors*, *Textures* and plans do. This holds with colours per vertex and with the colour on the
+  `EffectInstance` alike (both tried on a live model). Tell the user to switch the style before looking for another
+  cause, and compare the display style first when an overlay shows in one model and not in another. In the API the
+  styles are `DisplayStyle.Realistic` / `RealisticWithEdges`; `Textures` is a style of its own and shows the overlay.
 * **Revit may not ask a DirectContext3D server at all.** `OverlayServer.Calls` counts how often Revit asked it
   (`CanExecute`), for its bounds and to draw, and `LastError` keeps the last exception of those calls — Revit drops a
   server that throws without a word. Read both through `ExecuteCode` and reflection on
