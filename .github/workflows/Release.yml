@@ -101,7 +101,14 @@ jobs:
       - name: Push the Sdk to NuGet
         if: steps.version.outputs.release == 'true'
         shell: pwsh
-        run: dotnet nuget push output/nuget/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --skip-duplicate
+        # PowerShell finds the packages: dotnet nuget push on Windows did not expand «output/nuget/*.nupkg» itself
+        run: |
+          $packages = @(Get-ChildItem -Path output/nuget -Filter *.nupkg)
+          if ($packages.Count -eq 0) { throw "No .nupkg in output/nuget: the pack step made none." }
+          foreach ($package in $packages) {
+            dotnet nuget push $package.FullName --source https://api.nuget.org/v3/index.json --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Publish the release
         if: steps.version.outputs.release == 'true'
