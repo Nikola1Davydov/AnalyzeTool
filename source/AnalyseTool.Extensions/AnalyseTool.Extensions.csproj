@@ -25,6 +25,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="AnalyseTool.Tests"/>
+        <InternalsVisibleTo Include="AnalyseTool.RevitTests"/>
     </ItemGroup>
 
     <ItemGroup>

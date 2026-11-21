@@ -148,7 +148,7 @@ code.block,
 .app-page-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 12px 20px 0;
+  padding: 6px 20px 0;
 }
 .app-page.compact .app-page-inner {
   padding: 8px 10px 0;
@@ -168,7 +168,7 @@ code.block,
   position: sticky;
   top: 0;
   z-index: 10;
-  height: 44px;
+  height: 36px;
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -192,7 +192,7 @@ code.block,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  margin: 8px 0 4px;
+  margin: 2px 0 2px;
 }
 .app-page-title {
   display: flex;
@@ -219,7 +219,7 @@ code.block,
   align-items: center;
 }
 .app-page-subtitle {
-  margin: 2px 0 16px;
+  margin: 2px 0 10px;
   color: var(--colorNeutralForeground3);
   font-size: 13px;
 }
@@ -227,6 +227,49 @@ code.block,
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+/* The ⓘ card of an extension: the reference lines the header no longer carries */
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+}
+.detail-info .path {
+  white-space: normal;
+  word-break: break-all;
+}
+/* Preview of a button's page: how it looked beside how it looks */
+.page-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.page-preview-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.page-preview-frame {
+  width: 100%;
+  height: 420px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  background: #fff;
+}
+.page-preview-none {
+  display: grid;
+  place-items: center;
+  height: 420px;
+  border: 1px dashed var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+}
+@media (max-width: 900px) {
+  .page-preview {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* A card of the grouped list: white on the grey page, no border, rounded */
@@ -1575,4 +1618,270 @@ code.block,
   background: rgb(0 0 0 / 5%);
   padding: 8px;
   border-radius: 8px;
+}
+
+/* ---- Model tests ---- */
+.mt-newsuite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mt-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.mt-tree {
+  padding: 8px;
+}
+.mt-suite + .mt-suite {
+  margin-top: 8px;
+}
+.mt-suite-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.mt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--fontSizeBase300);
+}
+.mt-row:hover {
+  background: var(--colorSubtleBackgroundHover);
+}
+.mt-row.selected {
+  background: var(--colorBrandBackground2);
+}
+.mt-case {
+  padding-left: 40px;
+  font-size: var(--fontSizeBase200);
+}
+.mt-chevron-space {
+  display: inline-block;
+  width: 16px;
+  flex: none;
+}
+.mt-count {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  font-size: var(--fontSizeBase200);
+}
+.mt-more {
+  display: block;
+  padding: 2px 0 4px 40px;
+}
+.mt-details {
+  position: sticky;
+  top: 8px;
+}
+.mt-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.mt-detail-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mt-message {
+  padding: 8px 10px;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+  background: var(--colorPaletteRedBackground1);
+  color: var(--colorPaletteRedForeground1);
+}
+.mt-message.inconclusive {
+  background: var(--colorPaletteDarkOrangeBackground1);
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+.mt-traits,
+.mt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mt-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+}
+.mt-trend-bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 2px;
+  background: var(--colorPaletteRedBorder1);
+}
+.mt-trend-bar:last-child {
+  background: var(--colorPaletteRedForeground1);
+}
+@media (max-width: 760px) {
+  .mt-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mt-details {
+    position: static;
+  }
+}
+
+/* The model tests inside the pane: actions in a row, one column */
+.mt-pane {
+  padding-top: 4px;
+}
+.mt-pane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.mt-pane-subtitle {
+  display: block;
+  margin-bottom: 10px;
+}
+.mt-pane .mt-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mt-pane .mt-details {
+  position: static;
+}
+.mt-pane .usage-tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+
+/* Model tests: ⓘ and 3D at the end of a row, the details under it */
+.mt-row-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+  cursor: pointer;
+}
+.mt-row-button svg {
+  width: 18px;
+  height: 18px;
+}
+.mt-row-button:hover:not(:disabled) {
+  background: var(--colorBrandBackground2Hover);
+}
+.mt-row-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.mt-inline {
+  margin: 2px 0 8px 24px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--colorNeutralBackground2);
+}
+
+/* Model tests: what a test checks, as Revit names it */
+.mt-what {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.mt-what > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 8px;
+  font-size: var(--fontSizeBase200);
+}
+.mt-what dt {
+  color: var(--colorNeutralForeground3);
+}
+.mt-what dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Model tests in the pane: the counts in one strip */
+.mt-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.mt-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  font-size: var(--fontSizeBase200);
+  color: var(--colorNeutralForeground2);
+  white-space: nowrap;
+}
+button.mt-chip {
+  font-family: inherit;
+  cursor: pointer;
+}
+button.mt-chip:hover {
+  border-color: var(--colorNeutralStroke1);
+}
+.mt-chip.on {
+  background: var(--colorBrandBackground2);
+  border-color: var(--colorBrandStroke1);
+}
+.mt-chip.on,
+.mt-chip.on b {
+  color: var(--colorBrandForeground1);
+}
+.mt-chip b {
+  color: var(--colorNeutralForeground1);
+}
+.mt-chip.error,
+.mt-chip.error b {
+  color: var(--colorPaletteRedForeground1);
+}
+.mt-chip.warning,
+.mt-chip.warning b {
+  color: var(--colorPaletteDarkOrangeForeground1);
+}
+.mt-spark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+  margin-left: auto;
+}
+.mt-spark span {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--colorPaletteRedBorder1);
+}
+.mt-spark span:last-child {
+  background: var(--colorPaletteRedForeground1);
+}
+
+/* Statistics: buttons or model tests */
+.stats-kind-tabs {
+  margin-bottom: 12px;
+}
+.stats-status {
+  margin-left: 6px;
 }

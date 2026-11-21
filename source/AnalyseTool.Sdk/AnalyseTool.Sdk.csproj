@@ -27,19 +27,20 @@
                 PackExtension publishing target.
          1.2: added RevitCommandAttribute.OutputType (additive — commands may now declare the type
               they return, completing the pair InputType has formed alone; callers stop inferring the
-              response shape from prose, and two commands can be checked for compatibility). -->
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.0</FileVersion>
+              response shape from prose, and two commands can be checked for compatibility).
+         1.3: added AnalyseTool.Sdk.Testing (additive — model tests: IModelTestSuite and its fluent builder,
+              IModelTestContext, IModelAssert, Evidence, Units). -->
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
 
     <!-- NuGet package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>AnalyseTool.Sdk</PackageId>
-    <!-- The version a hand-run `dotnet nuget push` would publish (RELEASE_CHECKLIST.md). Ahead of
-         nuget.org on purpose: 1.1.2 dropped the duplicated Revit API references (NU1504) and 1.2.0
-         adds OutputType. A published version is immutable, so each fix needs a new number to reach
-         anyone. Docs still pin 1.1.2 — what authors can restore today — and move only in the same
-         commit as the push. -->
-    <Version>1.2.0</Version>
+    <!-- The version the Release workflow pushes to NuGet (Trusted Publishing; skip-duplicate, so an
+         unchanged version is skipped). A published version is immutable, so each fix needs a new
+         number to reach anyone. The docs (LLM.md §4.3, ONBOARDING §4.1) pin this number and move
+         with the release that pushes it — 1.3.0 goes out with 2.1.0. -->
+    <Version>1.3.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Nikolai Davydov</Authors>
     <Description>SDK for authoring C# command extensions for the AnalyseTool Revit add-in. Implement IRevitTask, build a DLL, drop it into the extensions folder — no host rebuild. Works with Revit 2025, 2026 and 2027.</Description>

@@ -121,8 +121,9 @@ function CreateForm({ onCreated }: { onCreated: (extension: ExtensionSummary) =>
       }}
     >
       <Text className="muted">
-        C# in <code>src\</code> of a folder, compiled by AnalyseTool itself — no project, no Visual Studio. The button appears
-        at once, and the change is saved as a version of the folder.
+        A button is a folder of a ribbon tab (<code>Sheets.tab\Renumber.pushbutton\</code>) with its C# beside it, compiled by
+        AnalyseTool itself — no project, no Visual Studio. The button appears at once, and every save is kept in its version
+        history.
       </Text>
 
       <Field label="Folder" hint="A folder holds buttons that belong together; each has its own version history.">

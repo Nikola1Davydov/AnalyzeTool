@@ -2,6 +2,7 @@ using AnalyseTool.Extensions;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Loading;
 using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Extensions.Testing;
 using AnalyseTool.Extensions.Usage;
 using AnalyseTool.Extensions.Versions;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,9 @@ public static class ExtensionsRegistration
             builder.Services.TryAddSingleton(services => new ExtensionCatalog(services.GetRequiredService<ExtensionPaths>(), revitVersion));
             builder.Services.TryAddSingleton<ExtensionStateStore>();
             builder.Services.TryAddSingleton<IExtensionHistory, LibGit2ExtensionHistory>();
+            builder.Services.TryAddSingleton<ModelTestCatalog>();
+            builder.Services.TryAddSingleton(services => new ModelTestUsageStore(services.GetRequiredService<ExtensionPaths>()));
+            builder.Services.TryAddSingleton<ModelTestService>();
             builder.Services.TryAddSingleton<ExtensionHost>();
             builder.Services.TryAddSingleton<ExtensionManager>();
             builder.Services.TryAddSingleton<ExtensionWatcher>();

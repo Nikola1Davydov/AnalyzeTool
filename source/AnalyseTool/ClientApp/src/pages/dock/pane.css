@@ -212,8 +212,8 @@
   position: relative;
   z-index: 3;
   display: grid;
-  /* The right side never shrinks below its buttons: in a narrow pane the title gives way, not the avatar */
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  /* Neither side shrinks below its content: in a narrow pane the title gives way (and hides), not the back button or the avatar */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
@@ -273,6 +273,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* A long folder name still ends somewhere: past this the label (not the title) gets the ellipsis */
+  max-width: 45vw;
 }
 
 .avatar {
@@ -2166,4 +2168,92 @@
 }
 .stats-card {
   overflow-x: auto;
+}
+
+/* ---- The tabs of the pane: Tools (the folders) and Tests ---- */
+.pane-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0 6px;
+  background: var(--grouped-background);
+}
+.pane-tabs .segmented {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* A folder of the Tests tab: ▶ Run folder above its suites */
+.tests-folder-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 2px 14px;
+}
+.tests-run {
+  border: none;
+  border-radius: 9px;
+  padding: 7px 14px;
+  background: var(--accent, #0a84ff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tests-run:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Statistics: buttons or model tests */
+.stats-kind {
+  margin-bottom: 8px;
+}
+
+/* Guides: the video at the top, glyph pictures of the tests guide */
+.guide-video {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.guide-video:hover {
+  filter: brightness(1.15);
+}
+.guide-video .chevron-right {
+  margin-left: auto;
+  color: var(--secondary-label);
+  font-size: 20px;
+}
+.guide-video-play {
+  width: 30px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: #fff;
+  background: #e62117;
+}
+.guide-glyph {
+  min-width: 40px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--fill);
 }

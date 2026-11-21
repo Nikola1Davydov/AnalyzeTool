@@ -1,11 +1,18 @@
 import {
   Button,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   MessageBar,
   MessageBarActions,
   MessageBarBody,
   MessageBarTitle,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
   Spinner,
-  Switch,
   Tab,
   TabList,
   Text,
@@ -14,6 +21,9 @@ import {
   ArrowClockwise16Regular,
   Delete16Regular,
   FolderOpen16Regular,
+  Info16Regular,
+  MoreHorizontal16Regular,
+  ToggleRightRegular,
   Wrench16Regular,
 } from "@fluentui/react-icons";
 import { useEffect, useState } from "react";
@@ -23,11 +33,8 @@ import {
   type CompileDiagnostic,
   type ExtensionList,
   type ExtensionSummary,
-  type PinExtensionVersionRequest,
   extensionCommands,
-  sameVersion,
 } from "../../api/extensions";
-import { relativeTime } from "../../components/format";
 import { errorText, useNotify } from "../../components/notify";
 import { Empty, Page } from "../../components/Page";
 import { useAppAction } from "../../components/useAppAction";
@@ -88,18 +95,11 @@ function Detail({ extension, query }: { extension: ExtensionSummary; query: URLS
     },
   });
 
-  const unpin = useAppAction<ExtensionSummary | null, PinExtensionVersionRequest>(extensionCommands.PinExtensionVersion, {
-    success: "The button runs the current files again",
-  });
-
   const showLine = (diagnostic: Pick<CompileDiagnostic, "file" | "line">) => {
     setFileTarget({ file: diagnostic.file, line: diagnostic.line });
     setTab("files");
   };
 
-  const pinned = extension.loadedVersion
-    ? (versions.data?.history.find((version) => sameVersion(version.id, extension.loadedVersion)) ?? versions.data?.info.pinned)
-    : null;
   const isSource = extension.kind === "Source";
   const versionInfo = versions.data?.info;
 
@@ -107,83 +107,77 @@ function Detail({ extension, query }: { extension: ExtensionSummary; query: URLS
     <Page
       title={extension.name}
       back={{ label: "Extensions", path: "/extensions" }}
-      subtitle={
-        <div className="detail-subtitle">
-          <span className="badges">
-            <KindBadge extension={extension} />
-            <StatusBadges extension={extension} />
-            <VersionBadge extension={extension} />
-          </span>
-          <span className="muted small">
-            <span className="mono">{extension.id}</span> · v{extension.version}
-            {extension.publisher && <> · {extension.publisher}</>}
-            {extension.buttons.length > 0 && <> · buttons: {extension.buttons.join(", ")}</>}
-            {extension.commands.length > 0 && <> · commands: {extension.commands.join(", ")}</>}
-          </span>
-          {extension.description && <Text>{extension.description}</Text>}
-          <code className="path small">{extension.directory}</code>
-        </div>
+      titleExtra={
+        <span className="badges">
+          <KindBadge extension={extension} />
+          <StatusBadges extension={extension} />
+          <VersionBadge extension={extension} />
+          {/* The reference card: everything that is good to have but not worked with every day */}
+          <Popover withArrow positioning="below-start">
+            <PopoverTrigger disableButtonEnhancement>
+              <Button appearance="subtle" size="small" icon={<Info16Regular />} aria-label="About this extension" />
+            </PopoverTrigger>
+            <PopoverSurface className="detail-info">
+              <span className="muted small">
+                <span className="mono">{extension.id}</span> · v{extension.version}
+                {extension.publisher && <> · {extension.publisher}</>}
+              </span>
+              {extension.buttons.length > 0 && <span className="small">Buttons: {extension.buttons.join(", ")}</span>}
+              {extension.commands.length > 0 && <span className="small">Commands: {extension.commands.join(", ")}</span>}
+              {extension.description && <Text>{extension.description}</Text>}
+              <code className="path small">{extension.directory}</code>
+            </PopoverSurface>
+          </Popover>
+        </span>
       }
       actions={
-        <>
-          <Switch
-            label={extension.enabled ? "On" : "Off"}
-            checked={extension.enabled}
-            disabled={actions.setEnabled.isPending}
-            onChange={(_, data) => actions.setEnabled.mutate({ id: extension.id, enabled: data.checked })}
-          />
-          {isSource && (
-            <Button
-              appearance="primary"
-              icon={buildAction.isPending ? <Spinner size="tiny" /> : <Wrench16Regular />}
-              disabled={buildAction.isPending}
-              onClick={() => buildAction.mutate({ id: extension.id })}
-            >
-              Build
-            </Button>
-          )}
-          <Button icon={<ArrowClockwise16Regular />} onClick={() => actions.reload.mutate({ id: extension.id })}>
-            Reload
-          </Button>
-          <Button
-            icon={<FolderOpen16Regular />}
-            onClick={() => openPath(extension.directory).catch((error) => notify.failed(error))}
-          >
-            Open folder
-          </Button>
-          <Button appearance="subtle" icon={<Delete16Regular />} onClick={() => void actions.remove(extension)}>
-            Remove
-          </Button>
-        </>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Button icon={<MoreHorizontal16Regular />} aria-label="Extension actions" />
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              {isSource && (
+                <MenuItem icon={<Wrench16Regular />} disabled={buildAction.isPending} onClick={() => buildAction.mutate({ id: extension.id })}>
+                  Build
+                </MenuItem>
+              )}
+              <MenuItem icon={<ArrowClockwise16Regular />} onClick={() => actions.reload.mutate({ id: extension.id })}>
+                Reload
+              </MenuItem>
+              <MenuItem icon={<FolderOpen16Regular />} onClick={() => void openPath(extension.directory).catch((error) => notify.failed(error))}>
+                Open folder
+              </MenuItem>
+              <MenuItem
+                icon={<ToggleRightRegular />}
+                disabled={actions.setEnabled.isPending}
+                onClick={() => actions.setEnabled.mutate({ id: extension.id, enabled: !extension.enabled })}
+              >
+                {extension.enabled ? "Turn off" : "Turn on"}
+              </MenuItem>
+              <MenuItem icon={<Delete16Regular />} onClick={() => void actions.remove(extension)}>
+                Remove…
+              </MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
       }
     >
-      {extension.loadedVersion && (
-        <MessageBar intent="warning" layout="multiline" className="block">
-          <MessageBarBody>
-            <MessageBarTitle>Pinned to a saved version</MessageBarTitle>
-            The button runs version <span className="mono">{extension.loadedVersion.slice(0, 7)}</span>
-            {pinned && (
-              <>
-                {" "}
-                «{pinned.message}» ({relativeTime(pinned.time)})
-              </>
-            )}
-            , whatever the files say now. Edits to the files take effect when you go back to the current files.
-          </MessageBarBody>
-          <MessageBarActions>
-            <Button disabled={unpin.isPending} onClick={() => unpin.mutate({ id: extension.id, version: null })}>
-              Back to current files
-            </Button>
-          </MessageBarActions>
-        </MessageBar>
-      )}
-
       {extension.usesOlderBuild && (
         <MessageBar intent="warning" className="block">
           <MessageBarBody>
             <MessageBarTitle>The current sources do not compile</MessageBarTitle>
             The button runs the last build that did. Fix the errors below, then Build.
           </MessageBarBody>
+          <MessageBarActions>
+            <Button
+              icon={buildAction.isPending ? <Spinner size="tiny" /> : <Wrench16Regular />}
+              disabled={buildAction.isPending}
+              onClick={() => buildAction.mutate({ id: extension.id })}
+            >
+              Build
+            </Button>
+          </MessageBarActions>
         </MessageBar>
       )}
 
@@ -237,7 +231,7 @@ function Detail({ extension, query }: { extension: ExtensionSummary; query: URLS
           Versions
           {versionInfo?.changes.length ? <span className="tab-count">{versionInfo.changes.length}</span> : null}
         </Tab>
-        <Tab value="files">Files</Tab>
+        <Tab value="files">Code</Tab>
       </TabList>
 
       {tab === "versions" && (

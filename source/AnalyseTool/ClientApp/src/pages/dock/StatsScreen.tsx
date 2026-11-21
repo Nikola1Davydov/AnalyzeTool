@@ -6,6 +6,7 @@ import type { PaneOverview } from "../../api/pane";
 import { type ButtonStatistic, type ButtonStatisticsResult, statisticsCommands } from "../../api/statistics";
 import { messageOf, useActions } from "./Actions";
 import { findButton } from "./profile";
+import { TestStats } from "./TestStats";
 import { TileIcon } from "./Tile";
 
 const periods = [
@@ -30,6 +31,8 @@ function clicksIn(button: ButtonStatistic, days: number) {
  */
 export function StatsScreen({ overview, folder }: { overview: PaneOverview; folder?: string }) {
   const [days, setDays] = useState<number>(30);
+  // Buttons or model tests: the tests have no folder of buttons, so a folder's statistics are its buttons only
+  const [kind, setKind] = useState<"buttons" | "tests">("buttons");
   const [sort, setSort] = useState<SortKey>("clicks");
   const actions = useActions();
   const stats = useQuery({
@@ -72,6 +75,17 @@ export function StatsScreen({ overview, folder }: { overview: PaneOverview; fold
     <div className="stats">
       <h1 className="large-title">{folderName ? `Statistics · ${folderName}` : "Statistics"}</h1>
 
+      {!folder && (
+        <div className="segmented stats-kind" role="radiogroup">
+          {(["buttons", "tests"] as const).map((value) => (
+            <button key={value} role="radio" aria-checked={kind === value} className={kind === value ? "on" : ""} onClick={() => setKind(value)}>
+              {kind === value && <span className="segmented-thumb" />}
+              <span className="segmented-label">{value === "buttons" ? "Buttons" : "Model tests"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="segmented stats-period" role="radiogroup">
         {periods.map((period) => (
           <button key={period.days} role="radio" aria-checked={days === period.days} className={days === period.days ? "on" : ""} onClick={() => setDays(period.days)}>
@@ -81,10 +95,12 @@ export function StatsScreen({ overview, folder }: { overview: PaneOverview; fold
         ))}
       </div>
 
-      {stats.isPending && <p className="muted small">Loading…</p>}
-      {stats.isError && <p className="error small">{stats.error.message}</p>}
+      {kind === "tests" && !folder && <TestStats days={days} />}
 
-      {stats.isSuccess && (
+      {kind === "buttons" && stats.isPending && <p className="muted small">Loading…</p>}
+      {kind === "buttons" && stats.isError && <p className="error small">{stats.error.message}</p>}
+
+      {kind === "buttons" && stats.isSuccess && (
         <>
           <div className="stat-tiles">
             <StatTile label="Clicks" value={clicks.toLocaleString()} />
@@ -152,7 +168,7 @@ export function StatsScreen({ overview, folder }: { overview: PaneOverview; fold
   );
 }
 
-function StatTile({ label, value, note, alert }: { label: string; value: string; note?: string; alert?: boolean }) {
+export function StatTile({ label, value, note, alert }: { label: string; value: string; note?: string; alert?: boolean }) {
   return (
     <div className="stat-tile">
       <span className="stat-label">{label}</span>
@@ -174,7 +190,7 @@ function SortHeader(props: { label: string; value: SortKey; sort: SortKey; onSor
 }
 
 /** Clicks per day as thin bars rounded at the top, today on the right; a tooltip names the day and the clicks. */
-function DayChart({ values }: { values: number[] }) {
+export function DayChart({ values, unit = "click(s)", empty = "No clicks yet." }: { values: number[]; unit?: string; empty?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 300;
   const height = 110;
@@ -189,7 +205,7 @@ function DayChart({ values }: { values: number[] }) {
     return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
   };
 
-  if (values.every((value) => value === 0)) return <p className="muted small">No clicks yet.</p>;
+  if (values.every((value) => value === 0)) return <p className="muted small">{empty}</p>;
 
   return (
     <div className="day-chart" onMouseLeave={() => setHover(null)}>
@@ -220,7 +236,9 @@ function DayChart({ values }: { values: number[] }) {
       {hover !== null && (
         <div className="chart-tooltip" style={{ left: `${((hover + 0.5) / values.length) * 100}%` }}>
           <strong>{dayOf(hover)}</strong>
-          <span>{values[hover]} click(s)</span>
+          <span>
+            {values[hover]} {unit}
+          </span>
         </div>
       )}
     </div>

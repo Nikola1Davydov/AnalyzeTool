@@ -22,8 +22,9 @@ the release itself.
       source/AnalyseTool/Plugin` and `claude plugin validate source/AnalyseTool/Plugin/analysetool` pass;
       `AiPluginTests` keep the encoded headers helper in step with `scripts/headers.ps1`.
 - [ ] **The Sdk**: if `source/AnalyseTool.Sdk/**` changed, its `<Version>`/`FileVersion` moved (minor for additions,
-      major — and `AssemblyVersion` — for a break). The version `LLM.md` §4.3 and `ONBOARDING.md` §4.1 pin must exist on
-      NuGet.
+      major — and `AssemblyVersion` — for a break). The Release workflow pushes the nupkg to NuGet itself (Trusted
+      Publishing; `--skip-duplicate`, so a version that is there already is skipped) — move the versions `LLM.md` §4.3
+      and `ONBOARDING.md` §4.1 pin in the same release.
 - [ ] **README**: badges, supported Revit versions, the quick start, the plugin commands are current.
 
 ### Build

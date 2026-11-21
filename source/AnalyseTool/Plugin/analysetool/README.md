@@ -1,8 +1,8 @@
 # AnalyseTool plugin for Claude Code and Codex
 
 Connects the AI client to AnalyseTool in Revit — every open Revit version on one address,
-`http://localhost:48075/mcp` — and brings two skills: `revit` (how to work with the model and with buttons) and
-`new-button` (a button from a description). It ships with AnalyseTool, next to the add-in, and updates with it.
+`http://localhost:48075/mcp` — and brings three skills: `revit` (how to work with the model and with buttons),
+`new-button` (a button from a description) and `model-tests` (checks of the model as C#: write, run, repair, accept). It ships with AnalyseTool, next to the add-in, and updates with it.
 
 **Claude Code**
 

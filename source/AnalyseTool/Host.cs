@@ -63,6 +63,7 @@ public static partial class Host
             .FromAssemblyOf<ExtensionManager>()
             .AddScripting(builder)
             .UseCommandLogging()
+            .UseLongCallWatchdog()
             .Use<DocumentCheckMiddleware>());
 
         //AnalyseTool.Hosting.WebView: windows and the dock pane with the ClientApp pages. Navigation stays restricted: only our

@@ -21,6 +21,9 @@ const AboutPage = lazy(() => import("./pages/about/AboutPage").then((m) => ({ de
 const StatisticsPage = lazy(() =>
   import("./pages/statistics/StatisticsPage").then((m) => ({ default: m.StatisticsPage })),
 );
+const ModelTestsPage = lazy(() =>
+  import("./pages/modelTests/ModelTestsPage").then((m) => ({ default: m.ModelTestsPage })),
+);
 const DockPage = lazy(() => import("./pages/dock/DockPage").then((m) => ({ default: m.DockPage })));
 
 function routePage(path: string, query: URLSearchParams): ReactNode {
@@ -43,6 +46,8 @@ function routePage(path: string, query: URLSearchParams): ReactNode {
       return <AboutPage />;
     case "/statistics":
       return <StatisticsPage />;
+    case "/tests":
+      return <ModelTestsPage />;
   }
   if (path.startsWith("/extensions/")) {
     const id = decodeURIComponent(path.slice("/extensions/".length));

@@ -1,7 +1,9 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Hosting.Commands.BuiltIn;
+using AnalyseTool.Hosting.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace AnalyseTool.Hosting.Tests;
@@ -229,5 +231,24 @@ public sealed class CommandPipelineTests
         var json = JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         await Assert.That(json).Contains("\"name\":\"Greet\"");
+    }
+
+    [Test]
+    public async Task Watchdog_ACommandPastTheMark_IsNotedWhileItStillRuns()
+    {
+        var builder = TestHost.CreateBuilder();
+        builder.Services.AddSingleton(new LongCallWatchdogOptions([TimeSpan.FromMilliseconds(20)]));
+        builder.AddRevitCommands(commands => commands.FromTypes(typeof(SlowCommand), typeof(GreetCommand)).UseLongCallWatchdog());
+        using var host = builder.Build();
+
+        var slow = await host.ExecuteAsync("Slow");
+        var quick = await host.ExecuteAsync("greet", new { name = "Revit" });
+
+        var entries = host.Services.GetRequiredService<LogRecorder>().Entries;
+        await Assert.That(slow.Succeeded).IsTrue();
+        await Assert.That(entries.Any(entry => entry.Level == LogLevel.Warning && entry.Message.Contains("Slow") && entry.Message.Contains("still running"))).IsTrue();
+        // A command that returns before the mark is nobody's business
+        await Assert.That(quick.Succeeded).IsTrue();
+        await Assert.That(entries.Any(entry => entry.Message.Contains("Greet") && entry.Message.Contains("still running"))).IsFalse();
     }
 }

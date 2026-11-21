@@ -406,7 +406,7 @@ shipped inside packages during restore, so the SDK package cannot add them for y
   <ItemGroup>
     <!-- Exact version, never a range: a pinned package is the reason your build cannot be
          broken by someone else's release. -->
-    <PackageReference Include="AnalyseTool.Sdk" Version="1.1.2">
+    <PackageReference Include="AnalyseTool.Sdk" Version="1.3.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*">
@@ -760,3 +760,94 @@ model) in the payload or from your own settings file, and run the call **outside
       for commands that take arguments; `OutputType` for what they return (SDK 1.2+).
 - [ ] UI: `index.html` calling `window.AT.invoke(...)`; `base: "./"` if framework-built.
 - [ ] Tell the user where the folder is; a saved file reloads by itself, and the button appears without a restart.
+
+---
+
+## 11. Model tests
+
+A **model test** checks the open model the way a unit test checks code: «every door has a fire rating», «no two rooms
+share a number», «no duct hits a beam». Tests are C# in any source extension (Sdk 1.3+): a class that implements
+`IModelTestSuite` (namespace `AnalyseTool.Sdk.Testing`), with a public parameterless constructor. AnalyseTool calls its
+`Define` when the extension loads, and runs the tests from the **Tests** tab of the pane or over MCP. A saved file reloads
+them, like a button.
+
+```csharp
+using AnalyseTool.Sdk.Testing;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
+
+public sealed class BepProjectX : IModelTestSuite
+{
+    public void Define(ISuite s)
+    {
+        s.Name("BEP Project X").Trait("Discipline", "ARC");
+
+        // Rules: one value per element, declarative — the page knows what is checked and words the messages
+        s.Elements(BuiltInCategory.OST_Doors)
+         .Parameter("Fire Rating").NotEmpty().OneOf("EI30", "EI60", "EI90")
+         .FixValue("EI30");                                    // a repair the page offers: writes the value
+
+        s.Elements<Room>()
+         .Where(room => room.Area > 0)
+         .Parameter(BuiltInParameter.ROOM_NUMBER).NotEmpty().Unique();
+
+        s.Elements(BuiltInCategory.OST_Doors).TypeName().Matches(@"^T\d{2}_");
+
+        // Code per element: soft assertions, every failure is a case of its own
+        s.Elements(BuiltInCategory.OST_Doors).Check("Door is in a wall", (door, m) =>
+        {
+            var instance = (FamilyInstance)door;
+            m.Assert.True(instance.Host is Wall, "The door has no host wall");
+        }).Fix("Delete", door => door.Document.Delete(door.Id));
+
+        // Code for the whole model
+        s.Test("No unplaced rooms", m =>
+            m.Assert.Empty(m.Elements<Room>().Where(room => room.Location == null), "The room is not placed"));
+
+        // Geometry is plain Revit API; evidence tells the page what to draw
+        s.Elements(BuiltInCategory.OST_DuctCurves).Check("Ducts do not hit beams", (duct, m) =>
+        {
+            var box = duct.get_BoundingBox(null);
+            if (box is null) { m.Assert.Inconclusive("No geometry"); return; }
+            var outline = new Outline(box.Min, box.Max);
+            foreach (var beam in new FilteredElementCollector(m.Document)
+                         .OfCategory(BuiltInCategory.OST_StructuralFraming).WhereElementIsNotElementType()
+                         .WherePasses(new BoundingBoxIntersectsFilter(outline)))
+            {
+                m.Assert.Fail($"Touches {beam.Name}", new Evidence { Related = [beam], Box = outline });
+            }
+        }).Slow();
+    }
+}
+```
+
+| Builder | What it declares |
+| --- | --- |
+| `s.Elements(params BuiltInCategory[])`, `s.Elements<T>()` | The elements (instances; `Elements<WallType>()` for types). `.Where(e => …)` filters. |
+| `.Parameter(name \| BuiltInParameter)`, `.TypeParameter(…)`, `.TypeName()`, `.Value(label, e => …)` | A **rule** on one value. Conditions: `NotEmpty()`, `Equal(text)`, `Matches(regex)`, `OneOf(…)`, `InRange(min, max)` (units as Revit shows them), `Unique()`. The first that fails is the message; a missing parameter fails every condition. |
+| `.Check(name, (element, m) => …)` | Code per element. |
+| `s.Test(name, m => …)` | Code once for the model. |
+| `.Fix(label, e => …)`, `.FixValue(text)` | A repair for failing elements; it runs in one transaction AnalyseTool opens (one Ctrl+Z). |
+| `.Id(id)`, `.Name(name)`, `.Severity(…)`, `.Trait(name, value)`, `.Slow()`, `.Skip(reason)` | Options; call them last, they end the chain. |
+
+Inside a body, `m.Document` is the model, `m.Elements(…)` collects, `m.Assert` records failures — `True`, `NotEmpty`,
+`Empty(items, message)` (each item fails; an element item is the failing element), `Fail`, `Inconclusive` — and an
+optional `Evidence { Element, Related, Point, Box, Key }` tells the page what to select and draw. `Units`: `900.Mm()`,
+`0.9.M()` — the API measures in feet.
+
+- **Tests never change the model.** They run inside a transaction group that is always rolled back; only a repair the
+  user (or you, with `FixModelTestCases`) starts writes.
+- **Prefer `BuiltInParameter` / `BuiltInCategory` over names**: a parameter name depends on the language of Revit
+  («Mark» is «Kennzeichen» in German).
+- **The baseline.** An existing model fails hundreds of times; `AcceptModelTestFailures` accepts the current failures,
+  and from then on only new ones fail the test. They are kept in `baseline\<model>.json` of the suite's folder,
+  versioned with the tests. Keys follow the element's unique id, so a test keeps its baseline while its id stays —
+  give a test whose name may change an `.Id("…")`. **Ask the user before accepting failures**: it hides them.
+- **Results.** `passed` means nothing *new* failed; `failed`, `error` (the test threw — a bug in the test, not the
+  model), `inconclusive` (Revit could not tell), `skipped` (`.Skip`, or `.Slow()` without `includeSlow`).
+- **Keep `Define` cheap**: it runs at every load and has no model. Collect in the lambdas.
+
+Over MCP: `CreateModelTestSuite { name }` (a folder with an example suite), `GetModelTests`, `RunModelTests { suite?,
+tests?, trait?, elementIds?, includeSlow? }`, `GetModelTestResults`, `FixModelTestCases { testId, keys? }`,
+`AcceptModelTestFailures { testId, keys?, remove? }`. A good loop: write the test, run it, read what failed, refine
+the rule or offer the repair — then save a version.

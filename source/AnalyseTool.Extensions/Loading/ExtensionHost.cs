@@ -3,6 +3,7 @@ using System.IO;
 using AnalyseTool.Extensions.Building;
 using AnalyseTool.Extensions.Catalog;
 using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Extensions.Testing;
 using AnalyseTool.Extensions.Versions;
 using AnalyseTool.Hosting.Commands;
 using AnalyseTool.Sdk;
@@ -44,6 +45,7 @@ public sealed partial class ExtensionHost : IDisposable
     private readonly ExtensionStateStore _store;
     private readonly IExtensionHistory _history;
     private readonly CommandRegistry _registry;
+    private readonly ModelTestCatalog _tests;
     private readonly ILogger<ExtensionHost> _logger;
     private readonly Version _sdkVersion = typeof(IRevitTask).Assembly.GetName().Version ?? new Version(1, 0);
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -51,12 +53,13 @@ public sealed partial class ExtensionHost : IDisposable
     private readonly Dictionary<string, string> _folderProblems = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Creates the host.</summary>
-    public ExtensionHost(ExtensionCatalog catalog, ExtensionStateStore store, IExtensionHistory history, CommandRegistry registry, ILogger<ExtensionHost> logger)
+    public ExtensionHost(ExtensionCatalog catalog, ExtensionStateStore store, IExtensionHistory history, CommandRegistry registry, ModelTestCatalog tests, ILogger<ExtensionHost> logger)
     {
         _catalog = catalog;
         _store = store;
         _history = history;
         _registry = registry;
+        _tests = tests;
         _logger = logger;
     }
 
@@ -220,6 +223,7 @@ public sealed partial class ExtensionHost : IDisposable
         var usesOlderBuild = false;
         ExtensionLoadContext? context = null;
         var commands = new List<CommandDescriptor>();
+        var suites = 0;
 
         try
         {
@@ -263,6 +267,7 @@ public sealed partial class ExtensionHost : IDisposable
                     if (CheckSdk(assembly, errors))
                     {
                         commands.AddRange(SdkCommands.Describe(assembly, id, errors));
+                        suites = _tests.Load(assembly, descriptor, errors);
                     }
                 }
             }
@@ -273,9 +278,15 @@ public sealed partial class ExtensionHost : IDisposable
             LogLoadFailed(_logger, exception, id);
         }
 
+        if (suites == 0)
+        {
+            _tests.Remove(id);
+        }
+
         errors.AddRange(_registry.SetGroup(id, commands));
         var registered = _registry.GetGroup(id).Select(command => command.Name).ToList();
-        if (registered.Count == 0 && context is not null)
+        // The model tests hold delegates into the assembly: an extension of tests only keeps its context too
+        if (registered.Count == 0 && suites == 0 && context is not null)
         {
             context.Unload();
             context = null;
@@ -372,6 +383,7 @@ public sealed partial class ExtensionHost : IDisposable
     private void Unload(string id)
     {
         _registry.RemoveGroup(id);
+        _tests.Remove(id);
         Loaded? previous;
         lock (_loaded)
         {

@@ -43,6 +43,7 @@ public sealed class AiPluginTests
             await Assert.That(claudeMarket["plugins"]![0]!["source"]!.GetValue<string>()).IsEqualTo("./analysetool");
             await Assert.That(codexMarket["plugins"]![0]!["source"]!["path"]!.GetValue<string>()).IsEqualTo("./analysetool");
             await Assert.That(Directory.Exists(Path.Combine(Plugin, "analysetool", "skills", "revit"))).IsTrue();
+            await Assert.That(File.Exists(Path.Combine(Plugin, "analysetool", "skills", "model-tests", "SKILL.md"))).IsTrue();
         }
     }
 

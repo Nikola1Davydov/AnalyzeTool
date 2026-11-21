@@ -18,4 +18,5 @@ Make a working Revit button for: $ARGUMENTS
 5. Write the C# (and the page) in the folder it returned. Keep it to what was asked; read-only unless the task is to
    change the model.
 6. `BuildExtension` until it has no errors, then try it with `RunCommand { name: "<tab>.<button>.<Class>", payload }` (dry run first). Then tell the user the button is on the ribbon and in the AnalyseTool pane
-   under that tab, and how to try it. Offer to save a version (`SaveExtensionVersion`) once they confirm it works.
+   under that tab, and how to try it. Once the run shows it works, save a version (`SaveExtensionVersion`) with a
+   message that says what the button does — restore is always there, so a version never needs asking.

@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.0] / 2026-11-21
+
+- 🧪 **Model tests**: checks of the open model written as C#, like unit tests — rules on parameters, code per element or for the whole model. The pane has two tabs now, **Tools** and **Tests**: Tests runs them, shows every failing element, repairs it or accepts it into a baseline, so only new failures count. The counts above the list are filters too — tap **new** to see only what broke.
+- 📈 **Statistics have a Model tests tab**: how often each test ran, found new failures or threw, and how long it takes.
+- 🧰 **Sdk 1.3**: `AnalyseTool.Sdk.Testing` with the fluent `IModelTestSuite` builder; AI clients create, run, repair and accept model tests over MCP. The package now goes to NuGet with every release.
+- 👀 **Versions of a button with a page compare visually**: Preview shows the page as it was beside the page as it is; the code diff stays a click away.
+- 🧹 **The button page is calmer**: one header line with the badges and an ⓘ for the details, the actions in a ⋯ menu, Build right in the «does not compile» banner, less empty space above the content of every window.
+- 🪵 **A command that runs past 30 seconds is named in the log while it still runs** — when Revit hangs, the log now ends with the culprit instead of silence.
+
 ## [2.0.1] / 2026-11-17
 
 - 🔔 **A new version shows itself**: AnalyseTool asks GitHub once a day for the latest release. A newer one puts a dot on your initials and a card with the download link on About. The request sends nothing about you or your models.

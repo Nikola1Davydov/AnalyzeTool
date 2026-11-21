@@ -1,0 +1,168 @@
+using System.IO;
+using System.Reflection;
+using AnalyseTool.Extensions.Catalog;
+using AnalyseTool.Extensions.Storage;
+using AnalyseTool.Sdk.Testing;
+
+namespace AnalyseTool.Extensions.Testing;
+
+/// <summary>
+///     The model test suites of the loaded extensions. <see cref="Loading.ExtensionHost" /> fills it whenever it loads an
+///     extension: a saved file reloads the extension, and with it its tests.
+/// </summary>
+public sealed class ModelTestCatalog(ExtensionPaths paths)
+{
+    private readonly Dictionary<string, IReadOnlyList<SuiteDefinition>> _byExtension = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Gets the suites, by extension and in the order declared.</summary>
+    /// <param name="names">How categories and built-in parameters are named; their API names when absent.</param>
+    public IReadOnlyList<ModelTestSuiteInfo> GetSuites(RevitNames? names = null)
+    {
+        return Suites().Select(suite => Describe(suite, names)).ToList();
+    }
+
+    /// <summary>Finds the suites of the extension assembly and records them for the extension.</summary>
+    /// <param name="assembly">The loaded assembly of the extension.</param>
+    /// <param name="descriptor">The extension.</param>
+    /// <param name="problems">Receives what could not be declared.</param>
+    /// <returns>How many suites it has.</returns>
+    internal int Load(Assembly assembly, ExtensionDescriptor descriptor, ICollection<string> problems)
+    {
+        var suites = Discover(assembly, descriptor.Id, descriptor.Directory, BaselineDirectory(descriptor), problems, descriptor.Manifest.Name);
+        Set(descriptor.Id, suites);
+        return suites.Count;
+    }
+
+    /// <summary>Records the suites of an extension; none removes it.</summary>
+    internal void Set(string extensionId, IReadOnlyList<SuiteDefinition> suites)
+    {
+        lock (_byExtension)
+        {
+            if (suites.Count == 0)
+            {
+                _byExtension.Remove(extensionId);
+            }
+            else
+            {
+                _byExtension[extensionId] = suites;
+            }
+        }
+    }
+
+    /// <summary>Forgets the suites of an extension that left the pipeline.</summary>
+    internal void Remove(string extensionId)
+    {
+        Set(extensionId, []);
+    }
+
+    internal IReadOnlyList<SuiteDefinition> Suites()
+    {
+        lock (_byExtension)
+        {
+            return _byExtension.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).SelectMany(pair => pair.Value).ToList();
+        }
+    }
+
+    internal (SuiteDefinition Suite, TestDefinition Test)? FindTest(string testId)
+    {
+        foreach (var suite in Suites())
+        {
+            if (suite.Tests.FirstOrDefault(test => string.Equals(test.Id, testId, StringComparison.OrdinalIgnoreCase)) is { } test)
+            {
+                return (suite, test);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Creates every suite class of an assembly and lets it declare its tests.</summary>
+    internal static List<SuiteDefinition> Discover(Assembly assembly, string extensionId, string extensionDirectory, string baselineDirectory, ICollection<string> problems,
+        string? extensionName = null)
+    {
+        Type[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException exception)
+        {
+            types = exception.Types.OfType<Type>().ToArray();
+        }
+
+        var suites = new List<SuiteDefinition>();
+        // Two classes of one name in two namespaces: the second is told apart by its full name. Case does not
+        // count as a difference: suite ids are compared ignoring it everywhere else
+        var names = types.Where(type => typeof(IModelTestSuite).IsAssignableFrom(type)).GroupBy(type => type.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var type in types.Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IModelTestSuite).IsAssignableFrom(type)))
+        {
+            if (type.GetConstructor(Type.EmptyTypes) is null)
+            {
+                problems.Add($"{type.FullName} needs a public parameterless constructor to declare its model tests.");
+                continue;
+            }
+
+            var suite = new SuiteDefinition
+            {
+                Id = $"{extensionId}.{(names.Contains(type.Name) ? type.FullName : type.Name)}",
+                ExtensionId = extensionId,
+                ClassName = type.Name,
+                Directory = extensionDirectory,
+                ExtensionName = extensionName,
+                BaselineDirectory = baselineDirectory
+            };
+            var builder = new SuiteBuilder(suite, extensionDirectory);
+            try
+            {
+                ((IModelTestSuite)Activator.CreateInstance(type)!).Define(builder);
+            }
+            catch (Exception exception)
+            {
+                var inner = exception is TargetInvocationException { InnerException: { } cause } ? cause : exception;
+                problems.Add($"{type.FullName}.Define threw {inner.GetType().Name}: {inner.Message}");
+                continue;
+            }
+
+            foreach (var problem in builder.Complete())
+            {
+                problems.Add(problem);
+            }
+
+            suites.Add(suite);
+        }
+
+        return suites;
+    }
+
+    internal static ModelTestSuiteInfo Describe(SuiteDefinition suite, RevitNames? names = null)
+    {
+        return new ModelTestSuiteInfo(suite.Id, suite.DisplayName, suite.ExtensionId, suite.ExtensionName ?? suite.ExtensionId, suite.Directory,
+            suite.Tests.Select(test => Describe(test, names)).ToList());
+    }
+
+    internal static ModelTestInfo Describe(TestDefinition test, RevitNames? names = null)
+    {
+        var naming = names ?? RevitNames.Api;
+        var rule = test.Rule;
+        var parameter = rule?.Source is ValueSource.Parameter or ValueSource.TypeParameter
+            ? new RevitName(rule.Name(naming), rule.BuiltIn?.ToString() ?? rule.Label)
+            : null;
+        return new ModelTestInfo(test.Id, test.DisplayName(naming), test.Describe(naming), test.Kind.ToString(), test.Severity.ToString(),
+            test.Traits.Select(trait => $"{trait.Key}={trait.Value}").Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            test.Slow, test.SkipReason, test.File, test.Line, test.FixLabel,
+            test.Selector?.Categories.Select(category => new RevitName(naming.Category(category), category.ToString())).ToList() ?? [],
+            test.Selector?.ElementClass?.Name,
+            parameter,
+            rule?.Source == ValueSource.TypeParameter,
+            rule is not null && parameter is null ? rule.Name(naming) : null,
+            rule?.Checks() is { Length: > 0 } checks ? checks : null,
+            test.Filters.Count > 0);
+    }
+
+    /// <summary>The user's own folder keeps the baseline (versioned with the tests); an installed package's goes to the profile.</summary>
+    private string BaselineDirectory(ExtensionDescriptor descriptor)
+    {
+        return descriptor.Zone == ExtensionZone.Dev ? descriptor.Directory : Path.Combine(paths.ProfileRoot, "model-tests", descriptor.Id);
+    }
+}

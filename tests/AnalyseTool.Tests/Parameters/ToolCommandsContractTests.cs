@@ -49,6 +49,7 @@ public sealed class ToolCommandsContractTests
         ["GetWorksets"] = true,
         ["IsolationInRevit"] = true,
         ["SelectionInRevit"] = true,
+        ["ShowElementsIn3D"] = true,
         ["SetDataToParameters"] = true,
         ["BindSharedParameters"] = true,
         ["GetBindingOptions"] = true,
@@ -142,7 +143,7 @@ public sealed class ToolCommandsContractTests
     [Test]
     public async Task McpTools_WritingCommandsAreNotReadOnly()
     {
-        var writing = new[] { "SetDataToParameters", "BindSharedParameters", "SaveSharedParameterFile", "IsolationInRevit", "SelectionInRevit" };
+        var writing = new[] { "SetDataToParameters", "BindSharedParameters", "SaveSharedParameterFile", "IsolationInRevit", "SelectionInRevit", "ShowElementsIn3D" };
         var tools = SliceCommands().ToDictionary(CommandNaming.GetName, type => type.GetCustomAttribute<McpToolAttribute>());
 
         foreach (var name in writing)

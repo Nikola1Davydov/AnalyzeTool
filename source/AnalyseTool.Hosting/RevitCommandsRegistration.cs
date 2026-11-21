@@ -119,6 +119,12 @@ public sealed class RevitCommandsBuilder
         return Use<SingleFlightMiddleware>(ServiceLifetime.Singleton);
     }
 
+    /// <summary>Adds <see cref="LongCallWatchdogMiddleware" />: a command that runs past 30 s (then 5 min) is noted in the log while it still runs.</summary>
+    public RevitCommandsBuilder UseLongCallWatchdog()
+    {
+        return Use<LongCallWatchdogMiddleware>(ServiceLifetime.Singleton);
+    }
+
     /// <summary>
     ///     Adds a custom middleware after the built-in ones, in call order. Created in the scope of each call.
     /// </summary>

@@ -1,6 +1,7 @@
 import { CommandError, registerMocks } from "revit-bridge";
 import type { AppInfo, McpInfo, UpdateInfo } from "./api/app";
 import type { ButtonStatistic, ButtonStatisticsResult } from "./api/statistics";
+import type { ModelTestCase, ModelTestList, ModelTestResult, ModelTestRun, RunModelTestsRequest } from "./api/modelTests";
 import type { ButtonRunResult, PaneFolder, PaneOverview } from "./api/pane";
 import type {
   CompileDiagnostic,
@@ -398,9 +399,35 @@ const extensions: MockExtension[] = [
     ],
   },
   (() => {
+    const pageSaved = "<!doctype html>\n<html>\n  <body>\n    <h1>Room sheets</h1>\n  </body>\n</html>\n";
+    // The current page differs from the saved one, so Versions shows unsaved changes with a Preview
+    const pageNow = [
+      "<!doctype html>",
+      "<html>",
+      "  <head>",
+      "    <style>",
+      "      body { font-family: 'Segoe UI', sans-serif; margin: 16px; color: #222; }",
+      "      h1 { font-size: 18px; margin: 0 0 4px; }",
+      "      p { color: #666; margin: 0 0 12px; }",
+      "      table { border-collapse: collapse; width: 100%; }",
+      "      th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e3e3e3; font-size: 13px; }",
+      "      button { margin-top: 12px; padding: 6px 14px; border: none; border-radius: 4px; background: #0f6cbd; color: #fff; }",
+      "    </style>",
+      "  </head>",
+      "  <body>",
+      "    <h1>Room sheets</h1>",
+      "    <p>Pick the rooms; a sheet is created for each.</p>",
+      "    <table><tr><th></th><th>Number</th><th>Name</th></tr>",
+      "      <tr><td><input type=checkbox checked></td><td>101</td><td>Office</td></tr>",
+      "      <tr><td><input type=checkbox></td><td>102</td><td>Meeting</td></tr></table>",
+      "    <button>Create sheets</button>",
+      "  </body>",
+      "</html>",
+      "",
+    ].join("\n");
     const files = {
       "plugin.json": pluginJson("RoomSheets", "Room sheets", "A page that lists rooms and creates sheets for them."),
-      "index.html": "<!doctype html>\n<html>\n  <body>\n    <h1>Room sheets</h1>\n  </body>\n</html>\n",
+      "index.html": pageNow,
       "src/RoomSheets.cs": "namespace RoomSheets;\n\npublic sealed class ListRooms : IRevitTask\n{\n}\n",
     };
     const version = newVersion("Page with the room list", 60 * 24 * 5);
@@ -413,7 +440,7 @@ const extensions: MockExtension[] = [
         loadedVersion: version.id,
       }),
       files,
-      versions: [{ version, files: { ...files } }],
+      versions: [{ version, files: { ...files, "index.html": pageSaved } }],
     };
   })(),
   {
@@ -600,6 +627,105 @@ const wallElements: DataElement[] = Array.from({ length: 40 }, (_, index) => {
 });
 
 // ---- The handlers ------------------------------------------------------------------------------------------
+
+
+// ---- Model tests: a suite with rules, a check per element and a test of the model; accepting and repairing change the next run
+const testSuites: ModelTestList = {
+  suites: [
+    {
+      id: "bep-project-x.BepProjectX",
+      name: "BEP Project X",
+      extensionId: "bep-project-x",
+      extensionName: "BEP Project X",
+      directory: "C:\\Users\\you\\AppData\\Local\\AnalyseTool\\extensions\\bep-project-x",
+      tests: [
+        { id: "bep-project-x.BepProjectX/doors-fire-rating-not-empty", name: "Doors · Fire Rating · not empty", description: "Doors · Fire Rating · not empty", kind: "Rule", severity: "Error", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 12, fix: "Set to 'EI30'", categories: [{ name: "Doors", api: "OST_Doors" }], elementClass: null, parameter: { name: "Fire Rating", api: "Fire Rating" }, typeParameter: false, value: null, checks: "not empty", filtered: false },
+        { id: "bep-project-x.BepProjectX/room-number-not-empty-unique", name: "Room · Number · not empty, unique", description: "Room (filtered) · Number · not empty, unique", kind: "Rule", severity: "Error", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 16, fix: null, categories: [], elementClass: "Room", parameter: { name: "Number", api: "ROOM_NUMBER" }, typeParameter: false, value: null, checks: "not empty, unique", filtered: true },
+        { id: "bep-project-x.BepProjectX/swing-zone-is-free", name: "Swing zone is free", description: "Doors · code", kind: "Check", severity: "Warning", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 21, fix: null , categories: [], elementClass: null, parameter: null, typeParameter: false, value: null, checks: null, filtered: false },
+        { id: "bep-project-x.BepProjectX/no-unplaced-rooms", name: "No unplaced rooms", description: "Whole model · code", kind: "Model", severity: "Error", traits: ["Discipline=ARC"], slow: false, skip: null, file: "src\\BepProjectX.cs", line: 28, fix: null , categories: [], elementClass: null, parameter: null, typeParameter: false, value: null, checks: null, filtered: false },
+        { id: "bep-project-x.BepProjectX/ducts-do-not-hit-beams", name: "Ducts do not hit beams", description: "Duct Curves · code", kind: "Check", severity: "Error", traits: ["Discipline=MEP"], slow: true, skip: null, file: "src\\Clashes.cs", line: 9, fix: null , categories: [], elementClass: null, parameter: null, typeParameter: false, value: null, checks: null, filtered: false },
+      ],
+    },
+    {
+      id: "sikla-test.SiklaTest",
+      name: "Sikla Test",
+      extensionId: "sikla-test",
+      extensionName: "Sikla Test",
+      directory: "C:\\Users\\you\\AppData\\Local\\AnalyseTool\\extensions\\sikla-test",
+      tests: [
+        { id: "sikla-test.SiklaTest/project-number-is-set", name: "Project number is set", description: "Whole model · code", kind: "Model", severity: "Error", traits: [], slow: false, skip: null, file: "src\\SiklaTest.cs", line: 14, fix: null , categories: [], elementClass: null, parameter: null, typeParameter: false, value: null, checks: null, filtered: false },
+        { id: "sikla-test.SiklaTest/sheet-numbers-are-unique", name: "Sheet numbers are unique", description: "Sheets · SHEET_NUMBER · not empty, unique", kind: "Rule", severity: "Error", traits: ["Discipline=Documentation"], slow: false, skip: null, file: "src\\SiklaTest.cs", line: 70, fix: null, categories: [{ name: "Sheets", api: "OST_Sheets" }], elementClass: null, parameter: { name: "Sheet Number", api: "SHEET_NUMBER" }, typeParameter: false, value: null, checks: "not empty, unique", filtered: false },
+      ],
+    },
+  ],
+};
+const testAccepted = new Set<string>(Array.from({ length: 6 }, (_, index) => `door-${500 + index}||`));
+const testFixed = new Set<string>();
+let testTrend: ModelTestRun["trend"] = [9, 8, 8, 6, 5, 4, 4, 3].map((newCases, index) => ({ at: ago((8 - index) * 600), newCases, baselineCases: 6, failed: 2 }));
+let lastTestRun: ModelTestRun | null = null;
+
+function testCase(key: string, status: ModelTestCase["status"], message: string, elementId: number | null, label: string | null, extra: Partial<ModelTestCase> = {}): ModelTestCase {
+  return { key, status, message, elementId, label, related: [], inBaseline: status === "failed" && testAccepted.has(key), point: null, box: null, ...extra };
+}
+
+function testResult(testId: string, cases: ModelTestCase[], checked: number): ModelTestResult {
+  const failed = cases.filter((item) => item.status === "failed");
+  const baseline = failed.filter((item) => item.inBaseline).length;
+  const fresh = failed.length - baseline;
+  const errors = cases.filter((item) => item.status === "error").length;
+  const inconclusive = cases.filter((item) => item.status === "inconclusive").length;
+  const status = fresh ? "failed" : errors ? "error" : inconclusive ? "inconclusive" : "passed";
+  const order = (item: ModelTestCase) => (item.status === "failed" && !item.inBaseline ? 0 : item.status === "error" ? 1 : item.status === "inconclusive" ? 2 : 3);
+  return { testId, status, checked, failed: failed.length, new: fresh, baseline, resolved: 0, inconclusive, errors, skip: null, cases: [...cases].sort((a, b) => order(a) - order(b)), truncated: false, milliseconds: 12 };
+}
+
+function runTestsMock(request: RunModelTestsRequest): ModelTestRun {
+  const [doors, rooms, swing, unplaced, clashes] = testSuites.suites[0].tests;
+  const all: ModelTestResult[] = [
+    testResult(doors.id, [
+      ...Array.from({ length: 6 }, (_, index) => testCase(`door-${500 + index}||`, "failed", "«Fire Rating» is empty", 500 + index, `Doors · T30_Single 900 · ${500 + index}`, { value: null, valueState: "empty" })),
+      ...[412, 413, 414].filter((id) => !testFixed.has(`door-${id}||`)).map((id) => testCase(`door-${id}||`, "failed", "«Fire Rating» is empty", id, `Doors · T30_Single 900 · ${id}`, { value: null, valueState: id === 414 ? "missing" : "empty" })),
+    ], 210),
+    testResult(rooms.id, [
+      testCase("room-7||unique", "failed", "«Number» '0.14' is used by 1 other element", 7, "Rooms · Flur · 0.14", { related: [8], value: "0.14", valueState: "set" }),
+      testCase("room-8||unique", "failed", "«Number» '0.14' is used by 1 other element", 8, "Rooms · Lager · 0.14", { related: [7] }),
+    ], 64),
+    testResult(swing.id, [
+      testCase("door-412||", "failed", "Swing zone blocked by Furniture · Schrank", 412, "Doors · T30_Single 900 · 412", { related: [9001], box: [10, 20, 0, 12.9, 22.9, 7] }),
+      testCase("door-420||", "inconclusive", "The geometry of the door could not be read", 420, "Doors · Imported DWG door · 420"),
+    ], 210),
+    testResult(unplaced.id, [], 1),
+    request.includeSlow || request.tests?.includes(clashes.id)
+      ? testResult(clashes.id, [testCase("duct-1|beam-2|", "failed", "Clash 40 mm with Structural Framing · HEA 200", 3001, "Ducts · Rectangular · 3001", { related: [4002] })], 88)
+      : { ...testResult(clashes.id, [], 0), status: "skipped", skip: "Slow: runs when slow tests are included or the test is run on its own." },
+  ];
+  const results = all.filter(
+    (result) => (!request.tests?.length || request.tests.includes(result.testId)) && (!request.suite || result.testId.startsWith(request.suite)),
+  );
+  const full = !request.suite && !request.tests?.length && !request.elementIds?.length && !request.trait;
+  const totals = {
+    tests: results.length,
+    passed: results.filter((r) => r.status === "passed").length,
+    failed: results.filter((r) => r.status === "failed").length,
+    errors: results.filter((r) => r.status === "error").length,
+    inconclusive: results.filter((r) => r.status === "inconclusive").length,
+    skipped: results.filter((r) => r.status === "skipped").length,
+    newCases: results.reduce((sum, r) => sum + r.new, 0),
+    baselineCases: results.reduce((sum, r) => sum + r.baseline, 0),
+    inconclusiveCases: results.reduce((sum, r) => sum + r.inconclusive, 0),
+  };
+  const at = new Date().toISOString();
+  if (full) {
+    // As on the C# side: the slow tests' counts stay out of the trend, so it compares like with like
+    const steady = results.filter((r) => r.testId !== clashes.id);
+    testTrend = [
+      ...testTrend,
+      { at, newCases: steady.reduce((sum, r) => sum + r.new, 0), baselineCases: steady.reduce((sum, r) => sum + r.baseline, 0), failed: steady.filter((r) => r.status === "failed").length },
+    ].slice(-30);
+  }
+  lastTestRun = { model: "Projekt X – ARC.rvt", modelKey: "mock-model", at, milliseconds: 840, trigger: request.trigger ?? "page", full, totals, results, trend: testTrend };
+  return lastTestRun;
+}
 
 registerMocks({
   "Host.GetCommands": () => [
@@ -1090,4 +1216,42 @@ registerMocks({
     }
     return { ok: true, written: items.length, skipped: 0, error: null, warnings: [] };
   },
+
+  // ---- Model tests
+  GetModelTestStatistics: () => ({
+    since: ago(60 * 24 * 21),
+    runs: 47,
+    tests: [
+      { testId: "bep-project-x.BepProjectX/doors-fire-rating-not-empty", test: "Doors · Fire Rating · not empty", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 31, errors: 0, inconclusive: 0, lastStatus: "failed", lastRun: ago(5), lastNew: 3, lastError: null, averageMilliseconds: 14, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "bep-project-x.BepProjectX/swing-zone-is-free", test: "Swing zone is free", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 12, errors: 2, inconclusive: 40, lastStatus: "failed", lastRun: ago(5), lastNew: 1, lastError: "The test threw NullReferenceException: Object reference not set to an instance of an object.", averageMilliseconds: 240, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "bep-project-x.BepProjectX/no-unplaced-rooms", test: "No unplaced rooms", suite: "BEP Project X", folder: "BEP Project X", exists: true, runs: 47, failed: 0, errors: 0, inconclusive: 0, lastStatus: "passed", lastRun: ago(5), lastNew: 0, lastError: null, averageMilliseconds: 6, last30Days: [0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 0, 2, 4, 0, 1, 0, 0, 2, 3, 1, 0, 0, 5, 2, 1, 0, 3, 2, 4, 6] },
+      { testId: "sikla-test.SiklaTest/walls-have-a-mark", test: "Walls have a mark", suite: "Sikla Test", folder: "Sikla Test", exists: true, runs: 9, failed: 9, errors: 0, inconclusive: 0, lastStatus: "failed", lastRun: ago(120), lastNew: 6, lastError: null, averageMilliseconds: 31, last30Days: [...Array(27).fill(0), 3, 4, 2] },
+      { testId: "sikla-test.SiklaTest/old-rule", test: "Old rule", suite: "Sikla Test", folder: "Sikla Test", exists: false, runs: 2, failed: 0, errors: 0, inconclusive: 0, lastStatus: "passed", lastRun: ago(60 * 24 * 10), lastNew: 0, lastError: null, averageMilliseconds: 3, last30Days: [...Array(19).fill(0), 2, ...Array(10).fill(0)] },
+    ],
+  }),
+  ResetModelTestStatistics: () => ({ removed: 5 }),
+  GetModelTests: () => testSuites,
+  GetModelTestResults: () => lastTestRun,
+  RunModelTests: async (payload) => {
+    await delay(500);
+    return runTestsMock((payload ?? {}) as RunModelTestsRequest);
+  },
+  FixModelTestCases: async (payload) => {
+    const { keys } = payload as { testId: string; keys?: string[] | null };
+    const chosen = keys?.length ? keys : ["door-412||", "door-413||", "door-414||"];
+    chosen.forEach((key) => testFixed.add(key));
+    await delay(200);
+    return { testId: (payload as { testId: string }).testId, fixed: chosen.length, problems: [] };
+  },
+  AcceptModelTestFailures: (payload) => {
+    const { testId, keys, remove } = payload as { testId: string; keys?: string[] | null; remove?: boolean };
+    const result = lastTestRun?.results.find((r) => r.testId === testId);
+    const chosen = keys?.length ? keys : (result?.cases.filter((c) => c.status === "failed").map((c) => c.key) ?? []);
+    chosen.forEach((key) => (remove ? testAccepted.delete(key) : testAccepted.add(key)));
+    return { testId, accepted: testAccepted.size, file: "baseline\\mock-model.json" };
+  },
+  CreateModelTestSuite: (payload) => fail(`Creating «${(payload as { name: string }).name}» needs Revit.`, "invalid"),
+  ShowGeometry: () => ({ added: 1, missing: [], shown: 1 }),
+  ShowElementsIn3D: (payload) => ({ ok: true, isolated: (payload as { elementIds: number[] }).elementIds.length, view: "{3D}", error: null }),
+  ClearGeometry: () => null,
 });
