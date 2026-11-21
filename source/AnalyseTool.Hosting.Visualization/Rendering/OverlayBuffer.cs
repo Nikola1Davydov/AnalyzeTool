@@ -6,6 +6,8 @@ namespace AnalyseTool.Hosting.Visualization.Rendering;
 ///     Triangles or line segments of one colour in DirectContext3D buffers, ready to draw.
 /// </summary>
 /// <remarks>
+///     The vertices carry their position only; the colour and the transparency belong to the effect. Colours per vertex
+///     (<c>PositionColored</c>) are ignored by the Realistic display style: the overlay vanished in a realistic 3D view.
 ///     Indices are 16-bit, so the points are split into chunks of at most <see cref="ChunkSize" /> vertices, each with its
 ///     own buffers. Created and drawn on the Revit thread, inside <c>RenderScene</c>.
 /// </remarks>
@@ -14,7 +16,7 @@ internal sealed class OverlayBuffer : IDisposable
     /// <summary>The most vertices in one chunk: fits 16-bit indices and is a multiple of both 2 and 3.</summary>
     public const int ChunkSize = 65_532;
 
-    private const VertexFormatBits Format = VertexFormatBits.PositionColored;
+    private const VertexFormatBits Format = VertexFormatBits.Position;
 
     private readonly PrimitiveType _type;
     private readonly VertexFormat _format = new(Format);
@@ -23,13 +25,16 @@ internal sealed class OverlayBuffer : IDisposable
 
     /// <param name="points">The corners of the triangles, three each, or the ends of the segments, two each.</param>
     /// <param name="type"><see cref="PrimitiveType.TriangleList" /> or <see cref="PrimitiveType.LineList" />.</param>
-    /// <param name="color">The colour of every vertex.</param>
-    public OverlayBuffer(IReadOnlyList<XYZ> points, PrimitiveType type, ColorWithTransparency color)
+    /// <param name="color">The colour of the primitives.</param>
+    /// <param name="transparency">Their transparency, 0 (opaque) to 1.</param>
+    public OverlayBuffer(IReadOnlyList<XYZ> points, PrimitiveType type, Color color, double transparency)
     {
         _type = type;
+        _effect.SetColor(color);
+        _effect.SetTransparency(transparency);
         for (var start = 0; start < points.Count; start += ChunkSize)
         {
-            _chunks.Add(CreateChunk(points, start, Math.Min(ChunkSize, points.Count - start), color));
+            _chunks.Add(CreateChunk(points, start, Math.Min(ChunkSize, points.Count - start)));
         }
     }
 
@@ -54,15 +59,15 @@ internal sealed class OverlayBuffer : IDisposable
         _effect.Dispose();
     }
 
-    private Chunk CreateChunk(IReadOnlyList<XYZ> points, int start, int count, ColorWithTransparency color)
+    private Chunk CreateChunk(IReadOnlyList<XYZ> points, int start, int count)
     {
-        var vertexSize = count * VertexPositionColored.GetSizeInFloats();
+        var vertexSize = count * VertexPosition.GetSizeInFloats();
         var vertices = new VertexBuffer(vertexSize);
         vertices.Map(vertexSize);
-        var vertexStream = vertices.GetVertexStreamPositionColored();
+        var vertexStream = vertices.GetVertexStreamPosition();
         for (var index = start; index < start + count; index++)
         {
-            vertexStream.AddVertex(new VertexPositionColored(points[index], color));
+            vertexStream.AddVertex(new VertexPosition(points[index]));
         }
 
         vertices.Unmap();
