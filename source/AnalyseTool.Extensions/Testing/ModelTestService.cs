@@ -46,8 +46,11 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
     {
         var tests = Select(catalog.Suites(), options);
         var history = HistoryDirectory;
+        // The names of the statistics as the pages show them: Revit's own, read on its thread
+        RevitNames names = RevitNames.Api;
         var run = await dispatcher.InvokeAsync(application =>
         {
+            names = RevitModelAccess.Names;
             var document = ActiveDocument(application);
             using var group = new TransactionGroup(document, "AnalyseTool: model tests");
             // A read-only document cannot be changed anyway; the group makes sure a test that tries leaves no trace
@@ -68,13 +71,13 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         _last = run;
         // The statistics: every run counts, whoever started it. Written key by key: two ids differing
         // only by case (two suite classes may) must not fail the run after it finished
-        var names = new Dictionary<string, (string Test, string Suite, string ExtensionId)>(StringComparer.OrdinalIgnoreCase);
+        var declared = new Dictionary<string, (string Test, string Suite, string ExtensionId)>(StringComparer.OrdinalIgnoreCase);
         foreach (var (suite, test) in tests)
         {
-            names[test.Id] = (test.Name, suite.DisplayName, suite.ExtensionId);
+            declared[test.Id] = (test.DisplayName(names), suite.DisplayName, suite.ExtensionId);
         }
 
-        usage.Record(run, names);
+        usage.Record(run, declared);
         Completed?.Invoke(this, run);
         return run;
     }

@@ -12,6 +12,10 @@ internal sealed class FakeModel : IModelAccess
 {
     private readonly Dictionary<Element, Item> _items = new(ReferenceEqualityComparer.Instance);
     private readonly List<Element> _order = [];
+    private readonly Dictionary<(Element, string), double> _lengths = [];
+
+    /// <summary>The length unit of the project, as Revit's project units would set it: «mm» or «m».</summary>
+    public string LengthUnit { get; set; } = "mm";
 
     static FakeModel()
     {
@@ -40,6 +44,17 @@ internal sealed class FakeModel : IModelAccess
         _items.Remove(element);
         return element;
     }
+
+    /// <summary>
+    ///     Gives an element a length parameter as Revit holds it: in feet, its text rounded the way the project shows it (whole
+    ///     units), its exact value shown in the project's unit.
+    /// </summary>
+    public void Length(Element element, string name, double feet)
+    {
+        _lengths[(element, name)] = feet;
+    }
+
+    private double PerFoot => LengthUnit == "m" ? 0.3048 : 304.8;
 
     public string? Value(Element element, string name)
     {
@@ -71,6 +86,16 @@ internal sealed class FakeModel : IModelAccess
         }
 
         var key = builtIn?.ToString() ?? name;
+        if (_lengths.TryGetValue((element, key), out var feet))
+        {
+            var unit = LengthUnit;
+            var perFoot = PerFoot;
+            return new ModelValue(true, $"{Math.Round(feet * perFoot)} {unit}", feet)
+            {
+                Display = number => $"{(number * perFoot).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} {unit}"
+            };
+        }
+
         return item.Parameters.TryGetValue(key, out var value) ? value is null ? new ModelValue(true, null, null) : ModelValue.Of(value) : ModelValue.Missing;
     }
 

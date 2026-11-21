@@ -154,22 +154,38 @@ internal sealed class RevitModelAccess(Document document) : IModelAccess
         double? number = parameter.StorageType switch
         {
             StorageType.Integer => parameter.AsInteger(),
-            StorageType.Double => Displayed(parameter),
+            StorageType.Double => parameter.AsDouble(),
             _ => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : null
         };
-        return new ModelValue(true, text, number);
+        return new ModelValue(true, text, number) { Display = parameter.StorageType == StorageType.Double ? Display(parameter) : null };
     }
 
-    /// <summary>A length, an area… in the units the model shows, as InRange expects.</summary>
-    private static double Displayed(Parameter parameter)
+    /// <summary>
+    ///     Shows a number of the parameter's kind (internal units) in the units of the project, exactly — «3.21 m», not the
+    ///     rounded «3 m» of the project's format; <see langword="null" /> for a number without units.
+    /// </summary>
+    private static Func<double, string>? Display(Parameter parameter)
     {
         try
         {
-            return UnitUtils.ConvertFromInternalUnits(parameter.AsDouble(), parameter.GetUnitTypeId());
+            var spec = parameter.Definition.GetDataType();
+            if (!UnitUtils.IsMeasurableSpec(spec))
+            {
+                return null;
+            }
+
+            var options = parameter.Element.Document.GetUnits().GetFormatOptions(spec);
+            var unit = options.GetUnitTypeId();
+            var symbol = options.CanHaveSymbol() && !options.GetSymbolTypeId().Empty() ? LabelUtils.GetLabelForSymbol(options.GetSymbolTypeId()) : "";
+            return number =>
+            {
+                var shown = UnitUtils.ConvertFromInternalUnits(number, unit).ToString("0.###", CultureInfo.InvariantCulture);
+                return symbol.Length == 0 ? shown : $"{shown} {symbol}";
+            };
         }
         catch (Autodesk.Revit.Exceptions.ApplicationException)
         {
-            return parameter.AsDouble();
+            return null;
         }
     }
 }

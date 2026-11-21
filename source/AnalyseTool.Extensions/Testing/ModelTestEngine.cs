@@ -300,7 +300,7 @@ internal static class ModelTestEngine
 
             Cases.Add(new ModelTestCase(key, status, message, info?.Id, info?.Label, related.Select(item => item.Id).ToList(), false,
                 access.Point(evidence?.Point), access.Box(evidence?.Box),
-                value?.Text, value is null ? null : !value.Exists ? "missing" : string.IsNullOrWhiteSpace(value.Text) ? "empty" : "set"));
+                value?.Shown, value is null ? null : !value.Exists ? "missing" : string.IsNullOrWhiteSpace(value.Text) ? "empty" : "set"));
         }
 
         public void Error(Element? element, Exception exception, string? where = null)

@@ -107,9 +107,24 @@ public sealed record ElementSelector(IReadOnlyList<BuiltInCategory> Categories, 
 /// <summary>A value read from an element.</summary>
 /// <param name="Exists">The parameter (or value) exists on the element.</param>
 /// <param name="Text">The value as Revit shows it; <see langword="null" /> when it has none.</param>
-/// <param name="Number">The value as a number in the units Revit shows, when it is one.</param>
+/// <param name="Number">
+///     The value as a number when it is one: a length, an area… in Revit's internal units (feet, square feet…), as
+///     <c>InRange</c> compares it.
+/// </param>
 public sealed record ModelValue(bool Exists, string? Text, double? Number)
 {
+    /// <summary>Shows a number of this value's kind in the units of the project («3.21 m»); <see langword="null" /> for plain numbers.</summary>
+    public Func<double, string>? Display { get; init; }
+
+    /// <summary>A number of this value's kind as people read it: in the units of the project when it has any.</summary>
+    public string Show(double number)
+    {
+        return Display?.Invoke(number) ?? number.ToString("0.###", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The value as the results show it: a measured number exactly, in the units of the project; else its text.</summary>
+    public string? Shown => Display is not null && Number is { } number ? Show(number) : Text;
+
     /// <summary>A parameter the element does not have.</summary>
     public static readonly ModelValue Missing = new(false, null, null);
 
@@ -183,6 +198,8 @@ internal abstract class ValueCondition
 
     internal sealed class InRange(double min, double max) : ValueCondition
     {
+        // Revit's internal units: lengths in feet (900.Mm()), so a suite checks the same in a project in mm and one in m
+        // The name of a rule and its id come from here: kept as written, the failures tell the units of the project
         public override string Describe() => $"in {Format(min)}…{Format(max)}";
 
         public override string? Fails(string label, ModelValue value)
@@ -197,7 +214,8 @@ internal abstract class ValueCondition
                 return $"«{label}» '{value.Text}' is not a number";
             }
 
-            return number >= min && number <= max ? null : $"«{label}» is {Format(number)}, expected {Format(min)}…{Format(max)}";
+            // Compared in internal units, told in the units of the project
+            return number >= min && number <= max ? null : $"«{label}» is {value.Show(number)}, expected {value.Show(min)}…{value.Show(max)}";
         }
 
         private static string Format(double number) => number.ToString("0.###", CultureInfo.InvariantCulture);

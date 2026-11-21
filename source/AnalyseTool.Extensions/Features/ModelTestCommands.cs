@@ -188,7 +188,8 @@ public sealed class GetModelTestStatistics(ModelTestUsageStore usage, ModelTestC
                 .Select(offset => today.AddDays(offset - 29).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
                 .Select(day => used.Days.GetValueOrDefault(day))
                 .ToList();
-            return new ModelTestStatistic(used.TestId, exists ? pair.Test.Name : used.Test, exists ? pair.Suite.DisplayName : used.Suite,
+            // A rule without a name keeps the name of its run: Revit's names, which this thread cannot read
+            return new ModelTestStatistic(used.TestId, exists && pair.Test.ExplicitName is not null ? pair.Test.Name : used.Test, exists ? pair.Suite.DisplayName : used.Suite,
                 exists ? pair.Suite.ExtensionName ?? pair.Suite.ExtensionId : used.ExtensionId, exists, used.Runs, used.Failed, used.Errors, used.Inconclusive,
                 used.LastStatus, used.LastRun, used.LastNew, used.LastError, used.AverageMilliseconds, days);
         }).ToList();
