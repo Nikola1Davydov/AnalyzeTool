@@ -1609,23 +1609,23 @@
 /* ---- Not on the Revit ribbon: it works here, so the tile stays as it is — a small mark in the corner says it ---- */
 .tile-off {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 16px;
-  height: 16px;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   pointer-events: none;
-  color: var(--secondary-label);
-  background: var(--fill, rgb(120 120 128 / 20%));
+  color: var(--label);
+  background: color-mix(in srgb, var(--tile-background) 85%, transparent);
   backdrop-filter: blur(6px);
   box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
 }
 
 .tile-off svg {
-  width: 11px;
-  height: 11px;
+  width: 15px;
+  height: 15px;
 }
 
 /* ---- Sections of a folder: the panels of its ribbon tab ---- */

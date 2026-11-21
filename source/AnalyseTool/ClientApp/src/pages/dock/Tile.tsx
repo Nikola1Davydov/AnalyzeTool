@@ -171,9 +171,11 @@ export function Tile(props: {
         {props.busy && <span className="tile-busy" />}
         {props.off && !props.editing && (
           <span className="tile-off" title="Not on the Revit ribbon — it works here">
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="2.5" y="4" width="11" height="8" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M2.5 13.5 13.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            {/* An eye struck through: Revit does not show it */}
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="M3 3l18 18" />
             </svg>
           </span>
         )}
