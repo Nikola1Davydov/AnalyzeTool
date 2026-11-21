@@ -1,4 +1,4 @@
-import { Badge, Button, Input, Link, MessageBar, MessageBarBody, Spinner, Switch, Text, Tooltip } from "@fluentui/react-components";
+import { Badge, Button, Input, Link, MessageBar, MessageBarBody, Spinner, Text, Tooltip } from "@fluentui/react-components";
 import {
   Add16Regular,
   Checkmark16Regular,
@@ -20,7 +20,7 @@ import {
   Circle16Regular,
 } from "@fluentui/react-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { bridge } from "revit-bridge";
 import { appCommands } from "../../api/app";
 import type { ExtensionSummary } from "../../api/extensions";
@@ -46,32 +46,15 @@ import { useConfirm } from "../../components/confirm";
 import { plural, relativeTime } from "../../components/format";
 import { errorText, useNotify } from "../../components/notify";
 import { Empty, Page } from "../../components/Page";
+import { RunProgress, useRunProgress } from "./RunProgress";
 import { useAppQuery } from "../../revit/hooks";
 
-const WATCH_KEY = "analysetool.modelTests.watch";
-const SLOW_KEY = "analysetool.modelTests.slow";
 const SHOWN_CASES = 50;
 
 type Selection = { testId: string; key: string | null };
 
 /** What a chip of the strip narrows the list to. */
 type StatusFilter = "passed" | "new" | "accepted" | "inconclusive";
-
-function readFlag(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeFlag(key: string, on: boolean) {
-  try {
-    localStorage.setItem(key, on ? "1" : "0");
-  } catch {
-    // Storage blocked: the switch still works for this window
-  }
-}
 
 /** The results the page shows: a full run replaces them, a partial one updates its tests. */
 function useResults() {
@@ -108,15 +91,13 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     queryFn: ({ signal }) => bridge.invoke<ModelTestRun | null>(modelTestCommands.GetModelTestResults, null, { signal }),
   });
   const { run, byTest, apply } = useResults();
+  const progress = useRunProgress();
   const [running, setRunning] = useState(false);
-  const [watch, setWatch] = useState(() => readFlag(WATCH_KEY));
-  const [includeSlow, setIncludeSlow] = useState(() => readFlag(SLOW_KEY));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState<Selection | null>(null);
   const [newSuite, setNewSuite] = useState<string | null>(null);
-  const watchTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => apply(latest.data ?? null), [latest.data, apply]);
 
@@ -124,33 +105,21 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
     async (request: RunModelTestsRequest = {}) => {
       setRunning(true);
       try {
-        apply(await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { includeSlow, trigger: "page", ...request }));
+        // Run means every test, the slow ones too: what the page shows is never half a run
+        apply(await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { includeSlow: true, trigger: "page", ...request }));
       } catch (error) {
         notify.failed(error, "The tests did not run");
       } finally {
         setRunning(false);
       }
     },
-    [apply, includeSlow, notify],
+    [apply, notify],
   );
 
-  // A run from an AI client or another window shows here too; a saved test file reloads the list (and, watching, runs)
+  // A run from an AI client or another window shows here too; a saved test file reloads the list
   useEffect(() => bridge.on(modelTestsRanEvent, () => void queryClient.invalidateQueries({ queryKey: ["modelTestResults"] })), [queryClient]);
-  useEffect(() => {
-    // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
-    const off = bridge.on(extensionsChangedEvent, () => {
-      void refetchTests();
-      if (!watch) return;
-      window.clearTimeout(watchTimer.current);
-      // A suite open in the pane watches itself only
-      watchTimer.current = window.setTimeout(() => void runTests({ trigger: "watch", ...(only ? { suite: only } : {}) }), 800);
-    });
-    return () => {
-      off();
-      // A pending run must not fire after Watch is switched off or the screen is left
-      window.clearTimeout(watchTimer.current);
-    };
-  }, [refetchTests, watch, runTests, only]);
+  // Only a reload of the extensions (a saved test file): buttonsChanged also follows every click on a button
+  useEffect(() => bridge.on(extensionsChangedEvent, () => void refetchTests()), [refetchTests]);
 
   const suites = tests.data?.suites ?? [];
   // A suite opened in the Tests tab of the pane shows its own tests only
@@ -350,7 +319,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
             Create
           </Button>
           <Text size={200} className="muted">
-            A folder in your extensions with one C# suite of examples. Open it in your editor: every save runs again with Watch on.
+            A folder in your extensions with one C# suite of examples. Open it in your editor or ask your AI client; Run checks the model again.
           </Text>
         </div>
       )}
@@ -371,6 +340,7 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
       {suites.length > 0 && (
         <>
+          {progress && <RunProgress progress={progress} />}
           {layout === "pane" ? (
             <div className="mt-strip">
               <FilterChip active={statusFilter === "passed"} title="Show only the tests that passed" onToggle={() => toggleFilter("passed")}>
@@ -401,28 +371,6 @@ export function ModelTests({ layout, suite: only }: { layout: "page" | "pane"; s
 
           <div className="usage-toolbar">
             <Input size="small" contentBefore={<Search16Regular />} placeholder="Test, rule or trait" value={search} onChange={(_, data) => setSearch(data.value)} />
-            <div className="mt-switches">
-              <Tooltip content="Runs the tests marked slow too (geometry, the whole model) — they are skipped by default; a test run on its own runs anyway" relationship="description">
-                <Switch
-                  label="Slow tests"
-                  checked={includeSlow}
-                  onChange={(_, data) => {
-                    setIncludeSlow(data.checked);
-                    writeFlag(SLOW_KEY, data.checked);
-                  }}
-                />
-              </Tooltip>
-              <Tooltip content="Runs the tests again whenever an extension is saved or reloaded" relationship="description">
-                <Switch
-                  label="Watch"
-                  checked={watch}
-                  onChange={(_, data) => {
-                    setWatch(data.checked);
-                    writeFlag(WATCH_KEY, data.checked);
-                  }}
-                />
-              </Tooltip>
-            </div>
           </div>
 
           <div className="mt-layout">

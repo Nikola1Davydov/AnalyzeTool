@@ -15,6 +15,7 @@ import { appQueryKey, useAppQuery } from "../../revit/hooks";
 import { appCommands } from "../../api/app";
 import { messageOf, SHEET_FORM, useActions } from "./Actions";
 import { EditContext } from "./edit";
+import { RunProgress, useRunProgress } from "../modelTests/RunProgress";
 import { Tile, TileIcon } from "./Tile";
 
 /** A folder of the Tests tab: an extension holding suites — a project, with as many suites as it likes. */
@@ -126,13 +127,14 @@ export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (
   const tests = useTestFolders();
   const latest = useLatestRun();
   const [running, setRunning] = useState(false);
+  const progress = useRunProgress();
   const found = testFolders(tests.data).find((item) => item.id === folder);
   const results = new Map<string, ModelTestResult>((latest.data?.results ?? []).map((result) => [result.testId, result]));
 
   async function runFolder() {
     setRunning(true);
     try {
-      const run = await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { suite: folder, trigger: "page" });
+      const run = await bridge.invoke<ModelTestRun>(modelTestCommands.RunModelTests, { suite: folder, includeSlow: true, trigger: "page" });
       queryClient.setQueryData(["modelTestResults"], run);
       const fresh = run.totals.newCases;
       actions.toast(fresh ? `${run.totals.failed} test(s) failing, ${fresh} new failure(s)` : `${run.totals.passed} of ${run.totals.tests} passed`, fresh ? "error" : "ok");
@@ -157,6 +159,7 @@ export function TestFolderScreen({ folder, onOpen }: { folder: string; onOpen: (
             : `${found.suites.length} suite(s), ${found.suites.reduce((sum, suite) => sum + suite.tests.length, 0)} test(s)`}
         </span>
       </div>
+      {progress && <RunProgress progress={progress} />}
       <div className="grid">
         {found.suites.map((suite) => {
           const own = suite.tests.map((test) => results.get(test.id)).filter((result): result is ModelTestResult => !!result);

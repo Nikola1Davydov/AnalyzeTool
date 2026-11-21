@@ -35,6 +35,9 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
     /// <summary>Raised after a run: pages show it, whoever started it.</summary>
     public event EventHandler<ModelTestRun>? Completed;
 
+    /// <summary>Raised before every test of a run and once at its end: the pages show how far a run is, whoever started it.</summary>
+    public event EventHandler<ModelTestProgress>? Progress;
+
     /// <summary>Gets the catalog of suites.</summary>
     public ModelTestCatalog Catalog => catalog;
 
@@ -46,27 +49,44 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
     {
         var tests = Select(catalog.Suites(), options);
         var history = HistoryDirectory;
-        // The names of the statistics as the pages show them: Revit's own, read on its thread
-        RevitNames names = RevitNames.Api;
-        var run = await dispatcher.InvokeAsync(application =>
+        var stopwatch = Stopwatch.StartNew();
+        // The names of the statistics and the progress as the pages show them: Revit's own, read on its thread
+        var (modelKey, modelTitle, names) = await dispatcher.InvokeAsync(application =>
         {
-            names = RevitModelAccess.Names;
-            var document = ActiveDocument(application);
-            using var group = new TransactionGroup(document, "AnalyseTool: model tests");
-            // A read-only document cannot be changed anyway; the group makes sure a test that tries leaves no trace
-            var started = !document.IsReadOnly && !document.IsModifiable && group.Start() == TransactionStatus.Started;
-            try
-            {
-                return Execute(new RevitModelAccess(document), tests, options, trigger, history, cancellationToken);
-            }
-            finally
-            {
-                if (started)
-                {
-                    group.RollBack();
-                }
-            }
+            var access = new RevitModelAccess(ActiveDocument(application));
+            return (access.ModelKey, access.ModelTitle, RevitModelAccess.Names);
         }, cancellationToken).ConfigureAwait(false);
+
+        // One call to Revit per test: between two tests Revit draws, and the pages show the progress. Each test runs in a
+        // group of its own that is rolled back, so the model never changes
+        var baselines = new Dictionary<string, BaselineFile>(StringComparer.OrdinalIgnoreCase);
+        var results = new List<ModelTestResult>(tests.Count);
+        for (var index = 0; index < tests.Count; index++)
+        {
+            var (suite, test) = tests[index];
+            Progress?.Invoke(this, new ModelTestProgress(index, tests.Count, test.Id, test.DisplayName(names), suite.DisplayName));
+            if (!baselines.TryGetValue(suite.Id, out var baseline))
+            {
+                baseline = ModelTestBaseline.Load(suite.BaselineDirectory, modelKey);
+                baselines[suite.Id] = baseline;
+            }
+
+            var accepted = ModelTestBaseline.Accepted(baseline, test.BaselineId);
+            results.Add(await dispatcher.InvokeAsync(application =>
+            {
+                var document = ActiveDocument(application);
+                var access = new RevitModelAccess(document);
+                if (!string.Equals(access.ModelKey, modelKey, StringComparison.Ordinal))
+                {
+                    throw new CommandException(ExtensionErrorCodes.NoDocument, $"The active model changed during the run (it was «{modelTitle}»): run the tests again.");
+                }
+
+                return InRolledBackGroup(document, () => ModelTestEngine.Run(test, access, accepted, options, cancellationToken));
+            }, cancellationToken).ConfigureAwait(false));
+        }
+
+        Progress?.Invoke(this, new ModelTestProgress(tests.Count, tests.Count, null, null, null));
+        var run = Summarize(tests, results, modelKey, modelTitle, options, trigger, history, stopwatch.ElapsedMilliseconds);
 
         _last = run;
         // The statistics: every run counts, whoever started it. Written key by key: two ids differing
@@ -163,6 +183,13 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
             results.Add(ModelTestEngine.Run(test, access, ModelTestBaseline.Accepted(baseline, test.BaselineId), options, cancellationToken));
         }
 
+        return Summarize(tests, results, modelKey, access.ModelTitle, options, trigger, historyDirectory, stopwatch.ElapsedMilliseconds);
+    }
+
+    /// <summary>The run of the results: totals, the trend of the model (a full run joins it), the time it took.</summary>
+    internal static ModelTestRun Summarize(IReadOnlyList<(SuiteDefinition Suite, TestDefinition Test)> tests, IReadOnlyList<ModelTestResult> results, string modelKey,
+        string modelTitle, ModelTestRunOptions options, string trigger, string? historyDirectory, long milliseconds)
+    {
         var totals = new ModelTestTotals(
             results.Count,
             results.Count(result => result.Status == "passed"),
@@ -184,7 +211,7 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
         }
 
         var trend = historyDirectory is null ? [] : Trend(historyDirectory, modelKey, point);
-        return new ModelTestRun(access.ModelTitle, modelKey, at, stopwatch.ElapsedMilliseconds, trigger, full, totals, results, trend);
+        return new ModelTestRun(modelTitle, modelKey, at, milliseconds, trigger, full, totals, results, trend);
     }
 
     /// <summary>Picks the tests of a run, in the order of the suites.</summary>
@@ -225,6 +252,25 @@ public sealed class ModelTestService(ModelTestCatalog catalog, ExtensionPaths pa
     private (SuiteDefinition Suite, TestDefinition Test) Find(string testId)
     {
         return catalog.FindTest(testId) ?? throw new CommandException(ExtensionErrorCodes.TestNotFound, $"There is no model test '{testId}'. GetModelTests lists them.");
+    }
+
+    /// <summary>Runs <paramref name="body" /> in a transaction group that is rolled back: whatever a test changes leaves no trace.</summary>
+    private static T InRolledBackGroup<T>(Document document, Func<T> body)
+    {
+        using var group = new TransactionGroup(document, "AnalyseTool: model test");
+        // A read-only document cannot be changed anyway
+        var started = !document.IsReadOnly && !document.IsModifiable && group.Start() == TransactionStatus.Started;
+        try
+        {
+            return body();
+        }
+        finally
+        {
+            if (started)
+            {
+                group.RollBack();
+            }
+        }
     }
 
     /// <summary>One test on every element with every case listed, in a group that is rolled back: what a repair or an accept works on.</summary>

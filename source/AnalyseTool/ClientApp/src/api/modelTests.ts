@@ -20,6 +20,19 @@ export const modelTestCommands = {
 /** Sent to every page after a run, whoever started it. */
 export const modelTestsRanEvent = "modelTestsRan";
 
+/** Sent before every test of a run and once at its end, whoever started it (the pane, a window, an AI client). */
+export const modelTestsProgressEvent = "modelTestsProgress";
+
+/** How far a run is (modelTestsProgress). */
+export interface ModelTestProgress {
+  done: number;
+  total: number;
+  /** The test running now; null at the end. */
+  testId: string | null;
+  test: string | null;
+  suite: string | null;
+}
+
 /** Sent when the extensions were loaded again (a saved file): what Watch runs on. */
 export const extensionsChangedEvent = "extensionsChanged";
 

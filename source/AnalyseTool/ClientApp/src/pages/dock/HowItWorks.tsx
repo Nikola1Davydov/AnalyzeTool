@@ -124,8 +124,8 @@ export function HowTestsWork() {
         tile opens its tests; ▶ Run folder runs every suite of the folder at once.
       </Step>
       <Step picture={<Glyph>▶</Glyph>} title="Run: nothing in the model changes">
-        «Run suite» checks the open model; «Run failed» only what failed last time. Whatever a test does is rolled back. «Watch»
-        runs the suite again when you save its file.
+        «Run suite» checks the open model with every test; «Run failed» only what failed last time. Whatever a test does
+        is rolled back.
       </Step>
       <Step picture={<Glyph>✓ ✕</Glyph>} title="Passed, new failures, accepted, inconclusive">
         A failure is one element (or a pair) that breaks the rule. Red: new. Accepted: known and agreed — it stays visible but does
